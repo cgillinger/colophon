@@ -30,6 +30,7 @@ from app.services.metadata_sources import (
 from app.services.metadata_writer import (
     apply_metadata_to_item,
     item_has_good_metadata,
+    write_metadata_to_file,
 )
 from app.routes.helpers import get_item_or_404, save_uploaded_cover, get_int_form_value
 
@@ -148,6 +149,8 @@ def metadata_item(item_id):
 
         item.manual_metadata = True
 
+        cover_to_embed = new_cover_path
+
         pending = session.pop(_pending_session_key(item.id), None)
         if pending and pending.get("cover_path") and not new_cover_path and not item.cover_locked:
             cover_src = pending["cover_path"]
@@ -158,10 +161,30 @@ def metadata_item(item_id):
                 dest = os.path.join(cover_dir, f"cover_{item.id}{ext}")
                 shutil.copy2(cover_src, dest)
                 item.cover_path = dest
+                cover_to_embed = dest
                 try:
                     os.unlink(cover_src)
                 except OSError:
                     pass
+
+        written_text = {}
+        if title:
+            written_text["title"] = title
+        if author:
+            written_text["author"] = author
+        if series:
+            written_text["series"] = series
+        if series_index:
+            written_text["series_index"] = series_index
+        if isbn:
+            written_text["isbn"] = isbn
+        if publisher:
+            written_text["publisher"] = publisher
+        if language:
+            written_text["language"] = language
+        if description:
+            written_text["description"] = description
+        write_metadata_to_file(item, written_text, cover_to_embed)
 
         db.session.commit()
 
@@ -238,6 +261,8 @@ def apply_cover(item_id):
     item.cover_path = cover_path
     item.cover_locked = True
     item.manual_metadata = True
+
+    write_metadata_to_file(item, {}, cover_path)
 
     db.session.commit()
 
