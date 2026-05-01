@@ -24,13 +24,9 @@ def get_mimetype(item):
     mimetypes_map = {
         ".epub": "application/epub+zip",
         ".pdf": "application/pdf",
-        ".txt": "text/plain; charset=utf-8",
-        ".mp3": "audio/mpeg",
-        ".m4a": "audio/mp4",
-        ".m4b": "audio/mp4",
-        ".flac": "audio/flac",
-        ".ogg": "audio/ogg",
-        ".wav": "audio/wav",
+        ".mobi": "application/x-mobipocket-ebook",
+        ".azw3": "application/vnd.amazon.ebook",
+        ".kepub": "application/epub+zip",
         ".cbz": "application/vnd.comicbook+zip",
         ".cbr": "application/vnd.comicbook-rar",
     }

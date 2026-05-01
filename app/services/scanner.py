@@ -11,7 +11,7 @@ from app.services.metadata_calibre import _read_all_ebook_meta_fields
 logger = logging.getLogger(__name__)
 
 
-EBOOK_EXTENSIONS = {".epub", ".mobi", ".azw3", ".kepub", ".pdf"}
+EBOOK_EXTENSIONS = {".epub", ".mobi", ".azw3", ".kepub", ".pdf", ".cbz", ".cbr"}
 
 
 def _clean_title_from_filename(stem: str) -> str:

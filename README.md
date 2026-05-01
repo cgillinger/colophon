@@ -38,7 +38,7 @@ All variables are read from `.env` (loaded via `env_file` in `docker-compose.yml
 
 Colophon processes books in four stages:
 
-1. **Scan** — The scanner walks `COLOPHON_LIBRARY_DIR` and registers every supported file (`.epub`, `.pdf`, `.txt`, `.cbz`, `.cbr`, `.mp3`, `.m4a`, `.m4b`, `.zip`) in the SQLite database. Files already in the database are skipped.
+1. **Scan** — The scanner walks `COLOPHON_LIBRARY_DIR` and registers every supported file (`.epub`, `.mobi`, `.azw3`, `.kepub`, `.pdf`, `.cbz`, `.cbr`) in the SQLite database. Files already in the database are skipped. Comic formats (`.cbz`, `.cbr`) are scanned by filename only — Google Books and Calibre metadata sources have limited coverage for them.
 
 2. **Enrich** — For each book, Colophon queries Google Books (and optionally Calibre metadata plugins) to fetch title, author, series, ISBN, publisher, description, and cover art.
 
