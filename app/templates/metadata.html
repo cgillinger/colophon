@@ -431,5 +431,11 @@
         <a class="button outline" href="{{ url_for('metadata.lookup_covers', item_id=item.id) }}">Hämta omslag</a>
         <a class="button outline" href="{{ url_for('settings.ai_settings') }}">⚙ AI-inställningar</a>
     </div>
+    <script>
+        document.querySelectorAll('.message').forEach(function(el) {
+            var isError = el.classList.contains('error');
+            console[isError ? 'error' : 'log']('[Colophon]', el.textContent.trim());
+        });
+    </script>
 </body>
 </html>
