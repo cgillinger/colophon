@@ -48,12 +48,8 @@ Colophon processes books in four stages:
 
 ---
 
-## Calibre plugins (optional)
+## Calibre plugins
 
-Installing Calibre and its community metadata plugins gives access to additional sources (Goodreads, Fantastic Fiction, FictionDB) with better series and genre data.
+Calibre and the community metadata plugins (Goodreads, Fantastic Fiction, FictionDB) are bundled in the Docker image. No manual installation is required — `docker-compose up` is all you need.
 
-```bash
-bash tools/install_calibre_plugins.sh
-```
-
-Calibre must be installed on the host or inside the container before running the script. The plugins are optional — Colophon works without them using Google Books alone.
+The plugins give access to richer series and genre data beyond what Google Books alone provides. They are installed automatically at image build time from the [kiwidude68/calibre_plugins](https://github.com/kiwidude68/calibre_plugins) GitHub releases.
