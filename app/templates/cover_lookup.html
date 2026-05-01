@@ -2,7 +2,7 @@
 <html lang="sv">
 <head>
     <meta charset="utf-8">
-    <title>Hämta omslag - {{ item.title }} - Bookstation</title>
+    <title>Hämta omslag - {{ item.title }} - Colophon</title>
     <style>
         body {
             margin: 0;
@@ -187,7 +187,7 @@
 <body>
 <div class="layout">
 <aside class="sidebar">
-<a class="logo" href="{{ url_for('library.index') }}">Bookstation</a>
+<a class="logo" href="{{ url_for('metadata.bulk_metadata') }}">Colophon</a>
 <div class="library-head"><div class="library-title">Library</div><a class="library-plus" href="{{ url_for('library.add_ebook_page') }}">＋</a><span class="library-more">…</span></div>
 <nav class="nav">
 <a class="nav-item" href="{{ url_for('library.series_page') }}"><span class="nav-icon">▤</span>Bokserier</a>
@@ -201,7 +201,7 @@
 </nav>
 </aside>
 <main class="main-col">
-<div class="topbar"><a class="home-icon" href="{{ url_for('library.index') }}">⌂</a></div>
+<div class="topbar"><a class="home-icon" href="{{ url_for('metadata.bulk_metadata') }}">⌂</a></div>
 <section class="content">
         <h1>{{ item.title }}</h1>
 
@@ -218,7 +218,7 @@
                 <div>
                     <strong>Omslagssökning</strong>
                     <p>
-                        Bookstation söker omslag från Google Books API. Välj det omslag som ser bäst ut.
+                        Colophon söker omslag från Google Books API. Välj det omslag som ser bäst ut.
                     </p>
                     <p>
                         För bästa träff: fyll gärna i titel, författare eller ISBN på metadata-sidan först.

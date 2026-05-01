@@ -31,8 +31,6 @@ from app.services.metadata_writer import (
     apply_metadata_to_item,
     item_has_good_metadata,
 )
-from app.services.link_metadata import import_metadata_from_pasted_content
-from app.services.auto_link_importer import auto_import_metadata_from_link
 from app.routes.helpers import get_item_or_404, save_uploaded_cover, get_int_form_value
 
 
@@ -178,7 +176,7 @@ def metadata_item(item_id):
         pending=pending,
         languages=SUPPORTED_LANGUAGES,
         current_lang=current_lang,
-        ai_configured=bool(os.environ.get("BOOKSTATION_MISTRAL_API_KEY")),
+        ai_configured=bool(os.environ.get("COLOPHON_MISTRAL_API_KEY")),
     )
 
 
@@ -251,104 +249,10 @@ def apply_cover(item_id):
     return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
 
-@metadata_bp.route("/metadata/<int:item_id>/import-link", methods=["GET", "POST"])
-def import_metadata_link(item_id):
-    item = get_item_or_404(item_id)
-
-    source_url = ""
-    import_result = None
-    import_error = ""
-
-    if request.method == "POST":
-        source_url = request.form.get("source_url", "").strip()
-        pasted_content = request.form.get("pasted_content", "").strip()
-        save_directly = request.form.get("save_directly") == "1"
-
-        if pasted_content:
-            imported = import_metadata_from_pasted_content(
-                source_url=source_url,
-                pasted_content=pasted_content,
-            )
-        else:
-            imported = auto_import_metadata_from_link(source_url)
-
-        if imported["ok"]:
-            import_result = imported["result"]
-
-            if save_directly and import_result:
-                apply_result = apply_metadata_to_item(
-                    item=item,
-                    result=import_result,
-                    cover_dir=current_app.config["COVER_DIR"],
-                    overwrite=True,
-                    write_to_file=True,
-                )
-
-                db.session.commit()
-
-                if import_result.get("cover_url") and not apply_result.get("cover_saved"):
-                    flash("Metadata sparades, men omslaget kunde inte laddas ner.", "error")
-                else:
-                    flash("Metadata och omslag importerades från länken.", "success")
-
-                return redirect(url_for("metadata.metadata_item", item_id=item.id))
-        else:
-            import_error = imported["error"]
-
-    return render_template(
-        "metadata_import_link.html",
-        item=item,
-        source_url=source_url,
-        import_result=import_result,
-        import_error=import_error,
-    )
-
-
-@metadata_bp.route("/metadata/<int:item_id>/import-link/apply", methods=["POST"])
-def apply_imported_metadata(item_id):
-    """Apply already-scraped metadata fields posted from the import-link result panel."""
-    item = get_item_or_404(item_id)
-
-    result = {
-        "source": request.form.get("source", "").strip(),
-        "title": request.form.get("title", "").strip(),
-        "author": request.form.get("author", "").strip(),
-        "description": request.form.get("description", "").strip(),
-        "isbn": request.form.get("isbn", "").strip(),
-        "publisher": request.form.get("publisher", "").strip(),
-        "language": request.form.get("language", "").strip(),
-        "series": request.form.get("series", "").strip(),
-        "series_index": request.form.get("series_index", "").strip(),
-        "cover_url": request.form.get("cover_url", "").strip(),
-    }
-
-    if not result["title"]:
-        flash("Ingen metadata att spara.", "error")
-        return redirect(url_for("metadata.import_metadata_link", item_id=item.id))
-
-    apply_result = apply_metadata_to_item(
-        item=item,
-        result=result,
-        cover_dir=current_app.config["COVER_DIR"],
-        overwrite=True,
-        write_to_file=True,
-    )
-
-    db.session.commit()
-
-    if result.get("cover_url") and not apply_result.get("cover_saved"):
-        flash("Metadata sparades, men omslaget kunde inte laddas ner.", "error")
-    else:
-        flash("Metadata och omslag importerades från länken.", "success")
-
-    return redirect(url_for("metadata.metadata_item", item_id=item.id))
-
-
 @metadata_bp.route("/metadata/bulk", methods=["GET", "POST"])
 def bulk_metadata():
     items = (
         LibraryItem.query
-        .filter_by(media_type="ebook")
         .order_by(LibraryItem.title.asc())
         .all()
     )
@@ -371,7 +275,7 @@ def bulk_metadata():
 
             item = LibraryItem.query.get(item_id)
 
-            if item and item.media_type == "ebook":
+            if item:
                 selected_items.append(item)
 
         summary = {
@@ -454,7 +358,6 @@ def bulk_metadata():
 
         items = (
             LibraryItem.query
-            .filter_by(media_type="ebook")
             .order_by(LibraryItem.title.asc())
             .all()
         )
@@ -480,7 +383,7 @@ def run_bookf_for_item(item_id):
         flash("Metadatahämtning stöder bara EPUB, MOBI, AZW3 och KEPUB.", "error")
         return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
-    lock_path = Path("/tmp") / f"bookstation_bookf_{item.id}.lock"
+    lock_path = Path("/tmp") / f"colophon_bookf_{item.id}.lock"
 
     if lock_path.exists():
         flash("Metadatahämtning körs redan på denna bok. Vänta tills den är klar.", "error")
@@ -743,9 +646,9 @@ _AI_DISPLAY_ONLY = {"subjects"}
 def run_ai_for_item(item_id):
     item = get_item_or_404(item_id)
 
-    if not os.environ.get("BOOKSTATION_MISTRAL_API_KEY"):
+    if not os.environ.get("COLOPHON_MISTRAL_API_KEY"):
         flash(
-            "Mistral är inte konfigurerat. Lägg till BOOKSTATION_MISTRAL_API_KEY i .env.",
+            "Mistral är inte konfigurerat. Lägg till COLOPHON_MISTRAL_API_KEY i .env.",
             "error",
         )
         return redirect(url_for("metadata.metadata_item", item_id=item.id))

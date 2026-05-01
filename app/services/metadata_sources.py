@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-USER_AGENT = "Bookstation/0.1 Google Books metadata"
+USER_AGENT = "Colophon/0.1 Google Books metadata"
 TIMEOUT = 16
 
 
@@ -47,7 +47,7 @@ def normalize_compare(value):
 
 
 def get_google_books_key():
-    return os.environ.get("BOOKSTATION_GOOGLE_BOOKS_KEY", "").strip()
+    return os.environ.get("COLOPHON_GOOGLE_BOOKS_KEY", "").strip()
 
 
 def safe_get_json(url, params=None):
