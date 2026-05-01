@@ -34,6 +34,19 @@ All variables are read from `.env` (loaded via `env_file` in `docker-compose.yml
 
 ---
 
+### Google Books API key
+
+1. Go to <https://console.cloud.google.com/apis/library/books.googleapis.com>, select or create a project, then click **Enable**.
+2. Go to <https://console.cloud.google.com/apis/credentials>, click **Create Credentials → API key**, and copy the generated key.
+3. Add the key to `.env`:
+   ```
+   COLOPHON_GOOGLE_BOOKS_KEY=your_key_here
+   ```
+
+The API is free up to 1 000 requests/day. Colophon works without a key too, but Google Books will apply stricter rate limits to unauthenticated requests.
+
+---
+
 ## Pipeline
 
 Colophon processes books in four stages:
