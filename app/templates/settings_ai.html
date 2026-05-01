@@ -2,7 +2,7 @@
 <html lang="sv">
 <head>
     <meta charset="utf-8">
-    <title>AI-inställningar - Bookstation</title>
+    <title>AI-inställningar - Colophon</title>
     <style>
         body {
             margin: 0;
@@ -209,7 +209,7 @@
 <body>
 <div class="layout">
 <aside class="sidebar">
-<a class="logo" href="{{ url_for('library.index') }}">Bookstation</a>
+<a class="logo" href="{{ url_for('metadata.bulk_metadata') }}">Colophon</a>
 <div class="library-head"><div class="library-title">Library</div><a class="library-plus" href="{{ url_for('library.add_ebook_page') }}">＋</a><span class="library-more">…</span></div>
 <nav class="nav">
 <a class="nav-item" href="{{ url_for('library.series_page') }}"><span class="nav-icon">▤</span>Bokserier</a>
@@ -223,7 +223,7 @@
 </nav>
 </aside>
 <main class="main-col">
-<div class="topbar"><a class="home-icon" href="{{ url_for('library.index') }}">⌂</a></div>
+<div class="topbar"><a class="home-icon" href="{{ url_for('metadata.bulk_metadata') }}">⌂</a></div>
 <section class="content">
     <h1>AI-inställningar</h1>
 
@@ -259,7 +259,7 @@
 
         {% if not configured %}
             <p style="color:#aeb7bd; font-size:14px; margin:0 0 14px 0;">
-                Lägg till <code style="background:#171a1d; padding:2px 6px; border-radius:3px;">BOOKSTATION_MISTRAL_API_KEY=din-nyckel</code> i <code style="background:#171a1d; padding:2px 6px; border-radius:3px;">.env</code> för att aktivera AI-metadata.
+                Lägg till <code style="background:#171a1d; padding:2px 6px; border-radius:3px;">COLOPHON_MISTRAL_API_KEY=din-nyckel</code> i <code style="background:#171a1d; padding:2px 6px; border-radius:3px;">.env</code> för att aktivera AI-metadata.
             </p>
         {% endif %}
 

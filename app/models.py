@@ -23,13 +23,10 @@ class LibraryItem(db.Model):
     file_name = db.Column(db.String(500), nullable=False)
     extension = db.Column(db.String(50), nullable=False)
 
-    media_type = db.Column(db.String(50), nullable=False)
-
     cover_path = db.Column(db.String(2000), nullable=True)
     size_bytes = db.Column(db.Integer, nullable=True)
 
     manual_metadata = db.Column(db.Boolean, default=False)
-    want_read = db.Column(db.Boolean, default=False)
     cover_locked = db.Column(db.Boolean, default=False)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

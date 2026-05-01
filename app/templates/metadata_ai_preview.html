@@ -2,7 +2,7 @@
 <html lang="sv">
 <head>
     <meta charset="utf-8">
-    <title>AI-förslag - {{ item.title }} - Bookstation</title>
+    <title>AI-förslag - {{ item.title }} - Colophon</title>
     <style>
         * { box-sizing: border-box; }
 
@@ -189,7 +189,7 @@
 <body>
 <div class="layout">
     <aside class="sidebar">
-        <a class="logo" href="{{ url_for('library.index') }}">Bookstation</a>
+        <a class="logo" href="{{ url_for('metadata.bulk_metadata') }}">Colophon</a>
 
         <div class="library-head">
             <div class="library-title">Library</div>
@@ -211,7 +211,7 @@
 
     <main class="main-col">
         <div class="topbar">
-            <a class="home-icon" href="{{ url_for('library.index') }}" title="Hem">⌂</a>
+            <a class="home-icon" href="{{ url_for('metadata.bulk_metadata') }}" title="Hem">⌂</a>
         </div>
 
         <section class="content">

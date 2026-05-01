@@ -82,7 +82,7 @@ def test_ai_connection() -> dict:
     """GET /v1/models med API-nyckeln.
     Returns {"ok": True, "models": [...]} or {"ok": False, "error": "..."}
     """
-    api_key = os.environ.get("BOOKSTATION_MISTRAL_API_KEY", "").strip()
+    api_key = os.environ.get("COLOPHON_MISTRAL_API_KEY", "").strip()
     if not api_key:
         return {"ok": False, "error": "no_key"}
 
@@ -116,11 +116,11 @@ def test_ai_connection() -> dict:
 
 def fetch_ai_suggestions(item: LibraryItem) -> dict:
     """Returns {"ok": True, "suggestions": {...}} or {"ok": False, "error": "..."}"""
-    api_key = os.environ.get("BOOKSTATION_MISTRAL_API_KEY", "").strip()
+    api_key = os.environ.get("COLOPHON_MISTRAL_API_KEY", "").strip()
     if not api_key:
         return {"ok": False, "error": "no_key"}
 
-    model = os.environ.get("BOOKSTATION_MISTRAL_MODEL", "").strip() or _DEFAULT_MODEL
+    model = os.environ.get("COLOPHON_MISTRAL_MODEL", "").strip() or _DEFAULT_MODEL
     description = (item.description or "")[:2000]
 
     prompt = _PROMPT.format(

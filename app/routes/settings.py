@@ -55,8 +55,8 @@ def _get_ai_stats():
 
 @settings_bp.route("/settings/ai")
 def ai_settings():
-    api_key = os.environ.get("BOOKSTATION_MISTRAL_API_KEY", "").strip()
-    model = os.environ.get("BOOKSTATION_MISTRAL_MODEL", "").strip() or _DEFAULT_MODEL
+    api_key = os.environ.get("COLOPHON_MISTRAL_API_KEY", "").strip()
+    model = os.environ.get("COLOPHON_MISTRAL_MODEL", "").strip() or _DEFAULT_MODEL
     configured = bool(api_key)
 
     try:
@@ -89,9 +89,9 @@ def ai_test_connection():
     else:
         error = result["error"]
         if error == "no_key":
-            flash("Ingen API-nyckel konfigurerad (BOOKSTATION_MISTRAL_API_KEY).", "error")
+            flash("Ingen API-nyckel konfigurerad (COLOPHON_MISTRAL_API_KEY).", "error")
         elif error == "auth":
-            flash("Ogiltig API-nyckel. Kontrollera BOOKSTATION_MISTRAL_API_KEY.", "error")
+            flash("Ogiltig API-nyckel. Kontrollera COLOPHON_MISTRAL_API_KEY.", "error")
         elif error == "timeout":
             flash("Anslutningen tog för lång tid. Kontrollera nätverket.", "error")
         elif error == "rate_limit":

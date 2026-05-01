@@ -5,7 +5,6 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 from ebooklib import epub
 from ebooklib import ITEM_IMAGE
-from mutagen import File as MutagenFile
 
 from app.models import db, LibraryItem
 import logging
@@ -20,15 +19,6 @@ EBOOK_EXTENSIONS = {
     ".txt",
     ".cbz",
     ".cbr",
-}
-
-AUDIOBOOK_EXTENSIONS = {
-    ".mp3",
-    ".m4a",
-    ".m4b",
-    ".flac",
-    ".ogg",
-    ".wav",
 }
 
 
@@ -156,28 +146,6 @@ def get_epub_metadata(file_path, cover_dir):
     return title, author, description, cover_path, isbn, publisher, language
 
 
-def get_audio_metadata(file_path):
-    title = None
-    author = None
-
-    try:
-        audio = MutagenFile(str(file_path), easy=True)
-
-        if audio:
-            if audio.get("title"):
-                title = audio.get("title")[0]
-
-            if audio.get("artist"):
-                author = audio.get("artist")[0]
-            elif audio.get("albumartist"):
-                author = audio.get("albumartist")[0]
-
-    except Exception:
-        logger.debug("Tystat fel ignorerat", exc_info=True)
-
-    return title, author
-
-
 def extract_series_from_filename(file_stem):
     import re
 
@@ -229,11 +197,7 @@ def scan_library(library_dir, cover_dir):
 
         extension = file_path.suffix.lower()
 
-        if extension in EBOOK_EXTENSIONS:
-            media_type = "ebook"
-        elif extension in AUDIOBOOK_EXTENSIONS:
-            media_type = "audiobook"
-        else:
+        if extension not in EBOOK_EXTENSIONS:
             result["skipped"] += 1
             continue
 
@@ -281,21 +245,11 @@ def scan_library(library_dir, cover_dir):
             if epub_language:
                 language = epub_language
 
-        if media_type == "audiobook":
-            audio_title, audio_author = get_audio_metadata(file_path)
-
-            if audio_title:
-                title = audio_title
-
-            if audio_author:
-                author = audio_author
-
         existing = LibraryItem.query.filter_by(file_path=absolute_path).first()
 
         if existing:
             existing.file_name = file_name
             existing.extension = extension
-            existing.media_type = media_type
             existing.size_bytes = size_bytes
 
             if not existing.manual_metadata:
@@ -337,7 +291,6 @@ def scan_library(library_dir, cover_dir):
                 file_path=absolute_path,
                 file_name=file_name,
                 extension=extension,
-                media_type=media_type,
                 cover_path=cover_path,
                 size_bytes=size_bytes,
                 manual_metadata=False,

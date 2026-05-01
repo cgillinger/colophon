@@ -1102,7 +1102,7 @@ def deduplicate_results(results):
     return unique
 
 
-def _bookstation_clean_bokon_title_and_author(result):
+def _colophon_clean_bokon_title_and_author(result):
     title = clean_text(result.get("title", ""))
     author = clean_text(result.get("author", ""))
 
@@ -1129,15 +1129,15 @@ def _bookstation_clean_bokon_title_and_author(result):
     return result
 
 
-def _bookstation_normalize_match_text(value):
+def _colophon_normalize_match_text(value):
     value = clean_text(value).lower()
     value = re.sub(r"[^a-zåäö0-9]+", " ", value, flags=re.IGNORECASE)
     return " ".join(value.split()).strip()
 
 
-def _bookstation_word_overlap_score(query, candidate):
-    query = _bookstation_normalize_match_text(query)
-    candidate = _bookstation_normalize_match_text(candidate)
+def _colophon_word_overlap_score(query, candidate):
+    query = _colophon_normalize_match_text(query)
+    candidate = _colophon_normalize_match_text(candidate)
 
     if not query or not candidate:
         return 0.0
@@ -1167,7 +1167,7 @@ def _bookstation_word_overlap_score(query, candidate):
     return len(hits) / len(query_words)
 
 
-def _bookstation_result_matches_query(result, query_text="", title="", author="", isbn=""):
+def _colophon_result_matches_query(result, query_text="", title="", author="", isbn=""):
     wanted_isbn = normalize_isbn(isbn) or normalize_isbn(query_text)
     found_isbn = normalize_isbn(result.get("isbn", ""))
 
@@ -1188,18 +1188,18 @@ def _bookstation_result_matches_query(result, query_text="", title="", author=""
         ]
     )
 
-    score = _bookstation_word_overlap_score(query, candidate)
+    score = _colophon_word_overlap_score(query, candidate)
 
     return score >= 0.50
 
 
-def _bookstation_filter_bokon_results(results, query_text="", title="", author="", isbn=""):
+def _colophon_filter_bokon_results(results, query_text="", title="", author="", isbn=""):
     filtered = []
 
     for result in results:
-        result = _bookstation_clean_bokon_title_and_author(result)
+        result = _colophon_clean_bokon_title_and_author(result)
 
-        if _bookstation_result_matches_query(
+        if _colophon_result_matches_query(
             result=result,
             query_text=query_text,
             title=title,
@@ -1218,7 +1218,7 @@ def bokon_search(query_text="", title="", author="", isbn=""):
         if "bokon." in query_data["url"]:
             raw_results = parse_direct_store_page("Bokon (webbkälla)", query_data["url"])
 
-            return _bookstation_filter_bokon_results(
+            return _colophon_filter_bokon_results(
                 results=raw_results,
                 query_text=query_text,
                 title=title,
@@ -1247,7 +1247,7 @@ def bokon_search(query_text="", title="", author="", isbn=""):
         max_pages=8,
     )
 
-    return _bookstation_filter_bokon_results(
+    return _colophon_filter_bokon_results(
         results=raw_results,
         query_text=query_text,
         title=title,
