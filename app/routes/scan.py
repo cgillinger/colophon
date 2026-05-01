@@ -14,7 +14,11 @@ def scan():
         return _scan_sse()
 
     try:
-        summary = scan_directory(current_app.config["LIBRARY_DIR"], db.session)
+        summary = scan_directory(
+            current_app.config["LIBRARY_DIR"],
+            db.session,
+            cover_dir=current_app.config["COVER_DIR"],
+        )
         return jsonify(summary)
     except Exception as exc:
         current_app.logger.exception("scan_directory failed")
@@ -23,6 +27,7 @@ def scan():
 
 def _scan_sse():
     library_dir = current_app.config["LIBRARY_DIR"]
+    cover_dir = current_app.config["COVER_DIR"]
     session = db.session
 
     def generate():
@@ -32,7 +37,7 @@ def _scan_sse():
             events.append(event)
 
         try:
-            summary = scan_directory(library_dir, session, on_progress=collect)
+            summary = scan_directory(library_dir, session, on_progress=collect, cover_dir=cover_dir)
             for ev in events:
                 yield f"data: {json.dumps(ev)}\n\n"
             yield f"data: {json.dumps({'type': 'done', 'added': summary['added'], 'updated': summary['updated'], 'removed': summary['removed']})}\n\n"

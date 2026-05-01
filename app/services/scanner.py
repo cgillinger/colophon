@@ -1,12 +1,13 @@
+import hashlib
 import logging
 import os
-import shutil
-import subprocess
 from datetime import datetime
 from pathlib import Path
 
+from bs4 import BeautifulSoup
+from ebooklib import epub, ITEM_IMAGE
+
 from app.models import LibraryItem, db
-from app.services.metadata_calibre import _read_all_ebook_meta_fields
 
 logger = logging.getLogger(__name__)
 
@@ -19,31 +20,83 @@ def _clean_title_from_filename(stem: str) -> str:
     return " ".join(title.split()).strip()
 
 
-def _read_embedded_metadata(file_path: Path) -> dict:
-    if not shutil.which("ebook-meta"):
-        return {}
+def _clean_metadata_text(value):
+    if not value:
+        return None
+    value = str(value)
+    soup = BeautifulSoup(value, "html.parser")
+    value = soup.get_text(" ", strip=True)
+    value = " ".join(value.split()).strip()
+    return value or None
+
+
+def _first_metadata_value(book, namespace, key):
+    values = book.get_metadata(namespace, key)
+    if not values:
+        return None
+    return _clean_metadata_text(values[0][0])
+
+
+def _save_epub_cover(book, file_path, cover_dir):
+    cover_item = None
     try:
-        fields = _read_all_ebook_meta_fields(file_path)
-    except (subprocess.SubprocessError, OSError):
-        logger.debug("ebook-meta misslyckades för %s", file_path, exc_info=True)
-        return {}
-    return fields
+        cover_meta = book.get_metadata("OPF", "cover")
+        if cover_meta:
+            cover_id = cover_meta[0][1].get("content")
+            if cover_id:
+                cover_item = book.get_item_with_id(cover_id)
+    except Exception:
+        pass
+    if not cover_item:
+        try:
+            cover_item = book.get_item_with_id("cover")
+        except Exception:
+            pass
+    if not cover_item:
+        try:
+            for item in book.get_items_of_type(ITEM_IMAGE):
+                name = item.get_name().lower()
+                if "cover" in name:
+                    cover_item = item
+                    break
+        except Exception:
+            pass
+    if not cover_item:
+        return None
+    try:
+        cover_data = cover_item.get_content()
+        if not cover_data:
+            return None
+        ext = Path(cover_item.get_name()).suffix.lower()
+        if ext not in (".jpg", ".jpeg", ".png", ".webp"):
+            ext = ".jpg"
+        digest = hashlib.sha1(str(file_path).encode()).hexdigest()
+        Path(cover_dir).mkdir(parents=True, exist_ok=True)
+        cover_path = Path(cover_dir) / (digest + ext)
+        cover_path.write_bytes(cover_data)
+        return str(cover_path.resolve())
+    except Exception:
+        return None
 
 
-def _metadata_from_file(file_path: Path) -> dict:
-    fields = _read_embedded_metadata(file_path)
-    return {
-        "title": fields.get("title") or _clean_title_from_filename(file_path.stem),
-        "author": fields.get("author(s)") or fields.get("authors") or None,
-        "description": fields.get("comments") or None,
-        "publisher": fields.get("publisher") or None,
-        "language": fields.get("languages") or fields.get("language") or None,
-        "isbn": (fields.get("identifiers") or "").split("isbn:")[-1].split(",")[0].strip() or None
-            if fields.get("identifiers") and "isbn" in fields.get("identifiers", "").lower() else None,
-    }
+def _get_epub_metadata(file_path, cover_dir):
+    title = author = description = cover_path = isbn = publisher = language = None
+    try:
+        book = epub.read_epub(str(file_path))
+        title = _first_metadata_value(book, "DC", "title")
+        author = _first_metadata_value(book, "DC", "creator")
+        description = _first_metadata_value(book, "DC", "description")
+        isbn = _first_metadata_value(book, "DC", "identifier")
+        publisher = _first_metadata_value(book, "DC", "publisher")
+        language = _first_metadata_value(book, "DC", "language")
+        if cover_dir:
+            cover_path = _save_epub_cover(book, file_path, cover_dir)
+    except Exception:
+        pass
+    return title, author, description, cover_path, isbn, publisher, language
 
 
-def scan_directory(root_path, db_session=None, on_progress=None) -> dict:
+def scan_directory(root_path, db_session=None, on_progress=None, cover_dir=None) -> dict:
     session = db_session if db_session is not None else db.session
     root = Path(root_path)
 
@@ -67,11 +120,27 @@ def scan_directory(root_path, db_session=None, on_progress=None) -> dict:
             continue
 
         absolute_path = str(file_path.resolve())
+
         try:
-            meta = _metadata_from_file(file_path)
+            if extension == ".epub":
+                title, author, description, epub_cover, isbn, publisher, language = _get_epub_metadata(file_path, cover_dir)
+                if not title:
+                    title = _clean_title_from_filename(file_path.stem)
+                meta = {
+                    "title": title,
+                    "author": author,
+                    "description": description,
+                    "cover_path": epub_cover,
+                    "isbn": isbn,
+                    "publisher": publisher,
+                    "language": language,
+                }
+            else:
+                meta = {"title": _clean_title_from_filename(file_path.stem)}
         except Exception:
             logger.warning("Kunde inte läsa metadata från %s, använder filnamn", file_path)
             meta = {"title": _clean_title_from_filename(file_path.stem)}
+
         size_bytes = os.path.getsize(absolute_path)
         now = datetime.utcnow()
 
@@ -94,6 +163,8 @@ def scan_directory(root_path, db_session=None, on_progress=None) -> dict:
                     existing.language = meta["language"]
                 if meta.get("isbn"):
                     existing.isbn = meta["isbn"]
+                if meta.get("cover_path") and not existing.cover_locked:
+                    existing.cover_path = meta["cover_path"]
             result["updated"] += 1
         else:
             item = LibraryItem(
@@ -103,6 +174,7 @@ def scan_directory(root_path, db_session=None, on_progress=None) -> dict:
                 publisher=meta.get("publisher"),
                 language=meta.get("language"),
                 isbn=meta.get("isbn"),
+                cover_path=meta.get("cover_path"),
                 file_path=absolute_path,
                 file_name=file_path.name,
                 extension=extension,
@@ -127,9 +199,8 @@ def scan_directory(root_path, db_session=None, on_progress=None) -> dict:
     return result
 
 
-# Backwards-compatible wrapper for existing callers.
 def scan_library(library_dir, cover_dir=None) -> dict:
-    summary = scan_directory(library_dir)
+    summary = scan_directory(library_dir, cover_dir=cover_dir)
     summary.setdefault("skipped", 0)
     summary.setdefault("missing_folder", not Path(library_dir).exists())
     return summary
