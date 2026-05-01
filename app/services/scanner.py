@@ -135,6 +135,17 @@ def scan_directory(root_path, db_session=None, on_progress=None, cover_dir=None)
                     "publisher": publisher,
                     "language": language,
                 }
+            elif extension in {".mobi", ".azw3", ".kepub"}:
+                from app.services.metadata_calibre import read_all_ebook_meta_fields
+                fields = read_all_ebook_meta_fields(file_path)
+                meta = {
+                    "title": fields.get("title") or _clean_title_from_filename(file_path.stem),
+                    "author": fields.get("author(s)") or None,
+                    "description": fields.get("comments") or None,
+                    "isbn": None,
+                    "publisher": fields.get("publisher") or None,
+                    "language": fields.get("languages") or None,
+                }
             else:
                 meta = {"title": _clean_title_from_filename(file_path.stem)}
         except Exception:

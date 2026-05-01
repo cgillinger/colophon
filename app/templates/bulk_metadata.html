@@ -467,24 +467,28 @@
             var source = new EventSource('/scan?progress=1');
             source.onmessage = function(e) {
                 var d = JSON.parse(e.data);
+                console.debug('[Colophon scan]', d);
                 if (d.type === 'progress') {
                     text.textContent = 'Skannar: ' + d.file;
                     log.innerHTML += '<div>' + d.file + '</div>';
                     log.scrollTop = log.scrollHeight;
                 } else if (d.type === 'done') {
                     text.textContent = 'Klar! Tillagda: ' + d.added + ', uppdaterade: ' + d.updated + ', borttagna: ' + d.removed;
+                    console.log('[Colophon scan] Done', d);
                     source.close();
                     btn.disabled = false;
                     btn.textContent = 'Skanna bibliotek';
                     setTimeout(function(){ location.reload(); }, 1500);
                 } else if (d.type === 'error') {
                     text.textContent = 'Fel: ' + d.message;
+                    console.error('[Colophon scan] Error', d);
                     source.close();
                     btn.disabled = false;
                     btn.textContent = 'Skanna bibliotek';
                 }
             };
-            source.onerror = function() {
+            source.onerror = function(e) {
+                console.error('[Colophon scan] SSE error', e);
                 text.textContent = 'Anslutningen bröts.';
                 source.close();
                 btn.disabled = false;
@@ -515,6 +519,11 @@
                 checkbox.checked = row.getAttribute("data-missing") === "1";
             });
         }
+
+        document.querySelectorAll('.message').forEach(function(el) {
+            var isError = el.classList.contains('error');
+            console[isError ? 'error' : 'log']('[Colophon]', el.textContent.trim());
+        });
     </script>
 </body>
 </html>
