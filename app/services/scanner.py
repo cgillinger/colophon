@@ -67,7 +67,11 @@ def scan_directory(root_path, db_session=None, on_progress=None) -> dict:
             continue
 
         absolute_path = str(file_path.resolve())
-        meta = _metadata_from_file(file_path)
+        try:
+            meta = _metadata_from_file(file_path)
+        except Exception:
+            logger.warning("Kunde inte läsa metadata från %s, använder filnamn", file_path)
+            meta = {"title": _clean_title_from_filename(file_path.stem)}
         size_bytes = os.path.getsize(absolute_path)
         now = datetime.utcnow()
 
