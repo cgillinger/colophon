@@ -13,6 +13,7 @@ from app.config import Config
 from app.models import db
 from app.paths import LOG_DIR
 from app.routes.metadata import metadata_bp
+from app.routes.scan import scan_bp
 from app.routes.settings import settings_bp
 from app.services.database import ensure_database_columns, ensure_ai_usage_log_table
 
@@ -69,6 +70,7 @@ def create_app():
         ensure_ai_usage_log_table()
 
     app.register_blueprint(metadata_bp)
+    app.register_blueprint(scan_bp)
     app.register_blueprint(settings_bp)
 
     return app

@@ -29,6 +29,11 @@ class LibraryItem(db.Model):
     manual_metadata = db.Column(db.Boolean, default=False)
     cover_locked = db.Column(db.Boolean, default=False)
 
+    pipeline_status = db.Column(db.String(50), default="scanned", nullable=False)
+    scanned_at = db.Column(db.DateTime, nullable=True)
+    enriched_at = db.Column(db.DateTime, nullable=True)
+    polished_at = db.Column(db.DateTime, nullable=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

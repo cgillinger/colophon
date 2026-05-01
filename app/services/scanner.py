@@ -1,304 +1,122 @@
-import hashlib
+import logging
 import os
+import shutil
+import subprocess
+from datetime import datetime
 from pathlib import Path
 
-from bs4 import BeautifulSoup
-from ebooklib import epub
-from ebooklib import ITEM_IMAGE
-
-from app.models import db, LibraryItem
-import logging
+from app.models import LibraryItem, db
+from app.services.metadata_calibre import _read_all_ebook_meta_fields
 
 logger = logging.getLogger(__name__)
 
 
-
-EBOOK_EXTENSIONS = {
-    ".epub",
-    ".pdf",
-    ".txt",
-    ".cbz",
-    ".cbr",
-}
+EBOOK_EXTENSIONS = {".epub", ".mobi", ".azw3", ".kepub", ".pdf"}
 
 
-def clean_title(filename_stem):
-    title = filename_stem.replace("_", " ")
-    title = title.replace(".", " ")
-    title = title.replace("-", " ")
-    title = " ".join(title.split())
-    return title.strip()
+def _clean_title_from_filename(stem: str) -> str:
+    title = stem.replace("_", " ").replace(".", " ").replace("-", " ")
+    return " ".join(title.split()).strip()
 
 
-def clean_metadata_text(value):
-    if not value:
-        return None
-
-    value = str(value)
-
-    soup = BeautifulSoup(value, "html.parser")
-    value = soup.get_text(" ", strip=True)
-
-    value = " ".join(value.split()).strip()
-
-    if not value:
-        return None
-
-    return value
-
-
-def first_metadata_value(book, namespace, key):
-    values = book.get_metadata(namespace, key)
-
-    if not values:
-        return None
-
-    value = values[0][0]
-
-    return clean_metadata_text(value)
-
-
-def save_epub_cover(book, file_path, cover_dir):
-    cover_item = None
-
+def _read_embedded_metadata(file_path: Path) -> dict:
+    if not shutil.which("ebook-meta"):
+        return {}
     try:
-        cover_meta = book.get_metadata("OPF", "cover")
-
-        if cover_meta:
-            cover_id = cover_meta[0][1].get("content")
-            if cover_id:
-                cover_item = book.get_item_with_id(cover_id)
-    except Exception:
-        cover_item = None
-
-    if cover_item is None:
-        try:
-            cover_item = book.get_item_with_id("cover")
-        except Exception:
-            cover_item = None
-
-    if cover_item is None:
-        try:
-            for item in book.get_items_of_type(ITEM_IMAGE):
-                name = item.get_name().lower()
-
-                if "cover" in name or "omslag" in name:
-                    cover_item = item
-                    break
-        except Exception:
-            cover_item = None
-
-    if cover_item is None:
-        return None
-
-    try:
-        cover_data = cover_item.get_content()
-
-        if not cover_data:
-            return None
-
-        cover_name = cover_item.get_name().lower()
-        extension = Path(cover_name).suffix
-
-        if extension not in [".jpg", ".jpeg", ".png", ".webp"]:
-            extension = ".jpg"
-
-        digest = hashlib.sha1(str(file_path).encode("utf-8")).hexdigest()
-        cover_filename = digest + extension
-
-        cover_dir_path = Path(cover_dir)
-        cover_dir_path.mkdir(parents=True, exist_ok=True)
-
-        cover_path = cover_dir_path / cover_filename
-
-        with open(cover_path, "wb") as cover_file:
-            cover_file.write(cover_data)
-
-        return str(cover_path.resolve())
-
-    except Exception:
-        return None
+        fields = _read_all_ebook_meta_fields(file_path)
+    except (subprocess.SubprocessError, OSError):
+        logger.debug("ebook-meta misslyckades för %s", file_path, exc_info=True)
+        return {}
+    return fields
 
 
-def get_epub_metadata(file_path, cover_dir):
-    title = None
-    author = None
-    description = None
-    cover_path = None
-    isbn = None
-    publisher = None
-    language = None
-
-    try:
-        book = epub.read_epub(str(file_path))
-
-        title = first_metadata_value(book, "DC", "title")
-        author = first_metadata_value(book, "DC", "creator")
-        description = first_metadata_value(book, "DC", "description")
-        isbn = first_metadata_value(book, "DC", "identifier")
-        publisher = first_metadata_value(book, "DC", "publisher")
-        language = first_metadata_value(book, "DC", "language")
-        cover_path = save_epub_cover(book, file_path, cover_dir)
-
-    except Exception:
-        logger.debug("Tystat fel ignorerat", exc_info=True)
-
-    return title, author, description, cover_path, isbn, publisher, language
-
-
-def extract_series_from_filename(file_stem):
-    import re
-
-    match = re.search(r"\(([^,()]+),\s*#?\s*([0-9]+(?:\.[0-9]+)?)\)", file_stem)
-
-    if not match:
-        return None, None
-
-    series = match.group(1).strip()
-    series_index = match.group(2).strip()
-
-    return series, series_index
-
-
-def scan_library(library_dir, cover_dir):
-    library_path = Path(library_dir)
-
-    result = {
-        "added": 0,
-        "updated": 0,
-        "skipped": 0,
-        "removed": 0,
-        "missing_folder": False,
+def _metadata_from_file(file_path: Path) -> dict:
+    fields = _read_embedded_metadata(file_path)
+    return {
+        "title": fields.get("title") or _clean_title_from_filename(file_path.stem),
+        "author": fields.get("author(s)") or fields.get("authors") or None,
+        "description": fields.get("comments") or None,
+        "publisher": fields.get("publisher") or None,
+        "language": fields.get("languages") or fields.get("language") or None,
+        "isbn": (fields.get("identifiers") or "").split("isbn:")[-1].split(",")[0].strip() or None
+            if fields.get("identifiers") and "isbn" in fields.get("identifiers", "").lower() else None,
     }
 
-    if not library_path.exists():
-        result["missing_folder"] = True
+
+def scan_directory(root_path, db_session=None) -> dict:
+    session = db_session if db_session is not None else db.session
+    root = Path(root_path)
+
+    result = {"added": 0, "updated": 0, "removed": 0}
+
+    if not root.exists():
         return result
 
-    # Ta bort böcker från databasen om filen inte längre finns på disk.
-    # Detta gör att "Skanna bibliotek" speglar biblioteksmappen exaktare.
-    existing_items = LibraryItem.query.all()
-
-    for existing_item in existing_items:
-        if not existing_item.file_path:
-            db.session.delete(existing_item)
+    for existing in LibraryItem.query.all():
+        if not existing.file_path or not Path(existing.file_path).exists():
+            session.delete(existing)
             result["removed"] += 1
-            continue
+    session.commit()
 
-        if not Path(existing_item.file_path).exists():
-            db.session.delete(existing_item)
-            result["removed"] += 1
-
-    db.session.commit()
-
-    for file_path in library_path.rglob("*"):
+    for file_path in root.rglob("*"):
         if not file_path.is_file():
             continue
 
         extension = file_path.suffix.lower()
-
         if extension not in EBOOK_EXTENSIONS:
-            result["skipped"] += 1
             continue
 
         absolute_path = str(file_path.resolve())
-        file_name = file_path.name
+        meta = _metadata_from_file(file_path)
         size_bytes = os.path.getsize(absolute_path)
-
-        title = clean_title(file_path.stem)
-        author = None
-        description = None
-        cover_path = None
-        isbn = None
-        publisher = None
-        language = None
-
-        if extension == ".epub":
-            (
-                epub_title,
-                epub_author,
-                epub_description,
-                epub_cover_path,
-                epub_isbn,
-                epub_publisher,
-                epub_language,
-            ) = get_epub_metadata(file_path, cover_dir)
-
-            if epub_title:
-                title = epub_title
-
-            if epub_author:
-                author = epub_author
-
-            if epub_description:
-                description = epub_description
-
-            if epub_cover_path:
-                cover_path = epub_cover_path
-
-            if epub_isbn:
-                isbn = epub_isbn
-
-            if epub_publisher:
-                publisher = epub_publisher
-
-            if epub_language:
-                language = epub_language
+        now = datetime.utcnow()
 
         existing = LibraryItem.query.filter_by(file_path=absolute_path).first()
 
         if existing:
-            existing.file_name = file_name
+            existing.file_name = file_path.name
             existing.extension = extension
             existing.size_bytes = size_bytes
-
             if not existing.manual_metadata:
-                existing.title = title
-
-                if author:
-                    existing.author = author
-
-                if isbn:
-                    existing.isbn = isbn
-
-                if publisher:
-                    existing.publisher = publisher
-
-                if language:
-                    existing.language = language
-
-            # Uppdatera alltid synopsis och omslag från filen,
-            # även om titel/författare är manuellt låsta.
-            # Uppdatera synopsis om ny metadata finns
-            if description:
-                existing.description = description
-
-            # Viktigt:
-            # Skriv bara över omslag om ett nytt omslag faktiskt hittades.
-            # Om scanningen inte hittar omslag ska befintligt cover_path behållas.
-            if cover_path and not existing.cover_locked:
-                existing.cover_path = cover_path
-
+                if meta.get("title"):
+                    existing.title = meta["title"]
+                if meta.get("author"):
+                    existing.author = meta["author"]
+                if meta.get("description"):
+                    existing.description = meta["description"]
+                if meta.get("publisher"):
+                    existing.publisher = meta["publisher"]
+                if meta.get("language"):
+                    existing.language = meta["language"]
+                if meta.get("isbn"):
+                    existing.isbn = meta["isbn"]
             result["updated"] += 1
         else:
             item = LibraryItem(
-                title=title,
-                author=author,
-                description=description,
-                isbn=isbn,
-                publisher=publisher,
-                language=language,
+                title=meta.get("title") or _clean_title_from_filename(file_path.stem),
+                author=meta.get("author"),
+                description=meta.get("description"),
+                publisher=meta.get("publisher"),
+                language=meta.get("language"),
+                isbn=meta.get("isbn"),
                 file_path=absolute_path,
-                file_name=file_name,
+                file_name=file_path.name,
                 extension=extension,
-                cover_path=cover_path,
                 size_bytes=size_bytes,
                 manual_metadata=False,
+                pipeline_status="scanned",
+                scanned_at=now,
             )
-
-            db.session.add(item)
+            session.add(item)
             result["added"] += 1
 
-    db.session.commit()
-
+    session.commit()
     return result
+
+
+# Backwards-compatible wrapper for existing callers.
+def scan_library(library_dir, cover_dir=None) -> dict:
+    summary = scan_directory(library_dir)
+    summary.setdefault("skipped", 0)
+    summary.setdefault("missing_folder", not Path(library_dir).exists())
+    return summary
