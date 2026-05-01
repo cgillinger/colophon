@@ -38,6 +38,19 @@ from app.routes.helpers import get_item_or_404, save_uploaded_cover, get_int_for
 metadata_bp = Blueprint("metadata", __name__)
 
 
+@metadata_bp.route("/")
+def index():
+    return redirect(url_for("metadata.bulk_metadata"))
+
+
+@metadata_bp.route("/cover/<int:item_id>")
+def cover_item(item_id):
+    item = get_item_or_404(item_id)
+    if not item.cover_path or not os.path.exists(item.cover_path):
+        return ("", 404)
+    return send_file(item.cover_path)
+
+
 SUPPORTED_LANGUAGES = [
     ("en", "English"),
     ("sv", "Svenska"),
