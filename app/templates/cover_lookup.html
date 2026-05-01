@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="sv">
+<head>
+    <meta charset="utf-8">
+    <title>Hämta omslag - {{ item.title }} - Bookstation</title>
+    <style>
+        body {
+            margin: 0;
+            background: #303438;
+            color: #e8ecef;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+        button, input, select { font-family: inherit; }
+
+        .layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+        .sidebar { background: #2f3337; border-right: 1px solid #25292d; }
+        .logo { height: 56px; display: flex; align-items: center; padding-left: 14px; background: #25292d; color: white; font-size: 29px; font-weight: bold; }
+        .library-head { height: 42px; display: flex; align-items: center; padding: 0 12px; color: #d5d8db; font-weight: bold; border-bottom: 1px solid #363b40; font-size: 17px; }
+        .library-title { flex: 1; }
+        .library-plus, .library-more { width: 25px; height: 25px; display: inline-flex; align-items: center; justify-content: center; color: #c4c8cc; border-radius: 50%; font-size: 20px; }
+        .library-plus:hover, .library-more:hover { background: #454a50; }
+        .nav { padding-top: 6px; }
+        .nav-item { height: 42px; display: flex; align-items: center; gap: 11px; padding: 0 12px 0 20px; color: #c7ccd0; border-left: 4px solid transparent; font-size: 17px; }
+        .nav-item:hover { background: #3b4045; }
+        .nav-item.active { background: #454a50; color: white; font-weight: bold; border-left-color: white; }
+        .nav-icon { width: 21px; text-align: center; font-size: 18px; }
+        .main-col { min-width: 0; background: #34393e; }
+        .topbar { height: 56px; background: #202326; border-bottom: 1px solid #262a2e; display: flex; align-items: center; gap: 14px; padding: 0 16px; }
+        .home-icon { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; color: #bfc4c8; font-size: 25px; border-radius: 3px; }
+        .home-icon:hover { background: #30353a; color: white; }
+
+        .button,
+        button {
+            background: #3f4850;
+            color: white;
+            padding: 9px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            border: 0;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        .button.primary,
+        button.primary {
+            background: #4aa3ff;
+        }
+
+        .button.purple,
+        button.purple {
+            background: #6c5ce7;
+        }
+
+        .content {
+            padding: 30px;
+            max-width: 1400px;
+        }
+
+        h1 {
+            margin-top: 0;
+            font-weight: normal;
+        }
+
+        .intro {
+            background: #30363b;
+            padding: 18px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            color: #c8d0d5;
+            line-height: 1.5;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+            gap: 24px;
+        }
+
+        .cover-card {
+            background: #30363b;
+            padding: 14px;
+            border-radius: 8px;
+        }
+
+        .cover-box {
+            width: 100%;
+            height: 285px;
+            background: linear-gradient(145deg, #46505a, #20252a);
+            border-radius: 5px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 52px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.22);
+        }
+
+        .cover-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .source {
+            display: inline-block;
+            background: #252b30;
+            color: #cdd5da;
+            padding: 4px 7px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-top: 12px;
+            margin-bottom: 8px;
+        }
+
+        .title {
+            font-weight: bold;
+            font-size: 14px;
+            line-height: 1.25;
+            min-height: 35px;
+        }
+
+        .note {
+            color: #aeb7bd;
+            font-size: 12px;
+            line-height: 1.35;
+            min-height: 32px;
+            margin-top: 6px;
+        }
+
+        .actions {
+            margin-top: 12px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .empty {
+            background: #30363b;
+            padding: 24px;
+            border-radius: 8px;
+            color: #c8d0d5;
+            max-width: 900px;
+        }
+
+        .current-cover {
+            display: flex;
+            gap: 18px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .current-cover .mini {
+            width: 110px;
+            height: 160px;
+            background: linear-gradient(145deg, #46505a, #20252a);
+            border-radius: 5px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 34px;
+        }
+
+        .current-cover .mini img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        @media (max-width: 650px) {
+            .grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            }
+
+            .cover-box {
+                height: 225px;
+            }
+        }
+    </style>
+
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar">
+<a class="logo" href="{{ url_for('library.index') }}">Bookstation</a>
+<div class="library-head"><div class="library-title">Library</div><a class="library-plus" href="{{ url_for('library.add_ebook_page') }}">＋</a><span class="library-more">…</span></div>
+<nav class="nav">
+<a class="nav-item" href="{{ url_for('library.series_page') }}"><span class="nav-icon">▤</span>Bokserier</a>
+<a class="nav-item" href="{{ url_for('library.index', typ='ebook') }}"><span class="nav-icon">▣</span>Böcker</a>
+<a class="nav-item" href="{{ url_for('library.index', typ='audiobook') }}"><span class="nav-icon">▥</span>Ljudböcker</a>
+<a class="nav-item" href="{{ url_for('library.want_read_page') }}"><span class="nav-icon">★</span>Vill läsa</a>
+<a class="nav-item" href="{{ url_for('bookstores.my_stores_page') }}"><span class="nav-icon">🛒</span>Mina affärer</a>
+<a class="nav-item active" href="{{ url_for('metadata.bulk_metadata') }}"><span class="nav-icon">🧠</span>Metadata</a>
+<a class="nav-item" href="{{ url_for('settings.ai_settings') }}"><span class="nav-icon">⚙</span>Inställningar</a>
+<a class="nav-item" href="{{ url_for('library.about_page') }}"><span class="nav-icon">ℹ</span>Om</a>
+</nav>
+</aside>
+<main class="main-col">
+<div class="topbar"><a class="home-icon" href="{{ url_for('library.index') }}">⌂</a></div>
+<section class="content">
+        <h1>{{ item.title }}</h1>
+
+        <section class="intro">
+            <div class="current-cover">
+                <div class="mini">
+                    {% if item.cover_path %}
+                        <img src="{{ url_for('library.cover_item', item_id=item.id) }}" alt="{{ item.title }}">
+                    {% else %}
+                        📖
+                    {% endif %}
+                </div>
+
+                <div>
+                    <strong>Omslagssökning</strong>
+                    <p>
+                        Bookstation söker omslag från Google Books API. Välj det omslag som ser bäst ut.
+                    </p>
+                    <p>
+                        För bästa träff: fyll gärna i titel, författare eller ISBN på metadata-sidan först.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        {% if candidates %}
+            <section class="grid">
+                {% for candidate in candidates %}
+                    <article class="cover-card">
+                        <div class="cover-box">
+                            <img src="{{ candidate.cover_url }}" alt="{{ candidate.title }}" loading="lazy" onerror="this.parentElement.innerHTML='📖';">
+                        </div>
+
+                        <div class="source">{{ candidate.source }}</div>
+                        <div class="title">{{ candidate.title or item.title }}</div>
+                        <div class="note">{{ candidate.note }}</div>
+
+                        <form class="actions" method="post" action="{{ url_for('metadata.apply_cover', item_id=item.id) }}">
+                            <input type="hidden" name="source" value="{{ candidate.source }}">
+                            <input type="hidden" name="cover_url" value="{{ candidate.cover_url }}">
+                            <button class="primary" type="submit">Använd omslag</button>
+                            <a class="button" href="{{ candidate.cover_url }}" target="_blank">Öppna</a>
+                        </form>
+                    </article>
+                {% endfor %}
+            </section>
+        {% else %}
+            <section class="empty">
+                <h2>Inga omslag hittades</h2>
+                <p>
+                    Testa att gå tillbaka till metadata-sidan och fyll i mer exakt titel,
+                    författare eller ISBN. ISBN ger ofta bäst omslagsträff.
+                </p>
+            </section>
+        {% endif %}
+</section>
+</main>
+</div>
+</body>
+</html>

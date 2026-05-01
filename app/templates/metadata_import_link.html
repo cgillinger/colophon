@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="sv">
+<head>
+    <meta charset="utf-8">
+    <title>Importera metadata från länk - {{ item.title }} - Bookstation</title>
+    <style>
+        body {
+            margin: 0;
+            background: #303438;
+            color: #e8ecef;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+        button, input, select { font-family: inherit; }
+
+        .layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+        .sidebar { background: #2f3337; border-right: 1px solid #25292d; }
+        .logo { height: 56px; display: flex; align-items: center; padding-left: 14px; background: #25292d; color: white; font-size: 29px; font-weight: bold; }
+        .library-head { height: 42px; display: flex; align-items: center; padding: 0 12px; color: #d5d8db; font-weight: bold; border-bottom: 1px solid #363b40; font-size: 17px; }
+        .library-title { flex: 1; }
+        .library-plus, .library-more { width: 25px; height: 25px; display: inline-flex; align-items: center; justify-content: center; color: #c4c8cc; border-radius: 50%; font-size: 20px; }
+        .library-plus:hover, .library-more:hover { background: #454a50; }
+        .nav { padding-top: 6px; }
+        .nav-item { height: 42px; display: flex; align-items: center; gap: 11px; padding: 0 12px 0 20px; color: #c7ccd0; border-left: 4px solid transparent; font-size: 17px; }
+        .nav-item:hover { background: #3b4045; }
+        .nav-item.active { background: #454a50; color: white; font-weight: bold; border-left-color: white; }
+        .nav-icon { width: 21px; text-align: center; font-size: 18px; }
+        .main-col { min-width: 0; background: #34393e; }
+        .topbar { height: 56px; background: #202326; border-bottom: 1px solid #262a2e; display: flex; align-items: center; gap: 14px; padding: 0 16px; }
+        .home-icon { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; color: #bfc4c8; font-size: 25px; border-radius: 3px; }
+        .home-icon:hover { background: #30353a; color: white; }
+
+        .button,
+        button {
+            background: #3f4850;
+            color: white;
+            padding: 9px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            border: 0;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        .button.primary,
+        button.primary {
+            background: #4aa3ff;
+        }
+
+        .button.green,
+        button.green {
+            background: #2fb67c;
+        }
+
+        .content {
+            padding: 30px;
+            max-width: 1200px;
+        }
+
+        h1 {
+            margin-top: 0;
+            font-weight: normal;
+        }
+
+        .panel {
+            background: #30363b;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .search-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        input[type="url"],
+        textarea {
+            width: 100%;
+            background: #171a1d;
+            color: white;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 5px;
+            padding: 11px;
+            font-size: 15px;
+            box-sizing: border-box;
+        }
+
+        input[type="url"] {
+            flex: 1;
+        }
+
+        textarea {
+            min-height: 180px;
+            margin-top: 12px;
+            font-family: monospace;
+            resize: vertical;
+        }
+
+        .hint {
+            color: #aeb7bd;
+            margin-top: 10px;
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
+        .howto {
+            background: #252b30;
+            border-left: 4px solid #4aa3ff;
+            padding: 14px;
+            border-radius: 6px;
+            margin-top: 14px;
+            color: #dce3e8;
+            line-height: 1.5;
+        }
+
+        .error {
+            background: #3a2828;
+            border-left: 4px solid #ff7070;
+            padding: 14px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .result-card {
+            background: #30363b;
+            border-radius: 8px;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 150px minmax(0, 1fr);
+            gap: 20px;
+            align-items: start;
+        }
+
+        .cover {
+            width: 150px;
+            height: 220px;
+            background: linear-gradient(145deg, #46505a, #20252a);
+            border-radius: 5px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.22);
+        }
+
+        .cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .source {
+            display: inline-block;
+            background: #252b30;
+            color: #cdd5da;
+            padding: 4px 7px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        .title {
+            font-size: 22px;
+            font-weight: bold;
+            line-height: 1.25;
+            margin-bottom: 8px;
+        }
+
+        .meta {
+            color: #aeb7bd;
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 14px;
+        }
+
+        .description {
+            color: #dce3e8;
+            font-size: 14px;
+            line-height: 1.55;
+            max-height: 220px;
+            overflow: auto;
+            margin: 12px 0;
+            padding-right: 4px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+
+        .hidden-field {
+            display: none;
+        }
+
+        code {
+            background: #171a1d;
+            color: white;
+            padding: 4px 6px;
+            border-radius: 4px;
+        }
+
+        @media (max-width: 700px) {
+            .search-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .result-card {
+                grid-template-columns: 1fr;
+            }
+
+            .cover {
+                width: 150px;
+            }
+        }
+    </style>
+
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar">
+<a class="logo" href="{{ url_for('library.index') }}">Bookstation</a>
+<div class="library-head"><div class="library-title">Library</div><a class="library-plus" href="{{ url_for('library.add_ebook_page') }}">＋</a><span class="library-more">…</span></div>
+<nav class="nav">
+<a class="nav-item" href="{{ url_for('library.series_page') }}"><span class="nav-icon">▤</span>Bokserier</a>
+<a class="nav-item" href="{{ url_for('library.index', typ='ebook') }}"><span class="nav-icon">▣</span>Böcker</a>
+<a class="nav-item" href="{{ url_for('library.index', typ='audiobook') }}"><span class="nav-icon">▥</span>Ljudböcker</a>
+<a class="nav-item" href="{{ url_for('library.want_read_page') }}"><span class="nav-icon">★</span>Vill läsa</a>
+<a class="nav-item" href="{{ url_for('bookstores.my_stores_page') }}"><span class="nav-icon">🛒</span>Mina affärer</a>
+<a class="nav-item active" href="{{ url_for('metadata.bulk_metadata') }}"><span class="nav-icon">🧠</span>Metadata</a>
+<a class="nav-item" href="{{ url_for('settings.ai_settings') }}"><span class="nav-icon">⚙</span>Inställningar</a>
+<a class="nav-item" href="{{ url_for('library.about_page') }}"><span class="nav-icon">ℹ</span>Om</a>
+</nav>
+</aside>
+<main class="main-col">
+<div class="topbar"><a class="home-icon" href="{{ url_for('library.index') }}">⌂</a></div>
+<section class="content">
+        <h1>{{ item.title }}</h1>
+
+        <section class="panel">
+            <form method="post" action="{{ url_for('metadata.import_metadata_link', item_id=item.id) }}">
+                <div class="search-row">
+                    <input
+                        type="url"
+                        name="source_url"
+                        value="{{ source_url or '' }}"
+                        placeholder="Klistra in länk från t.ex. Adlibris eller Bokbörsen"
+                    >
+                    <button class="primary" type="submit">Hämta metadata</button>
+                    <button class="green" type="submit" name="save_directly" value="1">Hämta och spara direkt</button>
+                </div>
+
+                <textarea
+                    name="pasted_content"
+                    placeholder="Valfritt: om automatisk HTML-hämtning inte räcker, klistra in sidans text eller HTML här."
+                ></textarea>
+
+                <div class="hint">
+                    Stöd just nu: <code>Google Books</code>, <code>Adlibris</code>, <code>Bokbörsen</code>, <code>Bokon</code> och <code>Bokus</code>.
+                </div>
+
+                <div class="howto">
+                    <strong>Om automatisk hämtning fortfarande misslyckas:</strong>
+                    <br>
+                    1. Öppna boksidan i webbläsaren.
+                    <br>
+                    2. Tryck <code>CTRL + U</code> för sidkälla.
+                    <br>
+                    3. Tryck <code>CTRL + A</code> och sedan <code>CTRL + C</code>.
+                    <br>
+                    4. Gå tillbaka hit och klistra in i stora rutan med <code>CTRL + V</code>.
+                    <br>
+                    5. Klicka <strong>Hämta metadata</strong>.
+                    <br><br>
+                    Om sidkälla inte fungerar kan du istället prova att kopiera vanlig sidtext från boksidan.
+                </div>
+            </form>
+        </section>
+
+        {% if import_error %}
+            <section class="error">
+                <strong>Kunde inte importera metadata.</strong>
+                <br>
+                {{ import_error }}
+            </section>
+        {% endif %}
+
+        {% if import_result %}
+            <section class="result-card">
+                <div class="cover">
+                    {% if import_result.cover_url %}
+                        <img src="{{ import_result.cover_url }}" alt="{{ import_result.title }}" onerror="this.parentElement.innerHTML='📖';">
+                    {% else %}
+                        📖
+                    {% endif %}
+                </div>
+
+                <div>
+                    <div class="source">{{ import_result.source }}</div>
+                    <div class="title">{{ import_result.title }}</div>
+
+                    <div class="meta">
+                        {% if import_result.author %}
+                            Författare: {{ import_result.author }}
+                        {% else %}
+                            Författare: saknas
+                        {% endif %}
+
+                        {% if import_result.publisher %}
+                            <br>Förlag: {{ import_result.publisher }}
+                        {% endif %}
+
+                        {% if import_result.isbn %}
+                            <br>ISBN: {{ import_result.isbn }}
+                        {% endif %}
+
+                        {% if import_result.language %}
+                            <br>Språk: {{ import_result.language }}
+                        {% endif %}
+                    </div>
+
+                    {% if import_result.description %}
+                        <div class="description">{{ import_result.description }}</div>
+                    {% else %}
+                        <div class="description">Ingen synopsis hittades.</div>
+                    {% endif %}
+
+                    <form method="post" action="{{ url_for('metadata.apply_imported_metadata', item_id=item.id) }}">
+                        <input type="hidden" name="source" value="{{ import_result.source }}">
+                        <input type="hidden" name="title" value="{{ import_result.title }}">
+                        <input type="hidden" name="author" value="{{ import_result.author }}">
+                        <input type="hidden" name="series" value="{{ import_result.series }}">
+                        <input type="hidden" name="series_index" value="{{ import_result.series_index }}">
+                        <input type="hidden" name="isbn" value="{{ import_result.isbn }}">
+                        <input type="hidden" name="publisher" value="{{ import_result.publisher }}">
+                        <input type="hidden" name="language" value="{{ import_result.language }}">
+                        <input type="hidden" name="cover_url" value="{{ import_result.cover_url }}">
+                        <textarea class="hidden-field" name="description">{{ import_result.description }}</textarea>
+
+                        <div class="actions">
+                            <button class="green" type="submit">Använd denna metadata</button>
+                            {% if import_result.cover_url %}
+                                <a class="button" href="{{ import_result.cover_url }}" target="_blank">Öppna omslag</a>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </section>
+        {% endif %}
+</section>
+</main>
+</div>
+</body>
+</html>

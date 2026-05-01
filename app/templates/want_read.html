@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="sv">
+<head>
+    <meta charset="utf-8">
+    <title>Vill läsa - Bookstation</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: #303438;
+            color: #d8dce0;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 16px;
+        }
+        a { color: inherit; text-decoration: none; }
+
+        .layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+        .sidebar { background: #2f3337; border-right: 1px solid #25292d; }
+        .logo {
+            height: 56px;
+            display: flex;
+            align-items: center;
+            padding-left: 14px;
+            background: #25292d;
+            color: white;
+            font-size: 29px;
+            font-weight: bold;
+        }
+
+        .library-head {
+            height: 42px;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            color: #d5d8db;
+            font-weight: bold;
+            border-bottom: 1px solid #363b40;
+            font-size: 17px;
+        }
+
+        .library-title { flex: 1; }
+
+        .library-plus,
+        .library-more {
+            width: 25px;
+            height: 25px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #c4c8cc;
+            border-radius: 50%;
+            font-size: 20px;
+        }
+
+        .library-plus:hover,
+        .library-more:hover { background: #454a50; }
+
+        .nav { padding-top: 6px; }
+
+        .nav-item {
+            height: 42px;
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            padding: 0 12px 0 20px;
+            color: #c7ccd0;
+            border-left: 4px solid transparent;
+            font-size: 17px;
+        }
+
+        .nav-item:hover { background: #3b4045; }
+
+        .nav-item.active {
+            background: #454a50;
+            color: #ffffff;
+            font-weight: bold;
+            border-left-color: #ffffff;
+        }
+
+        .nav-icon {
+            width: 21px;
+            text-align: center;
+            font-size: 18px;
+        }
+
+        .main { min-width: 0; background: #34393e; }
+
+        .topbar {
+            height: 56px;
+            background: #202326;
+            border-bottom: 1px solid #262a2e;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 0 16px;
+        }
+
+        .home-icon {
+            width: 38px;
+            height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #bfc4c8;
+            font-size: 25px;
+            border-radius: 3px;
+        }
+
+        .home-icon:hover { background: #30353a; color: white; }
+
+        .content { padding: 28px 0 40px 54px; }
+
+        .section-top {
+            display: flex;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-right: 28px;
+        }
+
+        .section-title {
+            font-size: 30px;
+            color: white;
+            font-weight: bold;
+            margin-right: auto;
+        }
+
+        .stats {
+            color: #b8c0c6;
+            font-size: 15px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, 150px);
+            gap: 44px 40px;
+            padding-right: 25px;
+            align-items: start;
+        }
+
+        .book-card {
+            width: 150px;
+            color: #ffffff;
+            position: relative;
+        }
+
+        .cover-box {
+            width: 150px;
+            height: 224px;
+            background: #1d2023;
+            border: 1px solid #24282c;
+            overflow: hidden;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.55);
+        }
+
+        .cover-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .cover-placeholder {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(145deg, #49515a, #202428);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 52px;
+        }
+
+        .book-title {
+            margin-top: 9px;
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 15px;
+            line-height: 18px;
+            max-height: 36px;
+            overflow: hidden;
+        }
+
+        .book-meta {
+            color: #b5bcc1;
+            margin-top: 3px;
+            font-size: 13px;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        .actions a,
+        .actions button {
+            background: #25292d;
+            color: #e8ecef;
+            padding: 6px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            border: 0;
+            cursor: pointer;
+        }
+
+        .actions .primary { background: #45a3ff; }
+        .actions .danger { background: #b93a3a; }
+
+        .empty {
+            background: #2a2e32;
+            border: 1px solid #40464c;
+            padding: 26px;
+            max-width: 720px;
+            color: #d8dce0;
+            font-size: 17px;
+        }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <a class="logo" href="{{ url_for('library.index') }}">Bookstation</a>
+
+        <div class="library-head">
+            <div class="library-title">Library</div>
+            <a class="library-plus" href="{{ url_for('library.add_ebook_page') }}" title="Lägg till E-bok">＋</a>
+            <span class="library-more">…</span>
+        </div>
+
+        <nav class="nav">
+            <a class="nav-item" href="{{ url_for('library.series_page') }}"><span class="nav-icon">▤</span>Bokserier</a>
+            <a class="nav-item" href="{{ url_for('library.index', typ='ebook') }}"><span class="nav-icon">▣</span>Böcker</a>
+            <a class="nav-item" href="{{ url_for('library.index', typ='audiobook') }}"><span class="nav-icon">▥</span>Ljudböcker</a>
+            <a class="nav-item active" href="{{ url_for('library.want_read_page') }}"><span class="nav-icon">★</span>Vill läsa</a>
+            <a class="nav-item" href="{{ url_for('bookstores.my_stores_page') }}"><span class="nav-icon">🛒</span>Mina affärer</a>
+            <a class="nav-item" href="{{ url_for('metadata.bulk_metadata') }}"><span class="nav-icon">🧠</span>Metadata</a>
+            <a class="nav-item" href="{{ url_for('settings.ai_settings') }}"><span class="nav-icon">⚙</span>Inställningar</a>
+<a class="nav-item" href="{{ url_for('library.about_page') }}"><span class="nav-icon">ℹ</span>Om</a>
+        </nav>
+    </aside>
+
+    <main class="main">
+        <div class="topbar">
+            <a class="home-icon" href="{{ url_for('library.index') }}" title="Hem">⌂</a>
+        </div>
+
+        <section class="content">
+            <div class="section-top">
+                <div class="section-title">Vill läsa</div>
+                <div class="stats">{{ total_books }} böcker</div>
+            </div>
+
+            {% if items %}
+                <div class="grid">
+                    {% for item in items %}
+                        <div class="book-card">
+                            <div class="cover-box">
+                                {% if item.cover_path %}
+                                    <img src="{{ url_for('library.cover_item', item_id=item.id) }}" alt="{{ item.title }}">
+                                {% else %}
+                                    <div class="cover-placeholder">📖</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="book-title">{{ item.title }}</div>
+                            <div class="book-meta">{% if item.author %}{{ item.author }}{% else %}{{ item.extension|upper|replace(".", "") }}{% endif %}</div>
+
+                            <div class="actions">
+                                <a class="primary" href="{{ url_for('reader.read_item', item_id=item.id) }}">Läs</a>
+                                <a href="{{ url_for('library.open_item_folder', item_id=item.id) }}">Bibliotek</a>
+                                <form action="{{ url_for('library.toggle_want_read', item_id=item.id) }}" method="post" style="display:inline;">
+                                    <button type="submit">Ta bort från listan</button>
+                                </form>
+                                <form action="{{ url_for('library.delete_library_item', item_id=item.id) }}" method="post" style="display:inline;" onsubmit="return confirm('VARNING! Vill du verkligen radera denna bok från biblioteket? Filen tas bort från hårddisken.');">
+                                    <button class="danger" type="submit">Radera</button>
+                                </form>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty">
+                    Inga böcker finns i Vill läsa ännu. Gå till biblioteket och tryck på knappen <strong>Vill läsa</strong> under ett bokomslag.
+                </div>
+            {% endif %}
+        </section>
+    </main>
+</div>
+</body>
+</html>

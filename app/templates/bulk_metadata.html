@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="sv">
+<head>
+    <meta charset="utf-8">
+    <title>Massuppdatera metadata - Bookstation</title>
+    <style>
+        body {
+            margin: 0;
+            background: #303438;
+            color: #e8ecef;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+        button, input, select { font-family: inherit; }
+
+        .layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+        .sidebar { background: #2f3337; border-right: 1px solid #25292d; }
+        .logo { height: 56px; display: flex; align-items: center; padding-left: 14px; background: #25292d; color: white; font-size: 29px; font-weight: bold; }
+        .library-head { height: 42px; display: flex; align-items: center; padding: 0 12px; color: #d5d8db; font-weight: bold; border-bottom: 1px solid #363b40; font-size: 17px; }
+        .library-title { flex: 1; }
+        .library-plus, .library-more { width: 25px; height: 25px; display: inline-flex; align-items: center; justify-content: center; color: #c4c8cc; border-radius: 50%; font-size: 20px; }
+        .library-plus:hover, .library-more:hover { background: #454a50; }
+        .nav { padding-top: 6px; }
+        .nav-item { height: 42px; display: flex; align-items: center; gap: 11px; padding: 0 12px 0 20px; color: #c7ccd0; border-left: 4px solid transparent; font-size: 17px; }
+        .nav-item:hover { background: #3b4045; }
+        .nav-item.active { background: #454a50; color: white; font-weight: bold; border-left-color: white; }
+        .nav-icon { width: 21px; text-align: center; font-size: 18px; }
+        .main-col { min-width: 0; background: #34393e; }
+        .topbar { height: 56px; background: #202326; border-bottom: 1px solid #262a2e; display: flex; align-items: center; gap: 14px; padding: 0 16px; }
+        .home-icon { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; color: #bfc4c8; font-size: 25px; border-radius: 3px; }
+        .home-icon:hover { background: #30353a; color: white; }
+
+        .button,
+        button {
+            background: #3f4850;
+            color: white;
+            padding: 9px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            border: 0;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        .button.primary,
+        button.primary {
+            background: #4aa3ff;
+        }
+
+        .button.purple,
+        button.purple {
+            background: #6c5ce7;
+        }
+
+        .content {
+            padding: 30px;
+            max-width: 1300px;
+        }
+
+        h1 {
+            margin-top: 0;
+            font-weight: normal;
+        }
+
+        .panel {
+            background: #30363b;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 22px;
+        }
+
+        .messages {
+            margin-bottom: 18px;
+        }
+
+        .message {
+            padding: 12px 14px;
+            border-radius: 5px;
+            margin-bottom: 8px;
+            background: #30363b;
+        }
+
+        .message.success {
+            border-left: 4px solid #6ee7a8;
+        }
+
+        .message.error {
+            border-left: 4px solid #ff7070;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 14px;
+            margin-top: 12px;
+        }
+
+        .setting-box {
+            background: #252b30;
+            border-radius: 6px;
+            padding: 14px;
+        }
+
+        label {
+            cursor: pointer;
+        }
+
+        input[type="number"] {
+            background: #171a1d;
+            color: white;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 5px;
+            padding: 9px;
+            width: 90px;
+            font-size: 15px;
+        }
+
+        .hint {
+            color: #aeb7bd;
+            font-size: 13px;
+            line-height: 1.45;
+            margin-top: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #30363b;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+            vertical-align: middle;
+            text-align: left;
+        }
+
+        th {
+            background: #1f2327;
+            color: #cdd5da;
+            font-size: 13px;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .cover {
+            width: 46px;
+            height: 66px;
+            background: linear-gradient(145deg, #46505a, #20252a);
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+
+        .cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .book-title {
+            font-weight: bold;
+        }
+
+        .meta {
+            color: #aeb7bd;
+            font-size: 13px;
+            margin-top: 3px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 7px;
+            border-radius: 4px;
+            font-size: 12px;
+            background: #252b30;
+            color: #cdd5da;
+        }
+
+        .badge.good {
+            color: #6ee7a8;
+        }
+
+        .badge.warn {
+            color: #ffd166;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 14px;
+        }
+
+        .summary-box {
+            background: #252b30;
+            padding: 14px;
+            border-radius: 6px;
+            line-height: 1.45;
+        }
+
+        .summary-box h3 {
+            margin-top: 0;
+        }
+
+        .summary-list {
+            max-height: 230px;
+            overflow: auto;
+            color: #c8d0d5;
+            font-size: 13px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 800px) {
+            table,
+            thead,
+            tbody,
+            th,
+            td,
+            tr {
+                display: block;
+            }
+
+            thead {
+                display: none;
+            }
+
+            tr {
+                margin-bottom: 12px;
+                background: #30363b;
+                border-radius: 8px;
+                overflow: hidden;
+            }
+
+            td {
+                border-bottom: 1px solid rgba(255,255,255,0.07);
+            }
+        }
+    </style>
+
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar">
+<a class="logo" href="{{ url_for('library.index') }}">Bookstation</a>
+<div class="library-head"><div class="library-title">Library</div><a class="library-plus" href="{{ url_for('library.add_ebook_page') }}">＋</a><span class="library-more">…</span></div>
+<nav class="nav">
+<a class="nav-item" href="{{ url_for('library.series_page') }}"><span class="nav-icon">▤</span>Bokserier</a>
+<a class="nav-item" href="{{ url_for('library.index', typ='ebook') }}"><span class="nav-icon">▣</span>Böcker</a>
+<a class="nav-item" href="{{ url_for('library.index', typ='audiobook') }}"><span class="nav-icon">▥</span>Ljudböcker</a>
+<a class="nav-item" href="{{ url_for('library.want_read_page') }}"><span class="nav-icon">★</span>Vill läsa</a>
+<a class="nav-item" href="{{ url_for('bookstores.my_stores_page') }}"><span class="nav-icon">🛒</span>Mina affärer</a>
+<a class="nav-item active" href="{{ url_for('metadata.bulk_metadata') }}"><span class="nav-icon">🧠</span>Metadata</a>
+<a class="nav-item" href="{{ url_for('settings.ai_settings') }}"><span class="nav-icon">⚙</span>Inställningar</a>
+<a class="nav-item" href="{{ url_for('library.about_page') }}"><span class="nav-icon">ℹ</span>Om</a>
+</nav>
+</aside>
+<main class="main-col">
+<div class="topbar"><a class="home-icon" href="{{ url_for('library.index') }}">⌂</a></div>
+<section class="content">
+        <h1>Massuppdatera metadata</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="messages">
+                    {% for category, message in messages %}
+                        <div class="message {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% if summary %}
+            <section class="panel">
+                <h2>Resultat</h2>
+
+                {% if summary.limited %}
+                    <p class="hint">
+                        Körningen stoppades vid valt maxantal. Kör igen för nästa omgång.
+                    </p>
+                {% endif %}
+
+                <div class="summary-grid">
+                    <div class="summary-box">
+                        <h3>Uppdaterade: {{ summary.updated|length }}</h3>
+                        <div class="summary-list">
+                            {% for row in summary.updated %}
+                                <div>
+                                    ✓ {{ row.title }}<br>
+                                    <span class="meta">{{ row.source }} · matchpoäng {{ row.score }}</span>
+                                </div>
+                                <br>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="summary-box">
+                        <h3>Ingen säker träff: {{ summary.no_match|length }}</h3>
+                        <div class="summary-list">
+                            {% for row in summary.no_match %}
+                                <div>
+                                    ⚠ {{ row.title }}<br>
+                                    <span class="meta">Bästa matchpoäng: {{ row.score }}</span>
+                                </div>
+                                <br>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="summary-box">
+                        <h3>Hoppade över: {{ summary.skipped|length }}</h3>
+                        <div class="summary-list">
+                            {% for row in summary.skipped %}
+                                <div>
+                                    – {{ row.title }}<br>
+                                    <span class="meta">{{ row.reason }}</span>
+                                </div>
+                                <br>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </section>
+        {% endif %}
+
+        <form method="post">
+            <section class="panel">
+                <h2>Inställningar</h2>
+
+                <div class="settings-grid">
+                    <div class="setting-box">
+                        <label>
+                            <input type="checkbox" name="only_missing" value="1" checked>
+                            Uppdatera bara böcker som saknar metadata
+                        </label>
+                        <div class="hint">
+                            Hoppar över böcker som redan har författare, synopsis och omslag.
+                        </div>
+                    </div>
+
+                    <div class="setting-box">
+                        <label>
+                            <input type="checkbox" name="overwrite" value="1">
+                            Skriv över befintliga fält
+                        </label>
+                        <div class="hint">
+                            Använd försiktigt. Annars fyller Bookstation mest tomma fält.
+                        </div>
+                    </div>
+
+                    <div class="setting-box">
+                        <label for="max_items">Max antal i denna körning</label>
+                        <br>
+                        <input id="max_items" type="number" name="max_items" value="25" min="1" max="100">
+                        <div class="hint">
+                            Bra att köra i omgångar så API-källorna inte överbelastas.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button class="primary" type="submit">Hämta metadata för valda böcker</button>
+                    <button class="purple" type="button" onclick="selectAllBooks()">Välj alla</button>
+                    <button type="button" onclick="selectMissingBooks()">Välj saknade</button>
+                    <button type="button" onclick="clearSelection()">Avmarkera alla</button>
+                </div>
+            </section>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Välj</th>
+                        <th>Omslag</th>
+                        <th>Bok</th>
+                        <th>Status</th>
+                        <th>Filtyp</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for item in items %}
+                        {% set is_missing = (not item.author or not item.description or not item.cover_path) %}
+                        <tr data-missing="{{ '1' if is_missing else '0' }}">
+                            <td>
+                                <input
+                                    type="checkbox"
+                                    name="item_ids"
+                                    value="{{ item.id }}"
+                                    class="book-checkbox"
+                                    {% if is_missing %}checked{% endif %}
+                                >
+                            </td>
+
+                            <td>
+                                <div class="cover">
+                                    {% if item.cover_path %}
+                                        <img src="{{ url_for('library.cover_item', item_id=item.id) }}" alt="{{ item.title }}">
+                                    {% else %}
+                                        📖
+                                    {% endif %}
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="book-title">{{ item.title }}</div>
+                                <div class="meta">
+                                    {% if item.author %}
+                                        {{ item.author }}
+                                    {% else %}
+                                        Okänd författare
+                                    {% endif %}
+                                </div>
+                            </td>
+
+                            <td>
+                                {% if is_missing %}
+                                    <span class="badge warn">Saknar metadata</span>
+                                {% else %}
+                                    <span class="badge good">Har metadata</span>
+                                {% endif %}
+
+                                {% if item.manual_metadata %}
+                                    <span class="badge good">Sparad</span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                {{ item.extension|upper|replace(".", "") }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </form>
+</section>
+</main>
+</div>
+
+    <script>
+        function selectAllBooks() {
+            document.querySelectorAll(".book-checkbox").forEach(function (box) {
+                box.checked = true;
+            });
+        }
+
+        function clearSelection() {
+            document.querySelectorAll(".book-checkbox").forEach(function (box) {
+                box.checked = false;
+            });
+        }
+
+        function selectMissingBooks() {
+            document.querySelectorAll("tr[data-missing]").forEach(function (row) {
+                const checkbox = row.querySelector(".book-checkbox");
+
+                if (!checkbox) {
+                    return;
+                }
+
+                checkbox.checked = row.getAttribute("data-missing") === "1";
+            });
+        }
+    </script>
+</body>
+</html>

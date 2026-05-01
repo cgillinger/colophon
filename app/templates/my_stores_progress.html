@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="sv">
+<head>
+    <meta charset="utf-8">
+    <title>Hämtar böcker - Bookstation</title>
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: #303438;
+            color: #d8dce0;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 15px;
+        }
+
+        a { color: inherit; text-decoration: none; }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            background: #2f3337;
+            border-right: 1px solid #25292d;
+        }
+
+        .logo {
+            height: 56px;
+            display: flex;
+            align-items: center;
+            padding-left: 14px;
+            background: #25292d;
+            color: white;
+            font-size: 29px;
+            font-weight: bold;
+        }
+
+        .library-head {
+            height: 42px;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            color: #d5d8db;
+            font-weight: bold;
+            border-bottom: 1px solid #363b40;
+            font-size: 17px;
+        }
+
+        .library-title { flex: 1; }
+
+        .nav { padding-top: 6px; }
+
+        .nav-item {
+            height: 42px;
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            padding: 0 12px 0 20px;
+            color: #c7ccd0;
+            border-left: 4px solid transparent;
+            font-size: 17px;
+        }
+
+        .nav-item.active {
+            background: #454a50;
+            color: white;
+            font-weight: bold;
+            border-left-color: white;
+        }
+
+        .nav-icon {
+            width: 21px;
+            text-align: center;
+            font-size: 18px;
+        }
+
+        .main {
+            min-width: 0;
+            background: #34393e;
+        }
+
+        .topbar {
+            height: 56px;
+            background: #202326;
+            border-bottom: 1px solid #262a2e;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 0 16px;
+        }
+
+        .home-icon {
+            width: 38px;
+            height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #bfc4c8;
+            font-size: 25px;
+            border-radius: 3px;
+        }
+
+        .home-icon:hover {
+            background: #30353a;
+            color: white;
+        }
+
+        .content {
+            padding: 32px 50px 60px;
+            max-width: 1050px;
+        }
+
+        .title {
+            color: white;
+            font-size: 30px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #b8c0c6;
+            margin-bottom: 26px;
+            line-height: 1.5;
+        }
+
+        .progress-shell {
+            background: #1b1f23;
+            border: 1px solid #505963;
+            border-radius: 10px;
+            height: 34px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #2fb36d, #45a3ff);
+            transition: width .35s ease;
+        }
+
+        .progress-text {
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 22px;
+        }
+
+        .panel {
+            background: #2b3035;
+            border: 1px solid #444b52;
+            border-radius: 6px;
+            padding: 18px;
+            margin-bottom: 18px;
+        }
+
+        .panel h2 {
+            margin: 0 0 12px;
+            color: white;
+            font-size: 20px;
+        }
+
+        .current {
+            color: #d8dce0;
+            line-height: 1.5;
+        }
+
+        .titles {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .title-row {
+            background: #20252a;
+            border-left: 4px solid #45a3ff;
+            padding: 9px 11px;
+            color: #e8ecef;
+        }
+
+        .log-box {
+            max-height: 360px;
+            overflow: auto;
+            background: #15191d;
+            border: 1px solid #3d454d;
+            padding: 12px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            color: #cfd6dc;
+            font-size: 12px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 18px;
+        }
+
+        .button {
+            background: #45a3ff;
+            color: white;
+            padding: 10px 13px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .button.secondary {
+            background: #2d3338;
+            border: 1px solid #47515a;
+        }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <a class="logo" href="{{ url_for('library.index') }}">Bookstation</a>
+        <div class="library-head"><div class="library-title">Library</div></div>
+
+        <nav class="nav">
+            <a class="nav-item" href="{{ url_for('library.series_page') }}"><span class="nav-icon">▤</span>Bokserier</a>
+            <a class="nav-item" href="{{ url_for('library.index', typ='ebook') }}"><span class="nav-icon">▣</span>Böcker</a>
+            <a class="nav-item" href="{{ url_for('library.index', typ='audiobook') }}"><span class="nav-icon">▥</span>Ljudböcker</a>
+            <a class="nav-item" href="{{ url_for('library.want_read_page') }}"><span class="nav-icon">★</span>Vill läsa</a>
+            <a class="nav-item active" href="{{ url_for('bookstores.my_stores_page') }}"><span class="nav-icon">🛒</span>Mina affärer</a>
+            <a class="nav-item" href="{{ url_for('metadata.bulk_metadata') }}"><span class="nav-icon">🧠</span>Metadata</a>
+            <a class="nav-item" href="{{ url_for('settings.ai_settings') }}"><span class="nav-icon">⚙</span>Inställningar</a>
+<a class="nav-item" href="{{ url_for('library.about_page') }}"><span class="nav-icon">ℹ</span>Om</a>
+        </nav>
+    </aside>
+
+    <main class="main">
+        <div class="topbar">
+            <a class="home-icon" href="{{ url_for('library.index') }}" title="Hem">⌂</a>
+        </div>
+
+        <section class="content">
+            <div class="title">Hämtar böcker från {{ store|capitalize }}</div>
+            <div class="subtitle">
+                Låt sidan vara öppen. Progressen uppdateras automatiskt.
+            </div>
+
+            <div class="progress-shell">
+                <div id="bar" class="progress-bar"></div>
+            </div>
+
+            <div id="percent" class="progress-text">0%</div>
+
+            <div class="panel">
+                <h2>Aktuell status</h2>
+                <div id="current" class="current">Startar...</div>
+            </div>
+
+            <div class="panel">
+                <h2>Titlar / nedladdningar</h2>
+                <div id="titles" class="titles">
+                    <div class="title-row">Väntar på första titel...</div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Detaljlogg</h2>
+                <div id="log" class="log-box"></div>
+            </div>
+
+            <div class="buttons">
+                <a class="button" href="{{ url_for('library.index') }}">Till bibliotek</a>
+                <a class="button secondary" href="{{ url_for('bookstores.my_stores_page') }}">Till Mina affärer</a>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script>
+const statusUrl = "{{ url_for('bookstores.my_stores_progress_status', store=store) }}";
+
+async function updateProgress() {
+    try {
+        const response = await fetch(statusUrl + "?t=" + Date.now());
+        const data = await response.json();
+
+        const percent = data.percent || 0;
+
+        document.getElementById("bar").style.width = percent + "%";
+        document.getElementById("percent").textContent = percent + "%";
+        document.getElementById("current").textContent = data.current || "";
+
+        const titles = document.getElementById("titles");
+        titles.innerHTML = "";
+
+        if (data.titles && data.titles.length > 0) {
+            data.titles.forEach(function (title) {
+                const row = document.createElement("div");
+                row.className = "title-row";
+                row.textContent = title;
+                titles.appendChild(row);
+            });
+        } else {
+            const row = document.createElement("div");
+            row.className = "title-row";
+            row.textContent = "Väntar på titlar...";
+            titles.appendChild(row);
+        }
+
+        document.getElementById("log").textContent = (data.log_tail || []).join("\\n");
+
+        if (data.running || percent < 100) {
+            setTimeout(updateProgress, 1500);
+        }
+    } catch (error) {
+        document.getElementById("current").textContent = "Kunde inte läsa progress: " + error;
+        setTimeout(updateProgress, 3000);
+    }
+}
+
+updateProgress();
+</script>
+</body>
+</html>

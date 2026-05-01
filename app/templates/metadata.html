@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="sv">
+<head>
+    <meta charset="utf-8">
+    <title>Metadata - {{ item.title }} - Bookstation</title>
+    <style>
+        body {
+            margin: 0;
+            background: #303438;
+            color: #e8ecef;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+        button, input, select { font-family: inherit; }
+
+        .layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+        .sidebar { background: #2f3337; border-right: 1px solid #25292d; }
+        .logo { height: 56px; display: flex; align-items: center; padding-left: 14px; background: #25292d; color: white; font-size: 29px; font-weight: bold; }
+        .library-head { height: 42px; display: flex; align-items: center; padding: 0 12px; color: #d5d8db; font-weight: bold; border-bottom: 1px solid #363b40; font-size: 17px; }
+        .library-title { flex: 1; }
+        .library-plus, .library-more { width: 25px; height: 25px; display: inline-flex; align-items: center; justify-content: center; color: #c4c8cc; border-radius: 50%; font-size: 20px; }
+        .library-plus:hover, .library-more:hover { background: #454a50; }
+        .nav { padding-top: 6px; }
+        .nav-item { height: 42px; display: flex; align-items: center; gap: 11px; padding: 0 12px 0 20px; color: #c7ccd0; border-left: 4px solid transparent; font-size: 17px; }
+        .nav-item:hover { background: #3b4045; }
+        .nav-item.active { background: #454a50; color: white; font-weight: bold; border-left-color: white; }
+        .nav-icon { width: 21px; text-align: center; font-size: 18px; }
+        .main-col { min-width: 0; background: #34393e; }
+        .topbar { height: 56px; background: #202326; border-bottom: 1px solid #262a2e; display: flex; align-items: center; gap: 14px; padding: 0 16px; }
+        .home-icon { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; color: #bfc4c8; font-size: 25px; border-radius: 3px; }
+        .home-icon:hover { background: #30353a; color: white; }
+
+        .button {
+            background: #3f4850;
+            color: white;
+            padding: 9px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            border: 0;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        .button.primary {
+            background: #4aa3ff;
+        }
+
+        .button.purple {
+            background: #6c5ce7;
+        }
+
+        .button.green {
+            background: #2fb67c;
+        }
+
+        .content {
+            padding: 30px;
+            max-width: 1200px;
+        }
+
+        h1 {
+            margin-top: 0;
+            font-weight: normal;
+        }
+
+        .meta-layout {
+            display: grid;
+            grid-template-columns: 260px minmax(0, 1fr);
+            gap: 28px;
+            align-items: start;
+        }
+
+        .cover-panel,
+        .form-panel,
+        .info-panel {
+            background: #30363b;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .cover-box {
+            width: 100%;
+            height: 360px;
+            background: linear-gradient(145deg, #46505a, #20252a);
+            border-radius: 5px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 72px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.22);
+        }
+
+        .cover-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .small {
+            color: #aeb7bd;
+            font-size: 13px;
+            line-height: 1.45;
+            margin-top: 12px;
+            word-break: break-word;
+        }
+
+        .messages {
+            margin-bottom: 18px;
+        }
+
+        .message {
+            padding: 12px 14px;
+            border-radius: 5px;
+            margin-bottom: 8px;
+            background: #30363b;
+        }
+
+        .message.success {
+            border-left: 4px solid #6ee7a8;
+        }
+
+        .message.error {
+            border-left: 4px solid #ff7070;
+        }
+
+        label {
+            display: block;
+            color: #cbd4da;
+            font-weight: bold;
+            margin-bottom: 7px;
+            margin-top: 16px;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            background: #171a1d;
+            color: white;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 5px;
+            padding: 11px;
+            font-size: 15px;
+            box-sizing: border-box;
+        }
+
+        textarea {
+            min-height: 210px;
+            resize: vertical;
+            line-height: 1.5;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 150px;
+            gap: 14px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 22px;
+            flex-wrap: wrap;
+        }
+
+        .button.outline {
+            background: transparent;
+            border: 1px solid #555;
+            color: #d8dce0;
+        }
+
+        .button.danger-outline {
+            background: transparent;
+            border: 1px solid #b25555;
+            color: #e6a0a0;
+        }
+
+        .pending-banner {
+            padding: 14px 16px;
+            margin-bottom: 18px;
+            background: #2a3a48;
+            border: 1px solid #4aa3ff;
+            border-left: 4px solid #4aa3ff;
+            border-radius: 5px;
+            color: #e8ecef;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .pending-banner strong { color: white; }
+
+        .fetch-form {
+            margin-top: 12px;
+        }
+
+        .fetch-form .button {
+            width: 100%;
+        }
+
+        .info-panel {
+            margin-top: 20px;
+            color: #c8d0d5;
+            line-height: 1.5;
+        }
+
+        .fetch-panel {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            width: 230px;
+            background: #30363b;
+            border: 1px solid #454e56;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+            z-index: 500;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .fetch-panel strong {
+            display: block;
+            font-size: 13px;
+            color: #c8d0d5;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .fetch-panel form {
+            margin: 0;
+            padding: 0;
+        }
+
+        .fetch-panel form button,
+        .fetch-panel a.button {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        code {
+            display: inline-block;
+            background: #171a1d;
+            color: #ffffff;
+            padding: 5px 8px;
+            border-radius: 4px;
+            margin-top: 4px;
+        }
+
+        .source-box {
+            margin-top: 16px;
+            padding: 14px;
+            background: #252b30;
+            border-radius: 6px;
+            color: #c8d0d5;
+        }
+
+        @media (max-width: 850px) {
+            .meta-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .cover-box {
+                max-width: 260px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar">
+<a class="logo" href="{{ url_for('library.index') }}">Bookstation</a>
+<div class="library-head"><div class="library-title">Library</div><a class="library-plus" href="{{ url_for('library.add_ebook_page') }}">＋</a><span class="library-more">…</span></div>
+<nav class="nav">
+<a class="nav-item" href="{{ url_for('library.series_page') }}"><span class="nav-icon">▤</span>Bokserier</a>
+<a class="nav-item" href="{{ url_for('library.index', typ='ebook') }}"><span class="nav-icon">▣</span>Böcker</a>
+<a class="nav-item" href="{{ url_for('library.index', typ='audiobook') }}"><span class="nav-icon">▥</span>Ljudböcker</a>
+<a class="nav-item" href="{{ url_for('library.want_read_page') }}"><span class="nav-icon">★</span>Vill läsa</a>
+<a class="nav-item" href="{{ url_for('bookstores.my_stores_page') }}"><span class="nav-icon">🛒</span>Mina affärer</a>
+<a class="nav-item active" href="{{ url_for('metadata.bulk_metadata') }}"><span class="nav-icon">🧠</span>Metadata</a>
+<a class="nav-item" href="{{ url_for('settings.ai_settings') }}"><span class="nav-icon">⚙</span>Inställningar</a>
+<a class="nav-item" href="{{ url_for('library.about_page') }}"><span class="nav-icon">ℹ</span>Om</a>
+</nav>
+</aside>
+<main class="main-col">
+<div class="topbar"><a class="home-icon" href="{{ url_for('library.index') }}">⌂</a></div>
+<section class="content">
+        <h1>{{ item.title }}</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="messages">
+                    {% for category, message in messages %}
+                        <div class="message {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% if pending %}
+            <div class="pending-banner">
+                <div style="flex:1; min-width:240px;">
+                    <strong>Metadata hämtad — granska och spara.</strong>
+                    Värdena nedan är förhandsgranskade och har <em>inte</em> sparats ännu.
+                </div>
+                <form action="{{ url_for('metadata.cancel_preview', item_id=item.id) }}" method="post" style="margin:0;">
+                    <button class="button outline" type="submit">↩ Avbryt</button>
+                </form>
+            </div>
+        {% endif %}
+
+        <div class="meta-layout">
+            <aside>
+                <div class="cover-panel">
+                    <div class="cover-box">
+                        {% if pending and pending.has_new_cover %}
+                            <img src="{{ url_for('metadata.preview_cover', item_id=item.id) }}" alt="{{ item.title }}">
+                        {% elif item.cover_path %}
+                            <img src="{{ url_for('library.cover_item', item_id=item.id) }}" alt="{{ item.title }}">
+                        {% else %}
+                            📖
+                        {% endif %}
+                    </div>
+
+                    <div class="small">
+                        Fil:<br>
+                        <code>{{ item.file_name }}</code>
+                    </div>
+
+                    <div class="small">
+                        Typ: {{ item.extension|upper|replace(".", "") }} · {{ item.size_text() }}
+                    </div>
+
+                    {% if item.manual_metadata %}
+                        <div class="small">
+                            Status: sparad metadata skyddas från att skrivas över vid skanning.
+                        </div>
+                    {% else %}
+                        <div class="small">
+                            Status: metadata från skanning/filnamn.
+                        </div>
+                    {% endif %}
+                </div>
+
+            </aside>
+
+            <section class="form-panel">
+                {% set p = pending or {} %}
+                <form method="post" enctype="multipart/form-data">
+                    <label for="title">Titel</label>
+                    <input id="title" name="title" value="{{ p.title if pending else (item.title or '') }}" required>
+
+                    <label for="author">Författare</label>
+                    <input id="author" name="author" value="{{ p.author if pending else (item.author or '') }}">
+
+                    <div class="form-row">
+                        <div>
+                            <label for="series">Serie</label>
+                            <input id="series" name="series" value="{{ p.series if pending else (item.series or '') }}">
+                        </div>
+
+                        <div>
+                            <label for="series_index">Del</label>
+                            <input id="series_index" name="series_index" value="{{ p.series_index if pending else (item.series_index or '') }}">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div>
+                            <label for="isbn">ISBN</label>
+                            <input id="isbn" name="isbn" value="{{ p.isbn if pending else (item.isbn or '') }}">
+                        </div>
+
+                        <div>
+                            <label for="language">Språk</label>
+                            {% set selected_lang = (p.language if pending else (item.language or current_lang)) or current_lang %}
+                            <select id="language" name="language">
+                                {% for code, label in languages %}
+                                    <option value="{{ code }}" {% if selected_lang == code %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <label for="publisher">Förlag</label>
+                    <input id="publisher" name="publisher" value="{{ p.publisher if pending else (item.publisher or '') }}">
+
+                    <label for="description">Synopsis</label>
+                    <textarea id="description" name="description">{{ p.description if pending else (item.description or '') }}</textarea>
+
+                    <label for="cover">Byt omslag manuellt</label>
+                    <input id="cover" name="cover" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+
+                    <div class="actions">
+                        <button class="button primary" type="submit">💾 Spara{% if pending %} (granska först){% endif %}</button>
+                        {% if pending %}
+                            <a class="button outline" href="{{ url_for('metadata.cancel_preview', item_id=item.id) }}"
+                               onclick="event.preventDefault(); document.getElementById('cancelPreviewForm').submit();">↩ Avbryt</a>
+                        {% endif %}
+                        <a class="button outline" href="{{ url_for('metadata.import_metadata_link', item_id=item.id) }}">Importera från länk</a>
+
+                        {% if item.media_type == "ebook" %}
+                            <a class="button outline" href="{{ url_for('reader.read_item', item_id=item.id) }}">Läs</a>
+                        {% endif %}
+
+                        <a class="button outline" href="{{ url_for('library.file_item', item_id=item.id) }}" target="_blank">Öppna fil</a>
+                    </div>
+                </form>
+
+                {% if pending %}
+                    <form id="cancelPreviewForm" action="{{ url_for('metadata.cancel_preview', item_id=item.id) }}" method="post" style="display:none;"></form>
+                {% endif %}
+            </section>
+        </div>
+    </section>
+</main>
+</div>
+
+    <div class="fetch-panel">
+        <strong>Automatisk metadata</strong>
+        <form action="{{ url_for('metadata.run_bookf_for_item', item_id=item.id) }}" method="post">
+            <button class="button primary" type="submit">🔍 Hämta metadata</button>
+        </form>
+        {% if ai_configured %}
+        <form action="{{ url_for('metadata.run_ai_for_item', item_id=item.id) }}" method="post">
+            <button class="button outline" type="submit">🤖 Fråga AI om metadata</button>
+        </form>
+        {% endif %}
+        <a class="button outline" href="{{ url_for('metadata.lookup_covers', item_id=item.id) }}">Hämta omslag</a>
+        <a class="button outline" href="{{ url_for('metadata.import_metadata_link', item_id=item.id) }}">Importera från länk</a>
+        <a class="button outline" href="{{ url_for('settings.ai_settings') }}">⚙ AI-inställningar</a>
+    </div>
+</body>
+</html>

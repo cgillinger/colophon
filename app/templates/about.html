@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="sv">
+<head>
+    <meta charset="utf-8">
+    <title>Om - Bookstation</title>
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: #303438;
+            color: #d8dce0;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 15px;
+        }
+
+        a { color: inherit; text-decoration: none; }
+        button { font-family: inherit; }
+
+        .layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+        .sidebar { background: #2f3337; border-right: 1px solid #25292d; }
+        .logo { height: 56px; display: flex; align-items: center; padding-left: 14px; background: #25292d; color: white; font-size: 29px; font-weight: bold; }
+        .library-head { height: 42px; display: flex; align-items: center; padding: 0 12px; color: #d5d8db; font-weight: bold; border-bottom: 1px solid #363b40; font-size: 17px; }
+        .library-title { flex: 1; }
+        .library-plus, .library-more { width: 25px; height: 25px; display: inline-flex; align-items: center; justify-content: center; color: #c4c8cc; border-radius: 50%; font-size: 20px; }
+        .library-plus:hover, .library-more:hover { background: #454a50; }
+        .nav { padding-top: 6px; }
+        .nav-item { height: 42px; display: flex; align-items: center; gap: 11px; padding: 0 12px 0 20px; color: #c7ccd0; border-left: 4px solid transparent; font-size: 17px; }
+        .nav-item:hover { background: #3b4045; }
+        .nav-item.active { background: #454a50; color: white; font-weight: bold; border-left-color: white; }
+        .nav-icon { width: 21px; text-align: center; font-size: 18px; }
+        .main-col { min-width: 0; background: #34393e; }
+        .topbar { height: 56px; background: #202326; border-bottom: 1px solid #262a2e; display: flex; align-items: center; gap: 14px; padding: 0 16px; }
+        .home-icon { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; color: #bfc4c8; font-size: 25px; border-radius: 3px; }
+        .home-icon:hover { background: #30353a; color: white; }
+
+        .content {
+            padding: 28px 48px 50px;
+            max-width: 1100px;
+        }
+
+        .title {
+            color: white;
+            font-size: 30px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #b8c0c6;
+            margin-bottom: 32px;
+            line-height: 1.5;
+        }
+
+        h2 {
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 36px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #40464c;
+            padding-bottom: 8px;
+        }
+
+        h2:first-of-type {
+            margin-top: 0;
+        }
+
+        .panel {
+            background: #2b3035;
+            border: 1px solid #444b52;
+            border-radius: 6px;
+            padding: 22px;
+            margin-bottom: 28px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            color: #aeb7bd;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 8px 12px;
+            border-bottom: 1px solid #3a4047;
+            background: #252b30;
+        }
+
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            font-size: 14px;
+            vertical-align: top;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        td a {
+            color: #55a8dc;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+
+        td a:hover {
+            color: #7fc0e8;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-family: monospace;
+            background: #1f2327;
+            color: #c8d0d5;
+            border: 1px solid #3a4047;
+        }
+
+        .note {
+            background: #25292d;
+            border-left: 4px solid #45a3ff;
+            padding: 14px;
+            color: #d8dce0;
+            line-height: 1.5;
+            font-size: 14px;
+            margin-top: 18px;
+        }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <a class="logo" href="{{ url_for('library.index') }}">Bookstation</a>
+
+        <div class="library-head">
+            <div class="library-title">Library</div>
+            <a class="library-plus" href="{{ url_for('library.add_ebook_page') }}" title="Lägg till E-bok">＋</a>
+            <span class="library-more">…</span>
+        </div>
+
+        <nav class="nav">
+            <a class="nav-item" href="{{ url_for('library.series_page') }}"><span class="nav-icon">▤</span>Bokserier</a>
+            <a class="nav-item" href="{{ url_for('library.index', typ='ebook') }}"><span class="nav-icon">▣</span>Böcker</a>
+            <a class="nav-item" href="{{ url_for('library.index', typ='audiobook') }}"><span class="nav-icon">▥</span>Ljudböcker</a>
+            <a class="nav-item" href="{{ url_for('library.want_read_page') }}"><span class="nav-icon">★</span>Vill läsa</a>
+            <a class="nav-item" href="{{ url_for('bookstores.my_stores_page') }}"><span class="nav-icon">🛒</span>Mina affärer</a>
+            <a class="nav-item" href="{{ url_for('metadata.bulk_metadata') }}"><span class="nav-icon">🧠</span>Metadata</a>
+            <a class="nav-item active" href="{{ url_for('library.about_page') }}"><span class="nav-icon">ℹ</span>Om</a>
+        </nav>
+    </aside>
+
+    <main class="main-col">
+        <div class="topbar">
+            <a class="home-icon" href="{{ url_for('library.index') }}" title="Hem">⌂</a>
+        </div>
+
+        <section class="content">
+            <div class="title">Om Bookstation</div>
+            <div class="subtitle">
+                Bookstation är ett självhostat digitalt bibliotek byggt med öppen källkod.
+                Nedan listas alla tredjepartsberoenden med licenser.
+            </div>
+
+            <div class="panel">
+                <h2>Python-paket</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Paket</th>
+                            <th>Version</th>
+                            <th>Licens</th>
+                            <th>Källa</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Flask</td>
+                            <td><span class="badge">3.0.3</span></td>
+                            <td>BSD-3-Clause</td>
+                            <td><a href="https://github.com/pallets/flask" target="_blank" rel="noopener">github.com/pallets/flask</a></td>
+                        </tr>
+                        <tr>
+                            <td>Flask-SQLAlchemy</td>
+                            <td><span class="badge">3.1.1</span></td>
+                            <td>BSD-3-Clause</td>
+                            <td><a href="https://github.com/pallets-eco/flask-sqlalchemy" target="_blank" rel="noopener">github.com/pallets-eco/flask-sqlalchemy</a></td>
+                        </tr>
+                        <tr>
+                            <td>EbookLib</td>
+                            <td><span class="badge">0.18</span></td>
+                            <td>AGPL-3.0</td>
+                            <td><a href="https://github.com/aerkalov/ebooklib" target="_blank" rel="noopener">github.com/aerkalov/ebooklib</a></td>
+                        </tr>
+                        <tr>
+                            <td>beautifulsoup4</td>
+                            <td><span class="badge">4.12.3</span></td>
+                            <td>MIT</td>
+                            <td><a href="https://www.crummy.com/software/BeautifulSoup/" target="_blank" rel="noopener">crummy.com/software/BeautifulSoup</a></td>
+                        </tr>
+                        <tr>
+                            <td>mutagen</td>
+                            <td><span class="badge">1.47.0</span></td>
+                            <td>GPL-2.0-or-later</td>
+                            <td><a href="https://github.com/quodlibet/mutagen" target="_blank" rel="noopener">github.com/quodlibet/mutagen</a></td>
+                        </tr>
+                        <tr>
+                            <td>python-dotenv</td>
+                            <td><span class="badge">1.0.1</span></td>
+                            <td>BSD-3-Clause</td>
+                            <td><a href="https://github.com/theskumar/python-dotenv" target="_blank" rel="noopener">github.com/theskumar/python-dotenv</a></td>
+                        </tr>
+                        <tr>
+                            <td>playwright</td>
+                            <td><span class="badge">senaste</span></td>
+                            <td>Apache-2.0</td>
+                            <td><a href="https://github.com/microsoft/playwright-python" target="_blank" rel="noopener">github.com/microsoft/playwright-python</a></td>
+                        </tr>
+                        <tr>
+                            <td>requests</td>
+                            <td><span class="badge">senaste</span></td>
+                            <td>Apache-2.0</td>
+                            <td><a href="https://github.com/psf/requests" target="_blank" rel="noopener">github.com/psf/requests</a></td>
+                        </tr>
+                        <tr>
+                            <td>gunicorn</td>
+                            <td><span class="badge">senaste</span></td>
+                            <td>MIT</td>
+                            <td><a href="https://github.com/benoitc/gunicorn" target="_blank" rel="noopener">github.com/benoitc/gunicorn</a></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2>JavaScript-bibliotek</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Bibliotek</th>
+                            <th>Version</th>
+                            <th>Licens</th>
+                            <th>Källa</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>epub.js</td>
+                            <td><span class="badge">0.3.x</span></td>
+                            <td>BSD-2-Clause</td>
+                            <td><a href="https://github.com/futurepress/epub.js" target="_blank" rel="noopener">github.com/futurepress/epub.js</a></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2>Systemverktyg (körtidsberoenden)</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Verktyg</th>
+                            <th>Typ</th>
+                            <th>Licens</th>
+                            <th>Källa</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Calibre (<code>ebook-meta</code>, <code>fetch-ebook-metadata</code>)</td>
+                            <td>Systemverktyg</td>
+                            <td>GPL-3.0+</td>
+                            <td><a href="https://calibre-ebook.com" target="_blank" rel="noopener">calibre-ebook.com</a></td>
+                        </tr>
+                        <tr>
+                            <td>Goodreads Calibre-plugin</td>
+                            <td>Calibre-plugin (valfritt)</td>
+                            <td>GPL-3.0</td>
+                            <td><a href="https://github.com/kiwidude68/calibre_plugins" target="_blank" rel="noopener">github.com/kiwidude68/calibre_plugins</a></td>
+                        </tr>
+                        <tr>
+                            <td>Fantastic Fiction Calibre-plugin</td>
+                            <td>Calibre-plugin (valfritt)</td>
+                            <td>GPL-3.0</td>
+                            <td><a href="https://github.com/kiwidude68/calibre_plugins" target="_blank" rel="noopener">github.com/kiwidude68/calibre_plugins</a></td>
+                        </tr>
+                        <tr>
+                            <td>FictionDB Calibre-plugin</td>
+                            <td>Calibre-plugin (valfritt)</td>
+                            <td>GPL-3.0</td>
+                            <td><a href="https://github.com/kiwidude68/calibre_plugins" target="_blank" rel="noopener">github.com/kiwidude68/calibre_plugins</a></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2>Externa API:er</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tjänst</th>
+                            <th>Typ</th>
+                            <th>Villkor</th>
+                            <th>Källa</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Google Books API</td>
+                            <td>Metadata-källa (valfritt)</td>
+                            <td>Gratis med API-nyckel · Google Terms of Service</td>
+                            <td><a href="https://developers.google.com/books" target="_blank" rel="noopener">developers.google.com/books</a></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="note">
+                    Calibre-plugins och Calibre är inte bundlade med Bookstation — de installeras separat som körtidsberoenden.
+                    Externa API:er kräver egna nycklar som konfigureras i <code>.env</code>.
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+</body>
+</html>

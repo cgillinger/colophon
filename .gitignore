@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+venv/
+.venv/
+
+# ChatGPT-style backups
+*.bak
+*.bak_*
+*.backup_*
+
+# Runtime data
+data/
+var/
+config/
+
+# Browser profiles (Selenium/Playwright)
+browser_profiles/
+
+# Binärfiler
+tools/bookf
+
+# OS/editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Övrigt
+struktur.txt
+backup_platform_drm_*/
