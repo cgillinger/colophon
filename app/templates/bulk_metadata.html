@@ -2,7 +2,7 @@
 <html lang="sv">
 <head>
     <meta charset="utf-8">
-    <title>Massuppdatera metadata - Colophon</title>
+    <title>Metadata - Colophon</title>
     <style>
         body {
             margin: 0;
@@ -269,7 +269,7 @@
 <main class="main-col">
 <div class="topbar"><a class="home-icon" href="{{ url_for('metadata.bulk_metadata') }}">⌂</a></div>
 <section class="content">
-        <h1>Massuppdatera metadata</h1>
+        <h1>Metadata</h1>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -377,6 +377,12 @@
                 </div>
             </section>
 
+            <button id="scanBtn" class="button" type="button" onclick="startScan()">Skanna bibliotek</button>
+            <div id="scanStatus" style="display:none; margin:10px 0; padding:12px; background:#252b30; border-radius:6px;">
+                <div id="scanText">Skannar...</div>
+                <div id="scanLog" style="max-height:150px; overflow-y:auto; font-size:13px; color:#aeb7bd; margin-top:8px;"></div>
+            </div>
+
             <table>
                 <thead>
                     <tr>
@@ -448,6 +454,44 @@
 </div>
 
     <script>
+        function startScan() {
+            var btn = document.getElementById('scanBtn');
+            var status = document.getElementById('scanStatus');
+            var text = document.getElementById('scanText');
+            var log = document.getElementById('scanLog');
+            btn.disabled = true;
+            btn.textContent = 'Skannar...';
+            status.style.display = 'block';
+            log.innerHTML = '';
+
+            var source = new EventSource('/scan?progress=1');
+            source.onmessage = function(e) {
+                var d = JSON.parse(e.data);
+                if (d.type === 'progress') {
+                    text.textContent = 'Skannar: ' + d.file;
+                    log.innerHTML += '<div>' + d.file + '</div>';
+                    log.scrollTop = log.scrollHeight;
+                } else if (d.type === 'done') {
+                    text.textContent = 'Klar! Tillagda: ' + d.added + ', uppdaterade: ' + d.updated + ', borttagna: ' + d.removed;
+                    source.close();
+                    btn.disabled = false;
+                    btn.textContent = 'Skanna bibliotek';
+                    setTimeout(function(){ location.reload(); }, 1500);
+                } else if (d.type === 'error') {
+                    text.textContent = 'Fel: ' + d.message;
+                    source.close();
+                    btn.disabled = false;
+                    btn.textContent = 'Skanna bibliotek';
+                }
+            };
+            source.onerror = function() {
+                text.textContent = 'Anslutningen bröts.';
+                source.close();
+                btn.disabled = false;
+                btn.textContent = 'Skanna bibliotek';
+            };
+        }
+
         function selectAllBooks() {
             document.querySelectorAll(".book-checkbox").forEach(function (box) {
                 box.checked = true;

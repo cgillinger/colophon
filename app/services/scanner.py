@@ -43,7 +43,7 @@ def _metadata_from_file(file_path: Path) -> dict:
     }
 
 
-def scan_directory(root_path, db_session=None) -> dict:
+def scan_directory(root_path, db_session=None, on_progress=None) -> dict:
     session = db_session if db_session is not None else db.session
     root = Path(root_path)
 
@@ -109,6 +109,15 @@ def scan_directory(root_path, db_session=None) -> dict:
             )
             session.add(item)
             result["added"] += 1
+
+        if on_progress:
+            on_progress({
+                "type": "progress",
+                "file": file_path.name,
+                "added": result["added"],
+                "updated": result["updated"],
+                "removed": result["removed"],
+            })
 
     session.commit()
     return result
