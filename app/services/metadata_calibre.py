@@ -110,11 +110,16 @@ def _read_ebook_meta(file_path) -> tuple[str | None, str | None]:
 
 def _read_all_ebook_meta_fields(file_path) -> dict[str, str]:
     """Read all metadata fields from ebook-meta output."""
-    result = subprocess.run(
-        ["ebook-meta", str(file_path)],
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            ["ebook-meta", str(file_path)],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except subprocess.TimeoutExpired:
+        logger.warning("ebook-meta timeout för %s", file_path)
+        return {}
     fields: dict[str, str] = {}
     current_key: str | None = None
     current_parts: list[str] = []
