@@ -5,6 +5,7 @@ from difflib import SequenceMatcher
 from pathlib import Path
 
 from app.services.ai_metadata import fetch_ai_suggestions
+from app.services.scanner import scan_directory
 
 from flask import (
     Blueprint,
@@ -289,6 +290,13 @@ def apply_cover(item_id):
 
 @metadata_bp.route("/metadata/bulk", methods=["GET", "POST"])
 def bulk_metadata():
+    if request.method == "GET":
+        scan_directory(
+            current_app.config["LIBRARY_DIR"],
+            db.session,
+            cover_dir=current_app.config["COVER_DIR"],
+        )
+
     items = (
         LibraryItem.query
         .order_by(LibraryItem.title.asc())
