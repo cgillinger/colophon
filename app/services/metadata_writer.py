@@ -112,7 +112,7 @@ def apply_metadata_to_item(
 
     file_updated = False
     if write_to_file:
-        file_updated = _write_to_ebook_file(
+        file_updated = write_metadata_to_file(
             item=item,
             written_text=written_text,
             cover_path=cover_dest_for_file,
@@ -126,7 +126,7 @@ def apply_metadata_to_item(
     }
 
 
-def _write_to_ebook_file(item, written_text, cover_path):
+def write_metadata_to_file(item, written_text, cover_path):
     file_path_value = getattr(item, "file_path", "") or ""
     if not file_path_value:
         return False
