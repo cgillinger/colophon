@@ -285,15 +285,10 @@
 <div class="layout">
 <aside class="sidebar">
 <a class="logo" href="{{ url_for('metadata.bulk_metadata') }}">Colophon</a>
-<div class="library-head"><div class="library-title">Library</div><a class="library-plus" href="{{ url_for('library.add_ebook_page') }}">＋</a><span class="library-more">…</span></div>
 <nav class="nav">
-<a class="nav-item" href="{{ url_for('library.series_page') }}"><span class="nav-icon">▤</span>Bokserier</a>
-<a class="nav-item" href="{{ url_for('library.index', typ='ebook') }}"><span class="nav-icon">▣</span>Böcker</a>
-<a class="nav-item" href="{{ url_for('library.want_read_page') }}"><span class="nav-icon">★</span>Vill läsa</a>
-<a class="nav-item" href="{{ url_for('bookstores.my_stores_page') }}"><span class="nav-icon">🛒</span>Mina affärer</a>
 <a class="nav-item active" href="{{ url_for('metadata.bulk_metadata') }}"><span class="nav-icon">🧠</span>Metadata</a>
+<a class="nav-item" href="{{ url_for('scan.scan') }}"><span class="nav-icon">🔄</span>Skanna</a>
 <a class="nav-item" href="{{ url_for('settings.ai_settings') }}"><span class="nav-icon">⚙</span>Inställningar</a>
-<a class="nav-item" href="{{ url_for('library.about_page') }}"><span class="nav-icon">ℹ</span>Om</a>
 </nav>
 </aside>
 <main class="main-col">
@@ -330,7 +325,7 @@
                         {% if pending and pending.has_new_cover %}
                             <img src="{{ url_for('metadata.preview_cover', item_id=item.id) }}" alt="{{ item.title }}">
                         {% elif item.cover_path %}
-                            <img src="{{ url_for('library.cover_item', item_id=item.id) }}" alt="{{ item.title }}">
+                            <img src="{{ url_for('metadata.cover_item', item_id=item.id) }}" alt="{{ item.title }}">
                         {% else %}
                             📖
                         {% endif %}
@@ -411,11 +406,6 @@
                             <a class="button outline" href="{{ url_for('metadata.cancel_preview', item_id=item.id) }}"
                                onclick="event.preventDefault(); document.getElementById('cancelPreviewForm').submit();">↩ Avbryt</a>
                         {% endif %}
-                        <a class="button outline" href="{{ url_for('metadata.import_metadata_link', item_id=item.id) }}">Importera från länk</a>
-
-                        <a class="button outline" href="{{ url_for('reader.read_item', item_id=item.id) }}">Läs</a>
-
-                        <a class="button outline" href="{{ url_for('library.file_item', item_id=item.id) }}" target="_blank">Öppna fil</a>
                     </div>
                 </form>
 
@@ -439,7 +429,6 @@
         </form>
         {% endif %}
         <a class="button outline" href="{{ url_for('metadata.lookup_covers', item_id=item.id) }}">Hämta omslag</a>
-        <a class="button outline" href="{{ url_for('metadata.import_metadata_link', item_id=item.id) }}">Importera från länk</a>
         <a class="button outline" href="{{ url_for('settings.ai_settings') }}">⚙ AI-inställningar</a>
     </div>
 </body>
