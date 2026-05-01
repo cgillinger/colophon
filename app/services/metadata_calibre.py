@@ -108,7 +108,7 @@ def _read_ebook_meta(file_path) -> tuple[str | None, str | None]:
     return title, author
 
 
-def _read_all_ebook_meta_fields(file_path) -> dict[str, str]:
+def read_all_ebook_meta_fields(file_path) -> dict[str, str]:
     """Read all metadata fields from ebook-meta output."""
     try:
         result = subprocess.run(
@@ -117,6 +117,9 @@ def _read_all_ebook_meta_fields(file_path) -> dict[str, str]:
             text=True,
             timeout=10,
         )
+    except FileNotFoundError:
+        logger.debug("ebook-meta inte funnet i PATH")
+        return {}
     except subprocess.TimeoutExpired:
         logger.warning("ebook-meta timeout för %s", file_path)
         return {}
