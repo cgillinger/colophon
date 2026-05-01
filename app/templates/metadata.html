@@ -414,9 +414,7 @@
                         {% endif %}
                         <a class="button outline" href="{{ url_for('metadata.import_metadata_link', item_id=item.id) }}">Importera från länk</a>
 
-                        {% if item.media_type == "ebook" %}
-                            <a class="button outline" href="{{ url_for('reader.read_item', item_id=item.id) }}">Läs</a>
-                        {% endif %}
+                        <a class="button outline" href="{{ url_for('reader.read_item', item_id=item.id) }}">Läs</a>
 
                         <a class="button outline" href="{{ url_for('library.file_item', item_id=item.id) }}" target="_blank">Öppna fil</a>
                     </div>

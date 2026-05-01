@@ -16,6 +16,10 @@ def ensure_database_columns():
         "publisher": "ALTER TABLE library_items ADD COLUMN publisher VARCHAR(500)",
         "language": "ALTER TABLE library_items ADD COLUMN language VARCHAR(100)",
         "manual_metadata": "ALTER TABLE library_items ADD COLUMN manual_metadata BOOLEAN DEFAULT 0",
+        "pipeline_status": "ALTER TABLE library_items ADD COLUMN pipeline_status VARCHAR(50) DEFAULT 'scanned'",
+        "scanned_at": "ALTER TABLE library_items ADD COLUMN scanned_at DATETIME",
+        "enriched_at": "ALTER TABLE library_items ADD COLUMN enriched_at DATETIME",
+        "polished_at": "ALTER TABLE library_items ADD COLUMN polished_at DATETIME",
     }
 
     changed = False

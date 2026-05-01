@@ -1,0 +1,13 @@
+services:
+  colophon:
+    build: .
+    image: colophon:latest
+    container_name: colophon
+    ports:
+      - "5000:5000"
+    volumes:
+      - ${COLOPHON_LIBRARY_HOST:-./bibliotek}:/books:rw
+      - ${COLOPHON_DATA_HOST:-./data}:/data:rw
+    env_file:
+      - .env
+    restart: unless-stopped
