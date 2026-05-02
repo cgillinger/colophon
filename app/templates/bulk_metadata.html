@@ -253,6 +253,120 @@
                 border-bottom: 1px solid rgba(255,255,255,0.07);
             }
         }
+
+        #bookModal {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.7);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-box {
+            background: #2b3035;
+            border-radius: 8px;
+            max-width: 900px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .modal-feedback {
+            padding: 10px 14px;
+            border-radius: 5px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+
+        .modal-feedback-info    { background: #252b30; border-left: 4px solid #4aa3ff; }
+        .modal-feedback-success { background: #252b30; border-left: 4px solid #6ee7a8; }
+        .modal-feedback-error   { background: #252b30; border-left: 4px solid #ff7070; }
+
+        .modal-grid {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 24px;
+        }
+
+        .modal-cover {
+            width: 200px;
+            height: 300px;
+            background: linear-gradient(145deg, #46505a, #20252a);
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            flex-shrink: 0;
+        }
+
+        .modal-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .modal-fileinfo {
+            margin-top: 12px;
+            font-size: 12px;
+            color: #aeb7bd;
+            word-break: break-all;
+            line-height: 1.6;
+        }
+
+        .modal-fields {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .modal-field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .modal-field label {
+            font-size: 13px;
+            color: #aeb7bd;
+            cursor: default;
+        }
+
+        .modal-input {
+            background: #171a1d;
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 5px;
+            padding: 8px 10px;
+            font-size: 14px;
+            font-family: inherit;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .modal-textarea {
+            resize: vertical;
+            min-height: 90px;
+        }
+
+        .modal-field-row {
+            display: grid;
+            grid-template-columns: 1fr 110px;
+            gap: 12px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .modal-actions .spacer { flex: 1; }
     </style>
 
 </head>
@@ -397,18 +511,17 @@
                 <tbody>
                     {% for item in items %}
                         {% set is_missing = (not item.author or not item.description or not item.cover_path) %}
-                        <tr data-missing="{{ '1' if is_missing else '0' }}">
+                        <tr data-missing="{{ '1' if is_missing else '0' }}" data-item-id="{{ item.id }}">
                             <td>
                                 <input
                                     type="checkbox"
                                     name="item_ids"
                                     value="{{ item.id }}"
                                     class="book-checkbox"
-                                    {% if is_missing %}checked{% endif %}
                                 >
                             </td>
 
-                            <td>
+                            <td onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
                                 <div class="cover">
                                     {% if item.cover_path %}
                                         <img src="{{ url_for('metadata.cover_item', item_id=item.id) }}" alt="{{ item.title }}">
@@ -418,7 +531,7 @@
                                 </div>
                             </td>
 
-                            <td>
+                            <td onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
                                 <div class="book-title">{{ item.title }}</div>
                                 <div class="meta">
                                     {% if item.author %}
@@ -525,5 +638,297 @@
             console[isError ? 'error' : 'log']('[Colophon]', el.textContent.trim());
         });
     </script>
+
+<div id="bookModal" style="display:none;">
+    <div class="modal-box">
+        <div id="modalFeedback" class="modal-feedback" style="display:none;"></div>
+        <div class="modal-grid">
+            <div>
+                <div id="modalCover" class="modal-cover">📖</div>
+                <div id="modalFileInfo" class="modal-fileinfo"></div>
+            </div>
+            <div class="modal-fields">
+                <div class="modal-field">
+                    <label for="modalTitle">Titel</label>
+                    <input type="text" id="modalTitle" class="modal-input">
+                </div>
+                <div class="modal-field">
+                    <label for="modalAuthor">Författare</label>
+                    <input type="text" id="modalAuthor" class="modal-input">
+                </div>
+                <div class="modal-field-row">
+                    <div class="modal-field">
+                        <label for="modalSeries">Serie</label>
+                        <input type="text" id="modalSeries" class="modal-input">
+                    </div>
+                    <div class="modal-field">
+                        <label for="modalSeriesIndex">Del</label>
+                        <input type="text" id="modalSeriesIndex" class="modal-input">
+                    </div>
+                </div>
+                <div class="modal-field">
+                    <label for="modalIsbn">ISBN</label>
+                    <input type="text" id="modalIsbn" class="modal-input">
+                </div>
+                <div class="modal-field">
+                    <label for="modalPublisher">Förlag</label>
+                    <input type="text" id="modalPublisher" class="modal-input">
+                </div>
+                <div class="modal-field">
+                    <label for="modalLanguage">Språk</label>
+                    <select id="modalLanguage" class="modal-input">
+                        <option value="">—</option>
+                        <option value="en">English</option>
+                        <option value="sv">Svenska</option>
+                        <option value="no">Norsk</option>
+                        <option value="da">Dansk</option>
+                        <option value="fi">Suomi</option>
+                        <option value="de">Deutsch</option>
+                        <option value="fr">Français</option>
+                        <option value="es">Español</option>
+                    </select>
+                </div>
+                <div class="modal-field">
+                    <label for="modalDescription">Synopsis</label>
+                    <textarea id="modalDescription" class="modal-input modal-textarea" rows="5"></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button type="button" id="modalFetchBtn" onclick="fetchMetadata()">Hämta metadata</button>
+            <button type="button" id="modalAiBtn" class="purple" onclick="fetchAiMetadata()" style="display:none;">Fråga AI</button>
+            <div class="spacer"></div>
+            <button type="button" class="primary" onclick="saveMetadata()">Spara</button>
+            <button type="button" onclick="closeBookModal()">Avbryt</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    var _modalItemId = null;
+
+    function openBookModal(itemId) {
+        console.debug('[Colophon modal]', 'fetching metadata for', itemId);
+        _modalItemId = itemId;
+        document.getElementById('bookModal').style.display = 'flex';
+        setModalFeedback('info', 'Laddar...');
+
+        fetch('/metadata/' + itemId + '/json')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                console.log('[Colophon modal]', 'result:', data);
+                _populateModal(itemId, data);
+                clearModalFeedback();
+            })
+            .catch(function(err) {
+                console.error('[Colophon modal]', 'fetch failed:', err);
+                setModalFeedback('error', 'Kunde inte ladda metadata.');
+            });
+    }
+
+    function _populateModal(itemId, data) {
+        var coverEl = document.getElementById('modalCover');
+        if (data.cover_path) {
+            coverEl.innerHTML = '<img src="/metadata/' + itemId + '/cover" alt="">';
+        } else {
+            coverEl.innerHTML = '📖';
+        }
+
+        var size = data.size_bytes ? _fmtBytes(data.size_bytes) : '—';
+        var ext = (data.extension || '').replace('.', '').toUpperCase();
+        document.getElementById('modalFileInfo').innerHTML =
+            (data.file_name || '—') + '<br>' + ext + ' · ' + size;
+
+        document.getElementById('modalTitle').value       = data.title       || '';
+        document.getElementById('modalAuthor').value      = data.author      || '';
+        document.getElementById('modalSeries').value      = data.series      || '';
+        document.getElementById('modalSeriesIndex').value = data.series_index || '';
+        document.getElementById('modalIsbn').value        = data.isbn        || '';
+        document.getElementById('modalPublisher').value   = data.publisher   || '';
+        document.getElementById('modalLanguage').value    = data.language    || '';
+        document.getElementById('modalDescription').value = data.description || '';
+
+        document.getElementById('modalAiBtn').style.display = data.ai_configured ? 'inline-block' : 'none';
+    }
+
+    function fetchMetadata() {
+        var id = _modalItemId;
+        console.debug('[Colophon modal]', 'fetching metadata for', id);
+        setModalFeedback('info', 'Hämtar metadata…');
+        _setModalBusy(true);
+
+        fetch('/metadata/' + id + '/fetch-json', { method: 'POST' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                console.log('[Colophon modal]', 'result:', data);
+                _setModalBusy(false);
+                if (!data.ok) {
+                    var msg = data.error === 'no_match'
+                        ? 'Inga säkra träffar hittades.'
+                        : 'Fel: ' + data.error;
+                    setModalFeedback('error', msg);
+                    return;
+                }
+                var f = data.fetched;
+                if (f.title)        document.getElementById('modalTitle').value       = f.title;
+                if (f.author)       document.getElementById('modalAuthor').value      = f.author;
+                if (f.series)       document.getElementById('modalSeries').value      = f.series;
+                if (f.series_index) document.getElementById('modalSeriesIndex').value = f.series_index;
+                if (f.isbn)         document.getElementById('modalIsbn').value        = f.isbn;
+                if (f.publisher)    document.getElementById('modalPublisher').value   = f.publisher;
+                if (f.description)  document.getElementById('modalDescription').value = f.description;
+                var src = data.source ? ' (' + data.source + ')' : '';
+                setModalFeedback('success', 'Metadata hämtad' + src + '. Granska och spara.');
+            })
+            .catch(function(err) {
+                console.error('[Colophon modal]', 'fetch failed:', err);
+                _setModalBusy(false);
+                setModalFeedback('error', 'Hämtning misslyckades.');
+            });
+    }
+
+    function fetchAiMetadata() {
+        var id = _modalItemId;
+        console.debug('[Colophon modal]', 'fetching AI metadata for', id);
+        setModalFeedback('info', 'Frågar AI…');
+        _setModalBusy(true);
+
+        fetch('/metadata/' + id + '/ai-json', { method: 'POST' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                console.log('[Colophon modal]', 'result:', data);
+                _setModalBusy(false);
+                if (!data.ok) {
+                    var msgs = {
+                        not_configured: 'AI är inte konfigurerat.',
+                        auth:           'Mistral nekade anropet. Kontrollera API-nyckeln.',
+                        timeout:        'Mistral-anropet tog för lång tid.',
+                        rate_limit:     'API-gränsen är nådd. Försök igen.',
+                        invalid_json:   'Mistral returnerade ett ogiltigt svar.'
+                    };
+                    setModalFeedback('error', msgs[data.error] || 'AI-fel: ' + data.error);
+                    return;
+                }
+                var s = data.suggestions;
+                if (s.title)        document.getElementById('modalTitle').value       = s.title;
+                if (s.author)       document.getElementById('modalAuthor').value      = s.author;
+                if (s.series)       document.getElementById('modalSeries').value      = s.series;
+                if (s.series_index) document.getElementById('modalSeriesIndex').value = s.series_index;
+                if (s.publisher)    document.getElementById('modalPublisher').value   = s.publisher;
+                if (s.language)     document.getElementById('modalLanguage').value    = s.language;
+                if (s.description)  document.getElementById('modalDescription').value = s.description;
+                setModalFeedback('success', 'AI-förslag inlagda. Granska och spara.');
+            })
+            .catch(function(err) {
+                console.error('[Colophon modal]', 'fetch failed:', err);
+                _setModalBusy(false);
+                setModalFeedback('error', 'AI-anropet misslyckades.');
+            });
+    }
+
+    function saveMetadata() {
+        var id = _modalItemId;
+        var title = document.getElementById('modalTitle').value.trim();
+        if (!title) {
+            setModalFeedback('error', 'Titel får inte vara tom.');
+            return;
+        }
+        var payload = {
+            title:        title,
+            author:       document.getElementById('modalAuthor').value.trim(),
+            series:       document.getElementById('modalSeries').value.trim(),
+            series_index: document.getElementById('modalSeriesIndex').value.trim(),
+            isbn:         document.getElementById('modalIsbn').value.trim(),
+            publisher:    document.getElementById('modalPublisher').value.trim(),
+            language:     document.getElementById('modalLanguage').value.trim(),
+            description:  document.getElementById('modalDescription').value.trim()
+        };
+        console.debug('[Colophon modal]', 'saving metadata for', id, payload);
+        setModalFeedback('info', 'Sparar…');
+        _setModalBusy(true);
+
+        fetch('/metadata/' + id + '/save-json', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                console.log('[Colophon modal]', 'result:', data);
+                _setModalBusy(false);
+                if (!data.ok) {
+                    setModalFeedback('error', 'Fel: ' + (data.error || 'okänt fel'));
+                    return;
+                }
+                _updateTableRow(id, payload);
+                closeBookModal();
+            })
+            .catch(function(err) {
+                console.error('[Colophon modal]', 'fetch failed:', err);
+                _setModalBusy(false);
+                setModalFeedback('error', 'Sparning misslyckades.');
+            });
+    }
+
+    function _updateTableRow(itemId, data) {
+        var row = document.querySelector('tr[data-item-id="' + itemId + '"]');
+        if (!row) return;
+
+        var titleEl = row.querySelector('.book-title');
+        if (titleEl && data.title) titleEl.textContent = data.title;
+
+        var metaEl = row.querySelector('.meta');
+        if (metaEl) metaEl.textContent = data.author || 'Okänd författare';
+
+        // Mark row as saved
+        var statusCell = row.querySelector('td:nth-child(4)');
+        if (statusCell) {
+            var alreadySaved = false;
+            statusCell.querySelectorAll('.badge').forEach(function(b) {
+                if (b.textContent.trim() === 'Sparad') alreadySaved = true;
+            });
+            if (!alreadySaved) {
+                var badge = document.createElement('span');
+                badge.className = 'badge good';
+                badge.textContent = 'Sparad';
+                statusCell.appendChild(document.createTextNode(' '));
+                statusCell.appendChild(badge);
+            }
+        }
+    }
+
+    function closeBookModal() {
+        document.getElementById('bookModal').style.display = 'none';
+        _modalItemId = null;
+    }
+
+    function setModalFeedback(type, msg) {
+        var el = document.getElementById('modalFeedback');
+        el.style.display = 'block';
+        el.className = 'modal-feedback modal-feedback-' + type;
+        el.textContent = msg;
+    }
+
+    function clearModalFeedback() {
+        var el = document.getElementById('modalFeedback');
+        el.style.display = 'none';
+        el.className = 'modal-feedback';
+    }
+
+    function _setModalBusy(busy) {
+        document.getElementById('modalFetchBtn').disabled = busy;
+        document.getElementById('modalAiBtn').disabled   = busy;
+    }
+
+    function _fmtBytes(b) {
+        if (b < 1024)        return b + ' B';
+        if (b < 1048576)     return (b / 1024).toFixed(1) + ' KB';
+        return (b / 1048576).toFixed(1) + ' MB';
+    }
+
+    document.getElementById('bookModal').addEventListener('click', function(e) {
+        if (e.target === this) closeBookModal();
+    });
+</script>
 </body>
 </html>

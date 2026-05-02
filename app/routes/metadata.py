@@ -5,12 +5,12 @@ from difflib import SequenceMatcher
 from pathlib import Path
 
 from app.services.ai_metadata import fetch_ai_suggestions
-from app.services.scanner import scan_directory
 
 from flask import (
     Blueprint,
     current_app,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -290,13 +290,6 @@ def apply_cover(item_id):
 
 @metadata_bp.route("/metadata/bulk", methods=["GET", "POST"])
 def bulk_metadata():
-    if request.method == "GET":
-        scan_directory(
-            current_app.config["LIBRARY_DIR"],
-            db.session,
-            cover_dir=current_app.config["COVER_DIR"],
-        )
-
     items = (
         LibraryItem.query
         .order_by(LibraryItem.title.asc())
@@ -806,3 +799,123 @@ def ai_cancel(item_id):
     session.pop(_ai_preview_key(item.id), None)
     flash("Förhandsgranskning avbruten. Inget sparades.", "success")
     return redirect(url_for("metadata.metadata_item", item_id=item.id))
+
+
+@metadata_bp.route("/metadata/<int:item_id>/json")
+def metadata_json(item_id):
+    item = get_item_or_404(item_id)
+    return jsonify({
+        "id": item.id,
+        "title": item.title or "",
+        "author": item.author or "",
+        "series": item.series or "",
+        "series_index": item.series_index or "",
+        "isbn": item.isbn or "",
+        "publisher": item.publisher or "",
+        "language": item.language or "",
+        "description": item.description or "",
+        "file_name": item.file_name,
+        "extension": item.extension,
+        "size_bytes": item.size_bytes,
+        "cover_path": bool(item.cover_path),
+        "manual_metadata": bool(item.manual_metadata),
+        "ai_configured": bool(os.environ.get("COLOPHON_MISTRAL_API_KEY")),
+    })
+
+
+@metadata_bp.route("/metadata/<int:item_id>/save-json", methods=["POST"])
+def save_metadata_json(item_id):
+    item = get_item_or_404(item_id)
+    data = request.get_json()
+    if not data:
+        return jsonify({"ok": False, "error": "no_data"}), 400
+
+    title = (data.get("title") or "").strip()
+    if not title:
+        return jsonify({"ok": False, "error": "title_required"}), 400
+
+    item.title = title
+    item.author = (data.get("author") or "").strip() or None
+    item.series = (data.get("series") or "").strip() or None
+    item.series_index = (data.get("series_index") or "").strip() or None
+    item.isbn = (data.get("isbn") or "").strip() or None
+    item.publisher = (data.get("publisher") or "").strip() or None
+    item.language = (data.get("language") or "").strip() or None
+    item.description = (data.get("description") or "").strip() or None
+    item.manual_metadata = True
+
+    written_text = {}
+    for field in ("title", "author", "series", "series_index", "isbn", "publisher", "language", "description"):
+        val = getattr(item, field)
+        if val:
+            written_text[field] = val
+
+    write_metadata_to_file(item, written_text, None)
+    db.session.commit()
+
+    return jsonify({"ok": True})
+
+
+@metadata_bp.route("/metadata/<int:item_id>/fetch-json", methods=["POST"])
+def fetch_metadata_json(item_id):
+    item = get_item_or_404(item_id)
+
+    query_text = item.isbn or " ".join(
+        part for part in [item.title, item.author] if part
+    ).strip()
+
+    try:
+        results = search_all_sources(
+            title=item.title or "",
+            author=item.author or "",
+            isbn=item.isbn or "",
+            query_text=query_text,
+            include_calibre=True,
+        )
+        best, best_score = choose_best_metadata(item, results)
+
+        if not best:
+            return jsonify({"ok": False, "error": "no_match"})
+
+        def _txt(v):
+            return str(v).strip() if v is not None else ""
+
+        return jsonify({
+            "ok": True,
+            "fetched": {
+                "title": _txt(best.get("title")),
+                "author": _txt(best.get("author")),
+                "description": _txt(best.get("description")),
+                "publisher": _txt(best.get("publisher")),
+                "isbn": _txt(best.get("isbn")),
+                "language": _txt(best.get("language")),
+                "series": _txt(best.get("series")),
+                "series_index": _txt(best.get("series_index")),
+            },
+            "score": best_score,
+            "source": best.get("source", ""),
+        })
+    except Exception as error:
+        logger.error("fetch_metadata_json error: %s", error)
+        return jsonify({"ok": False, "error": str(error)}), 500
+
+
+@metadata_bp.route("/metadata/<int:item_id>/ai-json", methods=["POST"])
+def ai_metadata_json(item_id):
+    item = get_item_or_404(item_id)
+
+    if not os.environ.get("COLOPHON_MISTRAL_API_KEY"):
+        return jsonify({"ok": False, "error": "not_configured"}), 400
+
+    result = fetch_ai_suggestions(item)
+
+    if not result["ok"]:
+        return jsonify({"ok": False, "error": result["error"]}), 500
+
+    flat = {
+        k: v["value"]
+        for k, v in result["suggestions"].items()
+        if k not in _AI_DISPLAY_ONLY and v.get("confidence") != "low" and v.get("value")
+    }
+
+    return jsonify({"ok": True, "suggestions": flat})
