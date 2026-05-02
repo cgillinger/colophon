@@ -303,6 +303,7 @@ def bulk_metadata():
         overwrite = request.form.get("overwrite") == "1"
         only_missing = request.form.get("only_missing") == "1"
         max_items = get_int_form_value("max_items", 25, 1, 100)
+        action = request.form.get("action", "search")
 
         selected_items = []
 
@@ -325,75 +326,138 @@ def bulk_metadata():
             "processed": 0,
         }
 
-        processed_count = 0
-
-        for item in selected_items:
-            if processed_count >= max_items:
-                summary["limited"] = True
-                break
-
-            if only_missing and item_has_good_metadata(item):
-                summary["skipped"].append(
-                    {
-                        "title": item.title,
-                        "reason": "Har redan författare, synopsis och omslag.",
-                    }
+        if action == "ai":
+            if not os.environ.get("COLOPHON_MISTRAL_API_KEY"):
+                flash(
+                    "Mistral är inte konfigurerat. Lägg till COLOPHON_MISTRAL_API_KEY i .env.",
+                    "error",
                 )
-                continue
-
-            processed_count += 1
-            summary["processed"] = processed_count
-
-            query_text = ""
-
-            if item.isbn:
-                query_text = item.isbn
             else:
-                query_text = " ".join(
-                    [part for part in [item.title, item.author] if part]
-                ).strip()
+                processed_count = 0
 
-            results = search_all_sources(
-                title=item.title or "",
-                author=item.author or "",
-                isbn=item.isbn or "",
-                query_text=query_text,
-                include_calibre=True,
-            )
+                for item in selected_items:
+                    if processed_count >= max_items:
+                        summary["limited"] = True
+                        break
 
-            best_result, best_score = choose_best_metadata(item, results)
+                    if only_missing and item_has_good_metadata(item):
+                        summary["skipped"].append(
+                            {
+                                "title": item.title,
+                                "reason": "Har redan författare, synopsis och omslag.",
+                            }
+                        )
+                        continue
 
-            if not best_result:
-                summary["no_match"].append(
+                    processed_count += 1
+                    summary["processed"] = processed_count
+
+                    result = fetch_ai_suggestions(item)
+                    if not result["ok"]:
+                        summary["no_match"].append({"title": item.title, "score": 0})
+                        continue
+
+                    high_fields = {
+                        k: v["value"]
+                        for k, v in result["suggestions"].items()
+                        if v.get("confidence") == "high"
+                        and v.get("value")
+                        and k not in _AI_DISPLAY_ONLY
+                    }
+                    if not high_fields:
+                        summary["no_match"].append({"title": item.title, "score": 0})
+                        continue
+
+                    apply_metadata_to_item(
+                        item=item,
+                        result=high_fields,
+                        cover_dir=current_app.config["COVER_DIR"],
+                        overwrite=overwrite,
+                        write_to_file=True,
+                        selected_fields=set(high_fields.keys()),
+                    )
+                    summary["updated"].append(
+                        {
+                            "title": item.title,
+                            "source": "Mistral AI",
+                            "score": len(high_fields),
+                        }
+                    )
+
+                db.session.commit()
+                flash(
+                    f"AI-körning klar. Uppdaterade: {len(summary['updated'])}, inga högsäkra förslag: {len(summary['no_match'])}, hoppade över: {len(summary['skipped'])}.",
+                    "success",
+                )
+        else:
+            processed_count = 0
+
+            for item in selected_items:
+                if processed_count >= max_items:
+                    summary["limited"] = True
+                    break
+
+                if only_missing and item_has_good_metadata(item):
+                    summary["skipped"].append(
+                        {
+                            "title": item.title,
+                            "reason": "Har redan författare, synopsis och omslag.",
+                        }
+                    )
+                    continue
+
+                processed_count += 1
+                summary["processed"] = processed_count
+
+                query_text = ""
+
+                if item.isbn:
+                    query_text = item.isbn
+                else:
+                    query_text = " ".join(
+                        [part for part in [item.title, item.author] if part]
+                    ).strip()
+
+                results = search_all_sources(
+                    title=item.title or "",
+                    author=item.author or "",
+                    isbn=item.isbn or "",
+                    query_text=query_text,
+                    include_calibre=True,
+                )
+
+                best_result, best_score = choose_best_metadata(item, results)
+
+                if not best_result:
+                    summary["no_match"].append(
+                        {
+                            "title": item.title,
+                            "score": best_score,
+                        }
+                    )
+                    continue
+
+                apply_metadata_to_item(
+                    item=item,
+                    result=best_result,
+                    cover_dir=current_app.config["COVER_DIR"],
+                    overwrite=overwrite,
+                    write_to_file=True,
+                )
+
+                summary["updated"].append(
                     {
                         "title": item.title,
+                        "source": best_result.get("source", "Okänd källa"),
                         "score": best_score,
                     }
                 )
-                continue
 
-            apply_metadata_to_item(
-                item=item,
-                result=best_result,
-                cover_dir=current_app.config["COVER_DIR"],
-                overwrite=overwrite,
-                write_to_file=True,
+            db.session.commit()
+            flash(
+                f"Massuppdatering klar. Uppdaterade: {len(summary['updated'])}, utan säker träff: {len(summary['no_match'])}, hoppade över: {len(summary['skipped'])}.",
+                "success",
             )
-
-            summary["updated"].append(
-                {
-                    "title": item.title,
-                    "source": best_result.get("source", "Okänd källa"),
-                    "score": best_score,
-                }
-            )
-
-        db.session.commit()
-
-        flash(
-            f"Massuppdatering klar. Uppdaterade: {len(summary['updated'])}, utan säker träff: {len(summary['no_match'])}, hoppade över: {len(summary['skipped'])}.",
-            "success",
-        )
 
         items = (
             LibraryItem.query

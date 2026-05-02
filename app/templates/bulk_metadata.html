@@ -148,6 +148,22 @@
             font-size: 13px;
         }
 
+        th[data-sort] {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        th[data-sort]:hover {
+            background: #2a2f33;
+            color: white;
+        }
+
+        .sort-icon {
+            font-size: 11px;
+            margin-left: 4px;
+            opacity: 0.8;
+        }
+
         tr:last-child td {
             border-bottom: none;
         }
@@ -226,6 +242,56 @@
             gap: 10px;
             margin-top: 18px;
             flex-wrap: wrap;
+        }
+
+        .filter-panel {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: end;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .filter-label {
+            font-size: 12px;
+            color: #aeb7bd;
+            cursor: default;
+        }
+
+        .filter-input {
+            background: #171a1d;
+            color: white;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 5px;
+            padding: 7px 9px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+
+        .filter-input:focus {
+            outline: none;
+            border-color: rgba(255,255,255,0.3);
+        }
+
+        .filter-ext-list {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            padding: 6px 0;
+        }
+
+        .filter-ext-list label {
+            font-size: 13px;
+            color: #cdd5da;
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
 
         @media (max-width: 800px) {
@@ -484,7 +550,8 @@
                 </div>
 
                 <div class="actions">
-                    <button class="primary" type="submit">Hämta metadata för valda böcker</button>
+                    <button class="primary" type="submit" name="action" value="search">Sök metadata (Google Books + Calibre)</button>
+                    <button class="purple" type="submit" name="action" value="ai">Fråga AI om valda</button>
                     <button class="purple" type="button" onclick="selectAllBooks()">Välj alla</button>
                     <button type="button" onclick="selectMissingBooks()">Välj saknade</button>
                     <button type="button" onclick="clearSelection()">Avmarkera alla</button>
@@ -497,21 +564,75 @@
                 <div id="scanLog" style="max-height:150px; overflow-y:auto; font-size:13px; color:#aeb7bd; margin-top:8px;"></div>
             </div>
 
+            <div class="panel" style="margin-top:18px;">
+                <div class="filter-panel">
+                    <div class="filter-group">
+                        <span class="filter-label">Sök titel/författare</span>
+                        <input type="text" id="filterSearch" class="filter-input" placeholder="Sök titel/författare" style="width:220px;" oninput="applyFilters()">
+                    </div>
+                    <div class="filter-group">
+                        <span class="filter-label">Filtyp</span>
+                        <div class="filter-ext-list" id="filterExtensions"></div>
+                    </div>
+                    <div class="filter-group">
+                        <span class="filter-label">Status</span>
+                        <select id="filterStatus" class="filter-input" onchange="applyFilters()">
+                            <option value="">Alla</option>
+                            <option value="missing">Saknar metadata</option>
+                            <option value="has">Har metadata</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <span class="filter-label">Saknar specifikt fält</span>
+                        <select id="filterMissingField" class="filter-input" onchange="applyFilters()">
+                            <option value="">Alla</option>
+                            <option value="series">Saknar serie</option>
+                            <option value="description">Saknar beskrivning</option>
+                            <option value="author">Saknar författare</option>
+                            <option value="cover">Saknar omslag</option>
+                            <option value="isbn">Saknar ISBN</option>
+                            <option value="publisher">Saknar förlag</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <span class="filter-label">Manuellt redigerad</span>
+                        <select id="filterManual" class="filter-input" onchange="applyFilters()">
+                            <option value="">Alla</option>
+                            <option value="1">Ja</option>
+                            <option value="0">Nej</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             <table>
                 <thead>
                     <tr>
                         <th>Välj</th>
                         <th>Omslag</th>
-                        <th>Bok</th>
-                        <th>Status</th>
-                        <th>Filtyp</th>
+                        <th data-sort="title">Bok <span class="sort-icon">▲</span></th>
+                        <th data-sort="author">Författare <span class="sort-icon"></span></th>
+                        <th data-sort="status">Status <span class="sort-icon"></span></th>
+                        <th data-sort="ext">Filtyp <span class="sort-icon"></span></th>
                     </tr>
                 </thead>
 
                 <tbody>
                     {% for item in items %}
                         {% set is_missing = (not item.author or not item.description or not item.cover_path) %}
-                        <tr data-missing="{{ '1' if is_missing else '0' }}" data-item-id="{{ item.id }}">
+                        <tr data-title="{{ item.title|lower }}"
+                            data-author="{{ (item.author or '')|lower }}"
+                            data-ext="{{ item.extension|lower }}"
+                            data-status="{{ 'missing' if is_missing else 'has' }}"
+                            data-has-series="{{ '1' if item.series else '0' }}"
+                            data-has-description="{{ '1' if item.description else '0' }}"
+                            data-has-author="{{ '1' if item.author else '0' }}"
+                            data-has-cover="{{ '1' if item.cover_path else '0' }}"
+                            data-has-isbn="{{ '1' if item.isbn else '0' }}"
+                            data-has-publisher="{{ '1' if item.publisher else '0' }}"
+                            data-manual="{{ '1' if item.manual_metadata else '0' }}"
+                            data-missing="{{ '1' if is_missing else '0' }}"
+                            data-item-id="{{ item.id }}">
                             <td>
                                 <input
                                     type="checkbox"
@@ -533,13 +654,14 @@
 
                             <td onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
                                 <div class="book-title">{{ item.title }}</div>
-                                <div class="meta">
-                                    {% if item.author %}
-                                        {{ item.author }}
-                                    {% else %}
-                                        Okänd författare
-                                    {% endif %}
-                                </div>
+                            </td>
+
+                            <td class="author-cell" onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
+                                {% if item.author %}
+                                    {{ item.author }}
+                                {% else %}
+                                    <span class="meta">Okänd</span>
+                                {% endif %}
                             </td>
 
                             <td>
@@ -637,6 +759,142 @@
             var isError = el.classList.contains('error');
             console[isError ? 'error' : 'log']('[Colophon]', el.textContent.trim());
         });
+
+        // --- Sorting ---
+
+        var _currentSort = { key: 'title', dir: 1 };
+
+        function sortTable(key) {
+            if (_currentSort.key === key) {
+                _currentSort.dir *= -1;
+            } else {
+                _currentSort.key = key;
+                _currentSort.dir = 1;
+            }
+
+            document.querySelectorAll('th[data-sort]').forEach(function(th) {
+                var icon = th.querySelector('.sort-icon');
+                if (th.dataset.sort === key) {
+                    icon.textContent = _currentSort.dir === 1 ? '▲' : '▼';
+                } else {
+                    icon.textContent = '';
+                }
+            });
+
+            var tbody = document.querySelector('table tbody');
+            var rows = Array.from(tbody.querySelectorAll('tr'));
+
+            rows.sort(function(a, b) {
+                var aVal = a.dataset[key] || '';
+                var bVal = b.dataset[key] || '';
+
+                if (key === 'status') {
+                    var order = { 'missing': 0, 'has': 1 };
+                    var aOrd = order[aVal] !== undefined ? order[aVal] : 2;
+                    var bOrd = order[bVal] !== undefined ? order[bVal] : 2;
+                    return (aOrd - bOrd) * _currentSort.dir;
+                }
+
+                if (aVal < bVal) return -1 * _currentSort.dir;
+                if (aVal > bVal) return 1 * _currentSort.dir;
+                return 0;
+            });
+
+            rows.forEach(function(row) { tbody.appendChild(row); });
+        }
+
+        document.querySelectorAll('th[data-sort]').forEach(function(th) {
+            th.addEventListener('click', function() { sortTable(th.dataset.sort); });
+        });
+
+        // Default sort: Bok A-Ö (already set in HTML header icon)
+        (function() {
+            var tbody = document.querySelector('table tbody');
+            var rows = Array.from(tbody.querySelectorAll('tr'));
+            rows.sort(function(a, b) {
+                var aVal = a.dataset.title || '';
+                var bVal = b.dataset.title || '';
+                if (aVal < bVal) return -1;
+                if (aVal > bVal) return 1;
+                return 0;
+            });
+            rows.forEach(function(row) { tbody.appendChild(row); });
+        })();
+
+        // --- Filter extensions: populate from table rows ---
+
+        (function() {
+            var exts = new Set();
+            document.querySelectorAll('table tbody tr').forEach(function(row) {
+                var ext = row.dataset.ext;
+                if (ext) exts.add(ext);
+            });
+
+            var container = document.getElementById('filterExtensions');
+            Array.from(exts).sort().forEach(function(ext) {
+                var label = document.createElement('label');
+                var cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.value = ext;
+                cb.checked = true;
+                cb.addEventListener('change', applyFilters);
+                label.appendChild(cb);
+                label.appendChild(document.createTextNode(' ' + ext.replace('.', '').toUpperCase()));
+                container.appendChild(label);
+            });
+        })();
+
+        // --- Filtering ---
+
+        var _missingFieldAttr = {
+            'series':      'hasSeries',
+            'description': 'hasDescription',
+            'author':      'hasAuthor',
+            'cover':       'hasCover',
+            'isbn':        'hasIsbn',
+            'publisher':   'hasPublisher'
+        };
+
+        function applyFilters() {
+            var search = document.getElementById('filterSearch').value.toLowerCase().trim();
+            var status = document.getElementById('filterStatus').value;
+            var missingField = document.getElementById('filterMissingField').value;
+            var manual = document.getElementById('filterManual').value;
+
+            var activeExts = new Set();
+            document.querySelectorAll('#filterExtensions input[type="checkbox"]').forEach(function(cb) {
+                if (cb.checked) activeExts.add(cb.value);
+            });
+
+            document.querySelectorAll('table tbody tr').forEach(function(row) {
+                var show = true;
+
+                if (show && search) {
+                    var title = row.dataset.title || '';
+                    var author = row.dataset.author || '';
+                    if (title.indexOf(search) === -1 && author.indexOf(search) === -1) show = false;
+                }
+
+                if (show && activeExts.size > 0) {
+                    if (!activeExts.has(row.dataset.ext || '')) show = false;
+                }
+
+                if (show && status) {
+                    if (row.dataset.status !== status) show = false;
+                }
+
+                if (show && missingField) {
+                    var attrKey = _missingFieldAttr[missingField];
+                    if (attrKey && row.dataset[attrKey] !== '0') show = false;
+                }
+
+                if (show && manual !== '') {
+                    if (row.dataset.manual !== manual) show = false;
+                }
+
+                row.style.display = show ? '' : 'none';
+            });
+        }
     </script>
 
 <div id="bookModal" style="display:none;">
@@ -875,13 +1133,19 @@
         if (!row) return;
 
         var titleEl = row.querySelector('.book-title');
-        if (titleEl && data.title) titleEl.textContent = data.title;
+        if (titleEl && data.title) {
+            titleEl.textContent = data.title;
+            row.dataset.title = data.title.toLowerCase();
+        }
 
-        var metaEl = row.querySelector('.meta');
-        if (metaEl) metaEl.textContent = data.author || 'Okänd författare';
+        var authorEl = row.querySelector('.author-cell');
+        if (authorEl) {
+            authorEl.textContent = data.author || 'Okänd';
+            row.dataset.author = (data.author || '').toLowerCase();
+        }
 
-        // Mark row as saved
-        var statusCell = row.querySelector('td:nth-child(4)');
+        // Mark row as saved — status column is now td:nth-child(5)
+        var statusCell = row.querySelector('td:nth-child(5)');
         if (statusCell) {
             var alreadySaved = false;
             statusCell.querySelectorAll('.badge').forEach(function(b) {
