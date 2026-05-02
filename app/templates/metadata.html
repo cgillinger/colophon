@@ -420,7 +420,7 @@
 
     <div class="fetch-panel">
         <strong>Automatisk metadata</strong>
-        <form action="{{ url_for('metadata.run_bookf_for_item', item_id=item.id) }}" method="post">
+        <form action="{{ url_for('metadata.enrich_item_metadata', item_id=item.id) }}" method="post">
             <button class="button primary" type="submit">🔍 Hämta metadata</button>
         </form>
         {% if ai_configured %}

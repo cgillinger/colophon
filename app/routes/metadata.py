@@ -65,18 +65,18 @@ SUPPORTED_LANGUAGES = [
 
 
 def _pending_session_key(item_id):
-    return f"pending_bookf_{item_id}"
+    return f"pending_enrichment_{item_id}"
 
 
-def _bookf_preview_key(item_id):
-    return f"bookf_preview_{item_id}"
+def _enrichment_preview_key(item_id):
+    return f"enrichment_preview_{item_id}"
 
 
 def _ai_preview_key(item_id):
     return f"ai_preview_{item_id}"
 
 
-_BOOKF_FIELDS = [
+_ENRICHMENT_FIELDS = [
     ("title", "Titel"),
     ("author", "Författare"),
     ("description", "Synopsis"),
@@ -88,9 +88,9 @@ _BOOKF_FIELDS = [
 ]
 
 
-def _build_bookf_diff(item, fetched):
+def _build_enrichment_diff(item, fetched):
     rows = []
-    for key, label in _BOOKF_FIELDS:
+    for key, label in _ENRICHMENT_FIELDS:
         current_raw = getattr(item, key, None)
         current = (str(current_raw).strip() if current_raw not in (None, "") else "")
         fetched_raw = fetched.get(key)
@@ -472,8 +472,8 @@ def bulk_metadata():
     )
 
 
-@metadata_bp.route("/metadata/<int:item_id>/bookf", methods=["POST"])
-def run_bookf_for_item(item_id):
+@metadata_bp.route("/metadata/<int:item_id>/enrich", methods=["POST"])
+def enrich_item_metadata(item_id):
     item = get_item_or_404(item_id)
 
     source_path = Path(item.file_path)
@@ -486,7 +486,7 @@ def run_bookf_for_item(item_id):
         flash("Metadatahämtning stöder bara EPUB, MOBI, AZW3 och KEPUB.", "error")
         return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
-    lock_path = Path("/tmp") / f"colophon_bookf_{item.id}.lock"
+    lock_path = Path("/tmp") / f"colophon_enrichment_{item.id}.lock"
 
     if lock_path.exists():
         flash("Metadatahämtning körs redan på denna bok. Vänta tills den är klar.", "error")
@@ -540,7 +540,7 @@ def run_bookf_for_item(item_id):
                 except OSError:
                     cover_path_for_preview = downloaded
 
-        old_preview = session.get(_bookf_preview_key(item.id))
+        old_preview = session.get(_enrichment_preview_key(item.id))
         if (
             old_preview
             and old_preview.get("fetched", {}).get("cover_path")
@@ -601,14 +601,14 @@ def run_bookf_for_item(item_id):
                 f"Granska noggrant innan du sparar."
             )
 
-        session[_bookf_preview_key(item.id)] = {
+        session[_enrichment_preview_key(item.id)] = {
             "fetched": fetched_payload,
             "sources_used": [best.get("source", "")] if best.get("source") else [],
             "validation_warning": validation_warning,
             "score": best_score,
         }
 
-        return redirect(url_for("metadata.bookf_preview", item_id=item.id))
+        return redirect(url_for("metadata.enrichment_preview", item_id=item.id))
 
     except Exception as error:
         db.session.rollback()
@@ -622,16 +622,16 @@ def run_bookf_for_item(item_id):
             logger.debug("Tystat fel ignorerat", exc_info=True)
 
 
-@metadata_bp.route("/metadata/<int:item_id>/bookf/preview", methods=["GET"])
-def bookf_preview(item_id):
+@metadata_bp.route("/metadata/<int:item_id>/enrich/preview", methods=["GET"])
+def enrichment_preview(item_id):
     item = get_item_or_404(item_id)
-    preview = session.get(_bookf_preview_key(item.id))
+    preview = session.get(_enrichment_preview_key(item.id))
     if not preview:
         flash("Ingen hämtad metadata att granska. Kör hämtningen först.", "error")
         return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
     fetched = preview.get("fetched") or {}
-    rows = _build_bookf_diff(item, fetched)
+    rows = _build_enrichment_diff(item, fetched)
 
     cover_path = fetched.get("cover_path") or ""
     has_fetched_cover = bool(cover_path) and os.path.exists(cover_path)
@@ -647,7 +647,7 @@ def bookf_preview(item_id):
             cover_default_check = True
 
     return render_template(
-        "metadata_bookf_preview.html",
+        "metadata_enrichment_preview.html",
         item=item,
         rows=rows,
         cover_status=cover_status,
@@ -658,19 +658,19 @@ def bookf_preview(item_id):
     )
 
 
-@metadata_bp.route("/metadata/<int:item_id>/bookf/preview-cover")
-def bookf_preview_cover(item_id):
-    preview = session.get(_bookf_preview_key(item_id))
+@metadata_bp.route("/metadata/<int:item_id>/enrich/preview-cover")
+def enrichment_preview_cover(item_id):
+    preview = session.get(_enrichment_preview_key(item_id))
     cover_path = (preview or {}).get("fetched", {}).get("cover_path")
     if not cover_path or not os.path.exists(cover_path):
         return ("", 404)
     return send_file(cover_path)
 
 
-@metadata_bp.route("/metadata/<int:item_id>/bookf/apply", methods=["POST"])
-def bookf_apply(item_id):
+@metadata_bp.route("/metadata/<int:item_id>/enrich/apply", methods=["POST"])
+def enrichment_apply(item_id):
     item = get_item_or_404(item_id)
-    preview = session.get(_bookf_preview_key(item.id))
+    preview = session.get(_enrichment_preview_key(item.id))
     if not preview:
         flash("Förhandsgranskningen har gått ut. Kör hämtningen igen.", "error")
         return redirect(url_for("metadata.metadata_item", item_id=item.id))
@@ -697,7 +697,7 @@ def bookf_apply(item_id):
             os.unlink(cover_src)
         except OSError:
             pass
-    session.pop(_bookf_preview_key(item.id), None)
+    session.pop(_enrichment_preview_key(item.id), None)
 
     db_updated = apply_result.get("db_updated", 0)
     cover_saved = apply_result.get("cover_saved", False)
@@ -716,10 +716,10 @@ def bookf_apply(item_id):
     return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
 
-@metadata_bp.route("/metadata/<int:item_id>/bookf/cancel", methods=["POST"])
-def bookf_cancel(item_id):
+@metadata_bp.route("/metadata/<int:item_id>/enrich/cancel", methods=["POST"])
+def enrichment_cancel(item_id):
     item = get_item_or_404(item_id)
-    preview = session.pop(_bookf_preview_key(item.id), None)
+    preview = session.pop(_enrichment_preview_key(item.id), None)
     cover_src = (preview or {}).get("fetched", {}).get("cover_path")
     if cover_src and os.path.exists(cover_src):
         try:
@@ -728,6 +728,35 @@ def bookf_cancel(item_id):
             pass
     flash("Förhandsgranskning avbruten. Inget sparades.", "success")
     return redirect(url_for("metadata.metadata_item", item_id=item.id))
+
+
+# ---------------------------------------------------------------------------
+# Backward-compatible aliases for old /bookf/* URL paths
+# ---------------------------------------------------------------------------
+
+@metadata_bp.route("/metadata/<int:item_id>/bookf", methods=["POST"])
+def run_bookf_for_item(item_id):
+    return enrich_item_metadata(item_id)
+
+
+@metadata_bp.route("/metadata/<int:item_id>/bookf/preview", methods=["GET"])
+def bookf_preview(item_id):
+    return redirect(url_for("metadata.enrichment_preview", item_id=item_id))
+
+
+@metadata_bp.route("/metadata/<int:item_id>/bookf/preview-cover")
+def bookf_preview_cover(item_id):
+    return enrichment_preview_cover(item_id)
+
+
+@metadata_bp.route("/metadata/<int:item_id>/bookf/apply", methods=["POST"])
+def bookf_apply(item_id):
+    return enrichment_apply(item_id)
+
+
+@metadata_bp.route("/metadata/<int:item_id>/bookf/cancel", methods=["POST"])
+def bookf_cancel(item_id):
+    return enrichment_cancel(item_id)
 
 
 # Fields shown in the AI preview table (display order)
