@@ -1420,7 +1420,13 @@ def ai_metadata_json(item_id):
     if not os.environ.get("COLOPHON_MISTRAL_API_KEY"):
         return jsonify({"ok": False, "error": "not_configured"}), 400
 
-    result = fetch_ai_suggestions(item)
+    requested_fields = [
+        f.strip()
+        for f in request.args.get("fields", "").split(",")
+        if f.strip()
+    ]
+
+    result = fetch_ai_suggestions(item, fields=requested_fields or None)
 
     if not result["ok"]:
         return jsonify({"ok": False, "error": result["error"]}), 500

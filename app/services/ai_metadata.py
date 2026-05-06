@@ -53,6 +53,20 @@ _KNOWN_FIELDS = {
     "description", "title", "authors", "publisher",
 }
 
+# Map UI/DB field names to AI prompt field names. Fields mapped to None
+# cannot be reliably suggested by the AI and are excluded.
+_FIELD_MAP = {
+    "title": "title",
+    "author": "authors",
+    "series": "series",
+    "series_index": "series_index",
+    "isbn": None,
+    "publisher": "publisher",
+    "language": "language",
+    "description": "description",
+    "genres": "subjects",
+}
+
 
 def _log_usage(provider, model, usage, book_id=None, book_title=None):
     try:
@@ -114,14 +128,30 @@ def test_ai_connection() -> dict:
     return {"ok": True, "models": models}
 
 
-def fetch_ai_suggestions(item: LibraryItem) -> dict:
-    """Returns {"ok": True, "suggestions": {...}} or {"ok": False, "error": "..."}"""
+def fetch_ai_suggestions(item: LibraryItem, fields=None) -> dict:
+    """Returns {"ok": True, "suggestions": {...}} or {"ok": False, "error": "..."}
+
+    If `fields` is provided (list of UI field names), the prompt is narrowed
+    to ask only for those fields and other suggestions are dropped.
+    """
     api_key = os.environ.get("COLOPHON_MISTRAL_API_KEY", "").strip()
     if not api_key:
         return {"ok": False, "error": "no_key"}
 
     model = os.environ.get("COLOPHON_MISTRAL_MODEL", "").strip() or _DEFAULT_MODEL
     description = (item.description or "")[:2000]
+
+    if fields:
+        ai_fields = [_FIELD_MAP[f] for f in fields if f in _FIELD_MAP and _FIELD_MAP[f]]
+        if not ai_fields:
+            return {"ok": False, "error": "no_valid_fields"}
+        fields_instruction = (
+            f"Only suggest values for these fields: {', '.join(ai_fields)}. "
+            "Return null for all other fields."
+        )
+    else:
+        ai_fields = None
+        fields_instruction = ""
 
     prompt = _PROMPT.format(
         title=item.title or "",
@@ -131,6 +161,11 @@ def fetch_ai_suggestions(item: LibraryItem) -> dict:
         language=item.language or "",
         description=description,
     )
+    if fields_instruction:
+        prompt = prompt.replace(
+            "Book metadata:",
+            fields_instruction + "\n\nBook metadata:",
+        )
 
     headers = {
         "Authorization": f"Bearer {api_key}",
