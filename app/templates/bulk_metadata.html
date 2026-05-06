@@ -478,12 +478,22 @@
                             {% for row in summary.updated %}
                                 <div>
                                     ✓ {{ row.title }}<br>
-                                    <span class="meta">{{ row.source }} · matchpoäng {{ row.score }}</span>
+                                    <span class="meta">{{ row.source }} · matchpoäng {{ row.score }}
+                                    {%- if row.file_write_error %} · <em>filskrivning: {{ row.file_write_error }}</em>{% endif %}</span>
                                 </div>
                                 <br>
                             {% endfor %}
                         </div>
                     </div>
+
+                    {% if summary.file_write_failed %}
+                    <div class="summary-box">
+                        <h3>Filskrivning misslyckades: {{ summary.file_write_failed }}</h3>
+                        <div class="summary-list">
+                            <div class="meta">Metadata sparades i biblioteket för {{ summary.file_write_failed }} bok{{ 'er' if summary.file_write_failed != 1 else '' }}, men kunde inte skrivas till e-boksfilen. Vanliga orsaker: ebook-meta saknas, formatet stöder inte filskrivning.</div>
+                        </div>
+                    </div>
+                    {% endif %}
 
                     {% if summary.review_needed %}
                     <div class="summary-box">
