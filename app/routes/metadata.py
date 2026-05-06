@@ -1,12 +1,16 @@
+import json
 import logging
 import os
+import queue
 import shutil
+import threading
 from pathlib import Path
 
 from app.services.ai_metadata import fetch_ai_suggestions
 
 from flask import (
     Blueprint,
+    Response,
     current_app,
     flash,
     jsonify,
@@ -23,23 +27,36 @@ logger = logging.getLogger(__name__)
 from app.models import db, LibraryItem
 from app.services.metadata_sources import (
     choose_best_metadata,
+    choose_best_metadata_explained,
+    classify_enrichment_result,
     download_cover_to_file,
     search_all_sources,
+    search_all_sources_with_status,
     search_cover_candidates,
 )
 from app.services.metadata_writer import (
+    FILE_WRITE_ERROR_MESSAGES,
     apply_metadata_to_item,
     item_has_good_metadata,
     write_metadata_to_file,
 )
 from app.services.metadata_pipeline import (
     apply_enrichment_result as _pipeline_apply,
+    build_search_input,
     run_metadata_enrichment,
 )
 from app.routes.helpers import get_item_or_404, save_uploaded_cover, get_int_form_value
 
 
 metadata_bp = Blueprint("metadata", __name__)
+
+
+def _file_write_warning(error_code):
+    """Return a Swedish warning string for a file-write error code, or None."""
+    if not error_code:
+        return None
+    label = FILE_WRITE_ERROR_MESSAGES.get(error_code, error_code)
+    return f"Metadata sparades i biblioteket, men kunde inte skrivas till e-boksfilen ({label})."
 
 
 @metadata_bp.route("/")
@@ -201,11 +218,14 @@ def metadata_item(item_id):
             written_text["language"] = language
         if description:
             written_text["description"] = description
-        write_metadata_to_file(item, written_text, cover_to_embed)
+        write_result = write_metadata_to_file(item, written_text, cover_to_embed)
 
         db.session.commit()
 
         flash("Metadata sparad.", "success")
+        warning = _file_write_warning(write_result.get("error") if not write_result["ok"] else None)
+        if warning:
+            flash(warning, "warning")
         return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
     pending = session.get(_pending_session_key(item.id))
@@ -279,7 +299,7 @@ def apply_cover(item_id):
     item.cover_locked = True
     item.manual_metadata = True
 
-    write_metadata_to_file(item, {}, cover_path)
+    write_result = write_metadata_to_file(item, {}, cover_path)
 
     db.session.commit()
 
@@ -287,6 +307,9 @@ def apply_cover(item_id):
         flash(f"Omslag hämtat från {source}.", "success")
     else:
         flash("Omslag hämtat och sparat.", "success")
+    warning = _file_write_warning(write_result.get("error") if not write_result["ok"] else None)
+    if warning:
+        flash(warning, "warning")
 
     return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
@@ -323,7 +346,10 @@ def bulk_metadata():
 
         summary = {
             "updated": [],
+            "review_needed": [],
             "no_match": [],
+            "source_errors": 0,
+            "file_write_failed": 0,
             "skipped": [],
             "limited": False,
             "processed": 0,
@@ -371,7 +397,7 @@ def bulk_metadata():
                         summary["no_match"].append({"title": item.title, "score": 0})
                         continue
 
-                    apply_metadata_to_item(
+                    ai_apply = apply_metadata_to_item(
                         item=item,
                         result=high_fields,
                         cover_dir=current_app.config["COVER_DIR"],
@@ -379,19 +405,26 @@ def bulk_metadata():
                         write_to_file=True,
                         selected_fields=set(high_fields.keys()),
                     )
+                    if not ai_apply["file_updated"] and ai_apply.get("file_write_error"):
+                        summary["file_write_failed"] += 1
                     summary["updated"].append(
                         {
                             "title": item.title,
                             "source": "Mistral AI",
                             "score": len(high_fields),
+                            "file_write_error": ai_apply.get("file_write_error"),
                         }
                     )
 
                 db.session.commit()
-                flash(
-                    f"AI-körning klar. Uppdaterade: {len(summary['updated'])}, inga högsäkra förslag: {len(summary['no_match'])}, hoppade över: {len(summary['skipped'])}.",
-                    "success",
-                )
+                ai_parts = [f"Uppdaterade: {len(summary['updated'])}"]
+                if summary["file_write_failed"]:
+                    ai_parts.append(f"filskrivning misslyckades: {summary['file_write_failed']}")
+                ai_parts += [
+                    f"inga högsäkra förslag: {len(summary['no_match'])}",
+                    f"hoppade över: {len(summary['skipped'])}",
+                ]
+                flash("AI-körning klar. " + ", ".join(ai_parts) + ".", "success")
         else:
             processed_count = 0
 
@@ -412,55 +445,86 @@ def bulk_metadata():
                 processed_count += 1
                 summary["processed"] = processed_count
 
-                query_text = ""
+                # Use the priority-based search input (Phase 4)
+                search_inp = build_search_input(item)
 
-                if item.isbn:
-                    query_text = item.isbn
-                else:
-                    query_text = " ".join(
-                        [part for part in [item.title, item.author] if part]
-                    ).strip()
-
-                results = search_all_sources(
-                    title=item.title or "",
-                    author=item.author or "",
-                    isbn=item.isbn or "",
-                    query_text=query_text,
+                search_outcome = search_all_sources_with_status(
+                    title=search_inp["title"],
+                    author=search_inp["author"],
+                    isbn=search_inp["isbn"],
+                    query_text=search_inp["query_text"],
                     include_calibre=True,
                 )
+                candidates = search_outcome["candidates"]
+                source_results = search_outcome["source_results"]
 
-                best_result, best_score = choose_best_metadata(item, results)
+                # If all sources errored (not just "no result"), count separately
+                all_errored = all(
+                    not sr.get("ok") and sr.get("status") not in ("no_result",)
+                    for sr in source_results
+                )
+                if not candidates and all_errored:
+                    summary["source_errors"] += 1
+                    continue
 
-                if not best_result:
+                scoring = choose_best_metadata_explained(item, candidates)
+                best = scoring["best"]
+                classification = scoring["classification"]
+
+                if not best or classification in ("no_match", "manual_only"):
                     summary["no_match"].append(
                         {
                             "title": item.title,
-                            "score": best_score,
+                            "score": scoring["score"],
                         }
                     )
                     continue
 
-                apply_metadata_to_item(
+                if classification == "review_needed":
+                    # Medium-confidence match — flag for manual review, do not apply
+                    summary["review_needed"].append(
+                        {
+                            "title": item.title,
+                            "source": best.get("source", "Okänd källa"),
+                            "score": scoring["score"],
+                        }
+                    )
+                    continue
+
+                # classification == "auto_apply" — high confidence, apply
+                apply_result = apply_metadata_to_item(
                     item=item,
-                    result=best_result,
+                    result=best,
                     cover_dir=current_app.config["COVER_DIR"],
                     overwrite=overwrite,
                     write_to_file=True,
                 )
 
+                if not apply_result["file_updated"] and apply_result.get("file_write_error"):
+                    summary["file_write_failed"] += 1
+
                 summary["updated"].append(
                     {
                         "title": item.title,
-                        "source": best_result.get("source", "Okänd källa"),
-                        "score": best_score,
+                        "source": best.get("source", "Okänd källa"),
+                        "score": scoring["score"],
+                        "file_write_error": apply_result.get("file_write_error"),
                     }
                 )
 
             db.session.commit()
-            flash(
-                f"Massuppdatering klar. Uppdaterade: {len(summary['updated'])}, utan säker träff: {len(summary['no_match'])}, hoppade över: {len(summary['skipped'])}.",
-                "success",
-            )
+            parts = [f"Sparade: {len(summary['updated'])}"]
+            if summary["review_needed"]:
+                parts.append(f"granskning rekommenderas: {len(summary['review_needed'])}")
+            if summary["no_match"]:
+                parts.append(f"ingen säker träff: {len(summary['no_match'])}")
+            if summary["source_errors"]:
+                parts.append(f"källfel: {summary['source_errors']}")
+            if summary["file_write_failed"]:
+                parts.append(f"filskrivning misslyckades: {summary['file_write_failed']}")
+            if summary["skipped"]:
+                parts.append(f"hoppade över: {len(summary['skipped'])}")
+            flash("Massuppdatering klar. " + ", ".join(parts) + ".", "success")
 
         items = (
             LibraryItem.query
@@ -472,6 +536,85 @@ def bulk_metadata():
         "bulk_metadata.html",
         items=items,
         summary=summary,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Ephemeral result store for the SSE enrichment flow
+# (single-user app — key is item_id, value is the preview dict)
+# ---------------------------------------------------------------------------
+_enrichment_cache: dict = {}
+
+
+@metadata_bp.route("/metadata/<int:item_id>/enrich/stream")
+def enrich_stream(item_id):
+    """SSE endpoint: run metadata enrichment and stream stage-level progress.
+
+    The frontend opens this URL with EventSource, shows each progress message,
+    then redirects to the enrichment_preview route when "done" is received.
+    The enrichment result is stored in _enrichment_cache so enrichment_preview
+    can read it without needing the Flask session from within the thread.
+    """
+    item = get_item_or_404(item_id)
+
+    def _error_stream(message):
+        def _gen():
+            yield f"data: {json.dumps({'type': 'error', 'message': message})}\n\n"
+        return Response(_gen(), mimetype="text/event-stream",
+                        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+    if not item.file_path or not Path(item.file_path).exists():
+        return _error_stream("Bokfilen hittades inte på disk.")
+    if Path(item.file_path).suffix.lower() not in {".epub", ".mobi", ".azw3", ".kepub"}:
+        return _error_stream("Metadatahämtning stöder bara EPUB, MOBI, AZW3 och KEPUB.")
+
+    app = current_app._get_current_object()
+    ev_queue = queue.SimpleQueue()
+
+    def _run():
+        with app.app_context():
+            from app.models import LibraryItem, db as _db
+            from app.services.metadata_pipeline import run_metadata_enrichment as _enrich
+            fresh_item = _db.session.get(LibraryItem, item_id)
+            if not fresh_item:
+                ev_queue.put({"type": "error", "message": "Boken hittades inte."})
+                ev_queue.put(None)
+                return
+            try:
+                result = _enrich(
+                    fresh_item,
+                    cover_dir=app.config["COVER_DIR"],
+                    on_progress=ev_queue.put,
+                )
+                if result["ok"]:
+                    _enrichment_cache[item_id] = {
+                        "fetched": result["fetched_payload"],
+                        "sources_used": result["sources_used"],
+                        "validation_warning": result["validation_warning"],
+                        "score": result["score"],
+                    }
+                    ev_queue.put({"type": "done", "ok": True})
+                else:
+                    ev_queue.put({"type": "done", "ok": False, "message": result["error"]})
+            except Exception as exc:
+                app.logger.exception("enrich_stream failed for item %s", item_id)
+                ev_queue.put({"type": "error", "message": str(exc)})
+            finally:
+                ev_queue.put(None)
+
+    threading.Thread(target=_run, daemon=True).start()
+
+    def generate():
+        while True:
+            ev = ev_queue.get()
+            if ev is None:
+                break
+            yield f"data: {json.dumps(ev)}\n\n"
+
+    return Response(
+        generate(),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 
@@ -540,6 +683,13 @@ def enrich_item_metadata(item_id):
 def enrichment_preview(item_id):
     item = get_item_or_404(item_id)
     preview = session.get(_enrichment_preview_key(item.id))
+
+    # SSE flow stores the result in the module-level cache because Flask session
+    # is not writable from background threads. Move it into session now.
+    if not preview and item_id in _enrichment_cache:
+        preview = _enrichment_cache.pop(item_id)
+        session[_enrichment_preview_key(item.id)] = preview
+
     if not preview:
         flash("Ingen hämtad metadata att granska. Kör hämtningen först.", "error")
         return redirect(url_for("metadata.metadata_item", item_id=item.id))
@@ -613,6 +763,7 @@ def enrichment_apply(item_id):
     db_updated = apply_result.get("db_updated", 0)
     cover_saved = apply_result.get("cover_saved", False)
     file_updated = apply_result.get("file_updated", False)
+    file_write_error = apply_result.get("file_write_error")
 
     total = db_updated + (1 if cover_saved else 0)
     if total:
@@ -622,6 +773,9 @@ def enrichment_apply(item_id):
         if file_updated:
             parts.append("filen uppdaterad")
         flash("Metadata sparad (" + ", ".join(parts) + ").", "success")
+        warning = _file_write_warning(file_write_error)
+        if warning:
+            flash(warning, "warning")
     else:
         flash("Inga fält valdes — inget sparades.", "success")
     return redirect(url_for("metadata.metadata_item", item_id=item.id))
@@ -854,10 +1008,13 @@ def save_metadata_json(item_id):
         if val:
             written_text[field] = val
 
-    write_metadata_to_file(item, written_text, None)
+    write_result = write_metadata_to_file(item, written_text, None)
     db.session.commit()
 
-    return jsonify({"ok": True})
+    resp = {"ok": True}
+    if not write_result["ok"] and write_result.get("error") not in ("no_fields", "not_installed", "unsupported_format"):
+        resp["file_write_warning"] = write_result.get("error")
+    return jsonify(resp)
 
 
 @metadata_bp.route("/metadata/<int:item_id>/fetch-json", methods=["POST"])

@@ -22,6 +22,17 @@ _TEXT_FIELDS = (
 
 _FILE_WRITABLE_EXTS = {".epub", ".mobi", ".azw3", ".kepub"}
 
+# Human-readable Swedish labels for file_write_error codes (used by routes)
+FILE_WRITE_ERROR_MESSAGES = {
+    "not_installed":      "ebook-meta saknas på servern",
+    "unsupported_format": "formatet stöder inte filskrivning",
+    "file_not_found":     "e-boksfilen hittades inte på disk",
+    "no_path":            "filsökväg saknas",
+    "command_failed":     "ebook-meta-kommandot misslyckades",
+    "timeout":            "ebook-meta tog för lång tid",
+    "no_fields":          "inga fält att skriva",
+}
+
 
 def _stringify(value):
     if value is None:
@@ -46,6 +57,15 @@ def apply_metadata_to_item(
     mode — it must be selected explicitly via selected_fields.
 
     selected_fields=set(...) means: write only those exact fields.
+
+    Returns:
+        db_updated        int   — number of DB text fields written
+        file_updated      bool  — True if ebook file was written successfully
+        file_write_error  str | None — error code when file_updated is False and
+                                       write_to_file was True; see
+                                       FILE_WRITE_ERROR_MESSAGES for labels
+        cover_saved       bool  — True if cover was saved to the covers dir
+        cover_attempted   bool  — True if a cover URL or local path was present
     """
     is_explicit = selected_fields is not None
     selected = selected_fields or set()
@@ -111,32 +131,53 @@ def apply_metadata_to_item(
     item.manual_metadata = True
 
     file_updated = False
+    file_write_error = None
     if write_to_file:
-        file_updated = write_metadata_to_file(
+        write_result = write_metadata_to_file(
             item=item,
             written_text=written_text,
             cover_path=cover_dest_for_file,
         )
+        file_updated = write_result["ok"]
+        if not file_updated:
+            file_write_error = write_result["error"]
 
     return {
         "db_updated": db_updated,
         "file_updated": file_updated,
+        "file_write_error": file_write_error,
         "cover_saved": cover_saved,
         "cover_attempted": bool(cover_url) or bool(cover_local_path),
     }
 
 
 def write_metadata_to_file(item, written_text, cover_path):
+    """Write metadata fields and/or cover to the ebook file via ebook-meta.
+
+    Returns a dict:
+        ok     bool        — True if ebook-meta ran and exited 0
+        error  str | None  — error code when ok is False; see
+                             FILE_WRITE_ERROR_MESSAGES for human-readable labels
+                             Possible values:
+                               "no_path"            — item has no file_path
+                               "file_not_found"     — file does not exist on disk
+                               "unsupported_format" — extension not in writable set
+                               "not_installed"      — ebook-meta binary not found
+                               "no_fields"          — nothing to write
+                               "command_failed"     — non-zero exit or exception
+                               "timeout"            — subprocess timed out
+    """
     file_path_value = getattr(item, "file_path", "") or ""
     if not file_path_value:
-        return False
+        return {"ok": False, "error": "no_path"}
+
     file_path = Path(file_path_value)
     if not file_path.exists():
-        return False
+        return {"ok": False, "error": "file_not_found"}
     if file_path.suffix.lower() not in _FILE_WRITABLE_EXTS:
-        return False
+        return {"ok": False, "error": "unsupported_format"}
     if not shutil.which("ebook-meta"):
-        return False
+        return {"ok": False, "error": "not_installed"}
 
     args = ["ebook-meta", str(file_path)]
     if "title" in written_text:
@@ -159,7 +200,7 @@ def write_metadata_to_file(item, written_text, cover_path):
         args += ["--cover", cover_path]
 
     if len(args) <= 2:
-        return False
+        return {"ok": False, "error": "no_fields"}
 
     try:
         run_result = subprocess.run(
@@ -168,9 +209,12 @@ def write_metadata_to_file(item, written_text, cover_path):
             text=True,
             timeout=60,
         )
+    except subprocess.TimeoutExpired:
+        logger.warning("ebook-meta timeout för %s", file_path)
+        return {"ok": False, "error": "timeout"}
     except Exception as exc:
         logger.warning("ebook-meta misslyckades: %s", exc)
-        return False
+        return {"ok": False, "error": "command_failed"}
 
     if run_result.returncode != 0:
         logger.warning(
@@ -178,9 +222,9 @@ def write_metadata_to_file(item, written_text, cover_path):
             run_result.returncode,
             (run_result.stderr or run_result.stdout or "").strip(),
         )
-        return False
+        return {"ok": False, "error": "command_failed"}
 
-    return True
+    return {"ok": True, "error": None}
 
 
 def item_has_good_metadata(item):

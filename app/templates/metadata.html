@@ -420,8 +420,11 @@
 
     <div class="fetch-panel">
         <strong>Automatisk metadata</strong>
-        <form action="{{ url_for('metadata.enrich_item_metadata', item_id=item.id) }}" method="post">
-            <button class="button primary" type="submit">🔍 Hämta metadata</button>
+        <div id="enrich-progress" style="display:none; margin: 0.5rem 0; padding: 0.5rem; background: #f0f4ff; border-radius: 4px; font-size: 0.85rem; color: #444;">
+            <span id="enrich-status-text">Söker...</span>
+        </div>
+        <form id="enrichForm" action="{{ url_for('metadata.enrich_item_metadata', item_id=item.id) }}" method="post">
+            <button id="enrichBtn" class="button primary" type="submit">🔍 Hämta metadata</button>
         </form>
         {% if ai_configured %}
         <form action="{{ url_for('metadata.run_ai_for_item', item_id=item.id) }}" method="post">
@@ -436,6 +439,68 @@
             var isError = el.classList.contains('error');
             console[isError ? 'error' : 'log']('[Colophon]', el.textContent.trim());
         });
+
+        (function () {
+            var form = document.getElementById('enrichForm');
+            var btn = document.getElementById('enrichBtn');
+            var progressDiv = document.getElementById('enrich-progress');
+            var statusText = document.getElementById('enrich-status-text');
+            var streamUrl = '{{ url_for("metadata.enrich_stream", item_id=item.id) }}';
+            var previewUrl = '{{ url_for("metadata.enrichment_preview", item_id=item.id) }}';
+
+            if (!window.EventSource) {
+                return; // Fall back to normal form submit
+            }
+
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                btn.disabled = true;
+                btn.textContent = '⏳ Söker...';
+                progressDiv.style.display = 'block';
+                statusText.textContent = 'Söker externa källor...';
+
+                var es = new EventSource(streamUrl);
+
+                es.onmessage = function (event) {
+                    var data;
+                    try { data = JSON.parse(event.data); } catch (_) { return; }
+
+                    if (data.type === 'progress' && data.message) {
+                        statusText.textContent = data.message;
+                    } else if (data.type === 'done') {
+                        es.close();
+                        if (data.ok) {
+                            statusText.textContent = 'Klar! Öppnar förhandsgranskning...';
+                            window.location.href = previewUrl;
+                        } else {
+                            _showError(data.message || 'Inga träffar hittades.');
+                        }
+                    } else if (data.type === 'error') {
+                        es.close();
+                        _showError(data.message || 'Något gick fel.');
+                    }
+                };
+
+                es.onerror = function () {
+                    es.close();
+                    // Network error — fall back to regular synchronous form submit
+                    progressDiv.style.display = 'none';
+                    btn.disabled = false;
+                    btn.textContent = '🔍 Hämta metadata';
+                    form.submit();
+                };
+
+                function _showError(msg) {
+                    progressDiv.style.display = 'none';
+                    btn.disabled = false;
+                    btn.textContent = '🔍 Hämta metadata';
+                    var errDiv = document.createElement('div');
+                    errDiv.className = 'message error';
+                    errDiv.textContent = msg;
+                    form.parentNode.insertBefore(errDiv, form);
+                }
+            });
+        })();
     </script>
 </body>
 </html>

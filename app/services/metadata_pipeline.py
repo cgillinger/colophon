@@ -106,8 +106,12 @@ def run_metadata_enrichment(
     include_google=True,
     include_calibre=True,
     local_metadata=None,
+    on_progress=None,
 ):
     """Search external sources for the best metadata candidate.
+
+    Emits stage-level progress events via on_progress when provided.
+    Stages: read_file_metadata → google_books → calibre → scoring → preview_ready
 
     Always reads fresh metadata from the ebook file before building the
     search input, so ISBN or title/author embedded in the file takes
@@ -118,7 +122,12 @@ def run_metadata_enrichment(
         ok                 bool
         best               dict | None  — best raw candidate from sources
         score              float
+        signals            dict
+        warnings           list[str]
+        classification     str
+        all_scored         list[dict]
         sources_used       list[str]
+        source_results     list[dict]   — per-source status objects
         search_input       dict         — what was sent to external sources
         local_metadata     dict | None  — metadata read from file
         validation_warning str | None
@@ -129,12 +138,32 @@ def run_metadata_enrichment(
     from app.services.metadata_sources import (
         choose_best_metadata_explained,
         download_cover_to_file,
-        search_all_sources_with_status,
+        google_books_search_with_status,
+        deduplicate_results,
+    )
+    from app.services.metadata_calibre import fetch_calibre_metadata_with_status
+
+    item_id = getattr(item, "id", None)
+    item_title = getattr(item, "title", "") or ""
+
+    def _emit(stage, **kwargs):
+        if on_progress:
+            on_progress({
+                "type": "progress",
+                "stage": stage,
+                "item_id": item_id,
+                "title": item_title,
+                **kwargs,
+            })
+
+    # Stage 1: read file metadata
+    _emit(
+        "read_file_metadata",
+        status="reading",
+        message="Läser befintlig metadata från fil...",
+        warnings=[],
     )
 
-    # Read fresh file-level metadata when not supplied by the caller.
-    # This activates the full priority chain in build_search_input so that
-    # an ISBN or better title embedded in the file is used over DB-only data.
     if local_metadata is None and getattr(item, "file_path", None):
         try:
             local_metadata = scan_file_local(item.file_path)
@@ -144,20 +173,98 @@ def run_metadata_enrichment(
 
     search_input = build_search_input(item, local_metadata)
 
-    search_outcome = search_all_sources_with_status(
-        title=search_input["title"],
-        author=search_input["author"],
-        isbn=search_input["isbn"],
-        query_text=search_input["query_text"],
-        include_calibre=include_calibre,
+    source_results = []
+    all_candidates = []
+
+    # Stage 2: Google Books
+    if include_google:
+        _emit(
+            "google_books",
+            source="google_books",
+            status="searching",
+            message="Söker Google Books...",
+            candidates_found=0,
+            warnings=[],
+        )
+        google_sr = google_books_search_with_status(
+            query_text=search_input["query_text"],
+            title=search_input["title"],
+            author=search_input["author"],
+            isbn=search_input["isbn"],
+        )
+        source_results.append(google_sr)
+        all_candidates.extend(google_sr.get("candidates", []))
+        _emit(
+            "google_books",
+            source="google_books",
+            status="ok" if google_sr["ok"] else google_sr["status"],
+            message=google_sr["message"],
+            candidates_found=len(google_sr.get("candidates", [])),
+            warnings=[],
+        )
+
+    # Stage 3: Calibre
+    if include_calibre:
+        _emit(
+            "calibre",
+            source="calibre",
+            status="searching",
+            message="Söker Calibre-källor...",
+            candidates_found=0,
+            warnings=[],
+        )
+        calibre_sr = fetch_calibre_metadata_with_status(
+            title=search_input["title"],
+            author=search_input["author"],
+        )
+        source_results.append(calibre_sr)
+        all_candidates.extend(calibre_sr.get("candidates", []))
+        _emit(
+            "calibre",
+            source="calibre",
+            status="ok" if calibre_sr["ok"] else calibre_sr["status"],
+            message=calibre_sr["message"],
+            candidates_found=len(calibre_sr.get("candidates", [])),
+            warnings=[],
+        )
+
+    all_candidates = deduplicate_results(all_candidates)
+
+    # Stage 4: scoring
+    _emit(
+        "scoring",
+        status="scoring",
+        message="Jämför kandidater...",
+        candidates_found=len(all_candidates),
+        warnings=[],
     )
 
-    results = search_outcome["candidates"]
-    source_results = search_outcome["source_results"]
-
-    scoring = choose_best_metadata_explained(item, results)
+    scoring = choose_best_metadata_explained(item, all_candidates)
     best = scoring["best"]
     best_score = scoring["score"]
+
+    # Stage 5: preview_ready
+    n_candidates = len(scoring["all_scored"])
+    if best:
+        best_source = best.get("source", "")
+        _emit(
+            "preview_ready",
+            status="ok",
+            message=(
+                f"Hittade {n_candidates} möjliga träff{'ar' if n_candidates != 1 else ''}. "
+                f"Bästa träff: {round(best_score)} poäng, {best_source}."
+            ),
+            candidates_found=n_candidates,
+            warnings=scoring["warnings"],
+        )
+    else:
+        _emit(
+            "preview_ready",
+            status="no_match",
+            message="Inga säkra träffar hittades.",
+            candidates_found=n_candidates,
+            warnings=[],
+        )
 
     if not best:
         return {
