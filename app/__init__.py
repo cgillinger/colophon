@@ -73,4 +73,10 @@ def create_app():
     app.register_blueprint(scan_bp)
     app.register_blueprint(settings_bp)
 
+    @app.after_request
+    def no_cache_html(response):
+        if response.content_type and "text/html" in response.content_type:
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        return response
+
     return app

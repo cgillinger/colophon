@@ -2,6 +2,10 @@
 <html lang="sv">
 <head>
     <meta charset="utf-8">
+    <link rel="icon" href="{{ url_for('static', filename='icons/favicon.ico') }}" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
     <title>Hämta omslag - {{ item.title }} - Colophon</title>
     <style>
         body {
@@ -187,7 +191,10 @@
 <body>
 <div class="layout">
 <aside class="sidebar">
-<a class="logo" href="{{ url_for('metadata.bulk_metadata') }}">Colophon</a>
+<a class="logo" href="{{ url_for('metadata.bulk_metadata') }}">
+    <img src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="" style="width:28px; height:28px; border-radius:4px; margin-right:10px;">
+    Colophon
+</a>
 <nav class="nav">
 <a class="nav-item active" href="{{ url_for('metadata.bulk_metadata') }}"><span class="nav-icon">🧠</span>Metadata</a>
 <a class="nav-item" href="{{ url_for('scan.scan') }}"><span class="nav-icon">🔄</span>Skanna</a>
