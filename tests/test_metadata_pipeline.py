@@ -110,12 +110,24 @@ class TestRunMetadataEnrichment:
             ],
         }
 
+    def _scoring(self, best, score, classification="review_needed"):
+        """Return a choose_best_metadata_explained()-compatible dict."""
+        return {
+            "best": best, "score": score,
+            "signals": {"isbn_exact_match": False, "title_similarity": 0.9,
+                        "author_similarity": 0.9, "has_description": True, "has_cover": False},
+            "warnings": [], "classification": classification,
+            "all_scored": [{"candidate": best, "score": score, "signals": {},
+                            "warnings": [], "classification": classification}] if best else [],
+        }
+
     def test_returns_error_when_no_results(self):
         item = _item(title="Book", author="Author")
         with patch("app.services.metadata_pipeline.build_search_input") as mock_si, \
              patch("app.services.metadata_sources.search_all_sources_with_status",
                    return_value=self._mock_search_outcome([])), \
-             patch("app.services.metadata_sources.choose_best_metadata", return_value=(None, 0)):
+             patch("app.services.metadata_sources.choose_best_metadata_explained",
+                   return_value=self._scoring(None, 0, "no_match")):
             mock_si.return_value = {
                 "query_text": "Book Author", "title": "Book", "author": "Author",
                 "isbn": "", "source": "db_title_author", "warnings": [],
@@ -124,6 +136,8 @@ class TestRunMetadataEnrichment:
         assert result["ok"] is False
         assert result["error"]
         assert "source_results" in result
+        assert "signals" in result
+        assert "classification" in result
 
     def test_returns_ok_with_best_candidate(self):
         item = _item(title="Book", author="Author")
@@ -135,7 +149,8 @@ class TestRunMetadataEnrichment:
         with patch("app.services.metadata_pipeline.build_search_input") as mock_si, \
              patch("app.services.metadata_sources.search_all_sources_with_status",
                    return_value=self._mock_search_outcome([best_candidate])), \
-             patch("app.services.metadata_sources.choose_best_metadata", return_value=(best_candidate, 85)):
+             patch("app.services.metadata_sources.choose_best_metadata_explained",
+                   return_value=self._scoring(best_candidate, 85)):
             mock_si.return_value = {
                 "query_text": "Book Author", "title": "Book", "author": "Author",
                 "isbn": "", "source": "db_title_author", "warnings": [],
@@ -146,6 +161,9 @@ class TestRunMetadataEnrichment:
         assert result["fetched_payload"]["title"] == "Book"
         assert result["sources_used"] == ["Google Books API"]
         assert "source_results" in result
+        assert "signals" in result
+        assert "classification" in result
+        assert "all_scored" in result
 
     def _search_outcome(self, candidates):
         return {
@@ -168,7 +186,8 @@ class TestRunMetadataEnrichment:
         with patch("app.services.metadata_pipeline.scan_file_local", return_value=file_meta), \
              patch("app.services.metadata_sources.search_all_sources_with_status",
                    return_value=self._search_outcome([best_candidate])), \
-             patch("app.services.metadata_sources.choose_best_metadata", return_value=(best_candidate, 80)):
+             patch("app.services.metadata_sources.choose_best_metadata_explained",
+                   return_value=self._scoring(best_candidate, 80)):
             result = run_metadata_enrichment(item)
         assert "search_input" in result
         assert "local_metadata" in result
@@ -198,7 +217,8 @@ class TestRunMetadataEnrichment:
              patch("app.services.metadata_pipeline.build_search_input", side_effect=capturing_build), \
              patch("app.services.metadata_sources.search_all_sources_with_status",
                    return_value=self._search_outcome([best_candidate])), \
-             patch("app.services.metadata_sources.choose_best_metadata", return_value=(best_candidate, 91)):
+             patch("app.services.metadata_sources.choose_best_metadata_explained",
+                   return_value=self._scoring(best_candidate, 91)):
             run_metadata_enrichment(item)
 
         assert captured["local_metadata"] is file_meta
@@ -216,7 +236,8 @@ class TestRunMetadataEnrichment:
         with patch("app.services.metadata_pipeline.scan_file_local", return_value=file_meta), \
              patch("app.services.metadata_sources.search_all_sources_with_status",
                    return_value=self._search_outcome([best_candidate])) as mock_search, \
-             patch("app.services.metadata_sources.choose_best_metadata", return_value=(best_candidate, 80)):
+             patch("app.services.metadata_sources.choose_best_metadata_explained",
+                   return_value=self._scoring(best_candidate, 80)):
             run_metadata_enrichment(item)
 
         call_kwargs = mock_search.call_args.kwargs
@@ -235,7 +256,8 @@ class TestRunMetadataEnrichment:
                    side_effect=Exception("file not found")), \
              patch("app.services.metadata_sources.search_all_sources_with_status",
                    return_value=self._search_outcome([best_candidate])) as mock_search, \
-             patch("app.services.metadata_sources.choose_best_metadata", return_value=(best_candidate, 70)):
+             patch("app.services.metadata_sources.choose_best_metadata_explained",
+                   return_value=self._scoring(best_candidate, 70)):
             result = run_metadata_enrichment(item)
 
         assert result["ok"] is True
@@ -256,7 +278,8 @@ class TestRunMetadataEnrichment:
         with patch("app.services.metadata_pipeline.scan_file_local") as mock_scan, \
              patch("app.services.metadata_sources.search_all_sources_with_status",
                    return_value=self._search_outcome([best_candidate])), \
-             patch("app.services.metadata_sources.choose_best_metadata", return_value=(best_candidate, 70)):
+             patch("app.services.metadata_sources.choose_best_metadata_explained",
+                   return_value=self._scoring(best_candidate, 70)):
             run_metadata_enrichment(item, local_metadata=explicit_meta)
 
         mock_scan.assert_not_called()

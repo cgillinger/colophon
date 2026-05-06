@@ -127,7 +127,7 @@ def run_metadata_enrichment(
         error              str | None   — human-readable error when ok=False
     """
     from app.services.metadata_sources import (
-        choose_best_metadata,
+        choose_best_metadata_explained,
         download_cover_to_file,
         search_all_sources_with_status,
     )
@@ -155,13 +155,19 @@ def run_metadata_enrichment(
     results = search_outcome["candidates"]
     source_results = search_outcome["source_results"]
 
-    best, best_score = choose_best_metadata(item, results)
+    scoring = choose_best_metadata_explained(item, results)
+    best = scoring["best"]
+    best_score = scoring["score"]
 
     if not best:
         return {
             "ok": False,
             "best": None,
             "score": best_score,
+            "signals": scoring["signals"],
+            "warnings": scoring["warnings"],
+            "classification": scoring["classification"],
+            "all_scored": scoring["all_scored"],
             "sources_used": [],
             "source_results": source_results,
             "search_input": search_input,
@@ -211,6 +217,10 @@ def run_metadata_enrichment(
         "ok": True,
         "best": best,
         "score": best_score,
+        "signals": scoring["signals"],
+        "warnings": scoring["warnings"],
+        "classification": scoring["classification"],
+        "all_scored": scoring["all_scored"],
         "sources_used": [best["source"]] if best.get("source") else [],
         "source_results": source_results,
         "search_input": search_input,
@@ -228,6 +238,8 @@ def _build_validation_warning(item, fetched_payload):
 
     old_title = _normalize(item.title)
     old_author = _normalize(item.author)
+    if not (old_title or old_author):
+        return None
     new_title = _normalize(fetched_payload.get("title"))
     new_author = _normalize(fetched_payload.get("author"))
 
