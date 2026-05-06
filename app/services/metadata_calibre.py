@@ -1,6 +1,7 @@
 import logging
 import shutil
 import subprocess
+import time
 import xml.etree.ElementTree as ET
 
 logger = logging.getLogger(__name__)
@@ -141,6 +142,124 @@ def read_all_ebook_meta_fields(file_path) -> dict[str, str]:
         fields[current_key] = " ".join(current_parts).strip()
 
     return fields
+
+
+def fetch_calibre_metadata_with_status(
+    title: str = "",
+    author: str = "",
+    sources: str = "all",
+) -> dict:
+    """Fetch metadata via Calibre and return a structured source result.
+
+    Unlike fetch_calibre_metadata(), this function never collapses distinct
+    failure modes into an empty list.  The returned dict always contains:
+        source         "calibre"
+        ok             bool
+        status         one of: ok | no_result | not_installed | timeout |
+                               bad_xml | command_error | network_or_plugin_error
+        duration_ms    int
+        message        str   — human-readable summary
+        candidates     list[dict]
+        raw_debug      {returncode, stderr_excerpt}
+    """
+    t0 = time.monotonic()
+
+    def _result(ok, status, message, candidates=None, returncode=None, stderr=""):
+        return {
+            "source": "calibre",
+            "ok": ok,
+            "status": status,
+            "duration_ms": int((time.monotonic() - t0) * 1000),
+            "message": message,
+            "candidates": candidates or [],
+            "raw_debug": {
+                "returncode": returncode,
+                "stderr_excerpt": (stderr or "")[:500],
+            },
+        }
+
+    if not shutil.which("fetch-ebook-metadata"):
+        return _result(False, "not_installed", "fetch-ebook-metadata är inte installerat.")
+
+    title = (title or "").strip()
+    author = (author or "").strip()
+
+    if not title and not author:
+        return _result(False, "no_result", "Ingen söktitel eller -författare angiven.")
+
+    cmd = ["fetch-ebook-metadata", "--opf"]
+    if title:
+        cmd += ["--title", title]
+    if author:
+        cmd += ["--authors", author]
+    if sources and sources != "all":
+        cmd += ["--allowed-plugin", sources]
+
+    logger.debug("Kör: %s", " ".join(cmd))
+
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    except subprocess.TimeoutExpired:
+        return _result(False, "timeout", "Calibre tog för lång tid (>120 sekunder).")
+    except Exception as exc:
+        return _result(False, "command_error", f"Calibre-kommandot misslyckades: {exc}")
+
+    stderr = proc.stderr or ""
+    opf_xml = (proc.stdout or "").strip()
+
+    if proc.returncode != 0 and not opf_xml:
+        return _result(
+            False, "command_error",
+            f"fetch-ebook-metadata returnerade kod {proc.returncode}.",
+            returncode=proc.returncode, stderr=stderr,
+        )
+
+    if not opf_xml or not opf_xml.startswith("<"):
+        return _result(
+            False, "no_result",
+            "Calibre hittade inga matchande böcker.",
+            returncode=proc.returncode, stderr=stderr,
+        )
+
+    try:
+        parsed = _parse_opf(opf_xml)
+    except CalibreError as exc:
+        return _result(
+            False, "bad_xml",
+            f"Calibre returnerade ogiltig XML: {exc}",
+            returncode=proc.returncode, stderr=stderr,
+        )
+
+    sources_used: list[str] = []
+    for line in stderr.splitlines():
+        s = line.strip()
+        if s.lower().startswith("source:"):
+            src = s.split(":", 1)[1].strip()
+            if src and src not in sources_used:
+                sources_used.append(src)
+
+    source_label = f"Calibre: {', '.join(sources_used)}" if sources_used else "Calibre"
+    series_index = parsed.get("series_index")
+
+    candidate = {
+        "source": source_label,
+        "title": parsed.get("title") or title or "",
+        "author": parsed.get("author") or author or "",
+        "description": parsed.get("description") or "",
+        "isbn": parsed.get("isbn") or "",
+        "publisher": parsed.get("publisher") or "",
+        "language": parsed.get("language") or "",
+        "series": parsed.get("series") or "",
+        "series_index": str(series_index) if series_index else "",
+        "cover_url": parsed.get("cover_url") or "",
+    }
+
+    return _result(
+        True, "ok",
+        f"Calibre: 1 träff ({source_label}).",
+        candidates=[candidate],
+        returncode=proc.returncode, stderr=stderr,
+    )
 
 
 def list_available_sources() -> list[str]:

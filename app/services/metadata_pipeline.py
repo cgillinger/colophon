@@ -129,7 +129,7 @@ def run_metadata_enrichment(
     from app.services.metadata_sources import (
         choose_best_metadata,
         download_cover_to_file,
-        search_all_sources,
+        search_all_sources_with_status,
     )
 
     # Read fresh file-level metadata when not supplied by the caller.
@@ -144,13 +144,16 @@ def run_metadata_enrichment(
 
     search_input = build_search_input(item, local_metadata)
 
-    results = search_all_sources(
+    search_outcome = search_all_sources_with_status(
         title=search_input["title"],
         author=search_input["author"],
         isbn=search_input["isbn"],
         query_text=search_input["query_text"],
         include_calibre=include_calibre,
     )
+
+    results = search_outcome["candidates"]
+    source_results = search_outcome["source_results"]
 
     best, best_score = choose_best_metadata(item, results)
 
@@ -160,6 +163,7 @@ def run_metadata_enrichment(
             "best": None,
             "score": best_score,
             "sources_used": [],
+            "source_results": source_results,
             "search_input": search_input,
             "local_metadata": local_metadata,
             "validation_warning": None,
@@ -208,6 +212,7 @@ def run_metadata_enrichment(
         "best": best,
         "score": best_score,
         "sources_used": [best["source"]] if best.get("source") else [],
+        "source_results": source_results,
         "search_input": search_input,
         "local_metadata": local_metadata,
         "validation_warning": validation_warning,

@@ -1,6 +1,7 @@
 import hashlib
 import os
 import re
+import time
 from difflib import SequenceMatcher
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
@@ -560,3 +561,93 @@ def search_all_sources(
             results.extend(calibre_results)
 
     return deduplicate_results(results)
+
+
+# ---------------------------------------------------------------------------
+# Structured source results (Phase 5)
+# ---------------------------------------------------------------------------
+
+def google_books_search_with_status(
+    query_text="", title="", author="", isbn=""
+) -> dict:
+    """Run a Google Books search and return a structured source result.
+
+    The returned dict always contains:
+        source       "google_books"
+        ok           bool
+        status       ok | no_result | network_or_plugin_error
+        duration_ms  int
+        message      str
+        candidates   list[dict]
+        raw_debug    {returncode, stderr_excerpt}
+    """
+    t0 = time.monotonic()
+
+    def _result(ok, status, message, candidates=None):
+        return {
+            "source": "google_books",
+            "ok": ok,
+            "status": status,
+            "duration_ms": int((time.monotonic() - t0) * 1000),
+            "message": message,
+            "candidates": candidates or [],
+            "raw_debug": {"returncode": None, "stderr_excerpt": ""},
+        }
+
+    try:
+        candidates = google_books_search(
+            query_text=query_text, title=title, author=author, isbn=isbn
+        )
+    except Exception as exc:
+        return _result(
+            False, "network_or_plugin_error",
+            f"Google Books: nätverksfel ({exc}).",
+        )
+
+    if candidates:
+        n = len(candidates)
+        return _result(
+            True, "ok",
+            f"Google Books: {n} träff{'ar' if n != 1 else ''}.",
+            candidates=candidates,
+        )
+
+    return _result(False, "no_result", "Google Books: inga träffar.")
+
+
+def search_all_sources_with_status(
+    title="",
+    author="",
+    isbn="",
+    query_text="",
+    include_calibre=True,
+) -> dict:
+    """Search all sources and return both candidates and per-source statuses.
+
+    A failure in one source never hides results from another.
+
+    Returns:
+        candidates     list[dict]   — merged, deduplicated candidates for scoring
+        source_results list[dict]   — one structured status dict per source
+    """
+    from app.services.metadata_calibre import fetch_calibre_metadata_with_status
+
+    source_results = []
+
+    google_sr = google_books_search_with_status(
+        query_text=query_text, title=title, author=author, isbn=isbn
+    )
+    source_results.append(google_sr)
+
+    if include_calibre:
+        calibre_sr = fetch_calibre_metadata_with_status(title=title, author=author)
+        source_results.append(calibre_sr)
+
+    all_candidates = []
+    for sr in source_results:
+        all_candidates.extend(sr.get("candidates", []))
+
+    return {
+        "candidates": deduplicate_results(all_candidates),
+        "source_results": source_results,
+    }
