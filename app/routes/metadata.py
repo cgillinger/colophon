@@ -539,6 +539,231 @@ def bulk_metadata():
     )
 
 
+@metadata_bp.route("/metadata/bulk/stream")
+def bulk_stream():
+    """SSE endpoint: run bulk metadata search with per-book, per-stage progress."""
+    def _parse_int(val, default, lo, hi):
+        try:
+            v = int(val)
+        except (TypeError, ValueError):
+            v = default
+        return max(lo, min(hi, v))
+
+    raw_ids = request.args.get("item_ids", "")
+    overwrite = request.args.get("overwrite", "0") == "1"
+    only_missing = request.args.get("only_missing", "0") == "1"
+    max_items = _parse_int(request.args.get("max_items"), 25, 1, 100)
+
+    item_ids = []
+    for part in raw_ids.split(","):
+        part = part.strip()
+        if part.isdigit():
+            item_ids.append(int(part))
+
+    selected_items = [LibraryItem.query.get(iid) for iid in item_ids]
+    selected_items = [it for it in selected_items if it is not None]
+
+    def _error_stream(message):
+        def _gen():
+            yield f"data: {json.dumps({'type': 'error', 'message': message})}\n\n"
+        return Response(_gen(), mimetype="text/event-stream",
+                        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+    if not selected_items:
+        return _error_stream("Inga giltiga böcker valda.")
+
+    app = current_app._get_current_object()
+    cover_dir = app.config["COVER_DIR"]
+    ev_queue = queue.SimpleQueue()
+
+    def _run():
+        with app.app_context():
+            from app.models import LibraryItem as _Item, db as _db
+            from app.services.metadata_pipeline import run_metadata_enrichment as _enrich
+            from app.services.metadata_writer import (
+                apply_metadata_to_item as _apply,
+                item_has_good_metadata as _has_good,
+            )
+
+            summary = {
+                "updated": 0,
+                "review_needed": 0,
+                "no_match": 0,
+                "source_errors": 0,
+                "skipped": 0,
+                "file_write_failed": 0,
+                "limited": False,
+            }
+
+            processed = 0
+            total = 0
+            # Pre-count total (respecting max_items and skip logic)
+            for it in selected_items:
+                if only_missing and _has_good(it):
+                    continue
+                total += 1
+                if total >= max_items:
+                    break
+            # Add skipped count to total for index tracking
+            total_all = len(selected_items)
+
+            index = 0
+            processed = 0
+
+            for item in selected_items:
+                index += 1
+
+                if processed >= max_items:
+                    summary["limited"] = True
+                    break
+
+                fresh = _db.session.get(_Item, item.id)
+                if not fresh:
+                    continue
+
+                if only_missing and _has_good(fresh):
+                    summary["skipped"] += 1
+                    ev_queue.put({
+                        "type": "book_done",
+                        "item_id": fresh.id,
+                        "title": fresh.title or "",
+                        "index": index,
+                        "total": total_all,
+                        "classification": "skipped",
+                        "score": None,
+                        "source": None,
+                        "google_ok": None,
+                        "google_candidates": None,
+                        "calibre_ok": None,
+                        "calibre_candidates": None,
+                        "file_write_error": None,
+                    })
+                    continue
+
+                processed += 1
+                ev_queue.put({
+                    "type": "book_start",
+                    "item_id": fresh.id,
+                    "title": fresh.title or "",
+                    "index": index,
+                    "total": total_all,
+                })
+
+                try:
+                    result = _enrich(
+                        fresh,
+                        cover_dir=cover_dir,
+                        on_progress=ev_queue.put,
+                    )
+                except Exception as exc:
+                    app.logger.exception("bulk_stream enrichment failed for item %s", fresh.id)
+                    ev_queue.put({
+                        "type": "book_done",
+                        "item_id": fresh.id,
+                        "title": fresh.title or "",
+                        "index": index,
+                        "total": total_all,
+                        "classification": "source_error",
+                        "score": None,
+                        "source": None,
+                        "google_ok": False,
+                        "google_candidates": 0,
+                        "calibre_ok": False,
+                        "calibre_candidates": 0,
+                        "file_write_error": None,
+                    })
+                    summary["source_errors"] += 1
+                    continue
+
+                google_ok = None
+                google_candidates = None
+                calibre_ok = None
+                calibre_candidates = None
+                for sr in result.get("source_results", []):
+                    if sr.get("source") == "google_books":
+                        google_ok = sr.get("ok", False)
+                        google_candidates = len(sr.get("candidates", []))
+                    elif sr.get("source") == "calibre":
+                        calibre_ok = sr.get("ok", False)
+                        calibre_candidates = len(sr.get("candidates", []))
+
+                score = result.get("score")
+                classification = result.get("classification", "no_match")
+                best = result.get("best")
+                source = (best or {}).get("source") if best else None
+                file_write_error = None
+
+                # Detect source_error: all sources errored (not just no results)
+                source_results = result.get("source_results", [])
+                all_errored = bool(source_results) and all(
+                    not sr.get("ok") and sr.get("status") not in ("no_result",)
+                    for sr in source_results
+                )
+
+                if not result.get("ok") and all_errored:
+                    classification = "source_error"
+                    summary["source_errors"] += 1
+                elif not result.get("ok") or classification in ("no_match", "manual_only"):
+                    classification = "no_match"
+                    summary["no_match"] += 1
+                elif classification == "review_needed":
+                    summary["review_needed"] += 1
+                else:
+                    # auto_apply
+                    apply_result = _apply(
+                        item=fresh,
+                        result=best,
+                        cover_dir=cover_dir,
+                        overwrite=overwrite,
+                        write_to_file=True,
+                    )
+                    if not apply_result.get("file_updated") and apply_result.get("file_write_error"):
+                        file_write_error = apply_result.get("file_write_error")
+                        summary["file_write_failed"] += 1
+                    classification = "auto_apply"
+                    summary["updated"] += 1
+
+                ev_queue.put({
+                    "type": "book_done",
+                    "item_id": fresh.id,
+                    "title": fresh.title or "",
+                    "index": index,
+                    "total": total_all,
+                    "classification": classification,
+                    "score": score,
+                    "source": source,
+                    "google_ok": google_ok,
+                    "google_candidates": google_candidates,
+                    "calibre_ok": calibre_ok,
+                    "calibre_candidates": calibre_candidates,
+                    "file_write_error": file_write_error,
+                })
+
+            try:
+                _db.session.commit()
+            except Exception:
+                app.logger.exception("bulk_stream db commit failed")
+                _db.session.rollback()
+
+            ev_queue.put({"type": "done", "summary": summary})
+            ev_queue.put(None)
+
+    threading.Thread(target=_run, daemon=True).start()
+
+    def generate():
+        while True:
+            ev = ev_queue.get()
+            if ev is None:
+                break
+            yield f"data: {json.dumps(ev)}\n\n"
+
+    return Response(
+        generate(),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 # ---------------------------------------------------------------------------
 # Ephemeral result store for the SSE enrichment flow
 # (single-user app — key is item_id, value is the preview dict)

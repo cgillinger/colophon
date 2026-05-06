@@ -433,6 +433,15 @@
         }
 
         .modal-actions .spacer { flex: 1; }
+
+        #bulkProgressTable td { padding: 8px 12px; vertical-align: middle; }
+        .bp-active { background: rgba(110, 231, 168, 0.05); }
+        .bp-spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.15); border-top-color: #6ee7a8; border-radius: 50%; animation: bpspin 0.7s linear infinite; }
+        @keyframes bpspin { to { transform: rotate(360deg); } }
+        .bp-ok { color: #6ee7a8; }
+        .bp-fail { color: #ff6b6b; }
+        .bp-skip { color: #aeb7bd; }
+        .bp-warn { color: #ffd166; }
     </style>
 
 </head>
@@ -591,6 +600,23 @@
                     <button type="button" onclick="clearSelection()">Avmarkera alla</button>
                 </div>
             </section>
+
+        <div id="bulkProgress" style="display:none;" class="panel">
+            <h2 id="bulkProgressTitle">Söker metadata…</h2>
+            <div id="bulkProgressSummary" class="meta" style="margin-bottom:12px;"></div>
+            <table id="bulkProgressTable" style="width:100%;">
+                <thead>
+                    <tr>
+                        <th style="width:40%;">Titel</th>
+                        <th style="width:15%; text-align:center;">Google</th>
+                        <th style="width:15%; text-align:center;">Calibre</th>
+                        <th style="width:15%; text-align:center;">Poäng</th>
+                        <th style="width:15%; text-align:center;">Resultat</th>
+                    </tr>
+                </thead>
+                <tbody id="bulkProgressBody"></tbody>
+            </table>
+        </div>
 
             <button id="scanBtn" class="button" type="button" onclick="startScan()">Skanna bibliotek</button>
             <div id="scanStatus" style="display:none; margin:10px 0; padding:12px; background:#252b30; border-radius:6px;">
@@ -929,6 +955,211 @@
                 row.style.display = show ? '' : 'none';
             });
         }
+
+        // --- Bulk metadata SSE handler ---
+
+        (function() {
+            var form = document.querySelector('form');
+            var searchBtn = document.querySelector('button[value="search"]');
+            var isSearchAction = false;
+
+            searchBtn.addEventListener('click', function() { isSearchAction = true; });
+
+            form.addEventListener('submit', function(e) {
+                if (!isSearchAction) return;
+                isSearchAction = false;
+                if (!window.EventSource) return;
+                e.preventDefault();
+
+                var checked = Array.from(document.querySelectorAll('.book-checkbox:checked'));
+                var itemIds = checked.map(function(cb) { return cb.value; });
+                if (itemIds.length === 0) {
+                    alert('Välj minst en bok.');
+                    return;
+                }
+
+                var overwrite = document.querySelector('input[name="overwrite"]').checked ? '1' : '0';
+                var onlyMissing = document.querySelector('input[name="only_missing"]').checked ? '1' : '0';
+                var maxItems = document.getElementById('max_items').value || '25';
+
+                var url = '/metadata/bulk/stream?item_ids=' + itemIds.join(',')
+                    + '&overwrite=' + overwrite
+                    + '&only_missing=' + onlyMissing
+                    + '&max_items=' + maxItems;
+
+                var progress = document.getElementById('bulkProgress');
+                var formPanel = form.querySelector('.panel');
+                progress.style.display = 'block';
+                formPanel.style.display = 'none';
+                searchBtn.disabled = true;
+
+                var body = document.getElementById('bulkProgressBody');
+                var summaryEl = document.getElementById('bulkProgressSummary');
+                var titleEl = document.getElementById('bulkProgressTitle');
+                body.innerHTML = '';
+
+                var counts = { saved: 0, review: 0, done: 0 };
+
+                var source = new EventSource(url);
+
+                source.onmessage = function(e) {
+                    var d;
+                    try { d = JSON.parse(e.data); } catch(ex) { return; }
+
+                    if (d.type === 'book_start') {
+                        document.querySelectorAll('#bulkProgressBody tr.bp-active').forEach(function(r) {
+                            r.classList.remove('bp-active');
+                        });
+                        var tr = document.createElement('tr');
+                        tr.id = 'bp-row-' + d.item_id;
+                        tr.className = 'bp-active';
+                        var title = d.title || '';
+                        if (title.length > 50) title = title.substring(0, 50) + '…';
+                        tr.innerHTML =
+                            '<td>' + _esc(title) + '</td>' +
+                            '<td style="text-align:center;" id="bp-google-' + d.item_id + '"></td>' +
+                            '<td style="text-align:center;" id="bp-calibre-' + d.item_id + '"></td>' +
+                            '<td style="text-align:center;" id="bp-score-' + d.item_id + '"></td>' +
+                            '<td style="text-align:center;" id="bp-result-' + d.item_id + '"></td>';
+                        body.appendChild(tr);
+                        summaryEl.textContent = d.index + ' av ' + d.total + '…';
+
+                    } else if (d.type === 'progress') {
+                        if (d.stage === 'google_books') {
+                            var cell = document.getElementById('bp-google-' + d.item_id);
+                            if (cell) {
+                                if (d.status === 'searching') {
+                                    cell.innerHTML = '<span class="bp-spinner"></span>';
+                                } else {
+                                    var n = d.candidates_found || 0;
+                                    cell.innerHTML = d.status === 'ok'
+                                        ? '<span class="bp-ok">✓ ' + n + '</span>'
+                                        : '<span class="bp-fail">✗</span>';
+                                }
+                            }
+                        } else if (d.stage === 'calibre') {
+                            var cell = document.getElementById('bp-calibre-' + d.item_id);
+                            if (cell) {
+                                if (d.status === 'searching') {
+                                    cell.innerHTML = '<span class="bp-spinner"></span>';
+                                } else {
+                                    var n = d.candidates_found || 0;
+                                    cell.innerHTML = d.status === 'ok'
+                                        ? '<span class="bp-ok">✓ ' + n + '</span>'
+                                        : '<span class="bp-fail">✗</span>';
+                                }
+                            }
+                        }
+
+                    } else if (d.type === 'book_done') {
+                        var tr = document.getElementById('bp-row-' + d.item_id);
+                        if (!tr) {
+                            tr = document.createElement('tr');
+                            tr.id = 'bp-row-' + d.item_id;
+                            var title = d.title || '';
+                            if (title.length > 50) title = title.substring(0, 50) + '…';
+                            tr.innerHTML =
+                                '<td>' + _esc(title) + '</td>' +
+                                '<td style="text-align:center;" id="bp-google-' + d.item_id + '">—</td>' +
+                                '<td style="text-align:center;" id="bp-calibre-' + d.item_id + '">—</td>' +
+                                '<td style="text-align:center;" id="bp-score-' + d.item_id + '"></td>' +
+                                '<td style="text-align:center;" id="bp-result-' + d.item_id + '"></td>';
+                            body.appendChild(tr);
+                        }
+                        tr.classList.remove('bp-active');
+
+                        // Fill Google/Calibre if not set (e.g. skipped books)
+                        var gCell = document.getElementById('bp-google-' + d.item_id);
+                        if (gCell && !gCell.textContent.trim()) {
+                            if (d.google_ok === null || d.google_ok === undefined) {
+                                gCell.textContent = '—';
+                            } else {
+                                gCell.innerHTML = d.google_ok
+                                    ? '<span class="bp-ok">✓ ' + (d.google_candidates || 0) + '</span>'
+                                    : '<span class="bp-fail">✗</span>';
+                            }
+                        }
+                        var cCell = document.getElementById('bp-calibre-' + d.item_id);
+                        if (cCell && !cCell.textContent.trim()) {
+                            if (d.calibre_ok === null || d.calibre_ok === undefined) {
+                                cCell.textContent = '—';
+                            } else {
+                                cCell.innerHTML = d.calibre_ok
+                                    ? '<span class="bp-ok">✓ ' + (d.calibre_candidates || 0) + '</span>'
+                                    : '<span class="bp-fail">✗</span>';
+                            }
+                        }
+
+                        var scoreCell = document.getElementById('bp-score-' + d.item_id);
+                        if (scoreCell) {
+                            if (d.score !== null && d.score !== undefined
+                                    && d.classification !== 'skipped'
+                                    && d.classification !== 'source_error') {
+                                var s = Math.round(d.score);
+                                var cls = s >= 70 ? 'bp-ok' : (s >= 50 ? 'bp-warn' : 'bp-fail');
+                                scoreCell.innerHTML = '<span class="' + cls + '">' + s + '</span>';
+                            } else {
+                                scoreCell.textContent = '—';
+                            }
+                        }
+
+                        var resultCell = document.getElementById('bp-result-' + d.item_id);
+                        if (resultCell) {
+                            var labels = {
+                                'auto_apply':    '<span class="bp-ok">✓ Sparad</span>',
+                                'review_needed': '<span class="bp-warn">👁 Granska</span>',
+                                'no_match':      '<span class="bp-fail">✗ Ingen träff</span>',
+                                'skipped':       '<span class="bp-skip">⏭ Hoppad</span>',
+                                'source_error':  '<span class="bp-fail">⚠ Källfel</span>',
+                            };
+                            resultCell.innerHTML = labels[d.classification] || d.classification;
+                        }
+
+                        counts.done += 1;
+                        if (d.classification === 'auto_apply') counts.saved += 1;
+                        if (d.classification === 'review_needed') counts.review += 1;
+                        summaryEl.textContent = counts.done + ' av ' + d.total + ' klara'
+                            + (counts.saved ? ' — ' + counts.saved + ' sparade' : '')
+                            + (counts.review ? ', ' + counts.review + ' granskning' : '');
+
+                    } else if (d.type === 'done') {
+                        source.close();
+                        titleEl.textContent = 'Metadatasökning klar';
+                        var s = d.summary || {};
+                        var parts = [];
+                        if (s.updated) parts.push(s.updated + ' sparade');
+                        if (s.review_needed) parts.push(s.review_needed + ' granskning');
+                        if (s.no_match) parts.push(s.no_match + ' ingen träff');
+                        if (s.source_errors) parts.push(s.source_errors + ' källfel');
+                        if (s.skipped) parts.push(s.skipped + ' hoppade');
+                        summaryEl.textContent = parts.join(' · ') || 'Klar.';
+                        var reloadBtn = document.createElement('button');
+                        reloadBtn.className = 'button primary';
+                        reloadBtn.style.marginTop = '14px';
+                        reloadBtn.textContent = 'Ladda om sidan';
+                        reloadBtn.onclick = function() { location.reload(); };
+                        progress.appendChild(reloadBtn);
+
+                    } else if (d.type === 'error') {
+                        source.close();
+                        titleEl.textContent = 'Fel: ' + (d.message || 'okänt fel');
+                        formPanel.style.display = '';
+                        searchBtn.disabled = false;
+                    }
+                };
+
+                source.onerror = function() {
+                    source.close();
+                    titleEl.textContent = 'Anslutningen bröts.';
+                    formPanel.style.display = '';
+                    searchBtn.disabled = false;
+                };
+            });
+
+            function _esc(str) {
+                return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            }
+        })();
     </script>
 
 <div id="bookModal" style="display:none;">
