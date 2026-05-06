@@ -144,6 +144,12 @@ def result_from_google_volume(volume):
     else:
         author = clean_text(authors)
 
+    categories = info.get("categories", [])
+    if isinstance(categories, list):
+        genres = ", ".join(clean_text(c) for c in categories if clean_text(c))
+    else:
+        genres = clean_text(categories)
+
     result = {
         "source": "Google Books API",
         "title": title,
@@ -155,6 +161,7 @@ def result_from_google_volume(volume):
         "series": "",
         "series_index": "",
         "cover_url": google_books_image_url(info.get("imageLinks", {})),
+        "genres": genres,
     }
 
     return result

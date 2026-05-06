@@ -23,6 +23,7 @@ def ensure_database_columns():
         "file_mtime": "ALTER TABLE library_items ADD COLUMN file_mtime REAL",
         "metadata_read_at": "ALTER TABLE library_items ADD COLUMN metadata_read_at DATETIME",
         "group_key": "ALTER TABLE library_items ADD COLUMN group_key VARCHAR(64)",
+        "genres": "ALTER TABLE library_items ADD COLUMN genres TEXT",
     }
 
     changed = False
@@ -48,6 +49,35 @@ def ensure_database_columns():
         db.session.rollback()
 
     backfill_group_keys(force=group_key_added)
+    sanitize_html_descriptions()
+
+
+def sanitize_html_descriptions():
+    """Strip HTML tags from existing descriptions."""
+    from app.services.metadata_sources import clean_text
+
+    rows = db.session.execute(
+        text(
+            "SELECT id, description FROM library_items "
+            "WHERE description IS NOT NULL AND description LIKE '%<%'"
+        )
+    ).fetchall()
+
+    if not rows:
+        return
+
+    changed = 0
+    for item_id, description in rows:
+        cleaned = clean_text(description)
+        if cleaned != description:
+            db.session.execute(
+                text("UPDATE library_items SET description = :desc WHERE id = :id"),
+                {"desc": cleaned, "id": item_id},
+            )
+            changed += 1
+
+    if changed:
+        db.session.commit()
 
 
 def backfill_group_keys(force=False):

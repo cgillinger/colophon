@@ -17,22 +17,34 @@
     <style>
         :root, [data-theme="light"] {
             --bg-primary: #ffffff;
-            --bg-secondary: #f5f6f8;
+            --bg-secondary: #f8fafc;
             --bg-tertiary: #ebedf0;
-            --bg-info: #e8f0fe;
+            --bg-info: #ecfdf5;
             --text-primary: #1a1a1a;
             --text-secondary: #555555;
             --text-tertiary: #888888;
-            --text-info: #1a56db;
+            --text-info: #065f46;
             --border-light: rgba(0, 0, 0, 0.08);
             --border-medium: rgba(0, 0, 0, 0.15);
-            --accent-primary: #4A7CDB;
+            --accent-primary: #059669;
+            --accent-primary-hover: #047857;
+            --accent-primary-light: #ecfdf5;
+            --accent-primary-border: #a7f3d0;
+            --accent-primary-text: #065f46;
             --accent-purple: #6c5ce7;
-            --accent-green: #2fb67c;
+            --accent-green: #059669;
             --accent-red: #dc3545;
             --accent-yellow: #e6a817;
-            --badge-ok-bg: #e6f9ee;
-            --badge-ok-text: #1a7a3a;
+            --green-50: #ecfdf5;
+            --green-100: #d1fae5;
+            --green-200: #a7f3d0;
+            --green-500: #10b981;
+            --green-600: #059669;
+            --green-700: #047857;
+            --green-800: #065f46;
+            --green-900: #064e3b;
+            --badge-ok-bg: #d1fae5;
+            --badge-ok-text: #065f46;
             --badge-warn-bg: #fef3cd;
             --badge-warn-text: #856404;
             --modal-overlay: rgba(0, 0, 0, 0.4);
@@ -42,20 +54,32 @@
             --bg-primary: #1e2227;
             --bg-secondary: #252a30;
             --bg-tertiary: #30363b;
-            --bg-info: #1a2332;
+            --bg-info: #064e3b;
             --text-primary: #e8ecef;
             --text-secondary: #aeb7bd;
             --text-tertiary: #6c757d;
-            --text-info: #6ea8fe;
+            --text-info: #a7f3d0;
             --border-light: rgba(255, 255, 255, 0.06);
             --border-medium: rgba(255, 255, 255, 0.12);
-            --accent-primary: #4aa3ff;
+            --accent-primary: #10b981;
+            --accent-primary-hover: #34d399;
+            --accent-primary-light: #064e3b;
+            --accent-primary-border: #065f46;
+            --accent-primary-text: #a7f3d0;
             --accent-purple: #7c6ff0;
-            --accent-green: #3dd68c;
+            --accent-green: #10b981;
             --accent-red: #ff6b6b;
             --accent-yellow: #ffd166;
-            --badge-ok-bg: #1a3a2a;
-            --badge-ok-text: #6ee7a8;
+            --green-50: #064e3b;
+            --green-100: #065f46;
+            --green-200: #047857;
+            --green-500: #10b981;
+            --green-600: #34d399;
+            --green-700: #6ee7b7;
+            --green-800: #a7f3d0;
+            --green-900: #d1fae5;
+            --badge-ok-bg: #065f46;
+            --badge-ok-text: #a7f3d0;
             --badge-warn-bg: #3a3020;
             --badge-warn-text: #ffd166;
             --modal-overlay: rgba(0, 0, 0, 0.7);
@@ -77,7 +101,7 @@
         button, input, select, textarea { font-family: inherit; color: inherit; }
 
         .topbar {
-            height: 56px;
+            height: 68px;
             background: var(--bg-primary);
             border-bottom: 1px solid var(--border-light);
             display: flex;
@@ -91,16 +115,17 @@
         .topbar-brand {
             display: flex;
             align-items: center;
-            gap: 10px;
-            font-size: 18px;
+            gap: 12px;
+            font-size: 20px;
             font-weight: 500;
             color: var(--text-primary);
         }
         .topbar-brand img {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
             display: block;
+            object-fit: cover;
         }
         .topbar-spacer { flex: 1; }
         .topbar-actions {
@@ -127,6 +152,147 @@
         }
         .topbar-btn i { font-size: 18px; }
         .topbar-btn.icon-only { padding: 7px; }
+
+        /* Hero search bar */
+        .hero-search {
+            margin-bottom: 14px;
+            position: relative;
+        }
+        .hero-search i.search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-tertiary);
+            font-size: 18px;
+            pointer-events: none;
+        }
+        .hero-search input {
+            width: 100%;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            color: var(--text-primary);
+            border-radius: 10px;
+            padding: 10px 14px 10px 42px;
+            font-size: 15px;
+            height: 42px;
+        }
+        .hero-search input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px var(--accent-primary-light);
+        }
+
+        /* Action cards */
+        .action-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+        @media (max-width: 800px) {
+            .action-cards { grid-template-columns: 1fr; }
+        }
+        .action-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: 10px;
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .action-card.library {
+            background: var(--green-50);
+            border-color: var(--green-200);
+        }
+        .action-card-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-secondary);
+        }
+        .action-card.library .action-card-header {
+            color: var(--accent-primary-text);
+        }
+        .action-card-header i { font-size: 16px; }
+        .action-card-body {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .action-chips {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .action-chip {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-light);
+            border-radius: 999px;
+            padding: 3px 10px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .action-card.library .action-chip {
+            background: var(--bg-primary);
+            border-color: var(--green-200);
+            color: var(--accent-primary-text);
+        }
+        .inline-settings {
+            display: flex;
+            gap: 14px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .inline-settings input[type="number"] {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-light);
+            color: var(--text-primary);
+            border-radius: 5px;
+            padding: 4px 6px;
+            width: 60px;
+            font-size: 13px;
+        }
+
+        /* Filter row (chips) */
+        .filter-row {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-light);
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .filter-row select {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            color: var(--text-primary);
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-size: 13px;
+        }
+        .filter-row select:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+        .filter-row .filter-spacer { flex: 1; }
+        .filter-row .selected-count {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
 
         .container {
             max-width: 1300px;
@@ -209,8 +375,18 @@
             background: var(--accent-primary);
             color: #ffffff;
             border-color: var(--accent-primary);
+            transition: background 0.15s, transform 0.1s;
         }
-        .btn.primary:hover { filter: brightness(1.05); }
+        .btn.primary:hover { background: var(--accent-primary-hover); border-color: var(--accent-primary-hover); }
+        .btn.primary:active { transform: scale(0.98); }
+        .btn.outline {
+            background: transparent;
+            color: var(--accent-primary-text);
+            border: 1px solid var(--accent-primary-border);
+        }
+        .btn.outline:hover {
+            background: var(--accent-primary-light);
+        }
         .btn.purple {
             background: var(--accent-purple);
             color: #ffffff;
@@ -724,20 +900,17 @@
 
 <header class="topbar">
     <a class="topbar-brand" href="{{ url_for('metadata.bulk_metadata') }}">
-        <img src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="">
+        <img src="{{ url_for('static', filename='icons/colophon.png') }}" alt="Colophon">
         <span>Colophon</span>
     </a>
     <div class="topbar-spacer"></div>
     <div class="topbar-actions">
-        <button id="scanBtn" type="button" class="topbar-btn" onclick="startScan()" title="Skanna bibliotek">
-            <i class="ti ti-refresh"></i><span>Skanna</span>
+        <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="Byt tema">
+            <i id="themeIcon" class="ti ti-sun"></i>
         </button>
         <a class="topbar-btn icon-only" href="{{ url_for('settings.ai_settings') }}" title="Inställningar">
             <i class="ti ti-settings"></i>
         </a>
-        <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="Byt tema">
-            <i id="themeIcon" class="ti ti-sun"></i>
-        </button>
     </div>
 </header>
 
@@ -839,17 +1012,62 @@
         </section>
     {% endif %}
 
-    <div id="scanStatus" style="display:none;" class="panel">
-        <div id="scanText">Skannar...</div>
-        <div id="scanLog" style="max-height:150px; overflow-y:auto; font-size:13px; color:var(--text-secondary); margin-top:8px;"></div>
-    </div>
-
     <form method="post" id="bulkForm">
-        <div class="toolbar">
-            <div class="toolbar-search">
-                <i class="ti ti-search search-icon"></i>
-                <input type="text" id="filterSearch" placeholder="Sök titel, författare, ISBN…" oninput="applyFilters()">
+        <div class="hero-search">
+            <i class="ti ti-search search-icon"></i>
+            <input type="text" id="filterSearch" placeholder="Sök titel, författare, ISBN, genre..." oninput="applyFilters()">
+        </div>
+
+        <div class="action-cards">
+            <div class="action-card library" id="libraryCard">
+                <div class="action-card-header">
+                    <i class="ti ti-folder"></i> Bibliotek
+                </div>
+                <div class="action-card-body">
+                    <button id="scanBtn" type="button" class="btn primary" onclick="startScan()">
+                        <i class="ti ti-refresh"></i> Hitta nya böcker
+                    </button>
+                    <div class="action-chips" id="libraryChips">
+                        <span class="action-chip">{{ total_count }} böcker</span>
+                        {% if missing_count %}
+                            <span class="action-chip">{{ missing_count }} saknar metadata</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div id="scanInline" style="display:none; font-size:13px; color:var(--accent-primary-text);">
+                    <span id="scanInlineText">Skannar...</span>
+                </div>
             </div>
+
+            <div class="action-card">
+                <div class="action-card-header">
+                    <i class="ti ti-sparkles"></i> Berika metadata
+                </div>
+                <div class="action-card-body">
+                    <button class="btn primary" type="submit" name="action" value="search">
+                        <i class="ti ti-search"></i> Sök metadata
+                    </button>
+                    <button class="btn outline" type="submit" name="action" value="ai">
+                        <i class="ti ti-sparkles"></i> Fråga AI
+                    </button>
+                </div>
+                <div class="inline-settings">
+                    <label>
+                        Max
+                        <input id="max_items" type="number" name="max_items" value="25" min="1" max="100">
+                    </label>
+                    <label title="Ersätter alla fält med hämtad data. Annars fylls bara tomma fält.">
+                        <input type="checkbox" name="overwrite" value="1">
+                        Ersätt befintlig
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="filter-row">
+            <button id="groupToggle" class="btn ghost" type="button" onclick="toggleGroupView()" title="Gruppera format">
+                <i class="ti ti-list"></i> Alla format
+            </button>
 
             <select id="filterStatus" onchange="applyFilters()" title="Status">
                 <option value="">Status: alla</option>
@@ -857,14 +1075,19 @@
                 <option value="has">Har metadata</option>
             </select>
 
+            <select id="filterExtension" onchange="applyFilters()" title="Filtyp">
+                <option value="">Filtyp: alla</option>
+            </select>
+
             <select id="filterMissingField" onchange="applyFilters()" title="Saknar fält">
                 <option value="">Saknar: alla</option>
                 <option value="series">Saknar serie</option>
-                <option value="description">Saknar beskrivning</option>
+                <option value="description">Saknar synopsis</option>
                 <option value="author">Saknar författare</option>
                 <option value="cover">Saknar omslag</option>
                 <option value="isbn">Saknar ISBN</option>
                 <option value="publisher">Saknar förlag</option>
+                <option value="genres">Saknar genre</option>
             </select>
 
             <select id="filterManual" onchange="applyFilters()" title="Manuellt redigerad">
@@ -873,37 +1096,14 @@
                 <option value="0">Ej manuellt redigerad</option>
             </select>
 
-            <select id="filterExtension" onchange="applyFilters()" title="Filtyp">
-                <option value="">Filtyp: alla</option>
-            </select>
+            <div class="filter-spacer"></div>
 
-            <button class="btn primary" type="submit" name="action" value="search">
-                <i class="ti ti-search"></i> Sök metadata
-            </button>
-            <button class="btn purple" type="submit" name="action" value="ai">
-                <i class="ti ti-sparkles"></i> Fråga AI
-            </button>
             <button class="btn ghost" type="button" onclick="selectAllBooks()">Välj alla</button>
             <button class="btn ghost" type="button" onclick="selectMissingBooks()">Välj saknade</button>
             <button class="btn ghost" type="button" onclick="clearSelection()">Avmarkera</button>
-            <button id="groupToggle" class="btn ghost" type="button" onclick="toggleGroupView()" title="Gruppera format">
-                <i class="ti ti-list"></i> Alla format
-            </button>
-        </div>
-
-        <div class="settings-row">
-            <label title="Ersätter alla fält med hämtad data. Annars fylls bara tomma fält.">
-                <input type="checkbox" name="overwrite" value="1">
-                Ersätt befintlig metadata
-            </label>
-            <label>
-                Max:
-                <input id="max_items" type="number" name="max_items" value="25" min="1" max="100">
-                per körning
-            </label>
-            <label style="cursor:pointer;">
+            <label style="cursor:pointer; font-size:13px; color:var(--text-secondary); display:inline-flex; align-items:center; gap:6px;">
                 <input type="checkbox" id="showDangerZone" onchange="toggleDangerZone()">
-                Visa raderingsverktyg
+                Radering
             </label>
             <span id="dangerZone" style="display:none;">
                 <button type="button" class="btn-danger small" onclick="confirmBulkDelete()">
@@ -946,6 +1146,7 @@
                         <th style="width:60px;">Omslag</th>
                         <th data-sort="title">Bok <span class="sort-icon">▲</span></th>
                         <th data-sort="author">Författare <span class="sort-icon"></span></th>
+                        <th data-sort="genres">Genre <span class="sort-icon"></span></th>
                         <th data-sort="status">Status <span class="sort-icon"></span></th>
                         <th data-sort="ext">Filtyp <span class="sort-icon"></span></th>
                     </tr>
@@ -956,6 +1157,7 @@
                         <tr data-title="{{ item.title|lower }}"
                             data-author="{{ (item.author or '')|lower }}"
                             data-isbn="{{ (item.isbn or '')|lower }}"
+                            data-genres="{{ (item.genres or '')|lower }}"
                             data-ext="{{ item.extension|lower }}"
                             data-status="{{ 'missing' if is_missing else 'has' }}"
                             data-has-series="{{ '1' if item.series else '0' }}"
@@ -964,6 +1166,7 @@
                             data-has-cover="{{ '1' if item.cover_path else '0' }}"
                             data-has-isbn="{{ '1' if item.isbn else '0' }}"
                             data-has-publisher="{{ '1' if item.publisher else '0' }}"
+                            data-has-genres="{{ '1' if item.genres else '0' }}"
                             data-manual="{{ '1' if item.manual_metadata else '0' }}"
                             data-missing="{{ '1' if is_missing else '0' }}"
                             data-item-id="{{ item.id }}"
@@ -990,6 +1193,9 @@
                             </td>
                             <td class="author-cell" onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
                                 {% if item.author %}{{ item.author }}{% else %}<span class="meta">Okänd</span>{% endif %}
+                            </td>
+                            <td class="genres-cell" onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
+                                {% if item.genres %}<span class="meta">{{ item.genres }}</span>{% else %}<span class="meta">—</span>{% endif %}
                             </td>
                             <td>
                                 {% if is_missing %}
@@ -1074,6 +1280,10 @@
                     </select>
                 </div>
                 <div class="modal-field">
+                    <label for="modalGenres">Genre <span style="color:var(--text-tertiary); font-weight:normal;">(kommaseparerat)</span></label>
+                    <input type="text" id="modalGenres" class="modal-input" placeholder="t.ex. Fantasy, Äventyr">
+                </div>
+                <div class="modal-field">
                     <label for="modalDescription">Synopsis</label>
                     <textarea id="modalDescription" class="modal-input modal-textarea" rows="5"></textarea>
                 </div>
@@ -1139,39 +1349,40 @@
     /* -------------------------------------------------------------------- */
     function startScan() {
         var btn = document.getElementById('scanBtn');
-        var status = document.getElementById('scanStatus');
-        var text = document.getElementById('scanText');
-        var log = document.getElementById('scanLog');
+        var inline = document.getElementById('scanInline');
+        var inlineText = document.getElementById('scanInlineText');
+        var chips = document.getElementById('libraryChips');
         btn.disabled = true;
-        btn.querySelector('span').textContent = 'Skannar...';
-        status.style.display = 'block';
-        log.innerHTML = '';
+        var origLabel = btn.innerHTML;
+        btn.innerHTML = '<i class="ti ti-loader"></i> Skannar...';
+        if (chips) chips.style.display = 'none';
+        if (inline) inline.style.display = 'block';
+        if (inlineText) inlineText.textContent = 'Söker e-böcker...';
 
         var source = new EventSource('/scan?progress=1');
         source.onmessage = function(e) {
             var d = JSON.parse(e.data);
             if (d.type === 'progress') {
-                text.textContent = 'Skannar: ' + d.file;
-                log.innerHTML += '<div>' + d.file + '</div>';
-                log.scrollTop = log.scrollHeight;
+                if (inlineText) inlineText.textContent = 'Skannar: ' + d.file;
             } else if (d.type === 'done') {
-                text.textContent = 'Klar! Tillagda: ' + d.added + ', uppdaterade: ' + d.updated + ', borttagna: ' + d.removed;
+                if (inlineText) inlineText.textContent = 'Klar! Tillagda: ' + d.added + ', uppdaterade: ' + d.updated + ', borttagna: ' + d.removed;
                 source.close();
-                btn.disabled = false;
-                btn.querySelector('span').textContent = 'Skanna';
-                setTimeout(function(){ location.reload(); }, 1500);
+                setTimeout(function(){ location.reload(); }, 1200);
             } else if (d.type === 'error') {
-                text.textContent = 'Fel: ' + d.message;
+                if (inlineText) inlineText.textContent = 'Fel: ' + d.message;
                 source.close();
                 btn.disabled = false;
-                btn.querySelector('span').textContent = 'Skanna';
+                btn.innerHTML = origLabel;
+                if (chips) chips.style.display = '';
+                if (inline) inline.style.display = 'none';
             }
         };
         source.onerror = function() {
-            text.textContent = 'Anslutningen bröts.';
+            if (inlineText) inlineText.textContent = 'Anslutningen bröts.';
             source.close();
             btn.disabled = false;
-            btn.querySelector('span').textContent = 'Skanna';
+            btn.innerHTML = origLabel;
+            if (chips) chips.style.display = '';
         };
     }
 
@@ -1291,7 +1502,8 @@
         'author':      'hasAuthor',
         'cover':       'hasCover',
         'isbn':        'hasIsbn',
-        'publisher':   'hasPublisher'
+        'publisher':   'hasPublisher',
+        'genres':      'hasGenres'
     };
 
     function applyFilters() {
@@ -1308,7 +1520,11 @@
                 var title = row.dataset.title || '';
                 var author = row.dataset.author || '';
                 var isbn = row.dataset.isbn || '';
-                if (title.indexOf(search) === -1 && author.indexOf(search) === -1 && isbn.indexOf(search) === -1) show = false;
+                var genres = row.dataset.genres || '';
+                if (title.indexOf(search) === -1
+                    && author.indexOf(search) === -1
+                    && isbn.indexOf(search) === -1
+                    && genres.indexOf(search) === -1) show = false;
             }
             if (show && ext) {
                 if ((row.dataset.ext || '') !== ext) show = false;
@@ -1867,6 +2083,7 @@
         document.getElementById('modalIsbn').value        = data.isbn        || '';
         document.getElementById('modalPublisher').value   = data.publisher   || '';
         document.getElementById('modalLanguage').value    = data.language    || '';
+        document.getElementById('modalGenres').value      = data.genres      || '';
         document.getElementById('modalDescription').value = data.description || '';
 
         document.getElementById('modalAiBtn').style.display = data.ai_configured ? 'inline-flex' : 'none';
@@ -1893,6 +2110,7 @@
                 if (f.series_index) document.getElementById('modalSeriesIndex').value = f.series_index;
                 if (f.isbn)         document.getElementById('modalIsbn').value        = f.isbn;
                 if (f.publisher)    document.getElementById('modalPublisher').value   = f.publisher;
+                if (f.genres)       document.getElementById('modalGenres').value      = f.genres;
                 if (f.description)  document.getElementById('modalDescription').value = f.description;
                 var src = data.source ? ' (' + data.source + ')' : '';
                 setModalFeedback('success', 'Metadata hämtad' + src + '. Granska och spara.');
@@ -1930,6 +2148,7 @@
                 if (s.series_index) document.getElementById('modalSeriesIndex').value = s.series_index;
                 if (s.publisher)    document.getElementById('modalPublisher').value   = s.publisher;
                 if (s.language)     document.getElementById('modalLanguage').value    = s.language;
+                if (s.genres)       document.getElementById('modalGenres').value      = s.genres;
                 if (s.description)  document.getElementById('modalDescription').value = s.description;
                 setModalFeedback('success', 'AI-förslag inlagda. Granska och spara.');
             })
@@ -1951,6 +2170,7 @@
             isbn:         document.getElementById('modalIsbn').value.trim(),
             publisher:    document.getElementById('modalPublisher').value.trim(),
             language:     document.getElementById('modalLanguage').value.trim(),
+            genres:       document.getElementById('modalGenres').value.trim(),
             description:  document.getElementById('modalDescription').value.trim()
         };
         setModalFeedback('info', 'Sparar…');
@@ -1988,8 +2208,16 @@
             authorEl.textContent = data.author || 'Okänd';
             row.dataset.author = (data.author || '').toLowerCase();
         }
-        // Status column is now td:nth-child(5)
-        var statusCell = row.querySelector('td:nth-child(5)');
+        var genresEl = row.querySelector('.genres-cell');
+        if (genresEl) {
+            genresEl.innerHTML = data.genres
+                ? '<span class="meta">' + _modalEsc(data.genres) + '</span>'
+                : '<span class="meta">—</span>';
+            row.dataset.genres = (data.genres || '').toLowerCase();
+            row.dataset.hasGenres = data.genres ? '1' : '0';
+        }
+        // Status column is now td:nth-child(6)
+        var statusCell = row.querySelector('td:nth-child(6)');
         if (statusCell) {
             var alreadySaved = false;
             statusCell.querySelectorAll('.badge').forEach(function(b) {
@@ -2152,6 +2380,7 @@
                     { key: 'isbn',         label: 'ISBN' },
                     { key: 'publisher',    label: 'Förlag' },
                     { key: 'language',     label: 'Språk' },
+                    { key: 'genres',       label: 'Genre' },
                     { key: 'description',  label: 'Synopsis' }
                 ];
 
@@ -2246,6 +2475,7 @@
                     isbn:         before.isbn || '',
                     publisher:    before.publisher || '',
                     language:     before.language || '',
+                    genres:       before.genres || '',
                     description:  before.description || ''
                 };
                 fields.forEach(function(f) {

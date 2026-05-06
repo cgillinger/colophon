@@ -17,22 +17,23 @@
     <style>
         :root, [data-theme="light"] {
             --bg-primary: #ffffff;
-            --bg-secondary: #f5f6f8;
+            --bg-secondary: #f8fafc;
             --bg-tertiary: #ebedf0;
-            --bg-info: #e8f0fe;
+            --bg-info: #ecfdf5;
             --text-primary: #1a1a1a;
             --text-secondary: #555555;
             --text-tertiary: #888888;
-            --text-info: #1a56db;
+            --text-info: #065f46;
             --border-light: rgba(0, 0, 0, 0.08);
             --border-medium: rgba(0, 0, 0, 0.15);
-            --accent-primary: #4A7CDB;
+            --accent-primary: #059669;
+            --accent-primary-hover: #047857;
             --accent-purple: #6c5ce7;
-            --accent-green: #2fb67c;
+            --accent-green: #059669;
             --accent-red: #dc3545;
             --accent-yellow: #e6a817;
-            --badge-ok-bg: #e6f9ee;
-            --badge-ok-text: #1a7a3a;
+            --badge-ok-bg: #d1fae5;
+            --badge-ok-text: #065f46;
             --badge-warn-bg: #fef3cd;
             --badge-warn-text: #856404;
             --modal-overlay: rgba(0, 0, 0, 0.4);
@@ -42,20 +43,21 @@
             --bg-primary: #1e2227;
             --bg-secondary: #252a30;
             --bg-tertiary: #30363b;
-            --bg-info: #1a2332;
+            --bg-info: #064e3b;
             --text-primary: #e8ecef;
             --text-secondary: #aeb7bd;
             --text-tertiary: #6c757d;
-            --text-info: #6ea8fe;
+            --text-info: #a7f3d0;
             --border-light: rgba(255, 255, 255, 0.06);
             --border-medium: rgba(255, 255, 255, 0.12);
-            --accent-primary: #4aa3ff;
+            --accent-primary: #10b981;
+            --accent-primary-hover: #34d399;
             --accent-purple: #7c6ff0;
-            --accent-green: #3dd68c;
+            --accent-green: #10b981;
             --accent-red: #ff6b6b;
             --accent-yellow: #ffd166;
-            --badge-ok-bg: #1a3a2a;
-            --badge-ok-text: #6ee7a8;
+            --badge-ok-bg: #065f46;
+            --badge-ok-text: #a7f3d0;
             --badge-warn-bg: #3a3020;
             --badge-warn-text: #ffd166;
             --modal-overlay: rgba(0, 0, 0, 0.7);
@@ -74,7 +76,7 @@
         button, input, select { font-family: inherit; color: inherit; }
 
         .topbar {
-            height: 56px;
+            height: 68px;
             background: var(--bg-primary);
             border-bottom: 1px solid var(--border-light);
             display: flex;
@@ -85,8 +87,8 @@
             top: 0;
             z-index: 50;
         }
-        .topbar-brand { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 500; color: var(--text-primary); }
-        .topbar-brand img { width: 36px; height: 36px; border-radius: 8px; display: block; }
+        .topbar-brand { display: flex; align-items: center; gap: 12px; font-size: 20px; font-weight: 500; color: var(--text-primary); }
+        .topbar-brand img { width: 48px; height: 48px; border-radius: 10px; display: block; object-fit: cover; }
         .topbar-spacer { flex: 1; }
         .topbar-actions { display: flex; align-items: center; gap: 8px; }
         .topbar-btn {
@@ -200,7 +202,7 @@
 
 <header class="topbar">
     <a class="topbar-brand" href="{{ url_for('metadata.bulk_metadata') }}">
-        <img src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="">
+        <img src="{{ url_for('static', filename='icons/colophon.png') }}" alt="">
         <span>Colophon</span>
     </a>
     <div class="topbar-spacer"></div>

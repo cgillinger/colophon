@@ -29,6 +29,7 @@ from app.services.metadata_sources import (
     choose_best_metadata,
     choose_best_metadata_explained,
     classify_enrichment_result,
+    clean_text,
     download_cover_to_file,
     search_all_sources,
     search_all_sources_with_status,
@@ -106,6 +107,7 @@ _ENRICHMENT_FIELDS = [
     ("language", "Språk"),
     ("series", "Serie"),
     ("series_index", "Del"),
+    ("genres", "Genre"),
 ]
 
 
@@ -158,7 +160,8 @@ def metadata_item(item_id):
         isbn = request.form.get("isbn", "").strip()
         publisher = request.form.get("publisher", "").strip()
         language = request.form.get("language", "").strip()
-        description = request.form.get("description", "").strip()
+        description = clean_text(request.form.get("description", ""))
+        genres = request.form.get("genres", "").strip()
 
         if not title:
             flash("Titel får inte vara tom.", "error")
@@ -172,6 +175,7 @@ def metadata_item(item_id):
         item.publisher = publisher or None
         item.language = language or None
         item.description = description or None
+        item.genres = genres or None
         item.group_key = compute_group_key(item.title or "", item.author or "")
 
         uploaded_cover = request.files.get("cover")
@@ -220,6 +224,8 @@ def metadata_item(item_id):
             written_text["language"] = language
         if description:
             written_text["description"] = description
+        if genres:
+            written_text["genres"] = genres
         write_result = write_metadata_to_file(item, written_text, cover_to_embed)
 
         db.session.commit()
@@ -531,11 +537,25 @@ def bulk_metadata():
         key = it.group_key or f"_ungrouped_{it.id}"
         groups.setdefault(key, []).append(it)
 
+    total_count = LibraryItem.query.count()
+    missing_count = LibraryItem.query.filter(
+        db.or_(
+            LibraryItem.author.is_(None),
+            LibraryItem.author == "",
+            LibraryItem.description.is_(None),
+            LibraryItem.description == "",
+            LibraryItem.cover_path.is_(None),
+            LibraryItem.cover_path == "",
+        )
+    ).count()
+
     return render_template(
         "bulk_metadata.html",
         items=items,
         groups=groups,
         summary=summary,
+        total_count=total_count,
+        missing_count=missing_count,
     )
 
 
@@ -630,6 +650,7 @@ def bulk_stream():
                     "isbn": fresh.isbn or "",
                     "publisher": fresh.publisher or "",
                     "language": fresh.language or "",
+                    "genres": fresh.genres or "",
                     "description": fresh.description or "",
                     "cover_path": fresh.cover_path or "",
                 }
@@ -1079,11 +1100,11 @@ _AI_PREVIEW_FIELDS = [
     ("author", "Författare"),
     ("language", "Språk"),
     ("publisher", "Förlag"),
+    ("genres", "Genre"),
     ("description", "Synopsis"),
 ]
 
-# subjects is display-only — not yet a LibraryItem column
-_AI_DISPLAY_ONLY = {"subjects"}
+_AI_DISPLAY_ONLY: set = set()
 
 
 @metadata_bp.route("/metadata/<int:item_id>/ai", methods=["POST"])
@@ -1152,16 +1173,11 @@ def ai_preview(item_id):
             "default_check": confidence == "high",
         })
 
-    subjects_display = None
-    subjects_suggestion = suggestions.get("subjects")
-    if subjects_suggestion and subjects_suggestion["confidence"] != "low":
-        subjects_display = subjects_suggestion
-
     return render_template(
         "metadata_ai_preview.html",
         item=item,
         rows=rows,
-        subjects_display=subjects_display,
+        subjects_display=None,
     )
 
 
@@ -1219,6 +1235,7 @@ def metadata_json(item_id):
         "publisher": item.publisher or "",
         "language": item.language or "",
         "description": item.description or "",
+        "genres": item.genres or "",
         "file_name": item.file_name,
         "extension": item.extension,
         "size_bytes": item.size_bytes,
@@ -1246,12 +1263,13 @@ def save_metadata_json(item_id):
     item.isbn = (data.get("isbn") or "").strip() or None
     item.publisher = (data.get("publisher") or "").strip() or None
     item.language = (data.get("language") or "").strip() or None
-    item.description = (data.get("description") or "").strip() or None
+    item.description = clean_text(data.get("description") or "") or None
+    item.genres = (data.get("genres") or "").strip() or None
     item.manual_metadata = True
     item.group_key = compute_group_key(item.title or "", item.author or "")
 
     written_text = {}
-    for field in ("title", "author", "series", "series_index", "isbn", "publisher", "language", "description"):
+    for field in ("title", "author", "series", "series_index", "isbn", "publisher", "language", "description", "genres"):
         val = getattr(item, field)
         if val:
             written_text[field] = val
@@ -1379,12 +1397,13 @@ def fetch_metadata_json(item_id):
             "fetched": {
                 "title": _txt(best.get("title")),
                 "author": _txt(best.get("author")),
-                "description": _txt(best.get("description")),
+                "description": clean_text(_txt(best.get("description"))),
                 "publisher": _txt(best.get("publisher")),
                 "isbn": _txt(best.get("isbn")),
                 "language": _txt(best.get("language")),
                 "series": _txt(best.get("series")),
                 "series_index": _txt(best.get("series_index")),
+                "genres": _txt(best.get("genres")),
             },
             "score": best_score,
             "source": best.get("source", ""),
