@@ -1,81 +1,120 @@
 <!doctype html>
-<html lang="sv">
+<html lang="sv" data-theme="light">
 <head>
     <meta charset="utf-8">
+    <script>
+        (function(){
+            var t = localStorage.getItem('colophon-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
     <link rel="icon" href="{{ url_for('static', filename='icons/favicon.ico') }}" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
     <title>Hämta omslag - {{ item.title }} - Colophon</title>
     <style>
+        :root, [data-theme="light"] {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f5f6f8;
+            --bg-tertiary: #ebedf0;
+            --bg-info: #e8f0fe;
+            --text-primary: #1a1a1a;
+            --text-secondary: #555555;
+            --text-tertiary: #888888;
+            --text-info: #1a56db;
+            --border-light: rgba(0, 0, 0, 0.08);
+            --border-medium: rgba(0, 0, 0, 0.15);
+            --accent-primary: #4A7CDB;
+            --accent-purple: #6c5ce7;
+            --accent-green: #2fb67c;
+            --accent-red: #dc3545;
+            --accent-yellow: #e6a817;
+            --badge-ok-bg: #e6f9ee;
+            --badge-ok-text: #1a7a3a;
+            --badge-warn-bg: #fef3cd;
+            --badge-warn-text: #856404;
+            --modal-overlay: rgba(0, 0, 0, 0.4);
+            --cover-placeholder: linear-gradient(135deg, #d0d5dd, #e8ecf0);
+        }
+        [data-theme="dark"] {
+            --bg-primary: #1e2227;
+            --bg-secondary: #252a30;
+            --bg-tertiary: #30363b;
+            --bg-info: #1a2332;
+            --text-primary: #e8ecef;
+            --text-secondary: #aeb7bd;
+            --text-tertiary: #6c757d;
+            --text-info: #6ea8fe;
+            --border-light: rgba(255, 255, 255, 0.06);
+            --border-medium: rgba(255, 255, 255, 0.12);
+            --accent-primary: #4aa3ff;
+            --accent-purple: #7c6ff0;
+            --accent-green: #3dd68c;
+            --accent-red: #ff6b6b;
+            --accent-yellow: #ffd166;
+            --badge-ok-bg: #1a3a2a;
+            --badge-ok-text: #6ee7a8;
+            --badge-warn-bg: #3a3020;
+            --badge-warn-text: #ffd166;
+            --modal-overlay: rgba(0, 0, 0, 0.7);
+            --cover-placeholder: linear-gradient(135deg, #46505a, #20252a);
+        }
+
+        * { box-sizing: border-box; }
         body {
             margin: 0;
-            background: #303438;
-            color: #e8ecef;
-            font-family: Arial, Helvetica, sans-serif;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 14px;
         }
+        a { color: inherit; text-decoration: none; }
+        button, input, select { font-family: inherit; color: inherit; }
 
-        a {
-            color: inherit;
-            text-decoration: none;
+        .topbar {
+            height: 56px;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 14px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
         }
-        button, input, select { font-family: inherit; }
-
-        .layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
-        .sidebar { background: #2f3337; border-right: 1px solid #25292d; }
-        .logo { height: 56px; display: flex; align-items: center; padding-left: 14px; background: #25292d; color: white; font-size: 29px; font-weight: bold; }
-        .library-head { height: 42px; display: flex; align-items: center; padding: 0 12px; color: #d5d8db; font-weight: bold; border-bottom: 1px solid #363b40; font-size: 17px; }
-        .library-title { flex: 1; }
-        .library-plus, .library-more { width: 25px; height: 25px; display: inline-flex; align-items: center; justify-content: center; color: #c4c8cc; border-radius: 50%; font-size: 20px; }
-        .library-plus:hover, .library-more:hover { background: #454a50; }
-        .nav { padding-top: 6px; }
-        .nav-item { height: 42px; display: flex; align-items: center; gap: 11px; padding: 0 12px 0 20px; color: #c7ccd0; border-left: 4px solid transparent; font-size: 17px; }
-        .nav-item:hover { background: #3b4045; }
-        .nav-item.active { background: #454a50; color: white; font-weight: bold; border-left-color: white; }
-        .nav-icon { width: 21px; text-align: center; font-size: 18px; }
-        .main-col { min-width: 0; background: #34393e; }
-        .topbar { height: 56px; background: #202326; border-bottom: 1px solid #262a2e; display: flex; align-items: center; gap: 14px; padding: 0 16px; }
-        .home-icon { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; color: #bfc4c8; font-size: 25px; border-radius: 3px; }
-        .home-icon:hover { background: #30353a; color: white; }
-
-        .button,
-        button {
-            background: #3f4850;
-            color: white;
-            padding: 9px 12px;
-            border-radius: 4px;
-            font-weight: bold;
-            border: 0;
+        .topbar-brand { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 500; color: var(--text-primary); }
+        .topbar-brand img { width: 36px; height: 36px; border-radius: 8px; display: block; }
+        .topbar-spacer { flex: 1; }
+        .topbar-actions { display: flex; align-items: center; gap: 8px; }
+        .topbar-btn {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid transparent;
+            border-radius: 6px;
+            padding: 7px 12px;
+            font-size: 14px;
             cursor: pointer;
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
+        .topbar-btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .topbar-btn i { font-size: 18px; }
+        .topbar-btn.icon-only { padding: 7px; }
 
-        .button.primary,
-        button.primary {
-            background: #4aa3ff;
-        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 18px 20px 40px; }
+        h1 { margin: 0 0 18px; font-size: 22px; font-weight: 600; }
 
-        .button.purple,
-        button.purple {
-            background: #6c5ce7;
-        }
-
-        .content {
-            padding: 30px;
-            max-width: 1400px;
-        }
-
-        h1 {
-            margin-top: 0;
-            font-weight: normal;
-        }
-
-        .intro {
-            background: #30363b;
-            padding: 18px;
+        .panel {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-light);
             border-radius: 8px;
+            padding: 18px;
             margin-bottom: 24px;
-            color: #c8d0d5;
+            color: var(--text-primary);
             line-height: 1.5;
         }
 
@@ -86,7 +125,8 @@
         }
 
         .cover-card {
-            background: #30363b;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-light);
             padding: 14px;
             border-radius: 8px;
         }
@@ -94,172 +134,145 @@
         .cover-box {
             width: 100%;
             height: 285px;
-            background: linear-gradient(145deg, #46505a, #20252a);
+            background: var(--cover-placeholder);
             border-radius: 5px;
             overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 52px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.22);
+            color: var(--text-tertiary);
         }
-
-        .cover-box img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
+        .cover-box img { width: 100%; height: 100%; object-fit: cover; }
 
         .source {
             display: inline-block;
-            background: #252b30;
-            color: #cdd5da;
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
             padding: 4px 7px;
             border-radius: 4px;
             font-size: 12px;
             margin-top: 12px;
             margin-bottom: 8px;
         }
+        .title { font-weight: 600; font-size: 14px; line-height: 1.25; min-height: 35px; }
+        .note { color: var(--text-secondary); font-size: 12px; line-height: 1.35; min-height: 32px; margin-top: 6px; }
+        .actions { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
 
-        .title {
-            font-weight: bold;
-            font-size: 14px;
-            line-height: 1.25;
-            min-height: 35px;
+        .btn {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
+        .btn:hover { background: var(--bg-secondary); }
+        .btn.primary { background: var(--accent-primary); color: #fff; border-color: var(--accent-primary); }
 
-        .note {
-            color: #aeb7bd;
-            font-size: 12px;
-            line-height: 1.35;
-            min-height: 32px;
-            margin-top: 6px;
-        }
-
-        .actions {
-            margin-top: 12px;
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .empty {
-            background: #30363b;
-            padding: 24px;
-            border-radius: 8px;
-            color: #c8d0d5;
-            max-width: 900px;
-        }
-
-        .current-cover {
-            display: flex;
-            gap: 18px;
-            align-items: flex-start;
-            flex-wrap: wrap;
-        }
-
+        .current-cover { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; }
         .current-cover .mini {
             width: 110px;
             height: 160px;
-            background: linear-gradient(145deg, #46505a, #20252a);
+            background: var(--cover-placeholder);
             border-radius: 5px;
             overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 34px;
+            color: var(--text-tertiary);
         }
-
-        .current-cover .mini img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
+        .current-cover .mini img { width: 100%; height: 100%; object-fit: cover; }
 
         @media (max-width: 650px) {
-            .grid {
-                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            }
-
-            .cover-box {
-                height: 225px;
-            }
+            .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+            .cover-box { height: 225px; }
         }
     </style>
-
 </head>
 <body>
-<div class="layout">
-<aside class="sidebar">
-<a class="logo" href="{{ url_for('metadata.bulk_metadata') }}">
-    <img src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="" style="width:28px; height:28px; border-radius:4px; margin-right:10px;">
-    Colophon
-</a>
-<nav class="nav">
-<a class="nav-item active" href="{{ url_for('metadata.bulk_metadata') }}"><span class="nav-icon">🧠</span>Metadata</a>
-<a class="nav-item" href="{{ url_for('scan.scan') }}"><span class="nav-icon">🔄</span>Skanna</a>
-<a class="nav-item" href="{{ url_for('settings.ai_settings') }}"><span class="nav-icon">⚙</span>Inställningar</a>
-</nav>
-</aside>
-<main class="main-col">
-<div class="topbar"><a class="home-icon" href="{{ url_for('metadata.bulk_metadata') }}">⌂</a></div>
-<section class="content">
-        <h1>{{ item.title }}</h1>
 
-        <section class="intro">
-            <div class="current-cover">
-                <div class="mini">
-                    {% if item.cover_path %}
-                        <img src="{{ url_for('metadata.cover_item', item_id=item.id) }}" alt="{{ item.title }}">
-                    {% else %}
-                        📖
-                    {% endif %}
-                </div>
+<header class="topbar">
+    <a class="topbar-brand" href="{{ url_for('metadata.bulk_metadata') }}">
+        <img src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="">
+        <span>Colophon</span>
+    </a>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-actions">
+        <a class="topbar-btn icon-only" href="{{ url_for('settings.ai_settings') }}" title="Inställningar">
+            <i class="ti ti-settings"></i>
+        </a>
+        <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="Byt tema">
+            <i id="themeIcon" class="ti ti-sun"></i>
+        </button>
+    </div>
+</header>
 
-                <div>
-                    <strong>Omslagssökning</strong>
-                    <p>
-                        Colophon söker omslag från Google Books API. Välj det omslag som ser bäst ut.
-                    </p>
-                    <p>
-                        För bästa träff: fyll gärna i titel, författare eller ISBN på metadata-sidan först.
-                    </p>
-                </div>
+<div class="container">
+    <h1>{{ item.title }}</h1>
+
+    <section class="panel">
+        <div class="current-cover">
+            <div class="mini">
+                {% if item.cover_path %}
+                    <img src="{{ url_for('metadata.cover_item', item_id=item.id) }}" alt="{{ item.title }}">
+                {% else %}📖{% endif %}
             </div>
+            <div>
+                <strong>Omslagssökning</strong>
+                <p>Colophon söker omslag från Google Books API. Välj det omslag som ser bäst ut.</p>
+                <p>För bästa träff: fyll gärna i titel, författare eller ISBN på metadata-sidan först.</p>
+            </div>
+        </div>
+    </section>
+
+    {% if candidates %}
+        <section class="grid">
+            {% for candidate in candidates %}
+                <article class="cover-card">
+                    <div class="cover-box">
+                        <img src="{{ candidate.cover_url }}" alt="{{ candidate.title }}" loading="lazy" onerror="this.parentElement.innerHTML='📖';">
+                    </div>
+                    <div class="source">{{ candidate.source }}</div>
+                    <div class="title">{{ candidate.title or item.title }}</div>
+                    <div class="note">{{ candidate.note }}</div>
+                    <form class="actions" method="post" action="{{ url_for('metadata.apply_cover', item_id=item.id) }}">
+                        <input type="hidden" name="source" value="{{ candidate.source }}">
+                        <input type="hidden" name="cover_url" value="{{ candidate.cover_url }}">
+                        <button class="btn primary" type="submit">Använd omslag</button>
+                        <a class="btn" href="{{ candidate.cover_url }}" target="_blank">Öppna</a>
+                    </form>
+                </article>
+            {% endfor %}
         </section>
-
-        {% if candidates %}
-            <section class="grid">
-                {% for candidate in candidates %}
-                    <article class="cover-card">
-                        <div class="cover-box">
-                            <img src="{{ candidate.cover_url }}" alt="{{ candidate.title }}" loading="lazy" onerror="this.parentElement.innerHTML='📖';">
-                        </div>
-
-                        <div class="source">{{ candidate.source }}</div>
-                        <div class="title">{{ candidate.title or item.title }}</div>
-                        <div class="note">{{ candidate.note }}</div>
-
-                        <form class="actions" method="post" action="{{ url_for('metadata.apply_cover', item_id=item.id) }}">
-                            <input type="hidden" name="source" value="{{ candidate.source }}">
-                            <input type="hidden" name="cover_url" value="{{ candidate.cover_url }}">
-                            <button class="primary" type="submit">Använd omslag</button>
-                            <a class="button" href="{{ candidate.cover_url }}" target="_blank">Öppna</a>
-                        </form>
-                    </article>
-                {% endfor %}
-            </section>
-        {% else %}
-            <section class="empty">
-                <h2>Inga omslag hittades</h2>
-                <p>
-                    Testa att gå tillbaka till metadata-sidan och fyll i mer exakt titel,
-                    författare eller ISBN. ISBN ger ofta bäst omslagsträff.
-                </p>
-            </section>
-        {% endif %}
-</section>
-</main>
+    {% else %}
+        <section class="panel">
+            <h2>Inga omslag hittades</h2>
+            <p>Testa att gå tillbaka till metadata-sidan och fyll i mer exakt titel, författare eller ISBN. ISBN ger ofta bäst omslagsträff.</p>
+        </section>
+    {% endif %}
 </div>
+
+<script>
+    function toggleTheme() {
+        var current = document.documentElement.getAttribute('data-theme');
+        var next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('colophon-theme', next);
+        var icon = document.getElementById('themeIcon');
+        if (icon) icon.className = next === 'dark' ? 'ti ti-moon' : 'ti ti-sun';
+    }
+    (function() {
+        var t = document.documentElement.getAttribute('data-theme');
+        var icon = document.getElementById('themeIcon');
+        if (icon) icon.className = t === 'dark' ? 'ti ti-moon' : 'ti ti-sun';
+    })();
+</script>
 </body>
 </html>

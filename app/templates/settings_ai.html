@@ -1,83 +1,124 @@
 <!doctype html>
-<html lang="sv">
+<html lang="sv" data-theme="light">
 <head>
     <meta charset="utf-8">
+    <script>
+        (function(){
+            var t = localStorage.getItem('colophon-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
     <link rel="icon" href="{{ url_for('static', filename='icons/favicon.ico') }}" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
     <title>AI-inställningar - Colophon</title>
     <style>
+        :root, [data-theme="light"] {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f5f6f8;
+            --bg-tertiary: #ebedf0;
+            --bg-info: #e8f0fe;
+            --text-primary: #1a1a1a;
+            --text-secondary: #555555;
+            --text-tertiary: #888888;
+            --text-info: #1a56db;
+            --border-light: rgba(0, 0, 0, 0.08);
+            --border-medium: rgba(0, 0, 0, 0.15);
+            --accent-primary: #4A7CDB;
+            --accent-purple: #6c5ce7;
+            --accent-green: #2fb67c;
+            --accent-red: #dc3545;
+            --accent-yellow: #e6a817;
+            --badge-ok-bg: #e6f9ee;
+            --badge-ok-text: #1a7a3a;
+            --badge-warn-bg: #fef3cd;
+            --badge-warn-text: #856404;
+            --modal-overlay: rgba(0, 0, 0, 0.4);
+            --cover-placeholder: linear-gradient(135deg, #d0d5dd, #e8ecf0);
+        }
+        [data-theme="dark"] {
+            --bg-primary: #1e2227;
+            --bg-secondary: #252a30;
+            --bg-tertiary: #30363b;
+            --bg-info: #1a2332;
+            --text-primary: #e8ecef;
+            --text-secondary: #aeb7bd;
+            --text-tertiary: #6c757d;
+            --text-info: #6ea8fe;
+            --border-light: rgba(255, 255, 255, 0.06);
+            --border-medium: rgba(255, 255, 255, 0.12);
+            --accent-primary: #4aa3ff;
+            --accent-purple: #7c6ff0;
+            --accent-green: #3dd68c;
+            --accent-red: #ff6b6b;
+            --accent-yellow: #ffd166;
+            --badge-ok-bg: #1a3a2a;
+            --badge-ok-text: #6ee7a8;
+            --badge-warn-bg: #3a3020;
+            --badge-warn-text: #ffd166;
+            --modal-overlay: rgba(0, 0, 0, 0.7);
+            --cover-placeholder: linear-gradient(135deg, #46505a, #20252a);
+        }
+
+        * { box-sizing: border-box; }
         body {
             margin: 0;
-            background: #303438;
-            color: #e8ecef;
-            font-family: Arial, Helvetica, sans-serif;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 14px;
         }
+        a { color: inherit; text-decoration: none; }
+        button, input, select { font-family: inherit; color: inherit; }
 
-        a {
-            color: inherit;
-            text-decoration: none;
+        .topbar {
+            height: 56px;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 14px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
         }
-        button, input, select { font-family: inherit; }
-
-        .layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
-        .sidebar { background: #2f3337; border-right: 1px solid #25292d; }
-        .logo { height: 56px; display: flex; align-items: center; padding-left: 14px; background: #25292d; color: white; font-size: 29px; font-weight: bold; }
-        .library-head { height: 42px; display: flex; align-items: center; padding: 0 12px; color: #d5d8db; font-weight: bold; border-bottom: 1px solid #363b40; font-size: 17px; }
-        .library-title { flex: 1; }
-        .library-plus, .library-more { width: 25px; height: 25px; display: inline-flex; align-items: center; justify-content: center; color: #c4c8cc; border-radius: 50%; font-size: 20px; }
-        .library-plus:hover, .library-more:hover { background: #454a50; }
-        .nav { padding-top: 6px; }
-        .nav-item { height: 42px; display: flex; align-items: center; gap: 11px; padding: 0 12px 0 20px; color: #c7ccd0; border-left: 4px solid transparent; font-size: 17px; }
-        .nav-item:hover { background: #3b4045; }
-        .nav-item.active { background: #454a50; color: white; font-weight: bold; border-left-color: white; }
-        .nav-icon { width: 21px; text-align: center; font-size: 18px; }
-        .main-col { min-width: 0; background: #34393e; }
-        .topbar { height: 56px; background: #202326; border-bottom: 1px solid #262a2e; display: flex; align-items: center; gap: 14px; padding: 0 16px; }
-        .home-icon { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; color: #bfc4c8; font-size: 25px; border-radius: 3px; }
-        .home-icon:hover { background: #30353a; color: white; }
-
-        .button {
-            background: #3f4850;
-            color: white;
-            padding: 9px 16px;
-            border-radius: 4px;
-            font-weight: bold;
-            border: 0;
-            cursor: pointer;
-            display: inline-block;
-            font-size: 15px;
-        }
-
-        .button.primary { background: #4aa3ff; }
-        .button.outline {
+        .topbar-brand { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 500; color: var(--text-primary); }
+        .topbar-brand img { width: 36px; height: 36px; border-radius: 8px; display: block; }
+        .topbar-spacer { flex: 1; }
+        .topbar-actions { display: flex; align-items: center; gap: 8px; }
+        .topbar-btn {
             background: transparent;
-            border: 1px solid #555;
-            color: #d8dce0;
+            color: var(--text-secondary);
+            border: 1px solid transparent;
+            border-radius: 6px;
+            padding: 7px 12px;
+            font-size: 14px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
+        .topbar-btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .topbar-btn i { font-size: 18px; }
+        .topbar-btn.icon-only { padding: 7px; }
 
-        .content {
-            padding: 30px;
-            max-width: 860px;
-        }
-
-        h1 {
-            margin-top: 0;
-            font-weight: normal;
-        }
-
+        .container { max-width: 860px; margin: 0 auto; padding: 18px 20px 40px; }
+        h1 { margin: 0 0 18px; font-size: 22px; font-weight: 600; }
         h2 {
-            font-size: 16px;
-            font-weight: bold;
-            color: #c8d0d5;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
             text-transform: uppercase;
             letter-spacing: 0.04em;
             margin: 0 0 14px 0;
         }
 
         .panel {
-            background: #2b3035;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-light);
             border-radius: 8px;
             padding: 22px 24px;
             margin-bottom: 22px;
@@ -91,46 +132,34 @@
             align-items: baseline;
             margin-bottom: 18px;
         }
-
-        .status-label {
-            color: #8d9499;
-            font-size: 14px;
-        }
-
-        .status-value {
-            color: #e8ecef;
-            font-size: 15px;
-        }
+        .status-label { color: var(--text-secondary); font-size: 14px; }
+        .status-value { color: var(--text-primary); font-size: 15px; }
 
         .badge-ok {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            color: #6ee7a8;
-            font-weight: bold;
+            color: var(--accent-green);
+            font-weight: 600;
         }
-
         .badge-err {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            color: #ff7070;
-            font-weight: bold;
+            color: var(--accent-red);
+            font-weight: 600;
         }
 
-        .messages {
-            margin-bottom: 18px;
-        }
-
+        .messages { margin-bottom: 18px; }
         .message {
             padding: 12px 14px;
-            border-radius: 5px;
+            border-radius: 6px;
             margin-bottom: 8px;
-            background: #30363b;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-light);
         }
-
-        .message.success { border-left: 4px solid #6ee7a8; }
-        .message.error { border-left: 4px solid #ff7070; }
+        .message.success { border-left: 4px solid var(--accent-green); }
+        .message.error { border-left: 4px solid var(--accent-red); }
 
         .stats-grid {
             display: grid;
@@ -138,94 +167,90 @@
             gap: 14px;
             margin-bottom: 22px;
         }
-
         .stat-box {
-            background: #252b30;
+            background: var(--bg-secondary);
             border-radius: 6px;
             padding: 14px 18px;
         }
-
         .stat-number {
             font-size: 26px;
-            font-weight: bold;
-            color: #e8ecef;
+            font-weight: 600;
+            color: var(--text-primary);
             line-height: 1.2;
         }
+        .stat-label { font-size: 13px; color: var(--text-secondary); margin-top: 3px; }
 
-        .stat-label {
-            font-size: 13px;
-            color: #8d9499;
-            margin-top: 3px;
-        }
-
-        .recent-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-        }
-
+        .recent-table { width: 100%; border-collapse: collapse; font-size: 14px; }
         .recent-table th {
             text-align: left;
-            color: #8d9499;
-            font-weight: normal;
+            color: var(--text-secondary);
+            font-weight: 600;
             padding: 4px 10px 8px 0;
-            border-bottom: 1px solid #363b40;
+            border-bottom: 1px solid var(--border-light);
         }
-
         .recent-table td {
             padding: 7px 10px 7px 0;
-            border-bottom: 1px solid #2a2f34;
-            color: #c8d0d5;
+            border-bottom: 1px solid var(--border-light);
+            color: var(--text-primary);
             vertical-align: middle;
         }
-
-        .recent-table tr:last-child td {
-            border-bottom: none;
-        }
-
-        .tokens-badge {
-            color: #aeb7bd;
-            font-size: 13px;
-        }
+        .recent-table tr:last-child td { border-bottom: none; }
+        .tokens-badge { color: var(--text-secondary); font-size: 13px; }
 
         .notice {
             margin-top: 18px;
             padding: 12px 14px;
-            background: #252b30;
+            background: var(--bg-secondary);
             border-radius: 6px;
             font-size: 13px;
-            color: #8d9499;
+            color: var(--text-secondary);
             line-height: 1.55;
         }
+        .notice a { color: var(--accent-primary); text-decoration: underline; }
 
-        .notice a {
-            color: #4aa3ff;
-            text-decoration: underline;
+        code {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 13px;
         }
 
-        .divider {
-            border: none;
-            border-top: 1px solid #363b40;
-            margin: 18px 0;
+        .btn {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            padding: 9px 14px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
+        .btn.primary { background: var(--accent-primary); color: #fff; border-color: var(--accent-primary); }
     </style>
 </head>
 <body>
-<div class="layout">
-<aside class="sidebar">
-<a class="logo" href="{{ url_for('metadata.bulk_metadata') }}">
-    <img src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="" style="width:28px; height:28px; border-radius:4px; margin-right:10px;">
-    Colophon
-</a>
-<nav class="nav">
-<a class="nav-item" href="{{ url_for('metadata.bulk_metadata') }}"><span class="nav-icon">🧠</span>Metadata</a>
-<a class="nav-item" href="{{ url_for('scan.scan') }}"><span class="nav-icon">🔄</span>Skanna</a>
-<a class="nav-item active" href="{{ url_for('settings.ai_settings') }}"><span class="nav-icon">⚙</span>Inställningar</a>
-</nav>
-</aside>
-<main class="main-col">
-<div class="topbar"><a class="home-icon" href="{{ url_for('metadata.bulk_metadata') }}">⌂</a></div>
-<section class="content">
+
+<header class="topbar">
+    <a class="topbar-brand" href="{{ url_for('metadata.bulk_metadata') }}">
+        <img src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="">
+        <span>Colophon</span>
+    </a>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-actions">
+        <a class="topbar-btn icon-only" href="{{ url_for('settings.ai_settings') }}" title="Inställningar">
+            <i class="ti ti-settings"></i>
+        </a>
+        <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="Byt tema">
+            <i id="themeIcon" class="ti ti-sun"></i>
+        </button>
+    </div>
+</header>
+
+<div class="container">
     <h1>AI-inställningar</h1>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -250,22 +275,20 @@
                     <span class="badge-err">&#10005; Ej konfigurerad</span>
                 {% endif %}
             </span>
-
             <span class="status-label">Modell</span>
             <span class="status-value">{{ model }}</span>
-
             <span class="status-label">Konfiguration</span>
             <span class="status-value">.env</span>
         </div>
 
         {% if not configured %}
-            <p style="color:#aeb7bd; font-size:14px; margin:0 0 14px 0;">
-                Lägg till <code style="background:#171a1d; padding:2px 6px; border-radius:3px;">COLOPHON_MISTRAL_API_KEY=din-nyckel</code> i <code style="background:#171a1d; padding:2px 6px; border-radius:3px;">.env</code> för att aktivera AI-metadata.
+            <p style="color:var(--text-secondary); font-size:14px; margin:0 0 14px 0;">
+                Lägg till <code>COLOPHON_MISTRAL_API_KEY=din-nyckel</code> i <code>.env</code> för att aktivera AI-metadata.
             </p>
         {% endif %}
 
         <form action="{{ url_for('settings.ai_test_connection') }}" method="post">
-            <button class="button primary" type="submit">&#128299; Testa anslutning</button>
+            <button class="btn primary" type="submit">&#128299; Testa anslutning</button>
         </form>
     </div>
 
@@ -274,11 +297,11 @@
 
         <div class="stats-grid">
             <div class="stat-box">
-                <div class="stat-number">{{ "{:,}".format(stats.month_tokens).replace(",", " ") }}</div>
+                <div class="stat-number">{{ "{:,}".format(stats.month_tokens).replace(",", " ") }}</div>
                 <div class="stat-label">tokens denna månad ({{ stats.month_calls }} anrop)</div>
             </div>
             <div class="stat-box">
-                <div class="stat-number">{{ "{:,}".format(stats.total_tokens).replace(",", " ") }}</div>
+                <div class="stat-number">{{ "{:,}".format(stats.total_tokens).replace(",", " ") }}</div>
                 <div class="stat-label">tokens totalt ({{ stats.total_calls }} anrop)</div>
             </div>
         </div>
@@ -296,15 +319,15 @@
                 <tbody>
                     {% for entry in stats.recent %}
                         <tr>
-                            <td style="white-space:nowrap; color:#8d9499;">{{ entry.date }}</td>
+                            <td style="white-space:nowrap; color:var(--text-secondary);">{{ entry.date }}</td>
                             <td>{{ entry.book_title }}</td>
-                            <td style="text-align:right;" class="tokens-badge">{{ "{:,}".format(entry.tokens).replace(",", " ") }}</td>
+                            <td style="text-align:right;" class="tokens-badge">{{ "{:,}".format(entry.tokens).replace(",", " ") }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
         {% else %}
-            <p style="color:#8d9499; font-size:14px; margin:0;">Inga anrop loggade ännu.</p>
+            <p style="color:var(--text-secondary); font-size:14px; margin:0;">Inga anrop loggade ännu.</p>
         {% endif %}
 
         <div class="notice">
@@ -313,8 +336,22 @@
             <a href="https://console.mistral.ai" target="_blank" rel="noopener">console.mistral.ai</a>
         </div>
     </div>
-</section>
-</main>
 </div>
+
+<script>
+    function toggleTheme() {
+        var current = document.documentElement.getAttribute('data-theme');
+        var next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('colophon-theme', next);
+        var icon = document.getElementById('themeIcon');
+        if (icon) icon.className = next === 'dark' ? 'ti ti-moon' : 'ti ti-sun';
+    }
+    (function() {
+        var t = document.documentElement.getAttribute('data-theme');
+        var icon = document.getElementById('themeIcon');
+        if (icon) icon.className = t === 'dark' ? 'ti ti-moon' : 'ti ti-sun';
+    })();
+</script>
 </body>
 </html>
