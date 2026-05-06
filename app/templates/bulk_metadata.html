@@ -1981,6 +1981,7 @@
                         score: d.score,
                         source: d.source || '',
                         warnings: d.warnings || [],
+                        item_ids: d.item_ids || [d.item_id],
                     };
 
                     var tr = document.getElementById('bp-row-' + d.item_id);
@@ -2609,10 +2610,6 @@
         var fields = [];
         checked.forEach(function(cb) { fields.push(cb.dataset.field); });
 
-        fb.style.display = 'block';
-        fb.className = 'modal-feedback modal-feedback-info';
-        fb.textContent = 'Sparar…';
-
         var before = data.before;
         var candidate = data.candidate;
         var payload = {
@@ -2630,24 +2627,49 @@
             if (f in payload) payload[f] = candidate[f] || '';
         });
 
-        fetch('/metadata/' + itemId + '/save-json', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        })
-            .then(function(r) { return r.json(); })
-            .then(function(result) {
-                if (!result.ok) throw new Error(result.error || 'okänt fel');
-                fb.className = 'modal-feedback modal-feedback-success';
-                fb.textContent = 'Sparad! (' + fields.length + ' fält uppdaterade)';
-                var resultCell = document.getElementById('bp-result-' + itemId);
-                if (resultCell) resultCell.innerHTML = '<span class="bp-ok">✓ Sparad</span>';
-                setTimeout(closeBulkResultModal, 1200);
+        var allIds = data.item_ids || [itemId];
+        var completed = 0;
+        var errors = 0;
+
+        fb.style.display = 'block';
+        fb.className = 'modal-feedback modal-feedback-info';
+        fb.textContent = 'Sparar till ' + allIds.length + ' format…';
+
+        allIds.forEach(function(id) {
+            fetch('/metadata/' + id + '/save-json', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             })
-            .catch(function(err) {
-                fb.className = 'modal-feedback modal-feedback-error';
-                fb.textContent = 'Fel: ' + (err.message || err);
-            });
+                .then(function(r) { return r.json(); })
+                .then(function(result) {
+                    if (!result.ok) errors++;
+                    completed++;
+                    if (completed === allIds.length) {
+                        _onBulkSaveComplete(itemId, allIds, fields, errors, fb);
+                    }
+                })
+                .catch(function() {
+                    errors++;
+                    completed++;
+                    if (completed === allIds.length) {
+                        _onBulkSaveComplete(itemId, allIds, fields, errors, fb);
+                    }
+                });
+        });
+    }
+
+    function _onBulkSaveComplete(itemId, allIds, fields, errors, fb) {
+        if (errors === 0) {
+            fb.className = 'modal-feedback modal-feedback-success';
+            fb.textContent = 'Sparad! (' + fields.length + ' fält × ' + allIds.length + ' format)';
+            var resultCell = document.getElementById('bp-result-' + itemId);
+            if (resultCell) resultCell.innerHTML = '<span class="bp-ok">✓ Sparad</span>';
+            setTimeout(closeBulkResultModal, 1200);
+        } else {
+            fb.className = 'modal-feedback modal-feedback-error';
+            fb.textContent = errors + ' av ' + allIds.length + ' format kunde inte sparas.';
+        }
     }
 
     document.getElementById('bulkResultModal').addEventListener('click', function(e) {
