@@ -147,6 +147,110 @@ class TestRunMetadataEnrichment:
         assert result["fetched_payload"]["title"] == "Book"
         assert result["sources_used"] == ["Google Books API"]
 
+    def test_result_includes_search_input_and_local_metadata(self):
+        item = _item(title="Book", author="Author")
+        best_candidate = {
+            "source": "Google Books API", "title": "Book", "author": "Author",
+            "description": "", "isbn": "", "publisher": "", "language": "",
+            "series": "", "series_index": "", "cover_url": "",
+        }
+        file_meta = {"isbn": "9780000000001", "title": "Book", "author": "Author",
+                     "source": "ebooklib", "quality": "good", "warnings": []}
+        with patch("app.services.metadata_pipeline.scan_file_local", return_value=file_meta), \
+             patch("app.services.metadata_sources.search_all_sources", return_value=[best_candidate]), \
+             patch("app.services.metadata_sources.choose_best_metadata", return_value=(best_candidate, 80)):
+            result = run_metadata_enrichment(item)
+        assert "search_input" in result
+        assert "local_metadata" in result
+        assert result["local_metadata"] is file_meta
+
+    def test_auto_reads_file_metadata_when_not_supplied(self):
+        """File metadata is read automatically and used by build_search_input."""
+        item = _item(isbn="", title="Bad Filename Title", author="",
+                     file_path="/books/some_file.epub")
+        file_meta = {"isbn": "9781234567890", "title": "Real Title", "author": "Real Author",
+                     "source": "ebooklib", "quality": "good", "warnings": []}
+        best_candidate = {
+            "source": "Google Books API", "title": "Real Title", "author": "Real Author",
+            "description": "A real book", "isbn": "9781234567890", "publisher": "",
+            "language": "", "series": "", "series_index": "", "cover_url": "",
+        }
+        captured = {}
+        real_build = __import__(
+            "app.services.metadata_pipeline", fromlist=["build_search_input"]
+        ).build_search_input
+
+        def capturing_build(item, local_metadata=None):
+            captured["local_metadata"] = local_metadata
+            return real_build(item, local_metadata)
+
+        with patch("app.services.metadata_pipeline.scan_file_local", return_value=file_meta), \
+             patch("app.services.metadata_pipeline.build_search_input", side_effect=capturing_build), \
+             patch("app.services.metadata_sources.search_all_sources", return_value=[best_candidate]), \
+             patch("app.services.metadata_sources.choose_best_metadata", return_value=(best_candidate, 91)):
+            run_metadata_enrichment(item)
+
+        # build_search_input must have received the file metadata
+        assert captured["local_metadata"] is file_meta
+
+    def test_file_isbn_used_over_weak_db_title(self):
+        """When file has ISBN and DB only has a poor title, search uses file ISBN."""
+        item = _item(isbn="", title="untitled_book_2", author="")
+        file_meta = {"isbn": "9789876543210", "title": "", "author": "",
+                     "source": "ebooklib", "quality": "partial", "warnings": []}
+        best_candidate = {
+            "source": "Calibre", "title": "Real Book", "author": "Real Author",
+            "description": "", "isbn": "9789876543210", "publisher": "",
+            "language": "", "series": "", "series_index": "", "cover_url": "",
+        }
+        with patch("app.services.metadata_pipeline.scan_file_local", return_value=file_meta), \
+             patch("app.services.metadata_sources.search_all_sources", return_value=[best_candidate]) as mock_search, \
+             patch("app.services.metadata_sources.choose_best_metadata", return_value=(best_candidate, 80)):
+            run_metadata_enrichment(item)
+
+        call_kwargs = mock_search.call_args.kwargs
+        # The ISBN from the file must be passed to the external search
+        assert call_kwargs.get("isbn") == "9789876543210"
+        assert call_kwargs.get("query_text") == "9789876543210"
+
+    def test_scan_file_local_failure_falls_back_to_db(self):
+        """If file reading fails, build_search_input falls back to DB data."""
+        item = _item(title="DB Title", author="DB Author", isbn="")
+        best_candidate = {
+            "source": "Google Books API", "title": "DB Title", "author": "DB Author",
+            "description": "", "isbn": "", "publisher": "", "language": "",
+            "series": "", "series_index": "", "cover_url": "",
+        }
+        with patch("app.services.metadata_pipeline.scan_file_local",
+                   side_effect=Exception("file not found")), \
+             patch("app.services.metadata_sources.search_all_sources", return_value=[best_candidate]) as mock_search, \
+             patch("app.services.metadata_sources.choose_best_metadata", return_value=(best_candidate, 70)):
+            result = run_metadata_enrichment(item)
+
+        # Should still succeed using DB data
+        assert result["ok"] is True
+        assert result["local_metadata"] is None
+        call_kwargs = mock_search.call_args.kwargs
+        assert call_kwargs.get("title") == "DB Title"
+
+    def test_explicit_local_metadata_not_overridden(self):
+        """Caller-supplied local_metadata must not be replaced by auto-read."""
+        item = _item(title="Book", author="Author")
+        explicit_meta = {"isbn": "0000000001", "title": "Explicit", "author": "Explicit",
+                         "source": "ebooklib", "quality": "good", "warnings": []}
+        best_candidate = {
+            "source": "Google Books API", "title": "Book", "author": "Author",
+            "description": "", "isbn": "", "publisher": "", "language": "",
+            "series": "", "series_index": "", "cover_url": "",
+        }
+        with patch("app.services.metadata_pipeline.scan_file_local") as mock_scan, \
+             patch("app.services.metadata_sources.search_all_sources", return_value=[best_candidate]), \
+             patch("app.services.metadata_sources.choose_best_metadata", return_value=(best_candidate, 70)):
+            run_metadata_enrichment(item, local_metadata=explicit_meta)
+
+        # scan_file_local must NOT be called when local_metadata is provided
+        mock_scan.assert_not_called()
+
 
 # ---------------------------------------------------------------------------
 # apply_enrichment_result

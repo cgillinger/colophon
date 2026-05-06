@@ -17,12 +17,15 @@ logger = logging.getLogger(__name__)
 def build_search_input(item, local_metadata=None):
     """Return the best available search input for external metadata lookup.
 
-    Priority order (Phase 4 will extend with file-level metadata):
+    Priority order:
       1. ISBN from local_metadata (file)
       2. ISBN from DB item
       3. title + author from local_metadata (file)
       4. title + author from DB item
       5. cleaned filename
+
+    local_metadata should come from scan_file_local() so that metadata
+    embedded in the ebook file (often richer than DB) is used first.
 
     Returns a dict with keys:
         query_text, title, author, isbn, source, warnings
@@ -106,21 +109,38 @@ def run_metadata_enrichment(
 ):
     """Search external sources for the best metadata candidate.
 
+    Always reads fresh metadata from the ebook file before building the
+    search input, so ISBN or title/author embedded in the file takes
+    priority over potentially weak DB data (e.g. from a filename-only
+    initial scan).  Pass local_metadata explicitly to override.
+
     Returns a result dict:
-        ok               bool
-        best             dict | None      — best raw candidate from sources
-        score            float
-        sources_used     list[str]
-        validation_warning  str | None
-        fetched_payload  dict             — cleaned payload ready for preview
-        cover_path       str | None       — local path to downloaded cover
-        error            str | None       — human-readable error when ok=False
+        ok                 bool
+        best               dict | None  — best raw candidate from sources
+        score              float
+        sources_used       list[str]
+        search_input       dict         — what was sent to external sources
+        local_metadata     dict | None  — metadata read from file
+        validation_warning str | None
+        fetched_payload    dict         — cleaned payload ready for preview
+        cover_path         str | None   — local path to downloaded cover
+        error              str | None   — human-readable error when ok=False
     """
     from app.services.metadata_sources import (
         choose_best_metadata,
         download_cover_to_file,
         search_all_sources,
     )
+
+    # Read fresh file-level metadata when not supplied by the caller.
+    # This activates the full priority chain in build_search_input so that
+    # an ISBN or better title embedded in the file is used over DB-only data.
+    if local_metadata is None and getattr(item, "file_path", None):
+        try:
+            local_metadata = scan_file_local(item.file_path)
+        except Exception as exc:
+            logger.debug("scan_file_local misslyckades för %s: %s", item.file_path, exc)
+            local_metadata = None
 
     search_input = build_search_input(item, local_metadata)
 
@@ -140,6 +160,8 @@ def run_metadata_enrichment(
             "best": None,
             "score": best_score,
             "sources_used": [],
+            "search_input": search_input,
+            "local_metadata": local_metadata,
             "validation_warning": None,
             "fetched_payload": {},
             "cover_path": None,
@@ -186,6 +208,8 @@ def run_metadata_enrichment(
         "best": best,
         "score": best_score,
         "sources_used": [best["source"]] if best.get("source") else [],
+        "search_input": search_input,
+        "local_metadata": local_metadata,
         "validation_warning": validation_warning,
         "fetched_payload": fetched_payload,
         "cover_path": cover_path_for_preview,
