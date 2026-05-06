@@ -99,15 +99,16 @@ class TestBuildValidationWarning:
 # ---------------------------------------------------------------------------
 
 class TestRunMetadataEnrichment:
-    def _mock_search_outcome(self, candidates):
-        """Return a search_all_sources_with_status()-compatible dict."""
+    def _google_outcome(self, candidates):
+        """Return a google_books_search_with_status()-compatible per-source dict."""
         return {
-            "candidates": candidates,
-            "source_results": [
-                {"source": "google_books", "ok": bool(candidates), "status": "ok" if candidates else "no_result",
-                 "duration_ms": 10, "message": "", "candidates": candidates,
-                 "raw_debug": {"returncode": None, "stderr_excerpt": ""}},
-            ],
+            "source": "google_books",
+            "ok": bool(candidates),
+            "status": "ok" if candidates else "no_result",
+            "duration_ms": 10,
+            "message": "",
+            "candidates": list(candidates),
+            "raw_debug": {"returncode": None, "stderr_excerpt": ""},
         }
 
     def _scoring(self, best, score, classification="review_needed"):
@@ -124,15 +125,15 @@ class TestRunMetadataEnrichment:
     def test_returns_error_when_no_results(self):
         item = _item(title="Book", author="Author")
         with patch("app.services.metadata_pipeline.build_search_input") as mock_si, \
-             patch("app.services.metadata_sources.search_all_sources_with_status",
-                   return_value=self._mock_search_outcome([])), \
+             patch("app.services.metadata_sources.google_books_search_with_status",
+                   return_value=self._google_outcome([])), \
              patch("app.services.metadata_sources.choose_best_metadata_explained",
                    return_value=self._scoring(None, 0, "no_match")):
             mock_si.return_value = {
                 "query_text": "Book Author", "title": "Book", "author": "Author",
                 "isbn": "", "source": "db_title_author", "warnings": [],
             }
-            result = run_metadata_enrichment(item)
+            result = run_metadata_enrichment(item, include_calibre=False)
         assert result["ok"] is False
         assert result["error"]
         assert "source_results" in result
@@ -147,15 +148,15 @@ class TestRunMetadataEnrichment:
             "language": "en", "series": "", "series_index": "", "cover_url": "",
         }
         with patch("app.services.metadata_pipeline.build_search_input") as mock_si, \
-             patch("app.services.metadata_sources.search_all_sources_with_status",
-                   return_value=self._mock_search_outcome([best_candidate])), \
+             patch("app.services.metadata_sources.google_books_search_with_status",
+                   return_value=self._google_outcome([best_candidate])), \
              patch("app.services.metadata_sources.choose_best_metadata_explained",
                    return_value=self._scoring(best_candidate, 85)):
             mock_si.return_value = {
                 "query_text": "Book Author", "title": "Book", "author": "Author",
                 "isbn": "", "source": "db_title_author", "warnings": [],
             }
-            result = run_metadata_enrichment(item)
+            result = run_metadata_enrichment(item, include_calibre=False)
         assert result["ok"] is True
         assert result["score"] == 85
         assert result["fetched_payload"]["title"] == "Book"
@@ -164,15 +165,6 @@ class TestRunMetadataEnrichment:
         assert "signals" in result
         assert "classification" in result
         assert "all_scored" in result
-
-    def _search_outcome(self, candidates):
-        return {
-            "candidates": candidates,
-            "source_results": [{"source": "google_books", "ok": bool(candidates),
-                                 "status": "ok" if candidates else "no_result",
-                                 "duration_ms": 10, "message": "", "candidates": candidates,
-                                 "raw_debug": {"returncode": None, "stderr_excerpt": ""}}],
-        }
 
     def test_result_includes_search_input_and_local_metadata(self):
         item = _item(title="Book", author="Author")
@@ -184,11 +176,11 @@ class TestRunMetadataEnrichment:
         file_meta = {"isbn": "9780000000001", "title": "Book", "author": "Author",
                      "source": "ebooklib", "quality": "good", "warnings": []}
         with patch("app.services.metadata_pipeline.scan_file_local", return_value=file_meta), \
-             patch("app.services.metadata_sources.search_all_sources_with_status",
-                   return_value=self._search_outcome([best_candidate])), \
+             patch("app.services.metadata_sources.google_books_search_with_status",
+                   return_value=self._google_outcome([best_candidate])), \
              patch("app.services.metadata_sources.choose_best_metadata_explained",
                    return_value=self._scoring(best_candidate, 80)):
-            result = run_metadata_enrichment(item)
+            result = run_metadata_enrichment(item, include_calibre=False)
         assert "search_input" in result
         assert "local_metadata" in result
         assert result["local_metadata"] is file_meta
@@ -215,11 +207,11 @@ class TestRunMetadataEnrichment:
 
         with patch("app.services.metadata_pipeline.scan_file_local", return_value=file_meta), \
              patch("app.services.metadata_pipeline.build_search_input", side_effect=capturing_build), \
-             patch("app.services.metadata_sources.search_all_sources_with_status",
-                   return_value=self._search_outcome([best_candidate])), \
+             patch("app.services.metadata_sources.google_books_search_with_status",
+                   return_value=self._google_outcome([best_candidate])), \
              patch("app.services.metadata_sources.choose_best_metadata_explained",
                    return_value=self._scoring(best_candidate, 91)):
-            run_metadata_enrichment(item)
+            run_metadata_enrichment(item, include_calibre=False)
 
         assert captured["local_metadata"] is file_meta
 
@@ -234,13 +226,13 @@ class TestRunMetadataEnrichment:
             "language": "", "series": "", "series_index": "", "cover_url": "",
         }
         with patch("app.services.metadata_pipeline.scan_file_local", return_value=file_meta), \
-             patch("app.services.metadata_sources.search_all_sources_with_status",
-                   return_value=self._search_outcome([best_candidate])) as mock_search, \
+             patch("app.services.metadata_sources.google_books_search_with_status",
+                   return_value=self._google_outcome([best_candidate])) as mock_google, \
              patch("app.services.metadata_sources.choose_best_metadata_explained",
                    return_value=self._scoring(best_candidate, 80)):
-            run_metadata_enrichment(item)
+            run_metadata_enrichment(item, include_calibre=False)
 
-        call_kwargs = mock_search.call_args.kwargs
+        call_kwargs = mock_google.call_args.kwargs
         assert call_kwargs.get("isbn") == "9789876543210"
         assert call_kwargs.get("query_text") == "9789876543210"
 
@@ -254,15 +246,15 @@ class TestRunMetadataEnrichment:
         }
         with patch("app.services.metadata_pipeline.scan_file_local",
                    side_effect=Exception("file not found")), \
-             patch("app.services.metadata_sources.search_all_sources_with_status",
-                   return_value=self._search_outcome([best_candidate])) as mock_search, \
+             patch("app.services.metadata_sources.google_books_search_with_status",
+                   return_value=self._google_outcome([best_candidate])) as mock_google, \
              patch("app.services.metadata_sources.choose_best_metadata_explained",
                    return_value=self._scoring(best_candidate, 70)):
-            result = run_metadata_enrichment(item)
+            result = run_metadata_enrichment(item, include_calibre=False)
 
         assert result["ok"] is True
         assert result["local_metadata"] is None
-        call_kwargs = mock_search.call_args.kwargs
+        call_kwargs = mock_google.call_args.kwargs
         assert call_kwargs.get("title") == "DB Title"
 
     def test_explicit_local_metadata_not_overridden(self):
@@ -276,11 +268,11 @@ class TestRunMetadataEnrichment:
             "series": "", "series_index": "", "cover_url": "",
         }
         with patch("app.services.metadata_pipeline.scan_file_local") as mock_scan, \
-             patch("app.services.metadata_sources.search_all_sources_with_status",
-                   return_value=self._search_outcome([best_candidate])), \
+             patch("app.services.metadata_sources.google_books_search_with_status",
+                   return_value=self._google_outcome([best_candidate])), \
              patch("app.services.metadata_sources.choose_best_metadata_explained",
                    return_value=self._scoring(best_candidate, 70)):
-            run_metadata_enrichment(item, local_metadata=explicit_meta)
+            run_metadata_enrichment(item, local_metadata=explicit_meta, include_calibre=False)
 
         mock_scan.assert_not_called()
 
