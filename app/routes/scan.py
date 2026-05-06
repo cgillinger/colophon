@@ -1,4 +1,6 @@
 import json
+import queue
+import threading
 
 from flask import Blueprint, current_app, jsonify, request, Response
 
@@ -26,24 +28,52 @@ def scan():
 
 
 def _scan_sse():
-    library_dir = current_app.config["LIBRARY_DIR"]
-    cover_dir = current_app.config["COVER_DIR"]
-    session = db.session
+    """Stream scan progress events as Server-Sent Events.
+
+    Runs the scan in a daemon thread so the generator can yield events
+    in real time rather than buffering them until the scan completes.
+    """
+    app = current_app._get_current_object()
+    library_dir = app.config["LIBRARY_DIR"]
+    cover_dir = app.config["COVER_DIR"]
+
+    ev_queue = queue.SimpleQueue()
+
+    def _run():
+        with app.app_context():
+            from app.models import db as _db
+            from app.services.scanner import scan_directory as _scan
+            try:
+                summary = _scan(
+                    library_dir,
+                    _db.session,
+                    on_progress=ev_queue.put,
+                    cover_dir=cover_dir,
+                )
+                ev_queue.put({
+                    "type": "done",
+                    "added": summary["added"],
+                    "updated": summary["updated"],
+                    "skipped": summary.get("skipped", 0),
+                    "removed": summary.get("removed", 0),
+                })
+            except Exception as exc:
+                app.logger.exception("scan_directory SSE failed")
+                ev_queue.put({"type": "error", "message": str(exc)})
+            finally:
+                ev_queue.put(None)  # sentinel — tells generator to stop
+
+    threading.Thread(target=_run, daemon=True).start()
 
     def generate():
-        events = []
+        while True:
+            ev = ev_queue.get()
+            if ev is None:
+                break
+            yield f"data: {json.dumps(ev)}\n\n"
 
-        def collect(event):
-            events.append(event)
-
-        try:
-            summary = scan_directory(library_dir, session, on_progress=collect, cover_dir=cover_dir)
-            for ev in events:
-                yield f"data: {json.dumps(ev)}\n\n"
-            yield f"data: {json.dumps({'type': 'done', 'added': summary['added'], 'updated': summary['updated'], 'removed': summary['removed']})}\n\n"
-        except Exception as exc:
-            current_app.logger.exception("scan_directory SSE failed")
-            yield f"data: {json.dumps({'type': 'error', 'message': str(exc)})}\n\n"
-
-    return Response(generate(), mimetype="text/event-stream",
-                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+    return Response(
+        generate(),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )

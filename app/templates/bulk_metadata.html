@@ -473,7 +473,7 @@
 
                 <div class="summary-grid">
                     <div class="summary-box">
-                        <h3>Uppdaterade: {{ summary.updated|length }}</h3>
+                        <h3>Sparade: {{ summary.updated|length }}</h3>
                         <div class="summary-list">
                             {% for row in summary.updated %}
                                 <div>
@@ -484,6 +484,21 @@
                             {% endfor %}
                         </div>
                     </div>
+
+                    {% if summary.review_needed %}
+                    <div class="summary-box">
+                        <h3>Granskning rekommenderas: {{ summary.review_needed|length }}</h3>
+                        <div class="summary-list">
+                            {% for row in summary.review_needed %}
+                                <div>
+                                    🔍 {{ row.title }}<br>
+                                    <span class="meta">{{ row.source }} · matchpoäng {{ row.score }} — öppna boken för att granska</span>
+                                </div>
+                                <br>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
 
                     <div class="summary-box">
                         <h3>Ingen säker träff: {{ summary.no_match|length }}</h3>
@@ -497,6 +512,15 @@
                             {% endfor %}
                         </div>
                     </div>
+
+                    {% if summary.source_errors %}
+                    <div class="summary-box">
+                        <h3>Källfel: {{ summary.source_errors }}</h3>
+                        <div class="summary-list">
+                            <div class="meta">Alla tillgängliga källor misslyckades för {{ summary.source_errors }} bok{{ 'er' if summary.source_errors != 1 else '' }}. Kontrollera nätverks&shy;anslutning och Calibre-installation.</div>
+                        </div>
+                    </div>
+                    {% endif %}
 
                     <div class="summary-box">
                         <h3>Hoppade över: {{ summary.skipped|length }}</h3>
