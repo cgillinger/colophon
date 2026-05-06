@@ -585,6 +585,9 @@ def bulk_stream():
                 item_has_good_metadata as _has_good,
             )
 
+            # Clear stale results from previous runs
+            _bulk_result_cache.clear()
+
             summary = {
                 "updated": 0,
                 "review_needed": 0,
@@ -648,6 +651,18 @@ def bulk_stream():
                     "index": index,
                     "total": total_all,
                 })
+
+                before_snapshot = {
+                    "title": fresh.title or "",
+                    "author": fresh.author or "",
+                    "series": fresh.series or "",
+                    "series_index": fresh.series_index or "",
+                    "isbn": fresh.isbn or "",
+                    "publisher": fresh.publisher or "",
+                    "language": fresh.language or "",
+                    "description": fresh.description or "",
+                    "cover_path": fresh.cover_path or "",
+                }
 
                 try:
                     result = _enrich(
@@ -723,6 +738,16 @@ def bulk_stream():
                     classification = "auto_apply"
                     summary["updated"] += 1
 
+                _bulk_result_cache[fresh.id] = {
+                    "before": before_snapshot,
+                    "candidate": result.get("fetched_payload") or {},
+                    "classification": classification,
+                    "score": score,
+                    "signals": result.get("signals") or {},
+                    "source": source or "",
+                    "warnings": result.get("warnings") or [],
+                }
+
                 ev_queue.put({
                     "type": "book_done",
                     "item_id": fresh.id,
@@ -769,6 +794,32 @@ def bulk_stream():
 # (single-user app — key is item_id, value is the preview dict)
 # ---------------------------------------------------------------------------
 _enrichment_cache: dict = {}
+
+# Ephemeral per-item cache for the bulk SSE flow: stores before/after snapshot
+# so the UI can show a comparison modal after the run.
+_bulk_result_cache: dict = {}
+
+
+@metadata_bp.route("/metadata/bulk/result/<int:item_id>")
+def bulk_result_detail(item_id):
+    """Return cached before/after data for a book from the last bulk run."""
+    cached = _bulk_result_cache.get(item_id)
+    if not cached:
+        return jsonify({"ok": False, "error": "Inget cachat resultat för denna bok."}), 404
+    item = get_item_or_404(item_id)
+    return jsonify({
+        "ok": True,
+        "item_id": item_id,
+        "title": item.title,
+        "before": cached["before"],
+        "candidate": cached["candidate"],
+        "classification": cached["classification"],
+        "score": cached["score"],
+        "signals": cached["signals"],
+        "source": cached["source"],
+        "warnings": cached["warnings"],
+        "has_cover": bool(item.cover_path),
+    })
 
 
 @metadata_bp.route("/metadata/<int:item_id>/enrich/stream")
