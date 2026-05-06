@@ -1,160 +1,198 @@
 <!doctype html>
-<html lang="sv">
+<html lang="sv" data-theme="light">
 <head>
     <meta charset="utf-8">
+    <script>
+        (function(){
+            var t = localStorage.getItem('colophon-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
     <link rel="icon" href="{{ url_for('static', filename='icons/favicon.ico') }}" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
     <title>Metadata - {{ item.title }} - Colophon</title>
     <style>
+        :root, [data-theme="light"] {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f5f6f8;
+            --bg-tertiary: #ebedf0;
+            --bg-info: #e8f0fe;
+            --text-primary: #1a1a1a;
+            --text-secondary: #555555;
+            --text-tertiary: #888888;
+            --text-info: #1a56db;
+            --border-light: rgba(0, 0, 0, 0.08);
+            --border-medium: rgba(0, 0, 0, 0.15);
+            --accent-primary: #4A7CDB;
+            --accent-purple: #6c5ce7;
+            --accent-green: #2fb67c;
+            --accent-red: #dc3545;
+            --accent-yellow: #e6a817;
+            --badge-ok-bg: #e6f9ee;
+            --badge-ok-text: #1a7a3a;
+            --badge-warn-bg: #fef3cd;
+            --badge-warn-text: #856404;
+            --modal-overlay: rgba(0, 0, 0, 0.4);
+            --cover-placeholder: linear-gradient(135deg, #d0d5dd, #e8ecf0);
+        }
+        [data-theme="dark"] {
+            --bg-primary: #1e2227;
+            --bg-secondary: #252a30;
+            --bg-tertiary: #30363b;
+            --bg-info: #1a2332;
+            --text-primary: #e8ecef;
+            --text-secondary: #aeb7bd;
+            --text-tertiary: #6c757d;
+            --text-info: #6ea8fe;
+            --border-light: rgba(255, 255, 255, 0.06);
+            --border-medium: rgba(255, 255, 255, 0.12);
+            --accent-primary: #4aa3ff;
+            --accent-purple: #7c6ff0;
+            --accent-green: #3dd68c;
+            --accent-red: #ff6b6b;
+            --accent-yellow: #ffd166;
+            --badge-ok-bg: #1a3a2a;
+            --badge-ok-text: #6ee7a8;
+            --badge-warn-bg: #3a3020;
+            --badge-warn-text: #ffd166;
+            --modal-overlay: rgba(0, 0, 0, 0.7);
+            --cover-placeholder: linear-gradient(135deg, #46505a, #20252a);
+        }
+
+        * { box-sizing: border-box; }
+
         body {
             margin: 0;
-            background: #303438;
-            color: #e8ecef;
-            font-family: Arial, Helvetica, sans-serif;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 14px;
         }
+        a { color: inherit; text-decoration: none; }
+        button, input, select, textarea { font-family: inherit; color: inherit; }
 
-        a {
-            color: inherit;
-            text-decoration: none;
+        .topbar {
+            height: 56px;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 14px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
         }
-        button, input, select { font-family: inherit; }
-
-        .layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
-        .sidebar { background: #2f3337; border-right: 1px solid #25292d; }
-        .logo { height: 56px; display: flex; align-items: center; padding-left: 14px; background: #25292d; color: white; font-size: 29px; font-weight: bold; }
-        .library-head { height: 42px; display: flex; align-items: center; padding: 0 12px; color: #d5d8db; font-weight: bold; border-bottom: 1px solid #363b40; font-size: 17px; }
-        .library-title { flex: 1; }
-        .library-plus, .library-more { width: 25px; height: 25px; display: inline-flex; align-items: center; justify-content: center; color: #c4c8cc; border-radius: 50%; font-size: 20px; }
-        .library-plus:hover, .library-more:hover { background: #454a50; }
-        .nav { padding-top: 6px; }
-        .nav-item { height: 42px; display: flex; align-items: center; gap: 11px; padding: 0 12px 0 20px; color: #c7ccd0; border-left: 4px solid transparent; font-size: 17px; }
-        .nav-item:hover { background: #3b4045; }
-        .nav-item.active { background: #454a50; color: white; font-weight: bold; border-left-color: white; }
-        .nav-icon { width: 21px; text-align: center; font-size: 18px; }
-        .main-col { min-width: 0; background: #34393e; }
-        .topbar { height: 56px; background: #202326; border-bottom: 1px solid #262a2e; display: flex; align-items: center; gap: 14px; padding: 0 16px; }
-        .home-icon { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; color: #bfc4c8; font-size: 25px; border-radius: 3px; }
-        .home-icon:hover { background: #30353a; color: white; }
-
-        .button {
-            background: #3f4850;
-            color: white;
-            padding: 9px 12px;
-            border-radius: 4px;
-            font-weight: bold;
-            border: 0;
+        .topbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        .topbar-brand img { width: 36px; height: 36px; border-radius: 8px; display: block; }
+        .topbar-spacer { flex: 1; }
+        .topbar-actions { display: flex; align-items: center; gap: 8px; }
+        .topbar-btn {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid transparent;
+            border-radius: 6px;
+            padding: 7px 12px;
+            font-size: 14px;
             cursor: pointer;
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            line-height: 1;
         }
+        .topbar-btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .topbar-btn i { font-size: 18px; }
+        .topbar-btn.icon-only { padding: 7px; }
 
-        .button.primary {
-            background: #4aa3ff;
-        }
-
-        .button.purple {
-            background: #6c5ce7;
-        }
-
-        .button.green {
-            background: #2fb67c;
-        }
-
-        .content {
-            padding: 30px;
+        .container {
             max-width: 1200px;
+            margin: 0 auto;
+            padding: 18px 20px 40px;
         }
 
-        h1 {
-            margin-top: 0;
-            font-weight: normal;
-        }
+        h1 { margin: 0 0 18px; font-size: 22px; font-weight: 600; }
 
         .meta-layout {
             display: grid;
             grid-template-columns: 260px minmax(0, 1fr);
-            gap: 28px;
+            gap: 24px;
             align-items: start;
         }
 
-        .cover-panel,
-        .form-panel,
-        .info-panel {
-            background: #30363b;
+        .panel {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-light);
             border-radius: 8px;
             padding: 20px;
         }
 
         .cover-box {
             width: 100%;
-            height: 360px;
-            background: linear-gradient(145deg, #46505a, #20252a);
+            height: 320px;
+            background: var(--cover-placeholder);
             border-radius: 5px;
             overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 72px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.22);
+            font-size: 64px;
+            color: var(--text-tertiary);
         }
-
-        .cover-box img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
+        .cover-box img { width: 100%; height: 100%; object-fit: cover; }
 
         .small {
-            color: #aeb7bd;
+            color: var(--text-secondary);
             font-size: 13px;
             line-height: 1.45;
             margin-top: 12px;
             word-break: break-word;
         }
 
-        .messages {
-            margin-bottom: 18px;
-        }
-
+        .messages { margin-bottom: 18px; }
         .message {
             padding: 12px 14px;
-            border-radius: 5px;
+            border-radius: 6px;
             margin-bottom: 8px;
-            background: #30363b;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-light);
         }
-
-        .message.success {
-            border-left: 4px solid #6ee7a8;
-        }
-
-        .message.error {
-            border-left: 4px solid #ff7070;
-        }
+        .message.success { border-left: 4px solid var(--accent-green); }
+        .message.error { border-left: 4px solid var(--accent-red); }
 
         label {
             display: block;
-            color: #cbd4da;
-            font-weight: bold;
-            margin-bottom: 7px;
-            margin-top: 16px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 6px;
+            margin-top: 14px;
         }
 
-        input,
-        select,
-        textarea {
+        input, select, textarea {
             width: 100%;
-            background: #171a1d;
-            color: white;
-            border: 1px solid rgba(255,255,255,0.12);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-light);
             border-radius: 5px;
-            padding: 11px;
-            font-size: 15px;
-            box-sizing: border-box;
+            padding: 9px 11px;
+            font-size: 14px;
         }
-
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
         textarea {
-            min-height: 210px;
+            min-height: 200px;
             resize: vertical;
             line-height: 1.5;
         }
@@ -165,349 +203,313 @@
             gap: 14px;
         }
 
-        .actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 22px;
-            flex-wrap: wrap;
-        }
+        .actions { display: flex; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
 
-        .button.outline {
-            background: transparent;
-            border: 1px solid #555;
-            color: #d8dce0;
+        .btn {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            padding: 9px 14px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            line-height: 1;
         }
-
-        .button.danger-outline {
+        .btn:hover { background: var(--bg-secondary); }
+        .btn.primary { background: var(--accent-primary); color: #fff; border-color: var(--accent-primary); }
+        .btn.primary:hover { filter: brightness(1.05); }
+        .btn.purple { background: var(--accent-purple); color: #fff; border-color: var(--accent-purple); }
+        .btn.purple:hover { filter: brightness(1.05); }
+        .btn.ghost {
             background: transparent;
-            border: 1px solid #b25555;
-            color: #e6a0a0;
+            color: var(--text-secondary);
+            border-color: var(--border-light);
         }
+        .btn.ghost:hover { background: var(--bg-tertiary); color: var(--text-primary); }
 
         .pending-banner {
             padding: 14px 16px;
             margin-bottom: 18px;
-            background: #2a3a48;
-            border: 1px solid #4aa3ff;
-            border-left: 4px solid #4aa3ff;
+            background: var(--bg-info);
+            border: 1px solid var(--accent-primary);
+            border-left: 4px solid var(--accent-primary);
             border-radius: 5px;
-            color: #e8ecef;
+            color: var(--text-primary);
             display: flex;
             align-items: center;
             gap: 12px;
             flex-wrap: wrap;
         }
-
-        .pending-banner strong { color: white; }
-
-        .fetch-form {
-            margin-top: 12px;
-        }
-
-        .fetch-form .button {
-            width: 100%;
-        }
-
-        .info-panel {
-            margin-top: 20px;
-            color: #c8d0d5;
-            line-height: 1.5;
-        }
+        .pending-banner strong { color: var(--text-primary); }
 
         .fetch-panel {
             position: fixed;
             top: 70px;
             right: 20px;
             width: 230px;
-            background: #30363b;
-            border: 1px solid #454e56;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-light);
             border-radius: 8px;
             padding: 16px;
-            box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+            box-shadow: 0 8px 28px rgba(0,0,0,0.18);
             z-index: 500;
             display: flex;
             flex-direction: column;
             gap: 8px;
         }
-
         .fetch-panel strong {
             display: block;
-            font-size: 13px;
-            color: #c8d0d5;
+            font-size: 12px;
+            color: var(--text-secondary);
             text-transform: uppercase;
             letter-spacing: 0.04em;
+            margin-bottom: 4px;
         }
-
-        .fetch-panel form {
-            margin: 0;
-            padding: 0;
-        }
-
+        .fetch-panel form { margin: 0; padding: 0; }
         .fetch-panel form button,
-        .fetch-panel a.button {
+        .fetch-panel a.btn {
             display: block;
             width: 100%;
-            box-sizing: border-box;
             text-align: center;
-            margin-bottom: 8px;
+            justify-content: center;
         }
 
         code {
             display: inline-block;
-            background: #171a1d;
-            color: #ffffff;
-            padding: 5px 8px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            padding: 4px 8px;
             border-radius: 4px;
             margin-top: 4px;
+            font-size: 12px;
         }
 
-        .source-box {
-            margin-top: 16px;
-            padding: 14px;
-            background: #252b30;
-            border-radius: 6px;
-            color: #c8d0d5;
+        @media (max-width: 1100px) {
+            .fetch-panel { position: static; width: 100%; margin-bottom: 18px; }
         }
-
         @media (max-width: 850px) {
-            .meta-layout {
-                grid-template-columns: 1fr;
-            }
-
-            .cover-box {
-                max-width: 260px;
-            }
-
-            .form-row {
-                grid-template-columns: 1fr;
-            }
+            .meta-layout { grid-template-columns: 1fr; }
+            .cover-box { max-width: 260px; }
+            .form-row { grid-template-columns: 1fr; }
         }
     </style>
-
 </head>
 <body>
-<div class="layout">
-<aside class="sidebar">
-<a class="logo" href="{{ url_for('metadata.bulk_metadata') }}">
-    <img src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="" style="width:28px; height:28px; border-radius:4px; margin-right:10px;">
-    Colophon
-</a>
-<nav class="nav">
-<a class="nav-item active" href="{{ url_for('metadata.bulk_metadata') }}"><span class="nav-icon">🧠</span>Metadata</a>
-<a class="nav-item" href="{{ url_for('scan.scan') }}"><span class="nav-icon">🔄</span>Skanna</a>
-<a class="nav-item" href="{{ url_for('settings.ai_settings') }}"><span class="nav-icon">⚙</span>Inställningar</a>
-</nav>
-</aside>
-<main class="main-col">
-<div class="topbar"><a class="home-icon" href="{{ url_for('metadata.bulk_metadata') }}">⌂</a></div>
-<section class="content">
-        <h1>{{ item.title }}</h1>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="messages">
-                    {% for category, message in messages %}
-                        <div class="message {{ category }}">{{ message }}</div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
+<header class="topbar">
+    <a class="topbar-brand" href="{{ url_for('metadata.bulk_metadata') }}">
+        <img src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="">
+        <span>Colophon</span>
+    </a>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-actions">
+        <a class="topbar-btn icon-only" href="{{ url_for('settings.ai_settings') }}" title="Inställningar">
+            <i class="ti ti-settings"></i>
+        </a>
+        <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="Byt tema">
+            <i id="themeIcon" class="ti ti-sun"></i>
+        </button>
+    </div>
+</header>
 
-        {% if pending %}
-            <div class="pending-banner">
-                <div style="flex:1; min-width:240px;">
-                    <strong>Metadata hämtad — granska och spara.</strong>
-                    Värdena nedan är förhandsgranskade och har <em>inte</em> sparats ännu.
-                </div>
-                <form action="{{ url_for('metadata.cancel_preview', item_id=item.id) }}" method="post" style="margin:0;">
-                    <button class="button outline" type="submit">↩ Avbryt</button>
-                </form>
+<div class="container">
+    <h1>{{ item.title }}</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="messages">
+                {% for category, message in messages %}
+                    <div class="message {{ category }}">{{ message }}</div>
+                {% endfor %}
             </div>
         {% endif %}
+    {% endwith %}
 
-        <div class="meta-layout">
-            <aside>
-                <div class="cover-panel">
-                    <div class="cover-box">
-                        {% if pending and pending.has_new_cover %}
-                            <img src="{{ url_for('metadata.preview_cover', item_id=item.id) }}" alt="{{ item.title }}">
-                        {% elif item.cover_path %}
-                            <img src="{{ url_for('metadata.cover_item', item_id=item.id) }}" alt="{{ item.title }}">
-                        {% else %}
-                            📖
-                        {% endif %}
-                    </div>
+    {% if pending %}
+        <div class="pending-banner">
+            <div style="flex:1; min-width:240px;">
+                <strong>Metadata hämtad — granska och spara.</strong>
+                Värdena nedan är förhandsgranskade och har <em>inte</em> sparats ännu.
+            </div>
+            <form action="{{ url_for('metadata.cancel_preview', item_id=item.id) }}" method="post" style="margin:0;">
+                <button class="btn ghost" type="submit">↩ Avbryt</button>
+            </form>
+        </div>
+    {% endif %}
 
-                    <div class="small">
-                        Fil:<br>
-                        <code>{{ item.file_name }}</code>
-                    </div>
-
-                    <div class="small">
-                        Typ: {{ item.extension|upper|replace(".", "") }} · {{ item.size_text() }}
-                    </div>
-
-                    {% if item.manual_metadata %}
-                        <div class="small">
-                            Status: sparad metadata skyddas från att skrivas över vid skanning.
-                        </div>
+    <div class="meta-layout">
+        <aside>
+            <div class="panel">
+                <div class="cover-box">
+                    {% if pending and pending.has_new_cover %}
+                        <img src="{{ url_for('metadata.preview_cover', item_id=item.id) }}" alt="{{ item.title }}">
+                    {% elif item.cover_path %}
+                        <img src="{{ url_for('metadata.cover_item', item_id=item.id) }}" alt="{{ item.title }}">
                     {% else %}
-                        <div class="small">
-                            Status: metadata från skanning/filnamn.
-                        </div>
+                        📖
                     {% endif %}
                 </div>
-
-            </aside>
-
-            <section class="form-panel">
-                {% set p = pending or {} %}
-                <form method="post" enctype="multipart/form-data">
-                    <label for="title">Titel</label>
-                    <input id="title" name="title" value="{{ p.title if pending else (item.title or '') }}" required>
-
-                    <label for="author">Författare</label>
-                    <input id="author" name="author" value="{{ p.author if pending else (item.author or '') }}">
-
-                    <div class="form-row">
-                        <div>
-                            <label for="series">Serie</label>
-                            <input id="series" name="series" value="{{ p.series if pending else (item.series or '') }}">
-                        </div>
-
-                        <div>
-                            <label for="series_index">Del</label>
-                            <input id="series_index" name="series_index" value="{{ p.series_index if pending else (item.series_index or '') }}">
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div>
-                            <label for="isbn">ISBN</label>
-                            <input id="isbn" name="isbn" value="{{ p.isbn if pending else (item.isbn or '') }}">
-                        </div>
-
-                        <div>
-                            <label for="language">Språk</label>
-                            {% set selected_lang = (p.language if pending else (item.language or current_lang)) or current_lang %}
-                            <select id="language" name="language">
-                                {% for code, label in languages %}
-                                    <option value="{{ code }}" {% if selected_lang == code %}selected{% endif %}>{{ label }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-
-                    <label for="publisher">Förlag</label>
-                    <input id="publisher" name="publisher" value="{{ p.publisher if pending else (item.publisher or '') }}">
-
-                    <label for="description">Synopsis</label>
-                    <textarea id="description" name="description">{{ p.description if pending else (item.description or '') }}</textarea>
-
-                    <label for="cover">Byt omslag manuellt</label>
-                    <input id="cover" name="cover" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
-
-                    <div class="actions">
-                        <button class="button primary" type="submit">💾 Spara{% if pending %} (granska först){% endif %}</button>
-                        {% if pending %}
-                            <a class="button outline" href="{{ url_for('metadata.cancel_preview', item_id=item.id) }}"
-                               onclick="event.preventDefault(); document.getElementById('cancelPreviewForm').submit();">↩ Avbryt</a>
-                        {% endif %}
-                    </div>
-                </form>
-
-                {% if pending %}
-                    <form id="cancelPreviewForm" action="{{ url_for('metadata.cancel_preview', item_id=item.id) }}" method="post" style="display:none;"></form>
+                <div class="small">Fil:<br><code>{{ item.file_name }}</code></div>
+                <div class="small">Typ: {{ item.extension|upper|replace(".", "") }} · {{ item.size_text() }}</div>
+                {% if item.manual_metadata %}
+                    <div class="small">Status: sparad metadata skyddas från att skrivas över vid skanning.</div>
+                {% else %}
+                    <div class="small">Status: metadata från skanning/filnamn.</div>
                 {% endif %}
-            </section>
-        </div>
-    </section>
-</main>
+            </div>
+        </aside>
+
+        <section class="panel">
+            {% set p = pending or {} %}
+            <form method="post" enctype="multipart/form-data">
+                <label for="title">Titel</label>
+                <input id="title" name="title" value="{{ p.title if pending else (item.title or '') }}" required>
+
+                <label for="author">Författare</label>
+                <input id="author" name="author" value="{{ p.author if pending else (item.author or '') }}">
+
+                <div class="form-row">
+                    <div>
+                        <label for="series">Serie</label>
+                        <input id="series" name="series" value="{{ p.series if pending else (item.series or '') }}">
+                    </div>
+                    <div>
+                        <label for="series_index">Del</label>
+                        <input id="series_index" name="series_index" value="{{ p.series_index if pending else (item.series_index or '') }}">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div>
+                        <label for="isbn">ISBN</label>
+                        <input id="isbn" name="isbn" value="{{ p.isbn if pending else (item.isbn or '') }}">
+                    </div>
+                    <div>
+                        <label for="language">Språk</label>
+                        {% set selected_lang = (p.language if pending else (item.language or current_lang)) or current_lang %}
+                        <select id="language" name="language">
+                            {% for code, label in languages %}
+                                <option value="{{ code }}" {% if selected_lang == code %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <label for="publisher">Förlag</label>
+                <input id="publisher" name="publisher" value="{{ p.publisher if pending else (item.publisher or '') }}">
+
+                <label for="description">Synopsis</label>
+                <textarea id="description" name="description">{{ p.description if pending else (item.description or '') }}</textarea>
+
+                <label for="cover">Byt omslag manuellt</label>
+                <input id="cover" name="cover" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+
+                <div class="actions">
+                    <button class="btn primary" type="submit">💾 Spara{% if pending %} (granska först){% endif %}</button>
+                    {% if pending %}
+                        <a class="btn ghost" href="{{ url_for('metadata.cancel_preview', item_id=item.id) }}"
+                           onclick="event.preventDefault(); document.getElementById('cancelPreviewForm').submit();">↩ Avbryt</a>
+                    {% endif %}
+                </div>
+            </form>
+
+            {% if pending %}
+                <form id="cancelPreviewForm" action="{{ url_for('metadata.cancel_preview', item_id=item.id) }}" method="post" style="display:none;"></form>
+            {% endif %}
+        </section>
+    </div>
 </div>
 
-    <div class="fetch-panel">
-        <strong>Automatisk metadata</strong>
-        <div id="enrich-progress" style="display:none; margin: 0.5rem 0; padding: 0.5rem; background: #f0f4ff; border-radius: 4px; font-size: 0.85rem; color: #444;">
-            <span id="enrich-status-text">Söker...</span>
-        </div>
-        <form id="enrichForm" action="{{ url_for('metadata.enrich_item_metadata', item_id=item.id) }}" method="post">
-            <button id="enrichBtn" class="button primary" type="submit">🔍 Hämta metadata</button>
-        </form>
-        {% if ai_configured %}
-        <form action="{{ url_for('metadata.run_ai_for_item', item_id=item.id) }}" method="post">
-            <button class="button outline" type="submit">🤖 Fråga AI om metadata</button>
-        </form>
-        {% endif %}
-        <a class="button outline" href="{{ url_for('metadata.lookup_covers', item_id=item.id) }}">Hämta omslag</a>
-        <a class="button outline" href="{{ url_for('settings.ai_settings') }}">⚙ AI-inställningar</a>
+<div class="fetch-panel">
+    <strong>Automatisk metadata</strong>
+    <div id="enrich-progress" style="display:none; margin: 4px 0; padding: 8px; background: var(--bg-info); color: var(--text-info); border-radius: 4px; font-size: 13px;">
+        <span id="enrich-status-text">Söker...</span>
     </div>
-    <script>
-        document.querySelectorAll('.message').forEach(function(el) {
-            var isError = el.classList.contains('error');
-            console[isError ? 'error' : 'log']('[Colophon]', el.textContent.trim());
-        });
+    <form id="enrichForm" action="{{ url_for('metadata.enrich_item_metadata', item_id=item.id) }}" method="post">
+        <button id="enrichBtn" class="btn primary" type="submit">🔍 Hämta metadata</button>
+    </form>
+    {% if ai_configured %}
+    <form action="{{ url_for('metadata.run_ai_for_item', item_id=item.id) }}" method="post">
+        <button class="btn ghost" type="submit">🤖 Fråga AI om metadata</button>
+    </form>
+    {% endif %}
+    <a class="btn ghost" href="{{ url_for('metadata.lookup_covers', item_id=item.id) }}">Hämta omslag</a>
+    <a class="btn ghost" href="{{ url_for('settings.ai_settings') }}">⚙ AI-inställningar</a>
+</div>
 
-        (function () {
-            var form = document.getElementById('enrichForm');
-            var btn = document.getElementById('enrichBtn');
-            var progressDiv = document.getElementById('enrich-progress');
-            var statusText = document.getElementById('enrich-status-text');
-            var streamUrl = '{{ url_for("metadata.enrich_stream", item_id=item.id) }}';
-            var previewUrl = '{{ url_for("metadata.enrichment_preview", item_id=item.id) }}';
+<script>
+    function toggleTheme() {
+        var current = document.documentElement.getAttribute('data-theme');
+        var next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('colophon-theme', next);
+        var icon = document.getElementById('themeIcon');
+        if (icon) icon.className = next === 'dark' ? 'ti ti-moon' : 'ti ti-sun';
+    }
+    (function() {
+        var t = document.documentElement.getAttribute('data-theme');
+        var icon = document.getElementById('themeIcon');
+        if (icon) icon.className = t === 'dark' ? 'ti ti-moon' : 'ti ti-sun';
+    })();
 
-            if (!window.EventSource) {
-                return; // Fall back to normal form submit
-            }
+    (function () {
+        var form = document.getElementById('enrichForm');
+        var btn = document.getElementById('enrichBtn');
+        var progressDiv = document.getElementById('enrich-progress');
+        var statusText = document.getElementById('enrich-status-text');
+        var streamUrl = '{{ url_for("metadata.enrich_stream", item_id=item.id) }}';
+        var previewUrl = '{{ url_for("metadata.enrichment_preview", item_id=item.id) }}';
 
-            form.addEventListener('submit', function (e) {
-                e.preventDefault();
-                btn.disabled = true;
-                btn.textContent = '⏳ Söker...';
-                progressDiv.style.display = 'block';
-                statusText.textContent = 'Söker externa källor...';
+        if (!window.EventSource) return;
 
-                var es = new EventSource(streamUrl);
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            btn.disabled = true;
+            btn.textContent = '⏳ Söker...';
+            progressDiv.style.display = 'block';
+            statusText.textContent = 'Söker externa källor...';
 
-                es.onmessage = function (event) {
-                    var data;
-                    try { data = JSON.parse(event.data); } catch (_) { return; }
-
-                    if (data.type === 'progress' && data.message) {
-                        statusText.textContent = data.message;
-                    } else if (data.type === 'done') {
-                        es.close();
-                        if (data.ok) {
-                            statusText.textContent = 'Klar! Öppnar förhandsgranskning...';
-                            window.location.href = previewUrl;
-                        } else {
-                            _showError(data.message || 'Inga träffar hittades.');
-                        }
-                    } else if (data.type === 'error') {
-                        es.close();
-                        _showError(data.message || 'Något gick fel.');
-                    }
-                };
-
-                es.onerror = function () {
+            var es = new EventSource(streamUrl);
+            es.onmessage = function (event) {
+                var data;
+                try { data = JSON.parse(event.data); } catch (_) { return; }
+                if (data.type === 'progress' && data.message) {
+                    statusText.textContent = data.message;
+                } else if (data.type === 'done') {
                     es.close();
-                    // Network error — fall back to regular synchronous form submit
-                    progressDiv.style.display = 'none';
-                    btn.disabled = false;
-                    btn.textContent = '🔍 Hämta metadata';
-                    form.submit();
-                };
-
-                function _showError(msg) {
-                    progressDiv.style.display = 'none';
-                    btn.disabled = false;
-                    btn.textContent = '🔍 Hämta metadata';
-                    var errDiv = document.createElement('div');
-                    errDiv.className = 'message error';
-                    errDiv.textContent = msg;
-                    form.parentNode.insertBefore(errDiv, form);
+                    if (data.ok) {
+                        statusText.textContent = 'Klar! Öppnar förhandsgranskning...';
+                        window.location.href = previewUrl;
+                    } else {
+                        _showError(data.message || 'Inga träffar hittades.');
+                    }
+                } else if (data.type === 'error') {
+                    es.close();
+                    _showError(data.message || 'Något gick fel.');
                 }
-            });
-        })();
-    </script>
+            };
+            es.onerror = function () {
+                es.close();
+                progressDiv.style.display = 'none';
+                btn.disabled = false;
+                btn.textContent = '🔍 Hämta metadata';
+                form.submit();
+            };
+            function _showError(msg) {
+                progressDiv.style.display = 'none';
+                btn.disabled = false;
+                btn.textContent = '🔍 Hämta metadata';
+                var errDiv = document.createElement('div');
+                errDiv.className = 'message error';
+                errDiv.textContent = msg;
+                form.parentNode.insertBefore(errDiv, form);
+            }
+        });
+    })();
+</script>
 </body>
 </html>
