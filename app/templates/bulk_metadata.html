@@ -1934,15 +1934,24 @@
                     tr.id = 'bp-row-' + d.item_id;
                     tr.className = 'bp-active';
                     var title = d.title || '';
-                    if (title.length > 50) title = title.substring(0, 50) + '…';
+                    if (title.length > 45) title = title.substring(0, 45) + '…';
+
+                    var fmtHtml = '';
+                    if (d.formats && d.formats.length > 0) {
+                        fmtHtml = ' ' + d.formats.map(function(f) {
+                            return '<span class="format-badge">' + _esc(f) + '</span>';
+                        }).join(' ');
+                    }
+
                     tr.innerHTML =
-                        '<td>' + _esc(title) + '</td>' +
+                        '<td>' + _esc(title) + fmtHtml + '</td>' +
                         '<td style="text-align:center;" id="bp-google-' + d.item_id + '"></td>' +
                         '<td style="text-align:center;" id="bp-calibre-' + d.item_id + '"></td>' +
                         '<td style="text-align:center;" id="bp-score-' + d.item_id + '"></td>' +
                         '<td style="text-align:center;" id="bp-result-' + d.item_id + '"></td>';
                     body.appendChild(tr);
-                    summaryEl.textContent = d.index + ' av ' + d.total + '…';
+                    var unit = d.total === 1 ? 'grupp' : 'grupper';
+                    summaryEl.textContent = d.index + ' av ' + d.total + ' ' + unit + '…';
 
                 } else if (d.type === 'progress') {
                     var stageMap = { google_books: 'google', calibre: 'calibre' };
@@ -1967,9 +1976,15 @@
                         tr = document.createElement('tr');
                         tr.id = 'bp-row-' + d.item_id;
                         var title = d.title || '';
-                        if (title.length > 50) title = title.substring(0, 50) + '…';
+                        if (title.length > 45) title = title.substring(0, 45) + '…';
+                        var fmtHtml = '';
+                        if (d.formats && d.formats.length > 0) {
+                            fmtHtml = ' ' + d.formats.map(function(f) {
+                                return '<span class="format-badge">' + _esc(f) + '</span>';
+                            }).join(' ');
+                        }
                         tr.innerHTML =
-                            '<td>' + _esc(title) + '</td>' +
+                            '<td>' + _esc(title) + fmtHtml + '</td>' +
                             '<td style="text-align:center;" id="bp-google-' + d.item_id + '">—</td>' +
                             '<td style="text-align:center;" id="bp-calibre-' + d.item_id + '">—</td>' +
                             '<td style="text-align:center;" id="bp-score-' + d.item_id + '"></td>' +
@@ -2037,7 +2052,8 @@
                     counts.done += 1;
                     if (d.classification === 'auto_apply') counts.saved += 1;
                     if (d.classification === 'review_needed') counts.review += 1;
-                    summaryEl.textContent = counts.done + ' av ' + d.total + ' klara'
+                    var doneUnit = d.total === 1 ? 'grupp' : 'grupper';
+                    summaryEl.textContent = counts.done + ' av ' + d.total + ' ' + doneUnit + ' klara'
                         + (counts.saved ? ' — ' + counts.saved + ' sparade' : '')
                         + (counts.review ? ', ' + counts.review + ' granskning' : '');
 

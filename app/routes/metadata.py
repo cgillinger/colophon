@@ -53,6 +53,30 @@ from app.routes.helpers import get_item_or_404, save_uploaded_cover, get_int_for
 metadata_bp = Blueprint("metadata", __name__)
 
 
+def _pick_search_representative(group_items):
+    """Pick the item with the richest embedded metadata for searching."""
+    def _richness(item):
+        score = 0
+        if item.isbn:
+            score += 3
+        if item.author and '[' not in (item.author or ''):
+            score += 2
+        if item.description:
+            score += 1
+        if item.title and item.title != item.file_name:
+            score += 1
+        if (item.extension or '').lower() in ('.epub', 'epub'):
+            score += 1
+        return score
+    return max(group_items, key=_richness)
+
+
+def _format_label(item):
+    """Return a normalized format label like 'EPUB' for an item."""
+    ext = (item.extension or '').lstrip('.').upper()
+    return ext or 'OKÄNT'
+
+
 def _file_write_warning(error_code):
     """Return a Swedish warning string for a file-write error code, or None."""
     if not error_code:
@@ -434,9 +458,15 @@ def bulk_metadata():
                 ]
                 flash("AI-körning klar. " + ", ".join(ai_parts) + ".", "success")
         else:
+            from collections import OrderedDict
+            sync_groups = OrderedDict()
+            for item in selected_items:
+                key = item.group_key or f"_solo_{item.id}"
+                sync_groups.setdefault(key, []).append(item)
+
             processed_count = 0
 
-            for item in selected_items:
+            for group_key, group_items in sync_groups.items():
                 if processed_count >= max_items:
                     summary["limited"] = True
                     break
@@ -444,8 +474,14 @@ def bulk_metadata():
                 processed_count += 1
                 summary["processed"] = processed_count
 
+                representative = _pick_search_representative(group_items)
+                formats = [_format_label(it) for it in group_items]
+                title_label = representative.title
+                if len(group_items) > 1:
+                    title_label = f"{representative.title} ({', '.join(formats)})"
+
                 # Use the priority-based search input (Phase 4)
-                search_inp = build_search_input(item)
+                search_inp = build_search_input(representative)
 
                 search_outcome = search_all_sources_with_status(
                     title=search_inp["title"],
@@ -466,14 +502,14 @@ def bulk_metadata():
                     summary["source_errors"] += 1
                     continue
 
-                scoring = choose_best_metadata_explained(item, candidates)
+                scoring = choose_best_metadata_explained(representative, candidates)
                 best = scoring["best"]
                 classification = scoring["classification"]
 
                 if not best or classification == "no_match":
                     summary["no_match"].append(
                         {
-                            "title": item.title,
+                            "title": title_label,
                             "score": scoring["score"],
                         }
                     )
@@ -483,31 +519,35 @@ def bulk_metadata():
                     # Medium-confidence match — flag for manual review, do not apply
                     summary["review_needed"].append(
                         {
-                            "title": item.title,
+                            "title": title_label,
                             "source": best.get("source", "Okänd källa"),
                             "score": scoring["score"],
                         }
                     )
                     continue
 
-                # classification == "auto_apply" — high confidence, apply
-                apply_result = apply_metadata_to_item(
-                    item=item,
-                    result=best,
-                    cover_dir=current_app.config["COVER_DIR"],
-                    overwrite=overwrite,
-                    write_to_file=True,
-                )
-
-                if not apply_result["file_updated"] and apply_result.get("file_write_error"):
-                    summary["file_write_failed"] += 1
+                # classification == "auto_apply" — high confidence, apply to all
+                # group members so every format gets the same metadata.
+                file_write_error = None
+                for member in group_items:
+                    apply_result = apply_metadata_to_item(
+                        item=member,
+                        result=best,
+                        cover_dir=current_app.config["COVER_DIR"],
+                        overwrite=overwrite,
+                        write_to_file=True,
+                    )
+                    if not apply_result["file_updated"] and apply_result.get("file_write_error"):
+                        summary["file_write_failed"] += 1
+                        if member.id == representative.id:
+                            file_write_error = apply_result.get("file_write_error")
 
                 summary["updated"].append(
                     {
-                        "title": item.title,
+                        "title": title_label,
                         "source": best.get("source", "Okänd källa"),
                         "score": scoring["score"],
-                        "file_write_error": apply_result.get("file_write_error"),
+                        "file_write_error": file_write_error,
                     }
                 )
 
@@ -616,59 +656,81 @@ def bulk_stream():
                 "limited": False,
             }
 
-            processed = 0
-            total_all = len(selected_items)
+            # Group selected items by group_key — books that exist in multiple
+            # formats are searched once and the result applied to all formats.
+            from collections import OrderedDict
+            groups = OrderedDict()
+            for item in selected_items:
+                fresh = _db.session.get(_Item, item.id)
+                if not fresh:
+                    continue
+                key = fresh.group_key or f"_solo_{fresh.id}"
+                groups.setdefault(key, []).append(fresh)
 
+            total_groups = len(groups)
             index = 0
             processed = 0
 
-            for item in selected_items:
+            for group_key, group_items in groups.items():
                 index += 1
 
                 if processed >= max_items:
                     summary["limited"] = True
                     break
 
-                fresh = _db.session.get(_Item, item.id)
-                if not fresh:
-                    continue
-
                 processed += 1
+
+                representative = _pick_search_representative(group_items)
+                formats = [_format_label(it) for it in group_items]
+                item_ids = [it.id for it in group_items]
+
                 ev_queue.put({
                     "type": "book_start",
-                    "item_id": fresh.id,
-                    "title": fresh.title or "",
+                    "item_id": representative.id,
+                    "item_ids": item_ids,
+                    "title": representative.title or "",
+                    "formats": formats,
+                    "group_size": len(group_items),
                     "index": index,
-                    "total": total_all,
+                    "total": total_groups,
                 })
 
-                before_snapshot = {
-                    "title": fresh.title or "",
-                    "author": fresh.author or "",
-                    "series": fresh.series or "",
-                    "series_index": fresh.series_index or "",
-                    "isbn": fresh.isbn or "",
-                    "publisher": fresh.publisher or "",
-                    "language": fresh.language or "",
-                    "genres": fresh.genres or "",
-                    "description": fresh.description or "",
-                    "cover_path": fresh.cover_path or "",
-                }
+                def _snapshot(it):
+                    return {
+                        "title": it.title or "",
+                        "author": it.author or "",
+                        "series": it.series or "",
+                        "series_index": it.series_index or "",
+                        "isbn": it.isbn or "",
+                        "publisher": it.publisher or "",
+                        "language": it.language or "",
+                        "genres": it.genres or "",
+                        "description": it.description or "",
+                        "cover_path": it.cover_path or "",
+                    }
+
+                before_snapshots = {it.id: _snapshot(it) for it in group_items}
 
                 try:
                     result = _enrich(
-                        fresh,
+                        representative,
                         cover_dir=cover_dir,
                         on_progress=ev_queue.put,
                     )
-                except Exception as exc:
-                    app.logger.exception("bulk_stream enrichment failed for item %s", fresh.id)
+                except Exception:
+                    app.logger.exception(
+                        "bulk_stream enrichment failed for group %s (rep item %s)",
+                        group_key, representative.id,
+                    )
                     ev_queue.put({
                         "type": "book_done",
-                        "item_id": fresh.id,
-                        "title": fresh.title or "",
+                        "item_id": representative.id,
+                        "item_ids": item_ids,
+                        "title": representative.title or "",
+                        "formats": formats,
+                        "group_size": len(group_items),
                         "index": index,
-                        "total": total_all,
+                        "total": total_groups,
                         "classification": "source_error",
                         "score": None,
                         "source": None,
@@ -716,36 +778,48 @@ def bulk_stream():
                     classification = "review_needed"
                     summary["review_needed"] += 1
                 else:
-                    # auto_apply
-                    apply_result = _apply(
-                        item=fresh,
-                        result=best,
-                        cover_dir=cover_dir,
-                        overwrite=overwrite,
-                        write_to_file=True,
-                    )
-                    if not apply_result.get("file_updated") and apply_result.get("file_write_error"):
-                        file_write_error = apply_result.get("file_write_error")
-                        summary["file_write_failed"] += 1
+                    # auto_apply: apply same metadata to every group member
                     classification = "auto_apply"
+                    for member in group_items:
+                        apply_result = _apply(
+                            item=member,
+                            result=best,
+                            cover_dir=cover_dir,
+                            overwrite=overwrite,
+                            write_to_file=True,
+                        )
+                        if not apply_result.get("file_updated") and apply_result.get("file_write_error"):
+                            if member.id == representative.id:
+                                file_write_error = apply_result.get("file_write_error")
+                            summary["file_write_failed"] += 1
                     summary["updated"] += 1
 
-                _bulk_result_cache[fresh.id] = {
-                    "before": before_snapshot,
-                    "candidate": result.get("fetched_payload") or {},
-                    "classification": classification,
-                    "score": score,
-                    "signals": result.get("signals") or {},
-                    "source": source or "",
-                    "warnings": result.get("warnings") or [],
-                }
+                fetched_payload = result.get("fetched_payload") or {}
+                signals = result.get("signals") or {}
+                warnings = result.get("warnings") or []
+
+                # Cache before/after for every group member so the comparison
+                # modal works regardless of which item_id is used to open it.
+                for member in group_items:
+                    _bulk_result_cache[member.id] = {
+                        "before": before_snapshots[member.id],
+                        "candidate": fetched_payload,
+                        "classification": classification,
+                        "score": score,
+                        "signals": signals,
+                        "source": source or "",
+                        "warnings": warnings,
+                    }
 
                 ev_queue.put({
                     "type": "book_done",
-                    "item_id": fresh.id,
-                    "title": fresh.title or "",
+                    "item_id": representative.id,
+                    "item_ids": item_ids,
+                    "title": representative.title or "",
+                    "formats": formats,
+                    "group_size": len(group_items),
                     "index": index,
-                    "total": total_all,
+                    "total": total_groups,
                     "classification": classification,
                     "score": score,
                     "source": source,
