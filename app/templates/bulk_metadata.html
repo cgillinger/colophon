@@ -442,6 +442,49 @@
         .bp-fail { color: #ff6b6b; }
         .bp-skip { color: #aeb7bd; }
         .bp-warn { color: #ffd166; }
+        .bp-uncertain { color: #ff9966; }
+
+        #bulkResultModal {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.7);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .brm-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: transparent;
+            border-radius: 0;
+            overflow: visible;
+        }
+
+        .brm-table th {
+            background: #1f2327;
+            color: #cdd5da;
+            font-size: 13px;
+            text-align: left;
+            padding: 10px 8px;
+        }
+
+        .brm-table td {
+            padding: 10px 8px;
+            vertical-align: top;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .brm-table .brm-changed {
+            background: rgba(110, 231, 168, 0.08);
+        }
+
+        .brm-table .brm-empty {
+            color: #666;
+            font-style: italic;
+        }
     </style>
 
 </head>
@@ -604,6 +647,15 @@
         <div id="bulkProgress" style="display:none;" class="panel">
             <h2 id="bulkProgressTitle">Söker metadata…</h2>
             <div id="bulkProgressSummary" class="meta" style="margin-bottom:12px;"></div>
+            <div class="bp-legend" style="font-size:12px; color:#aeb7bd; margin-bottom:8px;">
+                Poäng:
+                <span class="bp-ok">≥90 stark match</span> ·
+                <span class="bp-warn">70–89 granska</span> ·
+                <span class="bp-uncertain">50–69 osäker</span> ·
+                <span class="bp-fail">&lt;50 ingen match</span>
+                — Baseras på ISBN, titel, författare, synopsis och omslag.
+                Klicka på en rad för att jämföra och välja fält att spara.
+            </div>
             <table id="bulkProgressTable" style="width:100%;">
                 <thead>
                     <tr>
@@ -1096,8 +1148,21 @@
                                     && d.classification !== 'skipped'
                                     && d.classification !== 'source_error') {
                                 var s = Math.round(d.score);
-                                var cls = s >= 70 ? 'bp-ok' : (s >= 50 ? 'bp-warn' : 'bp-fail');
-                                scoreCell.innerHTML = '<span class="' + cls + '">' + s + '</span>';
+                                var cls, tooltip;
+                                if (s >= 90) {
+                                    cls = 'bp-ok';
+                                    tooltip = 'Stark match – sparas automatiskt';
+                                } else if (s >= 70) {
+                                    cls = 'bp-warn';
+                                    tooltip = 'Trolig match – bör granskas';
+                                } else if (s >= 50) {
+                                    cls = 'bp-uncertain';
+                                    tooltip = 'Osäker match';
+                                } else {
+                                    cls = 'bp-fail';
+                                    tooltip = 'Svag match';
+                                }
+                                scoreCell.innerHTML = '<span class="' + cls + '" title="' + tooltip + '">' + s + '</span>';
                             } else {
                                 scoreCell.textContent = '—';
                             }
@@ -1113,6 +1178,14 @@
                                 'source_error':  '<span class="bp-fail">⚠ Källfel</span>',
                             };
                             resultCell.innerHTML = labels[d.classification] || d.classification;
+                        }
+
+                        if (d.classification !== 'skipped') {
+                            tr.style.cursor = 'pointer';
+                            tr.title = 'Klicka för att jämföra och spara fält';
+                            (function(itemId) {
+                                tr.onclick = function() { openBulkResultModal(itemId); };
+                            })(d.item_id);
                         }
 
                         counts.done += 1;
@@ -1229,6 +1302,7 @@
 
 <script>
     var _modalItemId = null;
+    var _coverUrlBase = '{{ url_for("metadata.cover_item", item_id=0) }}'.replace(/\/0$/, '');
 
     function openBookModal(itemId) {
         console.debug('[Colophon modal]', 'fetching metadata for', itemId);
@@ -1252,7 +1326,7 @@
     function _populateModal(itemId, data) {
         var coverEl = document.getElementById('modalCover');
         if (data.cover_path) {
-            coverEl.innerHTML = '<img src="/metadata/' + itemId + '/cover" alt="">';
+            coverEl.innerHTML = '<img src="' + _coverUrlBase + '/' + itemId + '" alt="">';
         } else {
             coverEl.innerHTML = '📖';
         }
@@ -1457,6 +1531,199 @@
 
     document.getElementById('bookModal').addEventListener('click', function(e) {
         if (e.target === this) closeBookModal();
+    });
+</script>
+
+<div id="bulkResultModal" style="display:none;">
+    <div class="modal-box" style="max-width:900px;">
+        <h2 id="brmTitle" style="margin-top:0;"></h2>
+        <div id="brmFeedback" class="modal-feedback" style="display:none;"></div>
+        <div id="brmMeta" style="font-size:13px; color:#aeb7bd; margin-bottom:14px;"></div>
+        <table class="brm-table">
+            <thead>
+                <tr>
+                    <th style="width:18%;">Fält</th>
+                    <th style="width:38%;">Nuvarande</th>
+                    <th style="width:6%; text-align:center;">Välj</th>
+                    <th style="width:38%;">Hämtat</th>
+                </tr>
+            </thead>
+            <tbody id="brmBody"></tbody>
+        </table>
+        <div class="modal-actions">
+            <button type="button" class="primary" onclick="saveBulkResult()">Spara valda</button>
+            <button type="button" onclick="closeBulkResultModal()">Stäng</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    var _brmItemId = null;
+
+    function _brmEsc(str) {
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function _brmClassLabel(c) {
+        return {
+            'auto_apply':    '✓ Sparad automatiskt',
+            'review_needed': '👁 Rekommenderas granska',
+            'no_match':     '✗ Ingen säker match',
+            'skipped':       '⏭ Hoppad',
+            'source_error':  '⚠ Källfel',
+        }[c] || c;
+    }
+
+    function openBulkResultModal(itemId) {
+        _brmItemId = itemId;
+        document.getElementById('bulkResultModal').style.display = 'flex';
+        document.getElementById('brmTitle').textContent = 'Laddar…';
+        document.getElementById('brmMeta').textContent = '';
+        document.getElementById('brmBody').innerHTML = '<tr><td colspan="4">Laddar…</td></tr>';
+        document.getElementById('brmFeedback').style.display = 'none';
+
+        fetch('/metadata/bulk/result/' + itemId)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.ok) {
+                    document.getElementById('brmTitle').textContent = 'Inget resultat';
+                    document.getElementById('brmBody').innerHTML =
+                        '<tr><td colspan="4">' + _brmEsc(data.error || 'Fel') + '</td></tr>';
+                    return;
+                }
+                document.getElementById('brmTitle').textContent = data.title || 'Bok';
+                var metaParts = [];
+                if (data.source) metaParts.push('Källa: ' + data.source);
+                if (data.score !== null && data.score !== undefined) {
+                    metaParts.push('Poäng: ' + Math.round(data.score));
+                }
+                metaParts.push(_brmClassLabel(data.classification));
+                document.getElementById('brmMeta').textContent = metaParts.join(' · ');
+
+                var fields = [
+                    { key: 'title',        label: 'Titel' },
+                    { key: 'author',       label: 'Författare' },
+                    { key: 'series',       label: 'Serie' },
+                    { key: 'series_index', label: 'Del' },
+                    { key: 'isbn',         label: 'ISBN' },
+                    { key: 'publisher',    label: 'Förlag' },
+                    { key: 'language',     label: 'Språk' },
+                    { key: 'description',  label: 'Synopsis' }
+                ];
+
+                var before = data.before || {};
+                var after = data.candidate || {};
+                var tbody = document.getElementById('brmBody');
+                tbody.innerHTML = '';
+
+                fields.forEach(function(f) {
+                    var b = (before[f.key] || '').toString().trim();
+                    var a = (after[f.key] || '').toString().trim();
+                    var changed = b !== a && a !== '';
+                    var checkable = a !== '' && b !== a;
+
+                    var bDisplay = b.length > 200 ? b.substring(0, 200) + '…' : b;
+                    var aDisplay = a.length > 200 ? a.substring(0, 200) + '…' : a;
+
+                    var tr = document.createElement('tr');
+                    if (changed) tr.className = 'brm-changed';
+
+                    var checkHtml = '';
+                    if (checkable) {
+                        checkHtml = '<input type="checkbox" class="brm-check" data-field="'
+                            + f.key + '" checked>';
+                    }
+
+                    tr.innerHTML =
+                        '<td><strong>' + _brmEsc(f.label) + '</strong></td>' +
+                        '<td class="' + (b ? '' : 'brm-empty') + '">' +
+                            _brmEsc(bDisplay || '(tomt)') + '</td>' +
+                        '<td style="text-align:center;">' + checkHtml + '</td>' +
+                        '<td class="' + (a ? '' : 'brm-empty') + '">' +
+                            _brmEsc(aDisplay || '(tomt)') + '</td>';
+                    tbody.appendChild(tr);
+                });
+            })
+            .catch(function(err) {
+                console.error('[Colophon brm]', err);
+                document.getElementById('brmTitle').textContent = 'Fel';
+                document.getElementById('brmBody').innerHTML =
+                    '<tr><td colspan="4">Kunde inte ladda data.</td></tr>';
+            });
+    }
+
+    function closeBulkResultModal() {
+        document.getElementById('bulkResultModal').style.display = 'none';
+        _brmItemId = null;
+    }
+
+    function saveBulkResult() {
+        var itemId = _brmItemId;
+        if (!itemId) return;
+
+        var checked = document.querySelectorAll('.brm-check:checked');
+        var fb = document.getElementById('brmFeedback');
+        if (checked.length === 0) {
+            fb.style.display = 'block';
+            fb.className = 'modal-feedback modal-feedback-error';
+            fb.textContent = 'Välj minst ett fält att uppdatera.';
+            return;
+        }
+
+        var fields = [];
+        checked.forEach(function(cb) { fields.push(cb.dataset.field); });
+
+        fb.style.display = 'block';
+        fb.className = 'modal-feedback modal-feedback-info';
+        fb.textContent = 'Sparar…';
+
+        // Re-fetch full (untruncated) candidate values, then merge with current
+        // values for fields the user did NOT pick (save-json replaces all fields).
+        fetch('/metadata/bulk/result/' + itemId)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.ok) throw new Error(data.error || 'no_result');
+                var before = data.before || {};
+                var candidate = data.candidate || {};
+                var payload = {
+                    title:        before.title || '',
+                    author:       before.author || '',
+                    series:       before.series || '',
+                    series_index: before.series_index || '',
+                    isbn:         before.isbn || '',
+                    publisher:    before.publisher || '',
+                    language:     before.language || '',
+                    description:  before.description || ''
+                };
+                fields.forEach(function(f) {
+                    if (f in payload) payload[f] = candidate[f] || '';
+                });
+                return fetch('/metadata/' + itemId + '/save-json', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.ok) throw new Error(data.error || 'okänt fel');
+                fb.className = 'modal-feedback modal-feedback-success';
+                fb.textContent = 'Sparad! (' + fields.length + ' fält uppdaterade)';
+
+                var resultCell = document.getElementById('bp-result-' + itemId);
+                if (resultCell) {
+                    resultCell.innerHTML = '<span class="bp-ok">✓ Sparad</span>';
+                }
+                setTimeout(closeBulkResultModal, 1200);
+            })
+            .catch(function(err) {
+                fb.className = 'modal-feedback modal-feedback-error';
+                fb.textContent = 'Fel: ' + (err.message || err);
+            });
+    }
+
+    document.getElementById('bulkResultModal').addEventListener('click', function(e) {
+        if (e.target === this) closeBulkResultModal();
     });
 </script>
 </body>
