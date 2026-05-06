@@ -254,26 +254,14 @@ def apply_enrichment_result(
 
 
 # ---------------------------------------------------------------------------
-# Local file scan (placeholder — full implementation in Phase 3)
+# Local file scan
 # ---------------------------------------------------------------------------
 
 def scan_file_local(file_path, cover_dir=None):
     """Extract local metadata from a single ebook file.
 
-    Phase 3 will implement the full extraction logic. This placeholder
-    returns an empty result so the pipeline interface is stable.
+    Delegates to scanner.extract_local_metadata and returns the normalized
+    dict (title, author, …, source, quality, warnings).
     """
-    return {
-        "title": "",
-        "author": "",
-        "description": "",
-        "isbn": "",
-        "publisher": "",
-        "language": "",
-        "series": "",
-        "series_index": "",
-        "cover_path": None,
-        "source": "filename",
-        "quality": "minimal",
-        "warnings": ["scan_file_local: not yet implemented (Phase 3)"],
-    }
+    from app.services.scanner import extract_local_metadata
+    return extract_local_metadata(file_path, cover_dir=cover_dir)
