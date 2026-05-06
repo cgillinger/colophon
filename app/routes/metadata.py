@@ -40,6 +40,7 @@ from app.services.metadata_writer import (
     item_has_good_metadata,
     write_metadata_to_file,
 )
+from app.services.grouping import compute_group_key
 from app.services.metadata_pipeline import (
     apply_enrichment_result as _pipeline_apply,
     build_search_input,
@@ -171,6 +172,7 @@ def metadata_item(item_id):
         item.publisher = publisher or None
         item.language = language or None
         item.description = description or None
+        item.group_key = compute_group_key(item.title or "", item.author or "")
 
         uploaded_cover = request.files.get("cover")
         new_cover_path = save_uploaded_cover(item, uploaded_cover)
@@ -523,9 +525,16 @@ def bulk_metadata():
             .all()
         )
 
+    from collections import OrderedDict
+    groups = OrderedDict()
+    for it in items:
+        key = it.group_key or f"_ungrouped_{it.id}"
+        groups.setdefault(key, []).append(it)
+
     return render_template(
         "bulk_metadata.html",
         items=items,
+        groups=groups,
         summary=summary,
     )
 
@@ -1239,6 +1248,7 @@ def save_metadata_json(item_id):
     item.language = (data.get("language") or "").strip() or None
     item.description = (data.get("description") or "").strip() or None
     item.manual_metadata = True
+    item.group_key = compute_group_key(item.title or "", item.author or "")
 
     written_text = {}
     for field in ("title", "author", "series", "series_index", "isbn", "publisher", "language", "description"):
@@ -1253,6 +1263,91 @@ def save_metadata_json(item_id):
     if not write_result["ok"] and write_result.get("error") not in ("no_fields", "not_installed", "unsupported_format"):
         resp["file_write_warning"] = write_result.get("error")
     return jsonify(resp)
+
+
+@metadata_bp.route("/metadata/<int:item_id>/delete", methods=["POST"])
+def delete_item(item_id):
+    """Delete a book from the library, optionally including the file on disk."""
+    item = get_item_or_404(item_id)
+    delete_file = request.form.get("delete_file") == "1"
+
+    title = item.title
+    file_path = item.file_path
+    cover_path = item.cover_path
+
+    if cover_path:
+        try:
+            os.unlink(cover_path)
+        except OSError:
+            pass
+
+    file_deleted = False
+    file_error = None
+    if delete_file and file_path and os.path.exists(file_path):
+        try:
+            os.unlink(file_path)
+            file_deleted = True
+        except OSError as exc:
+            file_error = str(exc)
+            logger.warning("Kunde inte radera fil %s: %s", file_path, exc)
+
+    db.session.delete(item)
+    db.session.commit()
+
+    return jsonify({
+        "ok": True,
+        "title": title,
+        "file_deleted": file_deleted,
+        "file_error": file_error,
+    })
+
+
+@metadata_bp.route("/metadata/bulk/delete", methods=["POST"])
+def bulk_delete():
+    """Delete multiple books. Expects JSON: {item_ids: [...], delete_files: bool}"""
+    data = request.get_json(silent=True) or {}
+
+    item_ids = data.get("item_ids") or []
+    delete_files = bool(data.get("delete_files"))
+
+    if not item_ids:
+        return jsonify({"ok": False, "error": "Inga böcker valda."}), 400
+
+    deleted = 0
+    file_errors = 0
+
+    for raw_id in item_ids:
+        try:
+            iid = int(raw_id)
+        except (TypeError, ValueError):
+            continue
+
+        item = LibraryItem.query.get(iid)
+        if not item:
+            continue
+
+        if item.cover_path:
+            try:
+                os.unlink(item.cover_path)
+            except OSError:
+                pass
+
+        if delete_files and item.file_path and os.path.exists(item.file_path):
+            try:
+                os.unlink(item.file_path)
+            except OSError:
+                file_errors += 1
+
+        db.session.delete(item)
+        deleted += 1
+
+    db.session.commit()
+
+    return jsonify({
+        "ok": True,
+        "deleted": deleted,
+        "file_errors": file_errors,
+    })
 
 
 @metadata_bp.route("/metadata/<int:item_id>/fetch-json", methods=["POST"])

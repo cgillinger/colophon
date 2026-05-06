@@ -130,6 +130,10 @@ def apply_metadata_to_item(
 
     item.manual_metadata = True
 
+    if "title" in written_text or "author" in written_text:
+        from app.services.grouping import compute_group_key
+        item.group_key = compute_group_key(item.title or "", item.author or "")
+
     file_updated = False
     file_write_error = None
     if write_to_file:

@@ -30,6 +30,8 @@ class LibraryItem(db.Model):
     manual_metadata = db.Column(db.Boolean, default=False)
     cover_locked = db.Column(db.Boolean, default=False)
 
+    group_key = db.Column(db.String(64), nullable=True, index=True)
+
     pipeline_status = db.Column(db.String(50), default="scanned", nullable=False)
     scanned_at = db.Column(db.DateTime, nullable=True)
     enriched_at = db.Column(db.DateTime, nullable=True)
