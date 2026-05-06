@@ -22,17 +22,55 @@ def ensure_database_columns():
         "polished_at": "ALTER TABLE library_items ADD COLUMN polished_at DATETIME",
         "file_mtime": "ALTER TABLE library_items ADD COLUMN file_mtime REAL",
         "metadata_read_at": "ALTER TABLE library_items ADD COLUMN metadata_read_at DATETIME",
+        "group_key": "ALTER TABLE library_items ADD COLUMN group_key VARCHAR(64)",
     }
 
     changed = False
+    group_key_added = False
 
     for column_name, sql in columns_to_add.items():
         if column_name not in existing_columns:
             db.session.execute(text(sql))
             changed = True
+            if column_name == "group_key":
+                group_key_added = True
 
     if changed:
         db.session.commit()
+
+    try:
+        db.session.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_library_items_group_key "
+            "ON library_items (group_key)"
+        ))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+    backfill_group_keys(force=group_key_added)
+
+
+def backfill_group_keys(force=False):
+    """Compute group_key for items that don't have one set yet."""
+    from app.services.grouping import compute_group_key
+
+    rows = db.session.execute(text(
+        "SELECT id, title, author FROM library_items "
+        "WHERE group_key IS NULL OR group_key = ''"
+    )).fetchall()
+
+    if not rows:
+        return
+
+    for item_id, title, author in rows:
+        key = compute_group_key(title or "", author or "")
+        if key:
+            db.session.execute(
+                text("UPDATE library_items SET group_key = :key WHERE id = :id"),
+                {"key": key, "id": item_id},
+            )
+
+    db.session.commit()
 
 
 def ensure_ai_usage_log_table():

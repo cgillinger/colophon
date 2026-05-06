@@ -668,6 +668,45 @@
         }
         .brm-expand-toggle:hover { filter: brightness(1.1); }
 
+        /* Grouped view */
+        .group-hidden { display: none !important; }
+        .group-child { background: var(--bg-tertiary); }
+        .group-child td:first-child { padding-left: 28px; }
+        .format-badge {
+            display: inline-block;
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            margin-right: 3px;
+        }
+        .group-expand-btn { cursor: pointer; color: var(--text-tertiary); }
+        .group-expand-btn:hover { color: var(--text-primary); }
+        .topbar-btn.active,
+        #groupToggle.active {
+            background: var(--accent-primary);
+            color: #ffffff;
+        }
+        #groupToggle.active i { color: #ffffff; }
+
+        /* Danger / delete buttons */
+        .btn-danger {
+            background: var(--accent-red);
+            color: #ffffff;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-danger:hover { filter: brightness(1.1); }
+        .btn-danger.small { padding: 5px 10px; font-size: 12px; }
+
         @media (max-width: 800px) {
             table#bookTable, table#bookTable thead, table#bookTable tbody,
             table#bookTable th, table#bookTable td, table#bookTable tr { display: block; }
@@ -847,6 +886,9 @@
             <button class="btn ghost" type="button" onclick="selectAllBooks()">Välj alla</button>
             <button class="btn ghost" type="button" onclick="selectMissingBooks()">Välj saknade</button>
             <button class="btn ghost" type="button" onclick="clearSelection()">Avmarkera</button>
+            <button id="groupToggle" class="btn ghost" type="button" onclick="toggleGroupView()" title="Gruppera format">
+                <i class="ti ti-list"></i> Alla format
+            </button>
         </div>
 
         <div class="settings-row">
@@ -859,6 +901,15 @@
                 <input id="max_items" type="number" name="max_items" value="25" min="1" max="100">
                 per körning
             </label>
+            <label style="cursor:pointer;">
+                <input type="checkbox" id="showDangerZone" onchange="toggleDangerZone()">
+                Visa raderingsverktyg
+            </label>
+            <span id="dangerZone" style="display:none;">
+                <button type="button" class="btn-danger small" onclick="confirmBulkDelete()">
+                    <i class="ti ti-trash"></i> Radera valda
+                </button>
+            </span>
             <span class="selected-count" id="selectedCount">0 valda</span>
         </div>
 
@@ -915,7 +966,8 @@
                             data-has-publisher="{{ '1' if item.publisher else '0' }}"
                             data-manual="{{ '1' if item.manual_metadata else '0' }}"
                             data-missing="{{ '1' if is_missing else '0' }}"
-                            data-item-id="{{ item.id }}">
+                            data-item-id="{{ item.id }}"
+                            data-group-key="{{ item.group_key or '' }}">
                             <td>
                                 <input type="checkbox" name="item_ids" value="{{ item.id }}" class="book-checkbox">
                             </td>
@@ -1030,6 +1082,9 @@
         <div class="modal-actions">
             <button type="button" class="btn" id="modalFetchBtn" onclick="fetchMetadata()">Hämta metadata</button>
             <button type="button" class="btn purple" id="modalAiBtn" onclick="fetchAiMetadata()" style="display:none;">Fråga AI</button>
+            <button type="button" class="btn-danger" onclick="confirmDeleteBook()" title="Radera bok">
+                <i class="ti ti-trash"></i> Radera
+            </button>
             <div class="spacer"></div>
             <button type="button" class="btn primary" onclick="saveMetadata()">Spara</button>
             <button type="button" class="btn ghost" onclick="closeBookModal()">Avbryt</button>
@@ -1371,8 +1426,206 @@
 
     /* Initial: mark all rows as visible (filterHidden=''), then render */
     document.querySelectorAll('#bookTableBody tr').forEach(function(r) { r.dataset.filterHidden = ''; });
-    renderPagination();
+
+    /* -------------------------------------------------------------------- */
+    /* Grouping                                                              */
+    /* -------------------------------------------------------------------- */
+    var _grouped = localStorage.getItem('colophon-grouped') === '1';
+
+    function _gEsc(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function updateGroupToggleButton() {
+        var btn = document.getElementById('groupToggle');
+        if (!btn) return;
+        btn.classList.toggle('active', _grouped);
+        btn.innerHTML = _grouped
+            ? '<i class="ti ti-stack-2"></i> Grupperat'
+            : '<i class="ti ti-list"></i> Alla format';
+    }
+
+    function _resetGrouping() {
+        var tbody = document.getElementById('bookTableBody');
+        var rows = Array.from(tbody.querySelectorAll('tr[data-group-key]'));
+        rows.forEach(function(row) {
+            row.classList.remove('group-child', 'group-hidden', 'group-parent');
+            delete row.dataset.groupExpanded;
+            var extCell = row.querySelector('td:last-child');
+            if (extCell && extCell.dataset.originalContent !== undefined) {
+                extCell.innerHTML = extCell.dataset.originalContent;
+                delete extCell.dataset.originalContent;
+            }
+        });
+    }
+
+    function renderGroupedView() {
+        _resetGrouping();
+        if (!_grouped) {
+            renderPagination();
+            return;
+        }
+
+        var tbody = document.getElementById('bookTableBody');
+        var rows = Array.from(tbody.querySelectorAll('tr[data-group-key]'));
+
+        var groups = {};
+        var groupOrder = [];
+        rows.forEach(function(row) {
+            var key = row.dataset.groupKey;
+            if (!key) return;
+            if (!groups[key]) {
+                groups[key] = [];
+                groupOrder.push(key);
+            }
+            groups[key].push(row);
+        });
+
+        groupOrder.forEach(function(key) {
+            var group = groups[key];
+            if (group.length <= 1) return;
+
+            var primary = group[0];
+            var formats = group.map(function(r) {
+                return (r.dataset.ext || '').toUpperCase().replace('.', '');
+            });
+
+            var extCell = primary.querySelector('td:last-child');
+            if (extCell) {
+                extCell.dataset.originalContent = extCell.innerHTML;
+                extCell.innerHTML = formats.map(function(f) {
+                    return '<span class="format-badge">' + _gEsc(f) + '</span>';
+                }).join(' ');
+
+                var expandBtn = document.createElement('span');
+                expandBtn.className = 'group-expand-btn';
+                expandBtn.innerHTML = ' <i class="ti ti-chevron-down" style="font-size:12px;"></i>';
+                expandBtn.onclick = function(e) {
+                    e.stopPropagation();
+                    toggleGroup(key);
+                };
+                extCell.appendChild(expandBtn);
+            }
+
+            primary.classList.add('group-parent');
+            primary.dataset.groupExpanded = '0';
+
+            for (var i = 1; i < group.length; i++) {
+                group[i].classList.add('group-child', 'group-hidden');
+            }
+        });
+
+        renderPagination();
+    }
+
+    function toggleGroup(groupKey) {
+        var tbody = document.getElementById('bookTableBody');
+        var children = tbody.querySelectorAll('tr.group-child[data-group-key="' + groupKey + '"]');
+        var parent = tbody.querySelector('tr.group-parent[data-group-key="' + groupKey + '"]');
+
+        var expanded = parent && parent.dataset.groupExpanded === '1';
+
+        children.forEach(function(row) {
+            row.classList.toggle('group-hidden', expanded);
+        });
+
+        if (parent) {
+            parent.dataset.groupExpanded = expanded ? '0' : '1';
+            var icon = parent.querySelector('.group-expand-btn i');
+            if (icon) {
+                icon.className = expanded ? 'ti ti-chevron-down' : 'ti ti-chevron-up';
+            }
+        }
+        renderPagination();
+    }
+
+    function toggleGroupView() {
+        _grouped = !_grouped;
+        localStorage.setItem('colophon-grouped', _grouped ? '1' : '0');
+        renderGroupedView();
+        updateGroupToggleButton();
+    }
+
+    /* Patch renderPagination to also exclude group-hidden rows */
+    var _origGetFilteredRows = getFilteredRows;
+    getFilteredRows = function() {
+        return Array.from(document.querySelectorAll('#bookTableBody tr'))
+            .filter(function(r) {
+                return r.dataset.filterHidden !== '1' && !r.classList.contains('group-hidden');
+            });
+    };
+
+    /* Patch sortTable to re-render grouping after sort */
+    var _origSortTable = sortTable;
+    sortTable = function(key) {
+        _origSortTable(key);
+        if (_grouped) renderGroupedView();
+    };
+    /* Re-bind click handlers (the original handlers still call the captured _origSortTable via the new global) */
+    document.querySelectorAll('#bookTable th[data-sort]').forEach(function(th) {
+        var fresh = th.cloneNode(true);
+        th.parentNode.replaceChild(fresh, th);
+        fresh.addEventListener('click', function() { sortTable(fresh.dataset.sort); });
+    });
+
+    updateGroupToggleButton();
+    renderGroupedView();
     updateSelectedCount();
+
+    /* -------------------------------------------------------------------- */
+    /* Bulk delete                                                           */
+    /* -------------------------------------------------------------------- */
+    function toggleDangerZone() {
+        var show = document.getElementById('showDangerZone').checked;
+        var el = document.getElementById('dangerZone');
+        if (el) el.style.display = show ? '' : 'none';
+    }
+
+    function confirmBulkDelete() {
+        var checked = Array.from(document.querySelectorAll('.book-checkbox:checked'));
+        if (checked.length === 0) {
+            alert('Välj minst en bok.');
+            return;
+        }
+
+        var count = checked.length;
+        var msg = 'Radera ' + count + ' bok' + (count > 1 ? 'er' : '') + '?\n\n'
+            + '• OK = ta bort från biblioteket (filer bevaras)\n'
+            + '• Avbryt om du ångrar dig';
+        if (!confirm(msg)) return;
+
+        var deleteFiles = false;
+        var confirmText = prompt(
+            'Skriv RADERA om du även vill radera FILERNA permanent från disk.\n\n'
+            + 'Lämna tomt eller tryck Avbryt för att bara ta bort från biblioteket.'
+        );
+        if (confirmText === 'RADERA') deleteFiles = true;
+
+        var itemIds = checked.map(function(cb) { return parseInt(cb.value, 10); });
+
+        fetch('/metadata/bulk/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item_ids: itemIds, delete_files: deleteFiles })
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.ok) {
+                    alert('Fel: ' + (data.error || 'okänt'));
+                    return;
+                }
+                itemIds.forEach(function(id) {
+                    var row = document.querySelector('tr[data-item-id="' + id + '"]');
+                    if (row) row.remove();
+                });
+                renderGroupedView();
+                updateSelectedCount();
+                var resultMsg = data.deleted + ' bok' + (data.deleted !== 1 ? 'er' : '') + ' raderade.';
+                if (data.file_errors) resultMsg += ' ' + data.file_errors + ' filer kunde inte raderas.';
+                alert(resultMsg);
+            })
+            .catch(function() { alert('Radering misslyckades.'); });
+    }
 
     /* -------------------------------------------------------------------- */
     /* Bulk metadata SSE handler                                             */
@@ -1755,6 +2008,57 @@
     function closeBookModal() {
         document.getElementById('bookModal').style.display = 'none';
         _modalItemId = null;
+    }
+
+    function _modalEsc(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function confirmDeleteBook() {
+        var itemId = _modalItemId;
+        if (!itemId) return;
+        var title = document.getElementById('modalTitle').value || 'denna bok';
+
+        var fb = document.getElementById('modalFeedback');
+        fb.style.display = 'block';
+        fb.className = 'modal-feedback modal-feedback-error';
+        fb.innerHTML =
+            '<strong>Radera "' + _modalEsc(title) + '"?</strong><br>'
+            + '<div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">'
+            + '<button type="button" class="btn ghost" onclick="deleteBook(false)">Ta bort från bibliotek</button>'
+            + '<button type="button" class="btn-danger" onclick="deleteBook(true)">Radera permanent (inkl. fil)</button>'
+            + '<button type="button" class="btn ghost" onclick="clearModalFeedback()">Avbryt</button>'
+            + '</div>';
+    }
+
+    function deleteBook(deleteFile) {
+        var itemId = _modalItemId;
+        if (!itemId) return;
+
+        setModalFeedback('info', 'Raderar…');
+
+        var formData = new FormData();
+        formData.append('delete_file', deleteFile ? '1' : '0');
+
+        fetch('/metadata/' + itemId + '/delete', {
+            method: 'POST',
+            body: formData
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.ok) {
+                    setModalFeedback('error', 'Fel: ' + (data.error || 'okänt'));
+                    return;
+                }
+                var row = document.querySelector('tr[data-item-id="' + itemId + '"]');
+                if (row) row.remove();
+                closeBookModal();
+                renderGroupedView();
+                updateSelectedCount();
+            })
+            .catch(function() {
+                setModalFeedback('error', 'Radering misslyckades.');
+            });
     }
     function setModalFeedback(type, msg) {
         var el = document.getElementById('modalFeedback');

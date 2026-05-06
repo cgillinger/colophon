@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 from ebooklib import epub, ITEM_IMAGE
 
 from app.models import LibraryItem, db
+from app.services.grouping import compute_group_key
 
 logger = logging.getLogger(__name__)
 
@@ -250,6 +251,8 @@ def upsert_library_item(file_path, metadata: dict, existing=None, db_session=Non
         existing.scanned_at = now
 
         if not existing.manual_metadata:
+            old_title = existing.title
+            old_author = existing.author
             if metadata.get("title"):
                 existing.title = metadata["title"]
             if metadata.get("author"):
@@ -269,11 +272,19 @@ def upsert_library_item(file_path, metadata: dict, existing=None, db_session=Non
             if metadata.get("cover_path") and not existing.cover_locked:
                 existing.cover_path = metadata["cover_path"]
 
+            if existing.title != old_title or existing.author != old_author or not existing.group_key:
+                existing.group_key = compute_group_key(existing.title or "", existing.author or "")
+        elif not existing.group_key:
+            existing.group_key = compute_group_key(existing.title or "", existing.author or "")
+
         return existing
 
+    item_title = metadata.get("title") or _clean_title_from_filename(file_path.stem)
+    item_author = metadata.get("author") or None
+
     item = LibraryItem(
-        title=metadata.get("title") or _clean_title_from_filename(file_path.stem),
-        author=metadata.get("author") or None,
+        title=item_title,
+        author=item_author,
         description=metadata.get("description") or None,
         publisher=metadata.get("publisher") or None,
         language=metadata.get("language") or None,
@@ -290,6 +301,7 @@ def upsert_library_item(file_path, metadata: dict, existing=None, db_session=Non
         manual_metadata=False,
         pipeline_status="scanned",
         scanned_at=now,
+        group_key=compute_group_key(item_title or "", item_author or ""),
     )
     session.add(item)
     return item
