@@ -25,6 +25,7 @@ class LibraryItem(db.Model):
 
     cover_path = db.Column(db.String(2000), nullable=True)
     size_bytes = db.Column(db.Integer, nullable=True)
+    file_mtime = db.Column(db.Float, nullable=True)
 
     manual_metadata = db.Column(db.Boolean, default=False)
     cover_locked = db.Column(db.Boolean, default=False)
@@ -33,6 +34,7 @@ class LibraryItem(db.Model):
     scanned_at = db.Column(db.DateTime, nullable=True)
     enriched_at = db.Column(db.DateTime, nullable=True)
     polished_at = db.Column(db.DateTime, nullable=True)
+    metadata_read_at = db.Column(db.DateTime, nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

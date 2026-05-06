@@ -1,7 +1,6 @@
 import logging
 import os
 import shutil
-from difflib import SequenceMatcher
 from pathlib import Path
 
 from app.services.ai_metadata import fetch_ai_suggestions
@@ -32,6 +31,10 @@ from app.services.metadata_writer import (
     apply_metadata_to_item,
     item_has_good_metadata,
     write_metadata_to_file,
+)
+from app.services.metadata_pipeline import (
+    apply_enrichment_result as _pipeline_apply,
+    run_metadata_enrichment,
 )
 from app.routes.helpers import get_item_or_404, save_uploaded_cover, get_int_form_value
 
@@ -494,118 +497,29 @@ def enrich_item_metadata(item_id):
 
     try:
         lock_path.write_text(str(os.getpid()), encoding="utf-8")
+        cover_dir = current_app.config["COVER_DIR"]
 
-        query_text = ""
-        if item.isbn:
-            query_text = item.isbn
-        else:
-            query_text = " ".join(
-                [part for part in [item.title, item.author] if part]
-            ).strip()
+        result = run_metadata_enrichment(item, cover_dir=cover_dir)
 
-        results = search_all_sources(
-            title=item.title or "",
-            author=item.author or "",
-            isbn=item.isbn or "",
-            query_text=query_text,
-            include_calibre=True,
-        )
-
-        best, best_score = choose_best_metadata(item, results)
-
-        if not best:
-            flash(
-                "Inga säkra metadata-träffar hittades från Google Books eller Calibre.",
-                "error",
-            )
+        if not result["ok"]:
+            flash(result["error"], "error")
             return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
-        cover_path_for_preview = None
-        if best.get("cover_url"):
-            cover_dir = current_app.config["COVER_DIR"]
-            os.makedirs(cover_dir, exist_ok=True)
-            downloaded = download_cover_to_file(
-                cover_url=best.get("cover_url"),
-                cover_dir=cover_dir,
-                item_id=item.id,
-            )
-            if downloaded:
-                ext = os.path.splitext(downloaded)[1] or ".jpg"
-                preview_path = os.path.join(
-                    cover_dir, f"preview_{item.id}{ext}"
-                )
-                try:
-                    os.replace(downloaded, preview_path)
-                    cover_path_for_preview = preview_path
-                except OSError:
-                    cover_path_for_preview = downloaded
-
+        # Clean up any previous preview cover that is being replaced
         old_preview = session.get(_enrichment_preview_key(item.id))
-        if (
-            old_preview
-            and old_preview.get("fetched", {}).get("cover_path")
-            and old_preview["fetched"]["cover_path"] != cover_path_for_preview
-        ):
+        old_cover = (old_preview or {}).get("fetched", {}).get("cover_path")
+        new_cover = result["fetched_payload"].get("cover_path")
+        if old_cover and old_cover != new_cover:
             try:
-                os.unlink(old_preview["fetched"]["cover_path"])
+                os.unlink(old_cover)
             except OSError:
                 pass
 
-        def _txt(value):
-            if value is None:
-                return ""
-            return str(value).strip()
-
-        fetched_payload = {
-            "title": _txt(best.get("title")),
-            "author": _txt(best.get("author")),
-            "description": _txt(best.get("description")),
-            "publisher": _txt(best.get("publisher")),
-            "isbn": _txt(best.get("isbn")),
-            "language": _txt(best.get("language")),
-            "series": _txt(best.get("series")),
-            "series_index": _txt(best.get("series_index")),
-            "cover_url": _txt(best.get("cover_url")),
-            "cover_path": cover_path_for_preview,
-        }
-
-        def _normalize(value):
-            return (value or "").lower().replace(":", " ").replace("-", " ").strip()
-
-        old_title = _normalize(item.title)
-        old_author = _normalize(item.author)
-        new_title = _normalize(fetched_payload["title"])
-        new_author = _normalize(fetched_payload["author"])
-
-        title_score = (
-            SequenceMatcher(None, old_title, new_title).ratio()
-            if old_title and new_title
-            else 0
-        )
-        author_score = (
-            SequenceMatcher(None, old_author, new_author).ratio()
-            if old_author and new_author
-            else 0
-        )
-
-        validation_warning = None
-        if (
-            (new_title or new_author)
-            and title_score < 0.55
-            and author_score < 0.60
-        ):
-            validation_warning = (
-                f"Hämtad metadata verkar avvika från bokens titel/författare "
-                f"(titel: {fetched_payload['title'] or 'okänd'}, "
-                f"författare: {fetched_payload['author'] or 'okänd'}). "
-                f"Granska noggrant innan du sparar."
-            )
-
         session[_enrichment_preview_key(item.id)] = {
-            "fetched": fetched_payload,
-            "sources_used": [best.get("source", "")] if best.get("source") else [],
-            "validation_warning": validation_warning,
-            "score": best_score,
+            "fetched": result["fetched_payload"],
+            "sources_used": result["sources_used"],
+            "validation_warning": result["validation_warning"],
+            "score": result["score"],
         }
 
         return redirect(url_for("metadata.enrichment_preview", item_id=item.id))
@@ -678,15 +592,12 @@ def enrichment_apply(item_id):
     fetched = preview.get("fetched") or {}
     selected = set(request.form.getlist("fields"))
 
-    result_for_apply = dict(fetched)
-
-    apply_result = apply_metadata_to_item(
+    apply_result = _pipeline_apply(
         item=item,
-        result=result_for_apply,
-        cover_dir=current_app.config["COVER_DIR"],
-        overwrite=True,
-        write_to_file=True,
+        fetched=fetched,
         selected_fields=selected,
+        cover_dir=current_app.config["COVER_DIR"],
+        write_to_file=True,
     )
 
     db.session.commit()

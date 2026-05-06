@@ -20,6 +20,8 @@ def ensure_database_columns():
         "scanned_at": "ALTER TABLE library_items ADD COLUMN scanned_at DATETIME",
         "enriched_at": "ALTER TABLE library_items ADD COLUMN enriched_at DATETIME",
         "polished_at": "ALTER TABLE library_items ADD COLUMN polished_at DATETIME",
+        "file_mtime": "ALTER TABLE library_items ADD COLUMN file_mtime REAL",
+        "metadata_read_at": "ALTER TABLE library_items ADD COLUMN metadata_read_at DATETIME",
     }
 
     changed = False

@@ -1,6 +1,7 @@
 import hashlib
 import os
 import re
+import time
 from difflib import SequenceMatcher
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
@@ -451,6 +452,143 @@ def score_metadata_result(item, result):
     return round(score, 1)
 
 
+def score_metadata_result_explained(item, result) -> dict:
+    """Compute score and expose individual scoring signals plus warnings.
+
+    Extends score_metadata_result() without changing its return value.
+    Scoring scale (max ~160):
+        ISBN exact match        +80
+        title similarity        × 45
+        author similarity       × 25  (only when both sides have author)
+        has description         +5
+        has cover URL           +5
+
+    Batch classification thresholds (see classify_enrichment_result):
+        >= 90 + ISBN match  →  auto_apply candidate
+        70–89               →  review_needed
+        40–69               →  manual_only
+        < 40                →  no_match
+
+    Returns dict with keys: score, signals, warnings
+    """
+    item_isbn = normalize_isbn(item.isbn or "")
+    result_isbn = normalize_isbn(result.get("isbn", ""))
+
+    isbn_exact_match = bool(item_isbn and result_isbn and item_isbn == result_isbn)
+    title_sim = similarity(item.title or "", result.get("title", ""))
+    author_sim = similarity(item.author or "", result.get("author", ""))
+    has_description = bool(result.get("description"))
+    has_cover = bool(result.get("cover_url"))
+
+    score = 0.0
+    if isbn_exact_match:
+        score += 80
+    score += title_sim * 45
+    if item.author and result.get("author"):
+        score += author_sim * 25
+    if has_description:
+        score += 5
+    if has_cover:
+        score += 5
+
+    warnings = []
+    item_lang = (getattr(item, "language", None) or "").strip().lower()
+    result_lang = (result.get("language") or "").strip().lower()
+    if item_lang and result_lang and item_lang != result_lang:
+        warnings.append("Språk skiljer sig från nuvarande metadata")
+    if isbn_exact_match and title_sim < 0.7:
+        warnings.append("ISBN matchar men titeln avviker")
+    if not result.get("author"):
+        warnings.append("Författare saknas i träffen")
+    if not result.get("isbn"):
+        warnings.append("ISBN saknas i träffen")
+
+    return {
+        "score": round(score, 1),
+        "signals": {
+            "isbn_exact_match": isbn_exact_match,
+            "title_similarity": round(title_sim, 2),
+            "author_similarity": round(author_sim, 2),
+            "has_description": has_description,
+            "has_cover": has_cover,
+        },
+        "warnings": warnings,
+    }
+
+
+def classify_enrichment_result(score: float, signals: dict) -> str:
+    """Map a score + signals to a batch-apply policy classification.
+
+    Returns one of:
+        auto_apply    — score >= 90 AND ISBN exact match; safe for optional
+                        batch auto-apply when user has enabled it
+        review_needed — score 70-89, or score >= 90 without ISBN confirmation
+        manual_only   — score 40-69; show in manual preview, do not auto-apply
+        no_match      — score < 40; treat as no reliable match
+    """
+    if score < 40:
+        return "no_match"
+    if score < 70:
+        return "manual_only"
+    if score >= 90 and signals.get("isbn_exact_match"):
+        return "auto_apply"
+    return "review_needed"
+
+
+def choose_best_metadata_explained(item, results, minimum_score=40) -> dict:
+    """Like choose_best_metadata() but returns full scoring explanation.
+
+    Returns dict with keys:
+        best            dict | None  — best candidate
+        score           float
+        signals         dict         — from score_metadata_result_explained
+        warnings        list[str]
+        classification  str          — from classify_enrichment_result
+        all_scored      list[dict]   — every candidate with score/signals/warnings
+    """
+    if not results:
+        return {
+            "best": None, "score": 0.0,
+            "signals": {}, "warnings": [],
+            "classification": "no_match", "all_scored": [],
+        }
+
+    all_scored = []
+    for candidate in results:
+        explained = score_metadata_result_explained(item, candidate)
+        all_scored.append({
+            "candidate": candidate,
+            "score": explained["score"],
+            "signals": explained["signals"],
+            "warnings": explained["warnings"],
+            "classification": classify_enrichment_result(
+                explained["score"], explained["signals"]
+            ),
+        })
+
+    all_scored.sort(key=lambda x: x["score"], reverse=True)
+    top = all_scored[0]
+
+    if top["score"] < minimum_score:
+        return {
+            "best": None,
+            "score": top["score"],
+            "signals": top["signals"],
+            "warnings": top["warnings"],
+            "classification": "no_match",
+            "all_scored": all_scored,
+        }
+
+    return {
+        "best": top["candidate"],
+        "score": top["score"],
+        "signals": top["signals"],
+        "warnings": top["warnings"],
+        "classification": top["classification"],
+        "all_scored": all_scored,
+    }
+
+
 def choose_best_metadata(item, results, minimum_score=40):
     if not results:
         return None, 0
@@ -560,3 +698,93 @@ def search_all_sources(
             results.extend(calibre_results)
 
     return deduplicate_results(results)
+
+
+# ---------------------------------------------------------------------------
+# Structured source results (Phase 5)
+# ---------------------------------------------------------------------------
+
+def google_books_search_with_status(
+    query_text="", title="", author="", isbn=""
+) -> dict:
+    """Run a Google Books search and return a structured source result.
+
+    The returned dict always contains:
+        source       "google_books"
+        ok           bool
+        status       ok | no_result | network_or_plugin_error
+        duration_ms  int
+        message      str
+        candidates   list[dict]
+        raw_debug    {returncode, stderr_excerpt}
+    """
+    t0 = time.monotonic()
+
+    def _result(ok, status, message, candidates=None):
+        return {
+            "source": "google_books",
+            "ok": ok,
+            "status": status,
+            "duration_ms": int((time.monotonic() - t0) * 1000),
+            "message": message,
+            "candidates": candidates or [],
+            "raw_debug": {"returncode": None, "stderr_excerpt": ""},
+        }
+
+    try:
+        candidates = google_books_search(
+            query_text=query_text, title=title, author=author, isbn=isbn
+        )
+    except Exception as exc:
+        return _result(
+            False, "network_or_plugin_error",
+            f"Google Books: nätverksfel ({exc}).",
+        )
+
+    if candidates:
+        n = len(candidates)
+        return _result(
+            True, "ok",
+            f"Google Books: {n} träff{'ar' if n != 1 else ''}.",
+            candidates=candidates,
+        )
+
+    return _result(False, "no_result", "Google Books: inga träffar.")
+
+
+def search_all_sources_with_status(
+    title="",
+    author="",
+    isbn="",
+    query_text="",
+    include_calibre=True,
+) -> dict:
+    """Search all sources and return both candidates and per-source statuses.
+
+    A failure in one source never hides results from another.
+
+    Returns:
+        candidates     list[dict]   — merged, deduplicated candidates for scoring
+        source_results list[dict]   — one structured status dict per source
+    """
+    from app.services.metadata_calibre import fetch_calibre_metadata_with_status
+
+    source_results = []
+
+    google_sr = google_books_search_with_status(
+        query_text=query_text, title=title, author=author, isbn=isbn
+    )
+    source_results.append(google_sr)
+
+    if include_calibre:
+        calibre_sr = fetch_calibre_metadata_with_status(title=title, author=author)
+        source_results.append(calibre_sr)
+
+    all_candidates = []
+    for sr in source_results:
+        all_candidates.extend(sr.get("candidates", []))
+
+    return {
+        "candidates": deduplicate_results(all_candidates),
+        "source_results": source_results,
+    }
