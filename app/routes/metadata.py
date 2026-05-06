@@ -719,6 +719,7 @@ def bulk_stream():
                         "bulk_stream enrichment failed for group %s (rep item %s)",
                         group_key, representative.id,
                     )
+                    rep_before = before_snapshots.get(representative.id, {})
                     ev_queue.put({
                         "type": "book_done",
                         "item_id": representative.id,
@@ -731,9 +732,12 @@ def bulk_stream():
                         "classification": "source_error",
                         "score": None,
                         "source": None,
-                        "before": before_snapshots.get(representative.id, {}),
+                        "before": rep_before,
                         "candidate": {},
                         "warnings": [],
+                        "has_cover_before": bool(rep_before.get("cover_path")),
+                        "cover_url_fetched": "",
+                        "has_cover_fetched": False,
                         "google_ok": False,
                         "google_candidates": 0,
                         "calibre_ok": False,
@@ -796,6 +800,7 @@ def bulk_stream():
 
                 fetched_payload = result.get("fetched_payload") or {}
                 warnings = result.get("warnings") or []
+                rep_before = before_snapshots.get(representative.id, {})
 
                 ev_queue.put({
                     "type": "book_done",
@@ -809,9 +814,12 @@ def bulk_stream():
                     "classification": classification,
                     "score": score,
                     "source": source or "",
-                    "before": before_snapshots.get(representative.id, {}),
+                    "before": rep_before,
                     "candidate": fetched_payload,
                     "warnings": warnings,
+                    "has_cover_before": bool(rep_before.get("cover_path")),
+                    "cover_url_fetched": fetched_payload.get("cover_url", "") or "",
+                    "has_cover_fetched": bool(result.get("cover_path")),
                     "google_ok": google_ok,
                     "google_candidates": google_candidates,
                     "calibre_ok": calibre_ok,
