@@ -433,15 +433,6 @@ def bulk_metadata():
                     summary["limited"] = True
                     break
 
-                if only_missing and item_has_good_metadata(item):
-                    summary["skipped"].append(
-                        {
-                            "title": item.title,
-                            "reason": "Har redan författare, synopsis och omslag.",
-                        }
-                    )
-                    continue
-
                 processed_count += 1
                 summary["processed"] = processed_count
 
@@ -471,7 +462,7 @@ def bulk_metadata():
                 best = scoring["best"]
                 classification = scoring["classification"]
 
-                if not best or classification in ("no_match", "manual_only"):
+                if not best or classification == "no_match":
                     summary["no_match"].append(
                         {
                             "title": item.title,
@@ -480,7 +471,7 @@ def bulk_metadata():
                     )
                     continue
 
-                if classification == "review_needed":
+                if classification in ("review_needed", "manual_only"):
                     # Medium-confidence match — flag for manual review, do not apply
                     summary["review_needed"].append(
                         {
@@ -551,7 +542,6 @@ def bulk_stream():
 
     raw_ids = request.args.get("item_ids", "")
     overwrite = request.args.get("overwrite", "0") == "1"
-    only_missing = request.args.get("only_missing", "0") == "1"
     max_items = _parse_int(request.args.get("max_items"), 25, 1, 100)
 
     item_ids = []
@@ -582,7 +572,6 @@ def bulk_stream():
             from app.services.metadata_pipeline import run_metadata_enrichment as _enrich
             from app.services.metadata_writer import (
                 apply_metadata_to_item as _apply,
-                item_has_good_metadata as _has_good,
             )
 
             # Clear stale results from previous runs
@@ -599,15 +588,6 @@ def bulk_stream():
             }
 
             processed = 0
-            total = 0
-            # Pre-count total (respecting max_items and skip logic)
-            for it in selected_items:
-                if only_missing and _has_good(it):
-                    continue
-                total += 1
-                if total >= max_items:
-                    break
-            # Add skipped count to total for index tracking
             total_all = len(selected_items)
 
             index = 0
@@ -622,25 +602,6 @@ def bulk_stream():
 
                 fresh = _db.session.get(_Item, item.id)
                 if not fresh:
-                    continue
-
-                if only_missing and _has_good(fresh):
-                    summary["skipped"] += 1
-                    ev_queue.put({
-                        "type": "book_done",
-                        "item_id": fresh.id,
-                        "title": fresh.title or "",
-                        "index": index,
-                        "total": total_all,
-                        "classification": "skipped",
-                        "score": None,
-                        "source": None,
-                        "google_ok": None,
-                        "google_candidates": None,
-                        "calibre_ok": None,
-                        "calibre_candidates": None,
-                        "file_write_error": None,
-                    })
                     continue
 
                 processed += 1
@@ -718,10 +679,11 @@ def bulk_stream():
                 if not result.get("ok") and all_errored:
                     classification = "source_error"
                     summary["source_errors"] += 1
-                elif not result.get("ok") or classification in ("no_match", "manual_only"):
+                elif not result.get("ok") or classification == "no_match":
                     classification = "no_match"
                     summary["no_match"] += 1
-                elif classification == "review_needed":
+                elif classification in ("review_needed", "manual_only"):
+                    classification = "review_needed"
                     summary["review_needed"] += 1
                 else:
                     # auto_apply

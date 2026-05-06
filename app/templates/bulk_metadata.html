@@ -2,6 +2,10 @@
 <html lang="sv">
 <head>
     <meta charset="utf-8">
+    <link rel="icon" href="{{ url_for('static', filename='icons/favicon.ico') }}" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
     <title>Metadata - Colophon</title>
     <style>
         body {
@@ -469,6 +473,23 @@
             padding: 10px 8px;
         }
 
+        .brm-table th.brm-th-current {
+            background: rgba(255, 255, 255, 0.03);
+            color: #aeb7bd;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .brm-table th.brm-th-fetched {
+            background: rgba(110, 231, 168, 0.06);
+            color: #6ee7a8;
+            border-bottom: 2px solid rgba(110, 231, 168, 0.25);
+        }
+
+        .brm-table th.brm-th-pick {
+            text-align: center;
+            color: #cdd5da;
+        }
+
         .brm-table td {
             padding: 10px 8px;
             vertical-align: top;
@@ -477,13 +498,69 @@
             line-height: 1.5;
         }
 
-        .brm-table .brm-changed {
-            background: rgba(110, 231, 168, 0.08);
+        .brm-table td.brm-td-current {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .brm-table td.brm-td-fetched {
+            background: rgba(110, 231, 168, 0.04);
+        }
+
+        .brm-table td.brm-td-pick {
+            text-align: center;
+            color: #6ee7a8;
+            font-weight: bold;
+        }
+
+        .brm-table tr.brm-changed td.brm-td-current {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .brm-table tr.brm-changed td.brm-td-fetched {
+            background: rgba(110, 231, 168, 0.10);
+            border-left: 2px solid rgba(110, 231, 168, 0.6);
+        }
+
+        .brm-table tr.brm-changed td.brm-td-field {
+            border-left: 3px solid #6ee7a8;
+            position: relative;
+        }
+
+        .brm-table tr.brm-changed td.brm-td-field::before {
+            content: "◀";
+            position: absolute;
+            left: -2px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6ee7a8;
+            font-size: 9px;
+            line-height: 1;
         }
 
         .brm-table .brm-empty {
             color: #666;
             font-style: italic;
+        }
+
+        .brm-arrow {
+            color: #6ee7a8;
+            font-size: 14px;
+            margin-right: 4px;
+            vertical-align: middle;
+        }
+
+        .brm-expand-toggle {
+            display: inline-block;
+            margin-top: 4px;
+            font-size: 12px;
+            color: #6ee7a8;
+            cursor: pointer;
+            text-decoration: underline;
+            user-select: none;
+        }
+
+        .brm-expand-toggle:hover {
+            color: #8af0bb;
         }
     </style>
 
@@ -491,7 +568,10 @@
 <body>
 <div class="layout">
 <aside class="sidebar">
-<a class="logo" href="{{ url_for('metadata.bulk_metadata') }}">Colophon</a>
+<a class="logo" href="{{ url_for('metadata.bulk_metadata') }}">
+    <img src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="" style="width:28px; height:28px; border-radius:4px; margin-right:10px;">
+    Colophon
+</a>
 <nav class="nav">
 <a class="nav-item active" href="{{ url_for('metadata.bulk_metadata') }}"><span class="nav-icon">🧠</span>Metadata</a>
 <a class="nav-item" href="{{ url_for('scan.scan') }}"><span class="nav-icon">🔄</span>Skanna</a>
@@ -605,16 +685,6 @@
                 <h2>Inställningar</h2>
 
                 <div class="settings-grid">
-                    <div class="setting-box">
-                        <label>
-                            <input type="checkbox" name="only_missing" value="1" checked>
-                            Uppdatera bara böcker som saknar metadata
-                        </label>
-                        <div class="hint">
-                            Hoppar över böcker som redan har författare, synopsis och omslag.
-                        </div>
-                    </div>
-
                     <div class="setting-box">
                         <label>
                             <input type="checkbox" name="overwrite" value="1">
@@ -1031,12 +1101,10 @@
                 }
 
                 var overwrite = document.querySelector('input[name="overwrite"]').checked ? '1' : '0';
-                var onlyMissing = document.querySelector('input[name="only_missing"]').checked ? '1' : '0';
                 var maxItems = document.getElementById('max_items').value || '25';
 
                 var url = '/metadata/bulk/stream?item_ids=' + itemIds.join(',')
                     + '&overwrite=' + overwrite
-                    + '&only_missing=' + onlyMissing
                     + '&max_items=' + maxItems;
 
                 var progress = document.getElementById('bulkProgress');
@@ -1543,9 +1611,9 @@
             <thead>
                 <tr>
                     <th style="width:18%;">Fält</th>
-                    <th style="width:38%;">Nuvarande</th>
-                    <th style="width:6%; text-align:center;">Välj</th>
-                    <th style="width:38%;">Hämtat</th>
+                    <th style="width:36%;" class="brm-th-current">📋 Nuvarande</th>
+                    <th style="width:10%;" class="brm-th-pick">Välj</th>
+                    <th style="width:36%;" class="brm-th-fetched">🔍 Hämtat</th>
                 </tr>
             </thead>
             <tbody id="brmBody"></tbody>
@@ -1562,6 +1630,23 @@
 
     function _brmEsc(str) {
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function _brmToggleSyn(el) {
+        var td = el.parentNode;
+        var preview = td.querySelector('.brm-syn-preview');
+        var full = td.querySelector('.brm-syn-full');
+        if (!preview || !full) return;
+        var showingFull = full.style.display !== 'none';
+        if (showingFull) {
+            full.style.display = 'none';
+            preview.style.display = '';
+            el.textContent = 'Visa hela';
+        } else {
+            full.style.display = '';
+            preview.style.display = 'none';
+            el.textContent = 'Visa mindre';
+        }
     }
 
     function _brmClassLabel(c) {
@@ -1621,26 +1706,39 @@
                     var a = (after[f.key] || '').toString().trim();
                     var changed = b !== a && a !== '';
                     var checkable = a !== '' && b !== a;
-
-                    var bDisplay = b.length > 200 ? b.substring(0, 200) + '…' : b;
-                    var aDisplay = a.length > 200 ? a.substring(0, 200) + '…' : a;
+                    var isSynopsis = f.key === 'description';
 
                     var tr = document.createElement('tr');
                     if (changed) tr.className = 'brm-changed';
 
                     var checkHtml = '';
                     if (checkable) {
-                        checkHtml = '<input type="checkbox" class="brm-check" data-field="'
-                            + f.key + '" checked>';
+                        checkHtml = '<span class="brm-arrow" title="Använd hämtat värde">→</span>'
+                            + '<input type="checkbox" class="brm-check" data-field="'
+                            + f.key + '" title="Använd hämtat värde" checked>';
                     }
 
+                    function _cellContent(text, isCurrent) {
+                        if (!text) return _brmEsc('(tomt)');
+                        if (isSynopsis && text.length > 200) {
+                            var preview = _brmEsc(text.substring(0, 200)) + '…';
+                            var full = _brmEsc(text);
+                            return '<span class="brm-syn-preview">' + preview + '</span>'
+                                + '<span class="brm-syn-full" style="display:none;">' + full + '</span>'
+                                + '<br><span class="brm-expand-toggle" onclick="_brmToggleSyn(this)">Visa hela</span>';
+                        }
+                        return _brmEsc(text);
+                    }
+
+                    var fieldCellCls = 'brm-td-field';
+                    var currentCellCls = 'brm-td-current' + (b ? '' : ' brm-empty');
+                    var fetchedCellCls = 'brm-td-fetched' + (a ? '' : ' brm-empty');
+
                     tr.innerHTML =
-                        '<td><strong>' + _brmEsc(f.label) + '</strong></td>' +
-                        '<td class="' + (b ? '' : 'brm-empty') + '">' +
-                            _brmEsc(bDisplay || '(tomt)') + '</td>' +
-                        '<td style="text-align:center;">' + checkHtml + '</td>' +
-                        '<td class="' + (a ? '' : 'brm-empty') + '">' +
-                            _brmEsc(aDisplay || '(tomt)') + '</td>';
+                        '<td class="' + fieldCellCls + '"><strong>' + _brmEsc(f.label) + '</strong></td>' +
+                        '<td class="' + currentCellCls + '">' + _cellContent(b, true) + '</td>' +
+                        '<td class="brm-td-pick">' + checkHtml + '</td>' +
+                        '<td class="' + fetchedCellCls + '">' + _cellContent(a, false) + '</td>';
                     tbody.appendChild(tr);
                 });
             })

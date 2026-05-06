@@ -465,8 +465,8 @@ def score_metadata_result_explained(item, result) -> dict:
 
     Batch classification thresholds (see classify_enrichment_result):
         >= 90 + ISBN match  →  auto_apply candidate
-        70–89               →  review_needed
-        40–69               →  manual_only
+        50–89               →  review_needed
+        40–49               →  manual_only
         < 40                →  no_match
 
     Returns dict with keys: score, signals, warnings
@@ -522,13 +522,13 @@ def classify_enrichment_result(score: float, signals: dict) -> str:
     Returns one of:
         auto_apply    — score >= 90 AND ISBN exact match; safe for optional
                         batch auto-apply when user has enabled it
-        review_needed — score 70-89, or score >= 90 without ISBN confirmation
-        manual_only   — score 40-69; show in manual preview, do not auto-apply
+        review_needed — score 50-89, or score >= 90 without ISBN confirmation
+        manual_only   — score 40-49; show in manual preview, do not auto-apply
         no_match      — score < 40; treat as no reliable match
     """
     if score < 40:
         return "no_match"
-    if score < 70:
+    if score < 50:
         return "manual_only"
     if score >= 90 and signals.get("isbn_exact_match"):
         return "auto_apply"

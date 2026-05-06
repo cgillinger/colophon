@@ -147,11 +147,13 @@ class TestClassifyEnrichmentResult:
         assert classify_enrichment_result(39.9, {}) == "no_match"
         assert classify_enrichment_result(0, {}) == "no_match"
 
-    def test_manual_only_40_to_69(self):
+    def test_manual_only_40_to_49(self):
         assert classify_enrichment_result(40.0, {}) == "manual_only"
-        assert classify_enrichment_result(69.9, {}) == "manual_only"
+        assert classify_enrichment_result(49.9, {}) == "manual_only"
 
-    def test_review_needed_70_to_89(self):
+    def test_review_needed_50_to_89(self):
+        assert classify_enrichment_result(50.0, {}) == "review_needed"
+        assert classify_enrichment_result(69.9, {}) == "review_needed"
         assert classify_enrichment_result(70.0, {}) == "review_needed"
         assert classify_enrichment_result(89.9, {}) == "review_needed"
 
@@ -166,8 +168,8 @@ class TestClassifyEnrichmentResult:
     def test_boundary_exactly_90_with_isbn(self):
         assert classify_enrichment_result(90.0, {"isbn_exact_match": True}) == "auto_apply"
 
-    def test_boundary_exactly_70(self):
-        assert classify_enrichment_result(70.0, {"isbn_exact_match": False}) == "review_needed"
+    def test_boundary_exactly_50(self):
+        assert classify_enrichment_result(50.0, {"isbn_exact_match": False}) == "review_needed"
 
 
 # ---------------------------------------------------------------------------
