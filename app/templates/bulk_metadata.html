@@ -1971,6 +1971,18 @@
                     }
 
                 } else if (d.type === 'book_done') {
+                    // Cache result data for comparison modal — keyed by representative
+                    // item_id so openBulkResultModal can look it up synchronously.
+                    _bulkResultData[d.item_id] = {
+                        title: d.title || '',
+                        before: d.before || {},
+                        candidate: d.candidate || {},
+                        classification: d.classification,
+                        score: d.score,
+                        source: d.source || '',
+                        warnings: d.warnings || [],
+                    };
+
                     var tr = document.getElementById('bp-row-' + d.item_id);
                     if (!tr) {
                         tr = document.createElement('tr');
@@ -2413,6 +2425,7 @@
     /* Bulk result comparison modal                                          */
     /* -------------------------------------------------------------------- */
     var _brmItemId = null;
+    var _bulkResultData = {};
 
     function _brmEsc(str) {
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -2446,92 +2459,83 @@
     function openBulkResultModal(itemId) {
         _brmItemId = itemId;
         document.getElementById('bulkResultModal').style.display = 'flex';
-        document.getElementById('brmTitle').textContent = 'Laddar…';
-        document.getElementById('brmMeta').textContent = '';
-        document.getElementById('brmBody').innerHTML = '<tr><td colspan="4">Laddar…</td></tr>';
         document.getElementById('brmFeedback').style.display = 'none';
 
-        fetch('/metadata/bulk/result/' + itemId)
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                if (!data.ok) {
-                    document.getElementById('brmTitle').textContent = 'Inget resultat';
-                    document.getElementById('brmBody').innerHTML =
-                        '<tr><td colspan="4">' + _brmEsc(data.error || 'Fel') + '</td></tr>';
-                    return;
+        var data = _bulkResultData[itemId];
+        if (!data) {
+            document.getElementById('brmTitle').textContent = 'Inget resultat';
+            document.getElementById('brmMeta').textContent = '';
+            document.getElementById('brmBody').innerHTML =
+                '<tr><td colspan="4">Inget cachat resultat för denna bok.</td></tr>';
+            return;
+        }
+
+        document.getElementById('brmTitle').textContent = data.title || 'Bok';
+        var metaParts = [];
+        if (data.source) metaParts.push('Källa: ' + data.source);
+        if (data.score !== null && data.score !== undefined) {
+            metaParts.push('Poäng: ' + Math.round(data.score));
+        }
+        metaParts.push(_brmClassLabel(data.classification));
+        document.getElementById('brmMeta').textContent = metaParts.join(' · ');
+
+        var fields = [
+            { key: 'title',        label: 'Titel' },
+            { key: 'author',       label: 'Författare' },
+            { key: 'series',       label: 'Serie' },
+            { key: 'series_index', label: 'Del' },
+            { key: 'isbn',         label: 'ISBN' },
+            { key: 'publisher',    label: 'Förlag' },
+            { key: 'language',     label: 'Språk' },
+            { key: 'genres',       label: 'Genre' },
+            { key: 'description',  label: 'Synopsis' }
+        ];
+
+        var before = data.before;
+        var after = data.candidate;
+        var tbody = document.getElementById('brmBody');
+        tbody.innerHTML = '';
+
+        fields.forEach(function(f) {
+            var b = (before[f.key] || '').toString().trim();
+            var a = (after[f.key] || '').toString().trim();
+            var changed = b !== a && a !== '';
+            var checkable = a !== '' && b !== a;
+            var isSynopsis = f.key === 'description';
+
+            var tr = document.createElement('tr');
+            if (changed) tr.className = 'brm-changed';
+
+            var checkHtml = '';
+            if (checkable) {
+                checkHtml = '<span class="brm-arrow" title="Använd hämtat värde">→</span>'
+                    + '<input type="checkbox" class="brm-check" data-field="'
+                    + f.key + '" title="Använd hämtat värde" checked>';
+            }
+
+            function _cellContent(text) {
+                if (!text) return _brmEsc('(tomt)');
+                if (isSynopsis && text.length > 200) {
+                    var preview = _brmEsc(text.substring(0, 200)) + '…';
+                    var full = _brmEsc(text);
+                    return '<span class="brm-syn-preview">' + preview + '</span>'
+                        + '<span class="brm-syn-full" style="display:none;">' + full + '</span>'
+                        + '<br><span class="brm-expand-toggle" onclick="_brmToggleSyn(this)">Visa hela</span>';
                 }
-                document.getElementById('brmTitle').textContent = data.title || 'Bok';
-                var metaParts = [];
-                if (data.source) metaParts.push('Källa: ' + data.source);
-                if (data.score !== null && data.score !== undefined) {
-                    metaParts.push('Poäng: ' + Math.round(data.score));
-                }
-                metaParts.push(_brmClassLabel(data.classification));
-                document.getElementById('brmMeta').textContent = metaParts.join(' · ');
+                return _brmEsc(text);
+            }
 
-                var fields = [
-                    { key: 'title',        label: 'Titel' },
-                    { key: 'author',       label: 'Författare' },
-                    { key: 'series',       label: 'Serie' },
-                    { key: 'series_index', label: 'Del' },
-                    { key: 'isbn',         label: 'ISBN' },
-                    { key: 'publisher',    label: 'Förlag' },
-                    { key: 'language',     label: 'Språk' },
-                    { key: 'genres',       label: 'Genre' },
-                    { key: 'description',  label: 'Synopsis' }
-                ];
+            var fieldCellCls = 'brm-td-field';
+            var currentCellCls = 'brm-td-current' + (b ? '' : ' brm-empty');
+            var fetchedCellCls = 'brm-td-fetched' + (a ? '' : ' brm-empty');
 
-                var before = data.before || {};
-                var after = data.candidate || {};
-                var tbody = document.getElementById('brmBody');
-                tbody.innerHTML = '';
-
-                fields.forEach(function(f) {
-                    var b = (before[f.key] || '').toString().trim();
-                    var a = (after[f.key] || '').toString().trim();
-                    var changed = b !== a && a !== '';
-                    var checkable = a !== '' && b !== a;
-                    var isSynopsis = f.key === 'description';
-
-                    var tr = document.createElement('tr');
-                    if (changed) tr.className = 'brm-changed';
-
-                    var checkHtml = '';
-                    if (checkable) {
-                        checkHtml = '<span class="brm-arrow" title="Använd hämtat värde">→</span>'
-                            + '<input type="checkbox" class="brm-check" data-field="'
-                            + f.key + '" title="Använd hämtat värde" checked>';
-                    }
-
-                    function _cellContent(text) {
-                        if (!text) return _brmEsc('(tomt)');
-                        if (isSynopsis && text.length > 200) {
-                            var preview = _brmEsc(text.substring(0, 200)) + '…';
-                            var full = _brmEsc(text);
-                            return '<span class="brm-syn-preview">' + preview + '</span>'
-                                + '<span class="brm-syn-full" style="display:none;">' + full + '</span>'
-                                + '<br><span class="brm-expand-toggle" onclick="_brmToggleSyn(this)">Visa hela</span>';
-                        }
-                        return _brmEsc(text);
-                    }
-
-                    var fieldCellCls = 'brm-td-field';
-                    var currentCellCls = 'brm-td-current' + (b ? '' : ' brm-empty');
-                    var fetchedCellCls = 'brm-td-fetched' + (a ? '' : ' brm-empty');
-
-                    tr.innerHTML =
-                        '<td class="' + fieldCellCls + '"><strong>' + _brmEsc(f.label) + '</strong></td>' +
-                        '<td class="' + currentCellCls + '">' + _cellContent(b) + '</td>' +
-                        '<td class="brm-td-pick">' + checkHtml + '</td>' +
-                        '<td class="' + fetchedCellCls + '">' + _cellContent(a) + '</td>';
-                    tbody.appendChild(tr);
-                });
-            })
-            .catch(function() {
-                document.getElementById('brmTitle').textContent = 'Fel';
-                document.getElementById('brmBody').innerHTML =
-                    '<tr><td colspan="4">Kunde inte ladda data.</td></tr>';
-            });
+            tr.innerHTML =
+                '<td class="' + fieldCellCls + '"><strong>' + _brmEsc(f.label) + '</strong></td>' +
+                '<td class="' + currentCellCls + '">' + _cellContent(b) + '</td>' +
+                '<td class="brm-td-pick">' + checkHtml + '</td>' +
+                '<td class="' + fetchedCellCls + '">' + _cellContent(a) + '</td>';
+            tbody.appendChild(tr);
+        });
     }
 
     function closeBulkResultModal() {
@@ -2551,6 +2555,15 @@
             fb.textContent = 'Välj minst ett fält att uppdatera.';
             return;
         }
+
+        var data = _bulkResultData[itemId];
+        if (!data) {
+            fb.style.display = 'block';
+            fb.className = 'modal-feedback modal-feedback-error';
+            fb.textContent = 'Inget cachat resultat — ladda om sidan och kör sökningen igen.';
+            return;
+        }
+
         var fields = [];
         checked.forEach(function(cb) { fields.push(cb.dataset.field); });
 
@@ -2558,35 +2571,31 @@
         fb.className = 'modal-feedback modal-feedback-info';
         fb.textContent = 'Sparar…';
 
-        fetch('/metadata/bulk/result/' + itemId)
+        var before = data.before;
+        var candidate = data.candidate;
+        var payload = {
+            title:        before.title || '',
+            author:       before.author || '',
+            series:       before.series || '',
+            series_index: before.series_index || '',
+            isbn:         before.isbn || '',
+            publisher:    before.publisher || '',
+            language:     before.language || '',
+            genres:       before.genres || '',
+            description:  before.description || ''
+        };
+        fields.forEach(function(f) {
+            if (f in payload) payload[f] = candidate[f] || '';
+        });
+
+        fetch('/metadata/' + itemId + '/save-json', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
             .then(function(r) { return r.json(); })
-            .then(function(data) {
-                if (!data.ok) throw new Error(data.error || 'no_result');
-                var before = data.before || {};
-                var candidate = data.candidate || {};
-                var payload = {
-                    title:        before.title || '',
-                    author:       before.author || '',
-                    series:       before.series || '',
-                    series_index: before.series_index || '',
-                    isbn:         before.isbn || '',
-                    publisher:    before.publisher || '',
-                    language:     before.language || '',
-                    genres:       before.genres || '',
-                    description:  before.description || ''
-                };
-                fields.forEach(function(f) {
-                    if (f in payload) payload[f] = candidate[f] || '';
-                });
-                return fetch('/metadata/' + itemId + '/save-json', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-            })
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                if (!data.ok) throw new Error(data.error || 'okänt fel');
+            .then(function(result) {
+                if (!result.ok) throw new Error(result.error || 'okänt fel');
                 fb.className = 'modal-feedback modal-feedback-success';
                 fb.textContent = 'Sparad! (' + fields.length + ' fält uppdaterade)';
                 var resultCell = document.getElementById('bp-result-' + itemId);

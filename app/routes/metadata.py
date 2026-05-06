@@ -643,9 +643,6 @@ def bulk_stream():
                 apply_metadata_to_item as _apply,
             )
 
-            # Clear stale results from previous runs
-            _bulk_result_cache.clear()
-
             summary = {
                 "updated": 0,
                 "review_needed": 0,
@@ -734,6 +731,9 @@ def bulk_stream():
                         "classification": "source_error",
                         "score": None,
                         "source": None,
+                        "before": before_snapshots.get(representative.id, {}),
+                        "candidate": {},
+                        "warnings": [],
                         "google_ok": False,
                         "google_candidates": 0,
                         "calibre_ok": False,
@@ -795,21 +795,7 @@ def bulk_stream():
                     summary["updated"] += 1
 
                 fetched_payload = result.get("fetched_payload") or {}
-                signals = result.get("signals") or {}
                 warnings = result.get("warnings") or []
-
-                # Cache before/after for every group member so the comparison
-                # modal works regardless of which item_id is used to open it.
-                for member in group_items:
-                    _bulk_result_cache[member.id] = {
-                        "before": before_snapshots[member.id],
-                        "candidate": fetched_payload,
-                        "classification": classification,
-                        "score": score,
-                        "signals": signals,
-                        "source": source or "",
-                        "warnings": warnings,
-                    }
 
                 ev_queue.put({
                     "type": "book_done",
@@ -822,7 +808,10 @@ def bulk_stream():
                     "total": total_groups,
                     "classification": classification,
                     "score": score,
-                    "source": source,
+                    "source": source or "",
+                    "before": before_snapshots.get(representative.id, {}),
+                    "candidate": fetched_payload,
+                    "warnings": warnings,
                     "google_ok": google_ok,
                     "google_candidates": google_candidates,
                     "calibre_ok": calibre_ok,
@@ -860,32 +849,6 @@ def bulk_stream():
 # (single-user app — key is item_id, value is the preview dict)
 # ---------------------------------------------------------------------------
 _enrichment_cache: dict = {}
-
-# Ephemeral per-item cache for the bulk SSE flow: stores before/after snapshot
-# so the UI can show a comparison modal after the run.
-_bulk_result_cache: dict = {}
-
-
-@metadata_bp.route("/metadata/bulk/result/<int:item_id>")
-def bulk_result_detail(item_id):
-    """Return cached before/after data for a book from the last bulk run."""
-    cached = _bulk_result_cache.get(item_id)
-    if not cached:
-        return jsonify({"ok": False, "error": "Inget cachat resultat för denna bok."}), 404
-    item = get_item_or_404(item_id)
-    return jsonify({
-        "ok": True,
-        "item_id": item_id,
-        "title": item.title,
-        "before": cached["before"],
-        "candidate": cached["candidate"],
-        "classification": cached["classification"],
-        "score": cached["score"],
-        "signals": cached["signals"],
-        "source": cached["source"],
-        "warnings": cached["warnings"],
-        "has_cover": bool(item.cover_path),
-    })
 
 
 @metadata_bp.route("/metadata/<int:item_id>/enrich/stream")
