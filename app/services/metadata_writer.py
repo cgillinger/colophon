@@ -18,6 +18,7 @@ _TEXT_FIELDS = (
     "publisher",
     "language",
     "description",
+    "genres",
 )
 
 _FILE_WRITABLE_EXTS = {".epub", ".mobi", ".azw3", ".kepub"}
@@ -84,12 +85,18 @@ def apply_metadata_to_item(
     db_updated = 0
     written_text: dict[str, str] = {}
 
+    from app.services.metadata_sources import clean_text
+
     for field in _TEXT_FIELDS:
         if not _should_write(field):
             continue
         value = _stringify(result.get(field))
         if not value:
             continue
+        if field == "description":
+            value = clean_text(value)
+            if not value:
+                continue
         setattr(item, field, value)
         db_updated += 1
         written_text[field] = value

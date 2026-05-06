@@ -305,15 +305,18 @@ def run_metadata_enrichment(
     def _txt(value):
         return str(value).strip() if value not in (None, "") else ""
 
+    from app.services.metadata_sources import clean_text as _clean
+
     fetched_payload = {
         "title": _txt(best.get("title")),
         "author": _txt(best.get("author")),
-        "description": _txt(best.get("description")),
+        "description": _clean(_txt(best.get("description"))),
         "publisher": _txt(best.get("publisher")),
         "isbn": _txt(best.get("isbn")),
         "language": _txt(best.get("language")),
         "series": _txt(best.get("series")),
         "series_index": _txt(best.get("series_index")),
+        "genres": _txt(best.get("genres")),
         "cover_url": _txt(best.get("cover_url")),
         "cover_path": cover_path_for_preview,
     }

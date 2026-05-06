@@ -241,6 +241,9 @@ def fetch_calibre_metadata_with_status(
     source_label = f"Calibre: {', '.join(sources_used)}" if sources_used else "Calibre"
     series_index = parsed.get("series_index")
 
+    tags = parsed.get("tags") or []
+    genres = ", ".join(t for t in tags if t) if isinstance(tags, list) else str(tags)
+
     candidate = {
         "source": source_label,
         "title": parsed.get("title") or title or "",
@@ -252,6 +255,7 @@ def fetch_calibre_metadata_with_status(
         "series": parsed.get("series") or "",
         "series_index": str(series_index) if series_index else "",
         "cover_url": parsed.get("cover_url") or "",
+        "genres": genres,
     }
 
     return _result(
@@ -345,6 +349,9 @@ def fetch_calibre_metadata(
     series_index = parsed.get("series_index")
     series_index_str = str(series_index) if series_index else ""
 
+    tags = parsed.get("tags") or []
+    genres = ", ".join(t for t in tags if t) if isinstance(tags, list) else str(tags)
+
     return [
         {
             "source": source_label,
@@ -357,5 +364,6 @@ def fetch_calibre_metadata(
             "series": parsed.get("series") or "",
             "series_index": series_index_str,
             "cover_url": parsed.get("cover_url") or "",
+            "genres": genres,
         }
     ]

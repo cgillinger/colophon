@@ -132,7 +132,8 @@ def extract_local_metadata(file_path, cover_dir=None) -> dict:
     base: dict = {
         "title": "", "author": "", "description": "",
         "isbn": "", "publisher": "", "language": "",
-        "series": "", "series_index": "", "cover_path": None,
+        "series": "", "series_index": "", "genres": "",
+        "cover_path": None,
         "source": "filename", "quality": "minimal", "warnings": warnings,
     }
 
@@ -169,6 +170,16 @@ def _extract_epub_metadata(file_path, cover_dir, warnings: list) -> dict:
     publisher = _first_metadata_value(book, "DC", "publisher")
     language = _first_metadata_value(book, "DC", "language")
 
+    genres = ""
+    try:
+        subjects = book.get_metadata("DC", "subject") or []
+        cleaned = [
+            _clean_metadata_text(s[0]) for s in subjects if s and s[0]
+        ]
+        genres = ", ".join(c for c in cleaned if c)
+    except Exception:
+        logger.debug("Kunde inte läsa dc:subject", exc_info=True)
+
     cover_path = None
     if cover_dir:
         cover_path = _save_epub_cover(book, file_path, cover_dir)
@@ -190,6 +201,7 @@ def _extract_epub_metadata(file_path, cover_dir, warnings: list) -> dict:
         "language": language or "",
         "series": "",
         "series_index": "",
+        "genres": genres,
         "cover_path": cover_path,
         "source": "ebooklib",
     }
@@ -216,6 +228,7 @@ def _extract_ebook_meta_metadata(file_path, warnings: list) -> dict:
         "language": fields.get("languages") or "",
         "series": "",
         "series_index": "",
+        "genres": fields.get("tags") or "",
         "cover_path": None,
         "source": "ebook-meta",
     }
@@ -269,6 +282,8 @@ def upsert_library_item(file_path, metadata: dict, existing=None, db_session=Non
                 existing.series = metadata["series"]
             if metadata.get("series_index"):
                 existing.series_index = metadata["series_index"]
+            if metadata.get("genres"):
+                existing.genres = metadata["genres"]
             if metadata.get("cover_path") and not existing.cover_locked:
                 existing.cover_path = metadata["cover_path"]
 
@@ -291,6 +306,7 @@ def upsert_library_item(file_path, metadata: dict, existing=None, db_session=Non
         isbn=metadata.get("isbn") or None,
         series=metadata.get("series") or None,
         series_index=metadata.get("series_index") or None,
+        genres=metadata.get("genres") or None,
         cover_path=metadata.get("cover_path"),
         file_path=absolute_path,
         file_name=file_path.name,

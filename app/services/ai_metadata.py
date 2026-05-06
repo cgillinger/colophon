@@ -201,13 +201,11 @@ def fetch_ai_suggestions(item: LibraryItem) -> dict:
                 "reason": reason,
             }
         elif field == "subjects":
-            # subjects not yet in LibraryItem model; display-only in v1
-            # TODO: add subjects to LibraryItem and enable saving when the model supports it
             if isinstance(value, list):
                 value = ", ".join(str(s) for s in value if s)
             else:
                 value = str(value)
-            suggestions["subjects"] = {
+            suggestions["genres"] = {
                 "value": value,
                 "confidence": confidence,
                 "reason": reason,
