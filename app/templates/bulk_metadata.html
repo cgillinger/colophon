@@ -1485,22 +1485,37 @@
                 </div>
             </div>
         </div>
-        <div class="field-selector" style="margin-top:12px; padding:10px 0; border-top:0.5px solid var(--border-light);">
+        <div style="margin-top:14px; padding-top:14px; border-top:0.5px solid var(--border-light);">
             <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;">Hämta/uppdatera:</div>
-            <div style="display:flex; flex-wrap:wrap; gap:8px;">
-                <label class="field-check"><input type="checkbox" value="title" checked> Titel</label>
-                <label class="field-check"><input type="checkbox" value="author" checked> Författare</label>
-                <label class="field-check"><input type="checkbox" value="series" checked> Serie</label>
-                <label class="field-check"><input type="checkbox" value="isbn" checked> ISBN</label>
-                <label class="field-check"><input type="checkbox" value="publisher" checked> Förlag</label>
-                <label class="field-check"><input type="checkbox" value="language" checked> Språk</label>
-                <label class="field-check"><input type="checkbox" value="description" checked> Synopsis</label>
-                <label class="field-check"><input type="checkbox" value="genres" checked> Genre</label>
+            <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                <label class="field-check"><input type="checkbox" value="title" class="modal-field-check" checked> Titel</label>
+                <label class="field-check"><input type="checkbox" value="author" class="modal-field-check" checked> Författare</label>
+                <label class="field-check"><input type="checkbox" value="series" class="modal-field-check" checked> Serie</label>
+                <label class="field-check"><input type="checkbox" value="isbn" class="modal-field-check" checked> ISBN</label>
+                <label class="field-check"><input type="checkbox" value="publisher" class="modal-field-check" checked> Förlag</label>
+                <label class="field-check"><input type="checkbox" value="language" class="modal-field-check" checked> Språk</label>
+                <label class="field-check"><input type="checkbox" value="description" class="modal-field-check" checked> Synopsis</label>
+                <label class="field-check"><input type="checkbox" value="genres" class="modal-field-check" checked> Genre</label>
             </div>
-            <div style="font-size:11px; margin-top:6px;">
-                <a href="#" onclick="toggleAllFields(true);return false;" style="color:var(--text-secondary);">Alla</a> ·
-                <a href="#" onclick="toggleAllFields(false);return false;" style="color:var(--text-secondary);">Inga</a>
+            <div style="font-size:11px; margin-top:4px;">
+                <a href="#" onclick="toggleModalFields(true);return false;" style="color:var(--text-secondary);">Alla</a> ·
+                <a href="#" onclick="toggleModalFields(false);return false;" style="color:var(--text-secondary);">Inga</a>
             </div>
+        </div>
+        <div style="margin-top:10px; padding:10px; background:var(--bg-secondary); border-radius:6px; font-size:12px;">
+            <details>
+                <summary style="cursor:pointer; font-weight:500; user-select:none;">
+                    <i class="ti ti-adjustments-horizontal" style="font-size:13px;"></i> Smart ersättning
+                </summary>
+                <div style="margin-top:8px; display:flex; flex-direction:column; gap:4px;">
+                    <label class="field-check"><input type="checkbox" class="modal-smart" value="title"> Titel — rensa serie/marknadsföring i parenteser</label>
+                    <label class="field-check"><input type="checkbox" class="modal-smart" value="author"> Författare — ta bort [Efternamn, Förnamn]</label>
+                    <label class="field-check"><input type="checkbox" class="modal-smart" value="isbn"> ISBN — ersätt om hämtad är ISBN-13</label>
+                    <label class="field-check"><input type="checkbox" class="modal-smart" value="publisher"> Förlag — ersätt om befintlig = författarnamn</label>
+                    <label class="field-check"><input type="checkbox" class="modal-smart" value="genres"> Genre — ersätt om hämtad har fler genrer</label>
+                    <label class="field-check"><input type="checkbox" class="modal-smart" value="description" checked> Synopsis — ersätt om hämtad 50%+ längre</label>
+                </div>
+            </details>
         </div>
         <div class="modal-actions">
             <button type="button" class="btn" id="modalFetchBtn" onclick="fetchMetadata()">Hämta metadata</button>
@@ -2706,14 +2721,23 @@
     }
 
     function _getSelectedFields() {
-        var checks = document.querySelectorAll('.field-check input:checked');
+        var checks = document.querySelectorAll('.modal-field-check:checked');
         return Array.from(checks).map(function(cb) { return cb.value; });
     }
 
-    function toggleAllFields(checked) {
-        document.querySelectorAll('.field-check input').forEach(function(cb) {
+    function _getModalSmartReplace() {
+        return Array.from(document.querySelectorAll('.modal-smart:checked'))
+            .map(function(cb) { return cb.value; });
+    }
+
+    function toggleModalFields(checked) {
+        document.querySelectorAll('.modal-field-check').forEach(function(cb) {
             cb.checked = checked;
         });
+    }
+
+    function toggleAllFields(checked) {
+        toggleModalFields(checked);
     }
 
     function fetchMetadata() {
@@ -2723,10 +2747,13 @@
             setModalFeedback('error', 'Välj minst ett fält.');
             return;
         }
+        var smartReplace = _getModalSmartReplace();
         setModalFeedback('info', 'Hämtar metadata…');
         _setModalBusy(true);
 
-        fetch('/metadata/' + id + '/fetch-json', { method: 'POST' })
+        var url = '/metadata/' + id + '/fetch-json'
+            + '?smart_replace=' + encodeURIComponent(smartReplace.join(','));
+        fetch(url, { method: 'POST' })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 _setModalBusy(false);
@@ -2772,11 +2799,13 @@
             setModalFeedback('error', 'Välj minst ett fält.');
             return;
         }
+        var smartReplace = _getModalSmartReplace();
         setModalFeedback('info', 'Frågar AI…');
         _setModalBusy(true);
 
         var fieldsParam = encodeURIComponent(selectedFields.join(','));
-        fetch('/metadata/' + id + '/ai-json?fields=' + fieldsParam, { method: 'POST' })
+        var smartParam = encodeURIComponent(smartReplace.join(','));
+        fetch('/metadata/' + id + '/ai-json?fields=' + fieldsParam + '&smart_replace=' + smartParam, { method: 'POST' })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 _setModalBusy(false);
