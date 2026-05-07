@@ -1,6 +1,11 @@
+import logging
+import os
+
 from sqlalchemy import text
 
 from app.models import db
+
+logger = logging.getLogger(__name__)
 
 
 def ensure_database_columns():
@@ -50,6 +55,7 @@ def ensure_database_columns():
 
     backfill_group_keys(force=group_key_added)
     sanitize_html_descriptions()
+    backfill_language_detection()
 
 
 def sanitize_html_descriptions():
@@ -101,6 +107,45 @@ def backfill_group_keys(force=False):
             )
 
     db.session.commit()
+
+
+def backfill_language_detection():
+    """Detect language for existing EPUB/KEPUB items that lack one.
+
+    Idempotent — only runs against rows where language is NULL or empty,
+    so it's a no-op once every item has a language set.
+    """
+    rows = db.session.execute(text(
+        "SELECT id, file_path FROM library_items "
+        "WHERE (language IS NULL OR language = '') "
+        "AND lower(extension) IN ('.epub', '.kepub', 'epub', 'kepub')"
+    )).fetchall()
+
+    if not rows:
+        return
+
+    from app.services.language_detect import (
+        detect_language_from_text,
+        extract_text_sample_from_epub,
+    )
+
+    updated = 0
+    for item_id, file_path in rows:
+        if not file_path or not os.path.exists(file_path):
+            continue
+        sample = extract_text_sample_from_epub(file_path)
+        detected = detect_language_from_text(sample)
+        if not detected:
+            continue
+        db.session.execute(
+            text("UPDATE library_items SET language = :lang WHERE id = :id"),
+            {"lang": detected, "id": item_id},
+        )
+        updated += 1
+
+    if updated:
+        db.session.commit()
+        logger.info("Backfilled language for %d items", updated)
 
 
 def ensure_ai_usage_log_table():

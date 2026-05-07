@@ -1,0 +1,60 @@
+"""Tests for clean_title.
+
+No DB or network required.
+"""
+from app.services.text_utils import clean_title
+
+
+def test_strip_series_book():
+    r = clean_title("Absolution Gap (Revelation Space Book 3)")
+    assert r["cleaned_title"] == "Absolution Gap"
+    assert r["extracted_series"] == "Revelation Space"
+    assert r["extracted_series_index"] == "3"
+    assert r["was_modified"] is True
+
+
+def test_strip_marketing():
+    r = clean_title("A Hidden Place (Now a major Netflix series)")
+    assert r["cleaned_title"] == "A Hidden Place"
+    assert r["was_modified"] is True
+
+
+def test_strip_hash_series():
+    r = clean_title("Axis (Spin #2)")
+    assert r["cleaned_title"] == "Axis"
+    assert r["extracted_series"] == "Spin"
+    assert r["extracted_series_index"] == "2"
+
+
+def test_strip_volume_series():
+    r = clean_title("The Way of Kings (The Stormlight Archive Vol. 1)")
+    assert r["cleaned_title"] == "The Way of Kings"
+    assert r["extracted_series"] == "The Stormlight Archive"
+    assert r["extracted_series_index"] == "1"
+
+
+def test_swedish_bok_label():
+    r = clean_title("Brand (Millennium Bok 4)")
+    assert r["cleaned_title"] == "Brand"
+    assert r["extracted_series"] == "Millennium"
+    assert r["extracted_series_index"] == "4"
+
+
+def test_no_change():
+    r = clean_title("1968")
+    assert r["cleaned_title"] == "1968"
+    assert r["was_modified"] is False
+    assert r["extracted_series"] is None
+
+
+def test_empty_input():
+    r = clean_title("")
+    assert r["cleaned_title"] == ""
+    assert r["was_modified"] is False
+    assert r["extracted_series"] is None
+
+
+def test_none_input():
+    r = clean_title(None)
+    assert r["cleaned_title"] == ""
+    assert r["was_modified"] is False
