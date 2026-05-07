@@ -1522,13 +1522,26 @@
     /* -------------------------------------------------------------------- */
     /* Selection                                                             */
     /* -------------------------------------------------------------------- */
+    function _syncGroupChildrenFromParents() {
+        // Mirror every group-parent's checkbox state onto its hidden
+        // group-children so all formats follow the parent.
+        if (!_grouped) return;
+        document.querySelectorAll('tr.group-parent[data-group-key]').forEach(function(parent) {
+            var key = parent.dataset.groupKey;
+            if (!key) return;
+            var parentCb = parent.querySelector('.book-checkbox');
+            if (!parentCb) return;
+            document.querySelectorAll('tr.group-child[data-group-key="' + key + '"] .book-checkbox')
+                .forEach(function(cb) { cb.checked = parentCb.checked; });
+        });
+    }
     function selectAllBooks() {
         document.querySelectorAll('#bookTableBody tr').forEach(function(row) {
-            if (row.style.display !== 'none') {
-                var cb = row.querySelector('.book-checkbox');
-                if (cb) cb.checked = true;
-            }
+            if (row.dataset.filterHidden === '1') return;
+            var cb = row.querySelector('.book-checkbox');
+            if (cb) cb.checked = true;
         });
+        _syncGroupChildrenFromParents();
         updateSelectedCount();
     }
     function clearSelection() {
@@ -1537,20 +1550,67 @@
     }
     function selectMissingBooks() {
         document.querySelectorAll('#bookTableBody tr[data-missing]').forEach(function(row) {
+            if (row.dataset.filterHidden === '1') return;
             var cb = row.querySelector('.book-checkbox');
             if (cb) cb.checked = row.getAttribute('data-missing') === '1';
         });
+        _syncGroupChildrenFromParents();
         updateSelectedCount();
     }
     function updateSelectedCount() {
-        var n = document.querySelectorAll('.book-checkbox:checked').length;
         var el = document.getElementById('selectedCount');
-        if (el) el.textContent = n + ' valda';
+        if (!el) return;
+
+        var checked = document.querySelectorAll('.book-checkbox:checked');
+
+        if (!_grouped) {
+            el.textContent = checked.length + ' valda';
+            return;
+        }
+
+        // Grouped mode: count distinct selected groups and total formats.
+        // Items without a group_key count as standalone selections.
+        var groupKeys = new Set();
+        var soloItems = 0;
+        checked.forEach(function(cb) {
+            var row = cb.closest('tr');
+            var key = row && row.dataset.groupKey ? row.dataset.groupKey : '';
+            if (key) groupKeys.add(key);
+            else soloItems += 1;
+        });
+
+        var totalFiles = soloItems;
+        groupKeys.forEach(function(key) {
+            totalFiles += document.querySelectorAll(
+                'tr[data-group-key="' + key + '"] .book-checkbox'
+            ).length;
+        });
+
+        var groupCount = groupKeys.size + soloItems;
+        if (groupCount === 0) {
+            el.textContent = '0 valda';
+        } else {
+            el.textContent =
+                groupCount + ' grupp' + (groupCount !== 1 ? 'er' : '')
+                + ' (' + totalFiles + ' fil' + (totalFiles !== 1 ? 'er' : '') + ') valda';
+        }
     }
     document.addEventListener('change', function(e) {
-        if (e.target && e.target.classList && e.target.classList.contains('book-checkbox')) {
-            updateSelectedCount();
+        if (!(e.target && e.target.classList && e.target.classList.contains('book-checkbox'))) {
+            return;
         }
+        // In grouped view, toggling the parent's checkbox should mirror to
+        // every (hidden) child format so the SSE submit picks them all up.
+        if (_grouped) {
+            var row = e.target.closest('tr');
+            var key = row && row.dataset.groupKey ? row.dataset.groupKey : '';
+            if (key && row.classList.contains('group-parent')) {
+                document.querySelectorAll(
+                    'tr.group-child[data-group-key="' + key + '"] .book-checkbox'
+                ).forEach(function(cb) { cb.checked = e.target.checked; });
+            }
+        }
+        updateSelectedCount();
     });
 
     /* -------------------------------------------------------------------- */
@@ -1893,6 +1953,7 @@
         localStorage.setItem('colophon-grouped', _grouped ? '1' : '0');
         renderGroupedView();
         updateGroupToggleButton();
+        updateSelectedCount();
     }
 
     /* Patch renderPagination to also exclude group-hidden rows */
@@ -1993,7 +2054,31 @@
             e.preventDefault();
 
             var checked = Array.from(document.querySelectorAll('.book-checkbox:checked'));
-            var itemIds = checked.map(function(cb) { return cb.value; });
+            var itemIds = [];
+
+            if (_grouped) {
+                // Defensive: if any row in a group is checked, send all members
+                // of that group — even hidden child rows the user never saw.
+                var checkedGroupKeys = new Set();
+                checked.forEach(function(cb) {
+                    var row = cb.closest('tr');
+                    var key = row && row.dataset.groupKey ? row.dataset.groupKey : '';
+                    if (key) checkedGroupKeys.add(key);
+                    else itemIds.push(cb.value);
+                });
+                checkedGroupKeys.forEach(function(key) {
+                    document.querySelectorAll(
+                        'tr[data-group-key="' + key + '"] .book-checkbox'
+                    ).forEach(function(cb) {
+                        if (itemIds.indexOf(cb.value) === -1) {
+                            itemIds.push(cb.value);
+                        }
+                    });
+                });
+            } else {
+                itemIds = checked.map(function(cb) { return cb.value; });
+            }
+
             if (itemIds.length === 0) {
                 alert('Välj minst en bok.');
                 return;
