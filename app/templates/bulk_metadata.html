@@ -34,7 +34,7 @@
             --accent-purple: #6c5ce7;
             --accent-green: #059669;
             --accent-red: #dc3545;
-            --accent-yellow: #e6a817;
+            --accent-yellow: #b45309;
             --green-50: #ecfdf5;
             --green-100: #d1fae5;
             --green-200: #a7f3d0;
@@ -45,8 +45,8 @@
             --green-900: #064e3b;
             --badge-ok-bg: #d1fae5;
             --badge-ok-text: #065f46;
-            --badge-warn-bg: #fef3cd;
-            --badge-warn-text: #856404;
+            --badge-warn-bg: #fef3c7;
+            --badge-warn-text: #92400e;
             --modal-overlay: rgba(0, 0, 0, 0.4);
             --cover-placeholder: linear-gradient(135deg, #d0d5dd, #e8ecf0);
         }
@@ -69,7 +69,7 @@
             --accent-purple: #7c6ff0;
             --accent-green: #10b981;
             --accent-red: #ff6b6b;
-            --accent-yellow: #ffd166;
+            --accent-yellow: #fbbf24;
             --green-50: #064e3b;
             --green-100: #065f46;
             --green-200: #047857;
@@ -80,8 +80,8 @@
             --green-900: #d1fae5;
             --badge-ok-bg: #065f46;
             --badge-ok-text: #a7f3d0;
-            --badge-warn-bg: #3a3020;
-            --badge-warn-text: #ffd166;
+            --badge-warn-bg: #78350f;
+            --badge-warn-text: #fde68a;
             --modal-overlay: rgba(0, 0, 0, 0.7);
             --cover-placeholder: linear-gradient(135deg, #46505a, #20252a);
         }
@@ -162,7 +162,6 @@
         /* Search in topbar */
         .topbar-search {
             flex: 1;
-            max-width: 600px;
             position: relative;
         }
         .topbar-search i.search-icon {
@@ -1222,6 +1221,16 @@
             justify-content: center;
         }
 
+        /* View mode: Compact (default) */
+        [data-view="compact"] .cover { width: 50px; height: 75px; }
+        [data-view="compact"] #bookTableBody td { padding: 6px 10px; font-size: 13px; }
+
+        /* View mode: Gallery */
+        [data-view="gallery"] .cover { width: 80px; height: 120px; }
+        [data-view="gallery"] #bookTableBody td { padding: 14px 12px; }
+        [data-view="gallery"] .book-title { font-size: 15px; }
+        [data-view="gallery"] .author-cell { font-size: 13px; }
+
         /* Danger / delete buttons */
         .btn-danger {
             background: var(--accent-red);
@@ -1396,6 +1405,9 @@
         <div class="filter-row">
             <button id="groupToggle" class="filter-btn icon-toggle" type="button" onclick="toggleGroupView()" title="Gruppera format">
                 <i class="ti ti-stack-2" style="font-size:20px;"></i><span id="groupCountLabel" style="display:none; margin-left:6px; font-size:12px;"></span>
+            </button>
+            <button id="viewToggle" class="filter-btn icon-toggle" type="button" onclick="toggleViewMode()" title="Byt vy">
+                <i class="ti ti-list"></i>
             </button>
 
             <div class="filter-sep"></div>
@@ -1831,6 +1843,23 @@
         var t = document.documentElement.getAttribute('data-theme');
         var icon = document.getElementById('themeIcon');
         if (icon) icon.className = t === 'dark' ? 'ti ti-moon' : 'ti ti-sun';
+    })();
+
+    /* -------------------------------------------------------------------- */
+    /* View mode (Compact / Gallery)                                         */
+    /* -------------------------------------------------------------------- */
+    var _viewMode = localStorage.getItem('colophon-viewMode') || 'compact';
+    function toggleViewMode() {
+        _viewMode = _viewMode === 'compact' ? 'gallery' : 'compact';
+        localStorage.setItem('colophon-viewMode', _viewMode);
+        document.body.setAttribute('data-view', _viewMode);
+        var icon = document.querySelector('#viewToggle i');
+        if (icon) icon.className = _viewMode === 'gallery' ? 'ti ti-layout-list' : 'ti ti-list';
+    }
+    (function() {
+        document.body.setAttribute('data-view', _viewMode);
+        var icon = document.querySelector('#viewToggle i');
+        if (icon) icon.className = _viewMode === 'gallery' ? 'ti ti-layout-list' : 'ti ti-list';
     })();
 
     /* -------------------------------------------------------------------- */
@@ -2937,6 +2966,10 @@
         var mp = document.getElementById('modalProgress');
         if (mp) { mp.innerHTML = ''; mp.style.display = 'none'; }
         window._modalSourceDetails = {};
+        // Collapse smart-replace and clear its checkboxes on each open
+        var details = document.querySelector('#bookModal details');
+        if (details) details.removeAttribute('open');
+        document.querySelectorAll('.modal-smart').forEach(function(cb) { cb.checked = false; });
         setModalFeedback('info', 'Laddar...');
 
         fetch('/metadata/' + itemId + '/json')
@@ -3071,26 +3104,13 @@
         if (!btn) return;
         if (fetching) {
             btn.dataset.fetching = '1';
-            btn.disabled = false;
-            btn.classList.remove('primary');
-            btn.classList.add('btn-danger-outline');
-            btn.innerHTML = '<i class="ti ti-x"></i> Avbryt';
-            btn.onclick = abortMetadata;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spin"></span> Hämtar metadata…';
         } else {
             delete btn.dataset.fetching;
-            btn.classList.remove('btn-danger-outline');
-            btn.classList.add('primary');
+            btn.disabled = false;
             btn.innerHTML = _fetchBtnOrigHTML;
             btn.onclick = fetchMetadata;
-        }
-    }
-
-    function abortMetadata() {
-        var btn = document.getElementById('modalFetchBtn');
-        fetch('/metadata/abort', {method: 'POST'}).catch(function(){});
-        if (btn) {
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spin"></span> Avbryter…';
         }
     }
 
@@ -3436,52 +3456,6 @@
         return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
-    function confirmDeleteBook() {
-        var itemId = _modalItemId;
-        if (!itemId) return;
-        var title = document.getElementById('modalTitle').value || 'denna bok';
-
-        var fb = document.getElementById('modalFeedback');
-        fb.style.display = 'block';
-        fb.className = 'modal-feedback modal-feedback-error';
-        fb.innerHTML =
-            '<strong>Radera "' + _modalEsc(title) + '"?</strong><br>'
-            + '<div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">'
-            + '<button type="button" class="btn ghost" onclick="deleteBook(false)">Ta bort från bibliotek</button>'
-            + '<button type="button" class="btn-danger" onclick="deleteBook(true)">Radera permanent (inkl. fil)</button>'
-            + '<button type="button" class="btn ghost" onclick="clearModalFeedback()">Avbryt</button>'
-            + '</div>';
-    }
-
-    function deleteBook(deleteFile) {
-        var itemId = _modalItemId;
-        if (!itemId) return;
-
-        setModalFeedback('info', 'Raderar…');
-
-        var formData = new FormData();
-        formData.append('delete_file', deleteFile ? '1' : '0');
-
-        fetch('/metadata/' + itemId + '/delete', {
-            method: 'POST',
-            body: formData
-        })
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                if (!data.ok) {
-                    setModalFeedback('error', 'Fel: ' + (data.error || 'okänt'));
-                    return;
-                }
-                var row = document.querySelector('tr[data-item-id="' + itemId + '"]');
-                if (row) row.remove();
-                closeBookModal();
-                renderGroupedView();
-                updateSelectedCount();
-            })
-            .catch(function() {
-                setModalFeedback('error', 'Radering misslyckades.');
-            });
-    }
     function setModalFeedback(type, msg) {
         var el = document.getElementById('modalFeedback');
         el.style.display = 'block';
@@ -3495,10 +3469,7 @@
     }
     function _setModalBusy(busy) {
         var fetchBtn = document.getElementById('modalFetchBtn');
-        // While the fetch button is in "Avbryt" mode it must stay clickable.
-        if (fetchBtn && fetchBtn.dataset.fetching !== '1') {
-            fetchBtn.disabled = busy;
-        }
+        if (fetchBtn && !busy) fetchBtn.disabled = false;
         document.getElementById('modalAiBtn').disabled = busy;
         var saveBtn = document.getElementById('modalSaveBtn');
         if (saveBtn) saveBtn.disabled = busy;
