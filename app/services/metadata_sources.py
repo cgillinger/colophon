@@ -164,6 +164,16 @@ def result_from_google_volume(volume):
         "genres": genres,
     }
 
+    fields_found = []
+    if result["title"]: fields_found.append("title")
+    if result["author"]: fields_found.append("author")
+    if result["description"]: fields_found.append("description")
+    if result["isbn"]: fields_found.append("isbn")
+    if result["publisher"]: fields_found.append("publisher")
+    if result["cover_url"]: fields_found.append("cover")
+    if result["genres"]: fields_found.append("genres")
+    result["fields_found"] = fields_found
+
     return result
 
 

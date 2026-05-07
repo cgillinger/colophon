@@ -76,19 +76,19 @@
         button, input, select { font-family: inherit; color: inherit; }
 
         .topbar {
-            height: 68px;
             background: var(--bg-primary);
             border-bottom: 1px solid var(--border-light);
             display: flex;
             align-items: center;
-            padding: 0 20px;
+            padding: 12px 20px;
             gap: 14px;
             position: sticky;
             top: 0;
             z-index: 50;
         }
         .topbar-brand { display: flex; align-items: center; gap: 12px; font-size: 20px; font-weight: 500; color: var(--text-primary); }
-        .topbar-brand img { width: 48px; height: 48px; border-radius: 10px; display: block; object-fit: cover; }
+        .topbar-brand img { width: 80px; height: 80px; border-radius: 12px; display: block; object-fit: contain; }
+        .topbar-brand span { font-size: 28px; }
         .topbar-spacer { flex: 1; }
         .topbar-actions { display: flex; align-items: center; gap: 8px; }
         .topbar-btn {
@@ -238,8 +238,9 @@
 
 <header class="topbar">
     <a class="topbar-brand" href="{{ url_for('metadata.bulk_metadata') }}">
-        <img src="{{ url_for('static', filename='icons/colophon.png') }}" alt="">
-        <span>Colophon</span>
+        <img src="{{ url_for('static', filename='icons/colophon-transparent.png') }}" alt="Colophon"
+             style="width:80px; height:80px; border-radius:12px; object-fit:contain;">
+        <span style="font-size:28px; font-weight:500;">Colophon</span>
     </a>
     <div class="topbar-spacer"></div>
     <div class="topbar-actions">

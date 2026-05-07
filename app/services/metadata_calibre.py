@@ -258,6 +258,18 @@ def fetch_calibre_metadata_with_status(
         "genres": genres,
     }
 
+    fields_found = []
+    if parsed.get("title"): fields_found.append("title")
+    if parsed.get("author"): fields_found.append("author")
+    if parsed.get("description"): fields_found.append("description")
+    if parsed.get("isbn"): fields_found.append("isbn")
+    if parsed.get("publisher"): fields_found.append("publisher")
+    if parsed.get("series"): fields_found.append("series")
+    if genres: fields_found.append("genres")
+    if parsed.get("cover_url"): fields_found.append("cover")
+    candidate["fields_found"] = fields_found
+    candidate["plugins_used"] = list(sources_used)
+
     return _result(
         True, "ok",
         f"Calibre: 1 träff ({source_label}).",
@@ -352,6 +364,16 @@ def fetch_calibre_metadata(
     tags = parsed.get("tags") or []
     genres = ", ".join(t for t in tags if t) if isinstance(tags, list) else str(tags)
 
+    fields_found = []
+    if parsed.get("title"): fields_found.append("title")
+    if parsed.get("author"): fields_found.append("author")
+    if parsed.get("description"): fields_found.append("description")
+    if parsed.get("isbn"): fields_found.append("isbn")
+    if parsed.get("publisher"): fields_found.append("publisher")
+    if parsed.get("series"): fields_found.append("series")
+    if genres: fields_found.append("genres")
+    if parsed.get("cover_url"): fields_found.append("cover")
+
     return [
         {
             "source": source_label,
@@ -365,5 +387,7 @@ def fetch_calibre_metadata(
             "series_index": series_index_str,
             "cover_url": parsed.get("cover_url") or "",
             "genres": genres,
+            "fields_found": fields_found,
+            "plugins_used": list(sources_used),
         }
     ]

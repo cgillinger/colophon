@@ -713,11 +713,18 @@ def bulk_stream():
 
                 before_snapshots = {it.id: _snapshot(it) for it in group_items}
 
+                all_source_details = []
+
+                def _progress_cb(event, _bucket=all_source_details):
+                    if event.get("type") == "progress" and event.get("source_details"):
+                        _bucket.extend(event["source_details"])
+                    ev_queue.put(event)
+
                 try:
                     result = _enrich(
                         representative,
                         cover_dir=cover_dir,
-                        on_progress=ev_queue.put,
+                        on_progress=_progress_cb,
                     )
                 except Exception:
                     app.logger.exception(
@@ -747,6 +754,7 @@ def bulk_stream():
                         "google_candidates": 0,
                         "calibre_ok": False,
                         "calibre_candidates": 0,
+                        "source_details": all_source_details,
                         "file_write_error": None,
                     })
                     summary["source_errors"] += 1
@@ -850,6 +858,7 @@ def bulk_stream():
                     "google_candidates": google_candidates,
                     "calibre_ok": calibre_ok,
                     "calibre_candidates": calibre_candidates,
+                    "source_details": all_source_details,
                     "file_write_error": file_write_error,
                 })
 

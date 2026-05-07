@@ -193,13 +193,23 @@ def run_metadata_enrichment(
             isbn=search_input["isbn"],
         )
         source_results.append(google_sr)
-        all_candidates.extend(google_sr.get("candidates", []))
+        google_candidates_list = google_sr.get("candidates", [])
+        all_candidates.extend(google_candidates_list)
+        google_source_details = [{
+            "source": "Google Books",
+            "fields_found": (
+                google_candidates_list[0].get("fields_found", [])
+                if google_candidates_list else []
+            ),
+            "ok": bool(google_sr["ok"]),
+        }]
         _emit(
             "google_books",
             source="google_books",
             status="ok" if google_sr["ok"] else google_sr["status"],
             message=google_sr["message"],
-            candidates_found=len(google_sr.get("candidates", [])),
+            candidates_found=len(google_candidates_list),
+            source_details=google_source_details,
             warnings=[],
         )
 
@@ -218,13 +228,43 @@ def run_metadata_enrichment(
             author=search_input["author"],
         )
         source_results.append(calibre_sr)
-        all_candidates.extend(calibre_sr.get("candidates", []))
+        calibre_candidates_list = calibre_sr.get("candidates", [])
+        all_candidates.extend(calibre_candidates_list)
+
+        # One source_details entry per Calibre plugin (Goodreads, Fantastic
+        # Fiction, etc.) so the UI can show per-plugin coverage. All plugins
+        # share the same fields_found because Calibre returns merged data.
+        calibre_source_details = []
+        for c in calibre_candidates_list:
+            plugins = c.get("plugins_used") or []
+            fields = c.get("fields_found", [])
+            if plugins:
+                for plugin in plugins:
+                    calibre_source_details.append({
+                        "source": plugin,
+                        "fields_found": list(fields),
+                        "ok": True,
+                    })
+            else:
+                calibre_source_details.append({
+                    "source": c.get("source", "Calibre"),
+                    "fields_found": list(fields),
+                    "ok": True,
+                })
+        if not calibre_source_details:
+            calibre_source_details = [{
+                "source": "Calibre",
+                "fields_found": [],
+                "ok": bool(calibre_sr["ok"]),
+            }]
+
         _emit(
             "calibre",
             source="calibre",
             status="ok" if calibre_sr["ok"] else calibre_sr["status"],
             message=calibre_sr["message"],
-            candidates_found=len(calibre_sr.get("candidates", [])),
+            candidates_found=len(calibre_candidates_list),
+            source_details=calibre_source_details,
             warnings=[],
         )
 

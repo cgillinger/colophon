@@ -101,12 +101,11 @@
         button, input, select, textarea { font-family: inherit; color: inherit; }
 
         .topbar {
-            height: 68px;
             background: var(--bg-primary);
             border-bottom: 1px solid var(--border-light);
             display: flex;
             align-items: center;
-            padding: 0 20px;
+            padding: 12px 20px;
             gap: 14px;
             position: sticky;
             top: 0;
@@ -121,12 +120,13 @@
             color: var(--text-primary);
         }
         .topbar-brand img {
-            width: 48px;
-            height: 48px;
-            border-radius: 10px;
+            width: 80px;
+            height: 80px;
+            border-radius: 12px;
             display: block;
-            object-fit: cover;
+            object-fit: contain;
         }
+        .topbar-brand span { font-size: 28px; }
         .topbar-spacer { flex: 1; }
         .topbar-actions {
             display: flex;
@@ -202,9 +202,13 @@
             flex-direction: column;
             gap: 10px;
         }
-        .action-card.library {
+        .action-card.enrich {
             background: var(--green-50);
             border-color: var(--green-200);
+        }
+        .action-card.library-card {
+            background: var(--bg-secondary);
+            border-color: var(--border-light);
         }
         .action-card-header {
             display: flex;
@@ -216,7 +220,7 @@
             letter-spacing: 0.04em;
             color: var(--text-secondary);
         }
-        .action-card.library .action-card-header {
+        .action-card.enrich .action-card-header {
             color: var(--accent-primary-text);
         }
         .action-card-header i { font-size: 16px; }
@@ -241,7 +245,7 @@
             font-size: 12px;
             color: var(--text-secondary);
         }
-        .action-card.library .action-chip {
+        .action-card.enrich .action-chip {
             background: var(--bg-primary);
             border-color: var(--green-200);
             color: var(--accent-primary-text);
@@ -292,6 +296,76 @@
         .filter-row .selected-count {
             color: var(--text-secondary);
             font-size: 13px;
+        }
+        .filter-sep {
+            width: 1px;
+            height: 24px;
+            background: var(--border-light);
+            margin: 0 4px;
+            flex-shrink: 0;
+        }
+        .filter-btn {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-light);
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .filter-btn:hover { background: var(--bg-secondary); color: var(--text-primary); }
+        .icon-toggle {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            border: 1px solid var(--border-light);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0;
+        }
+        .icon-toggle.active {
+            background: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-primary);
+        }
+        .btn-group {
+            display: flex;
+            gap: 0;
+        }
+        .btn-group .filter-btn {
+            border-radius: 0;
+            border-right: none;
+        }
+        .btn-group .filter-btn:first-child { border-radius: 6px 0 0 6px; }
+        .btn-group .filter-btn:last-child { border-radius: 0 6px 6px 0; border-right: 1px solid var(--border-light); }
+        .filter-check {
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border-light);
+            cursor: pointer;
+            user-select: none;
+        }
+        .filter-check input { margin: 0; }
+        .col-resize-handle {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            cursor: col-resize;
+            background: transparent;
+        }
+        .col-resize-handle:hover {
+            background: var(--accent-primary);
+            opacity: 0.3;
         }
 
         .container {
@@ -496,6 +570,7 @@
         }
         table#bookTable {
             width: 100%;
+            table-layout: fixed;
             border-collapse: collapse;
             background: transparent;
         }
@@ -635,6 +710,53 @@
             text-transform: uppercase;
         }
         .bp-active { background: var(--bg-secondary); }
+
+        /* Per-source detail (expanded) */
+        .bp-source-detail {
+            padding: 4px 16px 8px;
+            display: none;
+        }
+        .bp-source-detail.expanded { display: block; }
+        .bp-source-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 6px 0;
+            border-bottom: 0.5px solid var(--border-light);
+        }
+        .bp-source-row:last-child { border-bottom: none; }
+        .bp-source-icon { width: 18px; text-align: center; padding-top: 2px; }
+        .bp-source-name {
+            font-size: 12px;
+            font-weight: 500;
+            min-width: 120px;
+            color: var(--text-secondary);
+        }
+        .bp-fields { display: flex; flex-wrap: wrap; gap: 4px; }
+        .bp-field-tag {
+            font-size: 11px;
+            padding: 2px 7px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .bp-field-found {
+            background: var(--badge-ok-bg);
+            color: var(--badge-ok-text);
+        }
+        .bp-field-missing {
+            background: var(--bg-tertiary);
+            color: var(--text-tertiary);
+        }
+        .bp-expand-icon {
+            cursor: pointer;
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-left: 4px;
+            transition: transform 0.15s;
+        }
+        .bp-expand-icon.open { transform: rotate(180deg); }
         .bp-spinner {
             display: inline-block;
             width: 16px;
@@ -652,7 +774,7 @@
         .bp-uncertain{ color: #ff9966; }
 
         /* Modals */
-        #bookModal, #bulkResultModal {
+        #bookModal, #bulkResultModal, #smartReplaceModal {
             position: fixed;
             inset: 0;
             z-index: 1000;
@@ -950,8 +1072,9 @@
 
 <header class="topbar">
     <a class="topbar-brand" href="{{ url_for('metadata.bulk_metadata') }}">
-        <img src="{{ url_for('static', filename='icons/colophon.png') }}" alt="Colophon">
-        <span>Colophon</span>
+        <img src="{{ url_for('static', filename='icons/colophon-transparent.png') }}" alt="Colophon"
+             style="width:80px; height:80px; border-radius:12px; object-fit:contain;">
+        <span style="font-size:28px; font-weight:500;">Colophon</span>
     </a>
     <div class="topbar-spacer"></div>
     <div class="topbar-actions">
@@ -965,8 +1088,6 @@
 </header>
 
 <div class="container">
-    <h1>Metadata</h1>
-
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             <div class="messages">
@@ -1069,27 +1190,7 @@
         </div>
 
         <div class="action-cards">
-            <div class="action-card library" id="libraryCard">
-                <div class="action-card-header">
-                    <i class="ti ti-folder"></i> Bibliotek
-                </div>
-                <div class="action-card-body">
-                    <button id="scanBtn" type="button" class="btn primary" onclick="startScan()">
-                        <i class="ti ti-refresh"></i> Hitta nya böcker
-                    </button>
-                    <div class="action-chips" id="libraryChips">
-                        <span class="action-chip">{{ total_count }} böcker</span>
-                        {% if missing_count %}
-                            <span class="action-chip">{{ missing_count }} saknar metadata</span>
-                        {% endif %}
-                    </div>
-                </div>
-                <div id="scanInline" style="display:none; font-size:13px; color:var(--accent-primary-text);">
-                    <span id="scanInlineText">Skannar...</span>
-                </div>
-            </div>
-
-            <div class="action-card">
+            <div class="action-card enrich">
                 <div class="action-card-header">
                     <i class="ti ti-sparkles"></i> Berika metadata
                 </div>
@@ -1117,12 +1218,34 @@
                     </button>
                 </div>
             </div>
+
+            <div class="action-card library-card" id="libraryCard">
+                <div class="action-card-header">
+                    <i class="ti ti-folder"></i> Bibliotek
+                </div>
+                <div class="action-card-body">
+                    <button id="scanBtn" type="button" class="btn primary" onclick="startScan()">
+                        <i class="ti ti-refresh"></i> Hitta nya böcker
+                    </button>
+                    <div class="action-chips" id="libraryChips">
+                        <span class="action-chip">{{ total_count }} böcker</span>
+                        {% if missing_count %}
+                            <span class="action-chip">{{ missing_count }} saknar metadata</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div id="scanInline" style="display:none; font-size:13px; color:var(--accent-primary-text);">
+                    <span id="scanInlineText">Skannar...</span>
+                </div>
+            </div>
         </div>
 
         <div class="filter-row">
-            <button id="groupToggle" class="btn ghost" type="button" onclick="toggleGroupView()" title="Gruppera format">
-                <i class="ti ti-list"></i> Alla format
+            <button id="groupToggle" class="filter-btn icon-toggle" type="button" onclick="toggleGroupView()" title="Gruppera format">
+                <i class="ti ti-stack-2"></i>
             </button>
+
+            <div class="filter-sep"></div>
 
             <select id="filterStatus" onchange="applyFilters()" title="Status">
                 <option value="">Status: alla</option>
@@ -1151,14 +1274,20 @@
                 <option value="0">Ej manuellt redigerad</option>
             </select>
 
+            <div class="filter-sep"></div>
             <div class="filter-spacer"></div>
 
-            <button class="btn ghost" type="button" onclick="selectAllBooks()">Välj alla</button>
-            <button class="btn ghost" type="button" onclick="selectMissingBooks()">Välj saknade</button>
-            <button class="btn ghost" type="button" onclick="clearSelection()">Avmarkera</button>
-            <label style="cursor:pointer; font-size:13px; color:var(--text-secondary); display:inline-flex; align-items:center; gap:6px;">
+            <div class="btn-group">
+                <button class="filter-btn" type="button" onclick="selectAllBooks()">Alla</button>
+                <button class="filter-btn" type="button" onclick="selectMissingBooks()">Saknade</button>
+                <button class="filter-btn" type="button" onclick="clearSelection()">Inga</button>
+            </div>
+
+            <div class="filter-sep"></div>
+
+            <label class="filter-check" id="dangerToggle" style="display:none;">
                 <input type="checkbox" id="showDangerZone" onchange="toggleDangerZone()">
-                Radering
+                <i class="ti ti-trash" style="font-size:14px;"></i>
             </label>
             <span id="dangerZone" style="display:none;">
                 <button type="button" class="btn-danger small" onclick="confirmBulkDelete()">
@@ -1272,12 +1401,15 @@
         <div id="paginationBar">
             <span id="paginationInfo">Visar 0 böcker</span>
             <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
-                <span>Visa:
-                    <a class="page-size-link" data-size="20" onclick="setPageSize(20);return false;">20</a> ·
-                    <a class="page-size-link" data-size="50" onclick="setPageSize(50);return false;">50</a> ·
-                    <a class="page-size-link" data-size="100" onclick="setPageSize(100);return false;">100</a> ·
-                    <a class="page-size-link" data-size="0" onclick="setPageSize(0);return false;">Alla</a>
-                </span>
+                <label style="font-size:13px; color:var(--text-secondary);">
+                    Visa:
+                    <select id="pageSizeSelect" onchange="setPageSize(this.value === 'all' ? 0 : parseInt(this.value))">
+                        <option value="20">20 per sida</option>
+                        <option value="50">50 per sida</option>
+                        <option value="100">100 per sida</option>
+                        <option value="all">Alla</option>
+                    </select>
+                </label>
                 <div id="pageButtons"></div>
             </div>
         </div>
@@ -1745,6 +1877,10 @@
     var _pageSize = parseInt(localStorage.getItem('colophon-pageSize'));
     if (isNaN(_pageSize)) _pageSize = 20;
     var _currentPage = 1;
+    (function() {
+        var sel = document.getElementById('pageSizeSelect');
+        if (sel) sel.value = _pageSize === 0 ? 'all' : _pageSize.toString();
+    })();
 
     function getFilteredRows() {
         return Array.from(document.querySelectorAll('#bookTableBody tr'))
@@ -1826,6 +1962,8 @@
         _pageSize = size;
         _currentPage = 1;
         localStorage.setItem('colophon-pageSize', size);
+        var sel = document.getElementById('pageSizeSelect');
+        if (sel) sel.value = size === 0 ? 'all' : size.toString();
         renderPagination();
     }
     function goToPage(page) {
@@ -1849,9 +1987,6 @@
         var btn = document.getElementById('groupToggle');
         if (!btn) return;
         btn.classList.toggle('active', _grouped);
-        btn.innerHTML = _grouped
-            ? '<i class="ti ti-stack-2"></i> Grupperat'
-            : '<i class="ti ti-list"></i> Alla format';
     }
 
     function _resetGrouping() {
@@ -2116,6 +2251,7 @@
                     document.querySelectorAll('#bulkProgressBody tr.bp-active').forEach(function(r) {
                         r.classList.remove('bp-active');
                     });
+                    _sourceDetails[d.item_id] = [];
                     var tr = document.createElement('tr');
                     tr.id = 'bp-row-' + d.item_id;
                     tr.className = 'bp-active';
@@ -2129,13 +2265,21 @@
                         }).join(' ');
                     }
 
+                    var expandIcon = ' <i class="ti ti-chevron-down bp-expand-icon" onclick="event.stopPropagation(); toggleProgressDetail(' + d.item_id + ', this)" title="Visa källdetaljer"></i>';
+
                     tr.innerHTML =
-                        '<td>' + _esc(title) + fmtHtml + '</td>' +
+                        '<td>' + _esc(title) + fmtHtml + expandIcon + '</td>' +
                         '<td style="text-align:center;" id="bp-google-' + d.item_id + '"></td>' +
                         '<td style="text-align:center;" id="bp-calibre-' + d.item_id + '"></td>' +
                         '<td style="text-align:center;" id="bp-score-' + d.item_id + '"></td>' +
                         '<td style="text-align:center;" id="bp-result-' + d.item_id + '"></td>';
                     body.appendChild(tr);
+
+                    var detailTr = document.createElement('tr');
+                    detailTr.id = 'bp-detail-row-' + d.item_id;
+                    detailTr.innerHTML = '<td colspan="5" style="padding:0; border-bottom:1px solid var(--border-light);"><div id="bp-detail-' + d.item_id + '" class="bp-source-detail"></div></td>';
+                    body.appendChild(detailTr);
+
                     var unit = d.total === 1 ? 'grupp' : 'grupper';
                     summaryEl.textContent = d.index + ' av ' + d.total + ' ' + unit + '…';
 
@@ -2155,6 +2299,16 @@
                             }
                         }
                     }
+                    if (d.source_details && d.source_details.length > 0) {
+                        if (!_sourceDetails[d.item_id]) _sourceDetails[d.item_id] = [];
+                        d.source_details.forEach(function(sd) {
+                            _sourceDetails[d.item_id].push(sd);
+                        });
+                        var detailEl = document.getElementById('bp-detail-' + d.item_id);
+                        if (detailEl && detailEl.classList.contains('expanded')) {
+                            _renderSourceDetail(d.item_id);
+                        }
+                    }
 
                 } else if (d.type === 'book_done') {
                     // Cache result data for comparison modal — keyed by representative
@@ -2169,7 +2323,15 @@
                         warnings: d.warnings || [],
                         quality_notes: d.quality_notes || {},
                         item_ids: d.item_ids || [d.item_id],
+                        source_details: d.source_details || _sourceDetails[d.item_id] || [],
                     };
+                    if (d.source_details && d.source_details.length > 0) {
+                        _sourceDetails[d.item_id] = d.source_details;
+                        var detailEl2 = document.getElementById('bp-detail-' + d.item_id);
+                        if (detailEl2 && detailEl2.classList.contains('expanded')) {
+                            _renderSourceDetail(d.item_id);
+                        }
+                    }
 
                     var tr = document.getElementById('bp-row-' + d.item_id);
                     if (!tr) {
@@ -2610,6 +2772,66 @@
     });
 
     /* -------------------------------------------------------------------- */
+    /* Per-source detail (expandable progress row)                           */
+    /* -------------------------------------------------------------------- */
+    var _sourceDetails = {};
+    var _bpFieldLabels = {
+        title: 'Titel', author: 'Författare', description: 'Synopsis',
+        isbn: 'ISBN', publisher: 'Förlag', series: 'Serie',
+        genres: 'Genre', cover: 'Omslag'
+    };
+    var _bpAllFields = ['title', 'author', 'description', 'isbn', 'publisher', 'series', 'genres', 'cover'];
+
+    function _bpEsc(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function _renderSourceDetail(itemId) {
+        var container = document.getElementById('bp-detail-' + itemId);
+        if (!container) return;
+
+        var details = _sourceDetails[itemId] || [];
+        if (details.length === 0) {
+            container.innerHTML = '<div style="font-size:12px; color:var(--text-tertiary); padding:6px 0;">Inga källdetaljer.</div>';
+            return;
+        }
+
+        var html = '';
+        details.forEach(function(sd) {
+            var iconClass = sd.ok ? 'ti-check' : 'ti-x';
+            var iconColor = sd.ok ? 'var(--accent-green)' : 'var(--text-tertiary)';
+
+            html += '<div class="bp-source-row">';
+            html += '<div class="bp-source-icon"><i class="ti ' + iconClass + '" style="font-size:14px;color:' + iconColor + '"></i></div>';
+            html += '<div class="bp-source-name">' + _bpEsc(sd.source) + '</div>';
+            html += '<div class="bp-fields">';
+
+            if (sd.ok && sd.fields_found && sd.fields_found.length > 0) {
+                _bpAllFields.forEach(function(f) {
+                    var found = sd.fields_found.indexOf(f) !== -1;
+                    var cls = found ? 'bp-field-found' : 'bp-field-missing';
+                    var icon = found ? '<i class="ti ti-check" style="font-size:11px"></i> ' : '';
+                    html += '<span class="bp-field-tag ' + cls + '">' + icon + _bpEsc(_bpFieldLabels[f]) + '</span>';
+                });
+            } else {
+                html += '<span class="bp-field-tag bp-field-missing">Inga träffar</span>';
+            }
+
+            html += '</div></div>';
+        });
+
+        container.innerHTML = html;
+    }
+
+    function toggleProgressDetail(itemId, icon) {
+        var detail = document.getElementById('bp-detail-' + itemId);
+        if (!detail) return;
+        var expanded = detail.classList.toggle('expanded');
+        if (icon) icon.classList.toggle('open', expanded);
+        if (expanded) _renderSourceDetail(itemId);
+    }
+
+    /* -------------------------------------------------------------------- */
     /* Bulk result comparison modal                                          */
     /* -------------------------------------------------------------------- */
     var _brmItemId = null;
@@ -2900,6 +3122,52 @@
             }
         }
     });
+
+    /* -------------------------------------------------------------------- */
+    /* Resizable columns                                                     */
+    /* -------------------------------------------------------------------- */
+    (function() {
+        var table = document.getElementById('bookTable');
+        if (!table) return;
+        var ths = table.querySelectorAll('thead th');
+
+        ths.forEach(function(th, i) {
+            if (i === ths.length - 1) return;
+
+            var handle = document.createElement('div');
+            handle.className = 'col-resize-handle';
+            handle.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                var startX = e.pageX;
+                var startW = th.offsetWidth;
+                var next = ths[i + 1];
+                var nextW = next ? next.offsetWidth : 0;
+
+                function onMove(ev) {
+                    var diff = ev.pageX - startX;
+                    th.style.width = Math.max(50, startW + diff) + 'px';
+                    if (next) next.style.width = Math.max(50, nextW - diff) + 'px';
+                }
+                function onUp() {
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                    var widths = Array.from(ths).map(function(t) { return t.style.width || ''; });
+                    localStorage.setItem('colophon-col-widths', JSON.stringify(widths));
+                }
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+            });
+            th.style.position = 'relative';
+            th.appendChild(handle);
+        });
+
+        var saved = JSON.parse(localStorage.getItem('colophon-col-widths') || 'null');
+        if (saved) {
+            ths.forEach(function(th, i) {
+                if (saved[i]) th.style.width = saved[i];
+            });
+        }
+    })();
 </script>
 
 </body>
