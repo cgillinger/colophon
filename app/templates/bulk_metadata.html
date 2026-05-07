@@ -120,13 +120,13 @@
             color: var(--text-primary);
         }
         .topbar-brand img {
-            width: 80px;
-            height: 80px;
-            border-radius: 12px;
+            width: 96px;
+            height: 96px;
+            border-radius: 14px;
             display: block;
             object-fit: contain;
         }
-        .topbar-brand span { font-size: 28px; }
+        .topbar-brand span { font-size: 28px; font-weight: 500; }
         .topbar-spacer { flex: 1; }
         .topbar-actions {
             display: flex;
@@ -150,8 +150,81 @@
             background: var(--bg-tertiary);
             color: var(--text-primary);
         }
-        .topbar-btn i { font-size: 18px; }
-        .topbar-btn.icon-only { padding: 7px; }
+        .topbar-btn i { font-size: 22px; }
+        .topbar-btn.icon-only { padding: 8px; }
+
+        /* Search in topbar */
+        .topbar-search {
+            flex: 1;
+            max-width: 600px;
+            position: relative;
+        }
+        .topbar-search i.search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-tertiary);
+            font-size: 18px;
+            pointer-events: none;
+        }
+        .topbar-search input {
+            width: 100%;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            color: var(--text-primary);
+            border-radius: 8px;
+            padding: 0 14px 0 42px;
+            font-size: 14px;
+            height: 42px;
+        }
+        .topbar-search input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px var(--accent-primary-light);
+        }
+
+        /* Library bar */
+        .library-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #f0f4f8;
+            border: 1px solid #cdd6e0;
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+        [data-theme="dark"] .library-bar {
+            background: #1a2332;
+            border-color: #2a3a50;
+        }
+        .chip {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-medium);
+            border-radius: 999px;
+            padding: 4px 12px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* Sticky batch bar */
+        .batch-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg-primary);
+            border-top: 1.5px solid var(--accent-primary);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            z-index: 900;
+            box-shadow: 0 -4px 16px rgba(0,0,0,0.08);
+        }
+        .batch-bar span { font-weight: 500; color: var(--text-primary); }
 
         /* Hero search bar */
         .hero-search {
@@ -1072,11 +1145,13 @@
 
 <header class="topbar">
     <a class="topbar-brand" href="{{ url_for('metadata.bulk_metadata') }}">
-        <img src="{{ url_for('static', filename='icons/colophon-transparent.png') }}" alt="Colophon"
-             style="width:80px; height:80px; border-radius:12px; object-fit:contain;">
-        <span style="font-size:28px; font-weight:500;">Colophon</span>
+        <img src="{{ url_for('static', filename='icons/colophon-transparent.png') }}" alt="Colophon">
+        <span>Colophon</span>
     </a>
-    <div class="topbar-spacer"></div>
+    <div class="topbar-search">
+        <i class="ti ti-search search-icon"></i>
+        <input type="text" id="filterSearch" placeholder="Sök titel, författare, ISBN, genre..." oninput="applyFilters()">
+    </div>
     <div class="topbar-actions">
         <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="Byt tema">
             <i id="themeIcon" class="ti ti-sun"></i>
@@ -1184,65 +1259,22 @@
     {% endif %}
 
     <form method="post" id="bulkForm">
-        <div class="hero-search">
-            <i class="ti ti-search search-icon"></i>
-            <input type="text" id="filterSearch" placeholder="Sök titel, författare, ISBN, genre..." oninput="applyFilters()">
-        </div>
-
-        <div class="action-cards">
-            <div class="action-card enrich">
-                <div class="action-card-header">
-                    <i class="ti ti-sparkles"></i> Berika metadata
-                </div>
-                <div class="action-card-body">
-                    <button class="btn primary" type="submit" name="action" value="search">
-                        <i class="ti ti-search"></i> Sök metadata
-                    </button>
-                    <button class="btn outline" type="submit" name="action" value="ai">
-                        <i class="ti ti-sparkles"></i> Fråga AI
-                    </button>
-                </div>
-                <div class="inline-settings">
-                    <label>
-                        Max
-                        <input id="max_items" type="number" name="max_items" value="25" min="1" max="100">
-                    </label>
-                    <label title="Ersätter alla fält med hämtad data. Annars fylls bara tomma fält.">
-                        <input type="checkbox" name="overwrite" value="1">
-                        Ersätt befintlig
-                    </label>
-                    <button type="button" class="btn ghost btn-sm"
-                            onclick="openSmartReplaceSettings()"
-                            title="Inställningar för smart ersättning">
-                        <i class="ti ti-adjustments-horizontal"></i> Smart ersättning
-                    </button>
-                </div>
-            </div>
-
-            <div class="action-card library-card" id="libraryCard">
-                <div class="action-card-header">
-                    <i class="ti ti-folder"></i> Bibliotek
-                </div>
-                <div class="action-card-body">
-                    <button id="scanBtn" type="button" class="btn primary" onclick="startScan()">
-                        <i class="ti ti-refresh"></i> Hitta nya böcker
-                    </button>
-                    <div class="action-chips" id="libraryChips">
-                        <span class="action-chip">{{ total_count }} böcker</span>
-                        {% if missing_count %}
-                            <span class="action-chip">{{ missing_count }} saknar metadata</span>
-                        {% endif %}
-                    </div>
-                </div>
-                <div id="scanInline" style="display:none; font-size:13px; color:var(--accent-primary-text);">
-                    <span id="scanInlineText">Skannar...</span>
-                </div>
+        <div class="library-bar">
+            <button id="scanBtn" type="button" class="btn primary" onclick="startScan()">
+                <i class="ti ti-refresh"></i> Hitta nya böcker
+            </button>
+            <span class="chip" id="libraryChipTotal">{{ total_count }} böcker</span>
+            {% if missing_count %}
+                <span class="chip" id="libraryChipMissing">{{ missing_count }} saknar metadata</span>
+            {% endif %}
+            <div id="scanInline" style="display:none; font-size:13px; color:var(--accent-primary-text);">
+                <span id="scanInlineText">Skannar...</span>
             </div>
         </div>
 
         <div class="filter-row">
             <button id="groupToggle" class="filter-btn icon-toggle" type="button" onclick="toggleGroupView()" title="Gruppera format">
-                <i class="ti ti-stack-2"></i>
+                <i class="ti ti-stack-2" style="font-size:20px;"></i><span id="groupCountLabel" style="display:none; margin-left:6px; font-size:12px;"></span>
             </button>
 
             <div class="filter-sep"></div>
@@ -1559,6 +1591,15 @@
     </div>
 </div>
 
+<!-- Sticky batch bar -->
+<div id="batchBar" class="batch-bar" style="display:none;">
+    <span id="batchBarCount">0 böcker valda</span>
+    <button class="btn primary" type="button" onclick="openBatchModal()">
+        <i class="ti ti-settings-2"></i> Batchoperationer
+    </button>
+    <button class="btn ghost" type="button" onclick="deselectAll()">Avmarkera</button>
+</div>
+
 <script>
     /* -------------------------------------------------------------------- */
     /* Theme toggle                                                          */
@@ -1616,11 +1657,13 @@
         var btn = document.getElementById('scanBtn');
         var inline = document.getElementById('scanInline');
         var inlineText = document.getElementById('scanInlineText');
-        var chips = document.getElementById('libraryChips');
+        var chipTotal = document.getElementById('libraryChipTotal');
+        var chipMissing = document.getElementById('libraryChipMissing');
         btn.disabled = true;
         var origLabel = btn.innerHTML;
         btn.innerHTML = '<i class="ti ti-loader"></i> Skannar...';
-        if (chips) chips.style.display = 'none';
+        if (chipTotal) chipTotal.style.display = 'none';
+        if (chipMissing) chipMissing.style.display = 'none';
         if (inline) inline.style.display = 'block';
         if (inlineText) inlineText.textContent = 'Söker e-böcker...';
 
@@ -1638,7 +1681,8 @@
                 source.close();
                 btn.disabled = false;
                 btn.innerHTML = origLabel;
-                if (chips) chips.style.display = '';
+                if (chipTotal) chipTotal.style.display = '';
+                if (chipMissing) chipMissing.style.display = '';
                 if (inline) inline.style.display = 'none';
             }
         };
@@ -1647,7 +1691,8 @@
             source.close();
             btn.disabled = false;
             btn.innerHTML = origLabel;
-            if (chips) chips.style.display = '';
+            if (chipTotal) chipTotal.style.display = '';
+            if (chipMissing) chipMissing.style.display = '';
         };
     }
 
@@ -1675,10 +1720,15 @@
         });
         _syncGroupChildrenFromParents();
         updateSelectedCount();
+        updateBatchBar();
     }
     function clearSelection() {
         document.querySelectorAll('.book-checkbox').forEach(function(box) { box.checked = false; });
         updateSelectedCount();
+        updateBatchBar();
+    }
+    function deselectAll() {
+        clearSelection();
     }
     function selectMissingBooks() {
         document.querySelectorAll('#bookTableBody tr[data-missing]').forEach(function(row) {
@@ -1688,6 +1738,32 @@
         });
         _syncGroupChildrenFromParents();
         updateSelectedCount();
+        updateBatchBar();
+    }
+    function updateBatchBar() {
+        var checked = document.querySelectorAll('.book-checkbox:checked');
+        var bar = document.getElementById('batchBar');
+        var count = document.getElementById('batchBarCount');
+        if (!bar) return;
+
+        if (checked.length > 0) {
+            bar.style.display = 'flex';
+            if (_grouped) {
+                var groupKeys = new Set();
+                checked.forEach(function(cb) {
+                    var row = cb.closest('tr');
+                    if (row && row.dataset.groupKey) groupKeys.add(row.dataset.groupKey);
+                });
+                count.textContent = groupKeys.size + ' grupp' + (groupKeys.size !== 1 ? 'er' : '') + ' valda';
+            } else {
+                count.textContent = checked.length + ' bok' + (checked.length !== 1 ? 'er' : '') + ' valda';
+            }
+        } else {
+            bar.style.display = 'none';
+        }
+    }
+    function openBatchModal() {
+        alert('Batchoperationer — implementeras i Fas 2.');
     }
     function updateSelectedCount() {
         var el = document.getElementById('selectedCount');
@@ -1743,6 +1819,7 @@
             }
         }
         updateSelectedCount();
+        updateBatchBar();
     });
 
     /* -------------------------------------------------------------------- */
@@ -1987,6 +2064,19 @@
         var btn = document.getElementById('groupToggle');
         if (!btn) return;
         btn.classList.toggle('active', _grouped);
+        var label = document.getElementById('groupCountLabel');
+        if (label) {
+            if (_grouped) {
+                var groupCount = Object.keys(
+                    Array.from(document.querySelectorAll('tr.group-parent[data-group-key]'))
+                        .reduce(function(acc, r) { acc[r.dataset.groupKey] = 1; return acc; }, {})
+                ).length;
+                label.textContent = groupCount + ' grupper';
+                label.style.display = '';
+            } else {
+                label.style.display = 'none';
+            }
+        }
     }
 
     function _resetGrouping() {
@@ -2116,6 +2206,7 @@
     updateGroupToggleButton();
     renderGroupedView();
     updateSelectedCount();
+    updateBatchBar();
 
     /* -------------------------------------------------------------------- */
     /* Bulk delete                                                           */
