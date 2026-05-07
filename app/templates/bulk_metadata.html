@@ -348,7 +348,7 @@
         /* Filter row (chips) */
         .filter-row {
             background: var(--bg-primary);
-            border: 1px solid var(--green-200);
+            border: 2px solid var(--green-200);
             border-radius: 10px;
             padding: 10px 12px;
             margin-bottom: 14px;
@@ -648,9 +648,10 @@
         table#bookTable {
             width: 100%;
             table-layout: fixed;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
             background: transparent;
-            border: 1px solid var(--green-200);
+            border: 2px solid var(--green-200);
             border-radius: 8px;
             overflow: hidden;
         }
@@ -2842,6 +2843,9 @@
         _setModalBusy(true);
         progressEl.style.display = 'block';
         progressEl.innerHTML = '<div style="font-weight:500; margin-bottom:8px; font-size:13px; color:var(--text-secondary);">Söker metadata…</div>';
+        // Dölj gammal feedback under SSE-progress
+        var fb = document.getElementById('modalFeedback');
+        if (fb) fb.style.display = 'none';
 
         var url = '/metadata/bulk/stream?item_ids=' + id + '&max_items=1'
             + '&smart_replace=' + encodeURIComponent(smartReplace.join(','));
@@ -2862,6 +2866,7 @@
                 if (d.source_details && d.source_details.length > 0) modalSourceDetails = d.source_details;
                 _renderModalSourceDetail(progressEl, modalSourceDetails);
                 _applyFetchedToModal(d.candidate || {}, selectedFields);
+                progressEl.style.display = 'none';
                 var src = d.source ? ' (' + d.source + ')' : '';
                 var score = d.score ? ' · Poäng: ' + Math.round(d.score) : '';
                 setModalFeedback('success', 'Metadata hämtad' + src + score + '. Granska och spara.');
@@ -2871,6 +2876,7 @@
         sseSource.onerror = function() {
             sseSource.close();
             _setModalBusy(false);
+            progressEl.style.display = 'none';
             setModalFeedback('error', 'Sökningen misslyckades.');
         };
     }
