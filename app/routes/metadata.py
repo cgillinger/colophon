@@ -702,6 +702,7 @@ def bulk_stream():
             from app.services.metadata_pipeline import run_metadata_enrichment as _enrich
             from app.services.metadata_writer import (
                 apply_metadata_to_item as _apply,
+                sync_group_metadata as _sync_group,
             )
 
             summary = {
@@ -744,6 +745,22 @@ def bulk_stream():
                 representative = _pick_search_representative(group_items)
                 formats = [_format_label(it) for it in group_items]
                 item_ids = [it.id for it in group_items]
+
+                # --- Gruppsynk: korsberika inom gruppen innan extern sökning ---
+                if len(group_items) > 1:
+                    sync_result = _sync_group(group_items, cover_dir=cover_dir)
+                    if sync_result["fields_synced"] > 0:
+                        try:
+                            _db.session.commit()
+                        except Exception:
+                            _db.session.rollback()
+                        ev_queue.put({
+                            "type": "group_sync",
+                            "item_id": representative.id,
+                            "item_ids": item_ids,
+                            "fields_synced": sync_result["fields_synced"],
+                            "details": sync_result["details"],
+                        })
 
                 ev_queue.put({
                     "type": "book_start",
@@ -1043,11 +1060,33 @@ def enrich_stream(item_id):
         with app.app_context():
             from app.models import LibraryItem, db as _db
             from app.services.metadata_pipeline import run_metadata_enrichment as _enrich
+            from app.services.metadata_writer import sync_group_metadata as _sync_group
             fresh_item = _db.session.get(LibraryItem, item_id)
             if not fresh_item:
                 ev_queue.put({"type": "error", "message": "Boken hittades inte."})
                 ev_queue.put(None)
                 return
+
+            # --- Gruppsynk: korsberika inom gruppen innan extern sökning ---
+            if fresh_item.group_key:
+                siblings = (
+                    LibraryItem.query
+                    .filter(LibraryItem.group_key == fresh_item.group_key)
+                    .all()
+                )
+                if len(siblings) > 1:
+                    sync_result = _sync_group(siblings, cover_dir=app.config["COVER_DIR"])
+                    if sync_result["fields_synced"] > 0:
+                        try:
+                            _db.session.commit()
+                        except Exception:
+                            _db.session.rollback()
+                        ev_queue.put({
+                            "type": "group_sync",
+                            "fields_synced": sync_result["fields_synced"],
+                            "details": sync_result["details"],
+                        })
+
             try:
                 result = _enrich(
                     fresh_item,

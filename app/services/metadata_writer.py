@@ -281,5 +281,69 @@ def write_metadata_to_file(item, written_text, cover_path):
     return {"ok": True, "error": None}
 
 
+_SYNCABLE_FIELDS = (
+    "title", "author", "description", "series", "series_index",
+    "isbn", "publisher", "language", "genres", "published_date",
+)
+
+
+def sync_group_metadata(group_items, cover_dir=None):
+    """Cross-populate empty fields within a format group.
+
+    For each syncable field, find the best non-empty value across all members
+    and copy it into members that lack it.  Cover paths are synced separately
+    (the source file must actually exist on disk).
+
+    Only fills *empty* fields — never overwrites existing values.
+
+    Returns a dict:
+        fields_synced  int        — total field writes across all members
+        details        list[dict] — per-member summary (item_id, format, fields_synced)
+    """
+    if len(group_items) < 2:
+        return {"fields_synced": 0, "details": []}
+
+    # Build a "best value" dict: prefer the longest non-empty value per field.
+    best: dict[str, str] = {}
+    for field in _SYNCABLE_FIELDS:
+        for item in group_items:
+            val = (getattr(item, field, None) or "").strip()
+            if val and len(val) > len(best.get(field, "")):
+                best[field] = val
+
+    # Best cover: first member with a cover_path that exists on disk.
+    best_cover = None
+    for item in group_items:
+        if item.cover_path and os.path.exists(item.cover_path):
+            best_cover = item.cover_path
+            break
+
+    total_synced = 0
+    details = []
+
+    for item in group_items:
+        member_synced = []
+
+        for field in _SYNCABLE_FIELDS:
+            current = (getattr(item, field, None) or "").strip()
+            if not current and best.get(field):
+                setattr(item, field, best[field])
+                member_synced.append(field)
+
+        if best_cover and not item.cover_path:
+            item.cover_path = best_cover
+            member_synced.append("cover")
+
+        total_synced += len(member_synced)
+        if member_synced:
+            details.append({
+                "item_id": item.id,
+                "format": (item.extension or "").lstrip(".").upper(),
+                "fields_synced": member_synced,
+            })
+
+    return {"fields_synced": total_synced, "details": details}
+
+
 def item_has_good_metadata(item):
     return bool(item.author and item.description and item.cover_path)

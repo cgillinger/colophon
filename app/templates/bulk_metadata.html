@@ -2774,7 +2774,16 @@
             var d;
             try { d = JSON.parse(e.data); } catch(ex) { return; }
 
-            if (d.type === 'book_start') {
+            if (d.type === 'group_sync' && d.fields_synced > 0) {
+                var syncTr = document.createElement('tr');
+                var nFmts = (d.details || []).length;
+                syncTr.innerHTML =
+                    '<td colspan="5" style="font-size:12px; color:var(--text-secondary); padding:4px 10px;">' +
+                    '↔ Synkade ' + d.fields_synced + ' fält inom gruppen (' + nFmts + ' format)' +
+                    '</td>';
+                body.appendChild(syncTr);
+
+            } else if (d.type === 'book_start') {
                 document.querySelectorAll('#batchProgressBody tr.bp-active').forEach(function(r) {
                     r.classList.remove('bp-active');
                 });
