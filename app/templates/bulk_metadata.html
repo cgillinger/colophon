@@ -1428,6 +1428,7 @@
 <!-- Book modal -->
 <div id="bookModal" style="display:none;">
     <div class="modal-box">
+        <div id="modalProgress" style="display:none; margin-bottom:12px;"></div>
         <div id="modalFeedback" class="modal-feedback" style="display:none;"></div>
         <div class="modal-grid">
             <div>
@@ -1509,7 +1510,7 @@
                 </summary>
                 <div style="margin-top:8px; display:flex; flex-direction:column; gap:4px;">
                     <label class="field-check"><input type="checkbox" class="modal-smart" value="title"> Titel — rensa serie/marknadsföring i parenteser</label>
-                    <label class="field-check"><input type="checkbox" class="modal-smart" value="author"> Författare — ta bort [Efternamn, Förnamn]</label>
+                    <label class="field-check"><input type="checkbox" class="modal-smart" value="author" checked> Författare — ta bort [Efternamn, Förnamn]</label>
                     <label class="field-check"><input type="checkbox" class="modal-smart" value="isbn"> ISBN — ersätt om hämtad är ISBN-13</label>
                     <label class="field-check"><input type="checkbox" class="modal-smart" value="publisher"> Förlag — ersätt om befintlig = författarnamn</label>
                     <label class="field-check"><input type="checkbox" class="modal-smart" value="genres"> Genre — ersätt om hämtad har fler genrer</label>
@@ -1566,7 +1567,7 @@
             </div>
             <div style="display:flex; flex-direction:column; gap:6px;">
                 <label class="field-check"><input type="checkbox" class="batch-smart" value="title"> Titel — rensa serie/marknadsföring i parenteser</label>
-                <label class="field-check"><input type="checkbox" class="batch-smart" value="author"> Författare — ta bort [Efternamn, Förnamn]</label>
+                <label class="field-check"><input type="checkbox" class="batch-smart" value="author" checked> Författare — ta bort [Efternamn, Förnamn]</label>
                 <label class="field-check"><input type="checkbox" class="batch-smart" value="isbn"> ISBN — ersätt om hämtad är ISBN-13</label>
                 <label class="field-check"><input type="checkbox" class="batch-smart" value="publisher"> Förlag — ersätt om befintlig = författarnamn</label>
                 <label class="field-check"><input type="checkbox" class="batch-smart" value="genres"> Genre — ersätt om hämtad har fler genrer</label>
@@ -2425,7 +2426,7 @@
                         return '<span class="format-badge">' + _esc(f) + '</span>';
                     }).join(' ');
                 }
-                var expandIcon = ' <i class="ti ti-chevron-down bp-expand-icon" onclick="event.stopPropagation(); toggleProgressDetail(' + d.item_id + ', this)" title="Visa källdetaljer"></i>';
+                var expandIcon = ' <i class="ti ti-chevron-down bp-expand-icon open" onclick="event.stopPropagation(); toggleProgressDetail(' + d.item_id + ', this)" title="Visa källdetaljer"></i>';
                 tr.innerHTML =
                     '<td>' + _esc(title) + fmtHtml + expandIcon + '</td>' +
                     '<td style="text-align:center;" id="bp-google-' + d.item_id + '"></td>' +
@@ -2435,7 +2436,7 @@
                 body.appendChild(tr);
                 var detailTr = document.createElement('tr');
                 detailTr.id = 'bp-detail-row-' + d.item_id;
-                detailTr.innerHTML = '<td colspan="5" style="padding:0; border-bottom:1px solid var(--border-light);"><div id="bp-detail-' + d.item_id + '" class="bp-source-detail"></div></td>';
+                detailTr.innerHTML = '<td colspan="5" style="padding:0; border-bottom:1px solid var(--border-light);"><div id="bp-detail-' + d.item_id + '" class="bp-source-detail expanded"></div></td>';
                 body.appendChild(detailTr);
                 var unit = d.total === 1 ? 'grupp' : 'grupper';
                 summaryEl.textContent = d.index + ' av ' + d.total + ' ' + unit + '…';
@@ -2740,6 +2741,49 @@
         toggleModalFields(checked);
     }
 
+    function _applyFetchedToModal(candidate, selectedFields) {
+        if (selectedFields.indexOf('title') !== -1 && candidate.title)
+            document.getElementById('modalTitle').value = candidate.title;
+        if (selectedFields.indexOf('author') !== -1 && candidate.author)
+            document.getElementById('modalAuthor').value = candidate.author;
+        if (selectedFields.indexOf('series') !== -1 && candidate.series)
+            document.getElementById('modalSeries').value = candidate.series;
+        if (selectedFields.indexOf('series') !== -1 && candidate.series_index)
+            document.getElementById('modalSeriesIndex').value = candidate.series_index;
+        if (selectedFields.indexOf('isbn') !== -1 && candidate.isbn)
+            document.getElementById('modalIsbn').value = candidate.isbn;
+        if (selectedFields.indexOf('publisher') !== -1 && candidate.publisher)
+            document.getElementById('modalPublisher').value = candidate.publisher;
+        if (selectedFields.indexOf('language') !== -1 && candidate.language)
+            document.getElementById('modalLanguage').value = candidate.language;
+        if (selectedFields.indexOf('description') !== -1 && candidate.description)
+            document.getElementById('modalDescription').value = candidate.description;
+        if (selectedFields.indexOf('genres') !== -1 && candidate.genres) {
+            var genreEl = document.getElementById('modalGenres');
+            if (genreEl) genreEl.value = candidate.genres;
+        }
+    }
+
+    function _renderModalSourceDetail(container, sourceDetails) {
+        if (!sourceDetails || sourceDetails.length === 0) return;
+        var html = '<div style="font-size:12px; color:var(--text-secondary);">';
+        sourceDetails.forEach(function(sd) {
+            var fields = (sd.fields_found || []).map(function(f) {
+                return '<span class="field-tag">' + _esc(f) + '</span>';
+            }).join(' ');
+            var icon = sd.ok ? '✓' : '✗';
+            var color = sd.ok ? 'var(--accent-green)' : 'var(--accent-red)';
+            html += '<div style="margin-bottom:4px;">'
+                + '<span style="color:' + color + '; font-weight:600;">' + icon + '</span> '
+                + '<strong>' + _esc(sd.source || sd.plugin || '') + '</strong>'
+                + (sd.duration_ms ? ' <span style="color:var(--text-tertiary);">' + sd.duration_ms + 'ms</span>' : '')
+                + (fields ? ' ' + fields : '')
+                + '</div>';
+        });
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
     function fetchMetadata() {
         var id = _modalItemId;
         var selectedFields = _getSelectedFields();
@@ -2748,48 +2792,67 @@
             return;
         }
         var smartReplace = _getModalSmartReplace();
-        setModalFeedback('info', 'Hämtar metadata…');
-        _setModalBusy(true);
+        var progressEl = document.getElementById('modalProgress');
 
-        var url = '/metadata/' + id + '/fetch-json'
-            + '?smart_replace=' + encodeURIComponent(smartReplace.join(','));
-        fetch(url, { method: 'POST' })
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
+        if (!window.EventSource) {
+            setModalFeedback('info', 'Hämtar metadata…');
+            _setModalBusy(true);
+            var url = '/metadata/' + id + '/fetch-json'
+                + '?smart_replace=' + encodeURIComponent(smartReplace.join(','));
+            fetch(url, { method: 'POST' })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    _setModalBusy(false);
+                    if (!data.ok) {
+                        var msg = data.error === 'no_match' ? 'Inga säkra träffar hittades.' : 'Fel: ' + data.error;
+                        setModalFeedback('error', msg);
+                        return;
+                    }
+                    _applyFetchedToModal(data.fetched || {}, selectedFields);
+                    var src = data.source ? ' (' + data.source + ')' : '';
+                    setModalFeedback('success', 'Metadata hämtad' + src + '. Granska och spara.');
+                })
+                .catch(function() {
+                    _setModalBusy(false);
+                    setModalFeedback('error', 'Hämtning misslyckades.');
+                });
+            return;
+        }
+
+        _setModalBusy(true);
+        progressEl.style.display = 'block';
+        progressEl.innerHTML = '<div style="font-weight:500; margin-bottom:8px; font-size:13px; color:var(--text-secondary);">Söker metadata…</div>';
+
+        var url = '/metadata/bulk/stream?item_ids=' + id + '&max_items=1'
+            + '&smart_replace=' + encodeURIComponent(smartReplace.join(','));
+        var modalSourceDetails = [];
+        var sseSource = new EventSource(url);
+
+        sseSource.onmessage = function(e) {
+            var d;
+            try { d = JSON.parse(e.data); } catch(ex) { return; }
+
+            if (d.type === 'progress' && d.source_details && d.source_details.length > 0) {
+                d.source_details.forEach(function(sd) { modalSourceDetails.push(sd); });
+                _renderModalSourceDetail(progressEl, modalSourceDetails);
+            }
+            if (d.type === 'book_done') {
+                sseSource.close();
                 _setModalBusy(false);
-                if (!data.ok) {
-                    var msg = data.error === 'no_match' ? 'Inga säkra träffar hittades.' : 'Fel: ' + data.error;
-                    setModalFeedback('error', msg);
-                    return;
-                }
-                var f = data.fetched;
-                if (selectedFields.indexOf('title') !== -1 && f.title)
-                    document.getElementById('modalTitle').value = f.title;
-                if (selectedFields.indexOf('author') !== -1 && f.author)
-                    document.getElementById('modalAuthor').value = f.author;
-                if (selectedFields.indexOf('series') !== -1 && f.series)
-                    document.getElementById('modalSeries').value = f.series;
-                if (selectedFields.indexOf('series') !== -1 && f.series_index)
-                    document.getElementById('modalSeriesIndex').value = f.series_index;
-                if (selectedFields.indexOf('isbn') !== -1 && f.isbn)
-                    document.getElementById('modalIsbn').value = f.isbn;
-                if (selectedFields.indexOf('publisher') !== -1 && f.publisher)
-                    document.getElementById('modalPublisher').value = f.publisher;
-                if (selectedFields.indexOf('language') !== -1 && f.language)
-                    document.getElementById('modalLanguage').value = f.language;
-                if (selectedFields.indexOf('description') !== -1 && f.description)
-                    document.getElementById('modalDescription').value = f.description;
-                if (selectedFields.indexOf('genres') !== -1 && f.genres) {
-                    var genreEl = document.getElementById('modalGenres');
-                    if (genreEl) genreEl.value = f.genres;
-                }
-                var src = data.source ? ' (' + data.source + ')' : '';
-                setModalFeedback('success', 'Metadata hämtad' + src + '. Granska och spara.');
-            })
-            .catch(function() {
-                _setModalBusy(false);
-                setModalFeedback('error', 'Hämtning misslyckades.');
-            });
+                if (d.source_details && d.source_details.length > 0) modalSourceDetails = d.source_details;
+                _renderModalSourceDetail(progressEl, modalSourceDetails);
+                _applyFetchedToModal(d.candidate || {}, selectedFields);
+                var src = d.source ? ' (' + d.source + ')' : '';
+                var score = d.score ? ' · Poäng: ' + Math.round(d.score) : '';
+                setModalFeedback('success', 'Metadata hämtad' + src + score + '. Granska och spara.');
+            }
+            if (d.type === 'done') { sseSource.close(); }
+        };
+        sseSource.onerror = function() {
+            sseSource.close();
+            _setModalBusy(false);
+            setModalFeedback('error', 'Sökningen misslyckades.');
+        };
     }
 
     function fetchAiMetadata() {
@@ -2926,6 +2989,8 @@
     function closeBookModal() {
         document.getElementById('bookModal').style.display = 'none';
         _modalItemId = null;
+        var progressEl = document.getElementById('modalProgress');
+        if (progressEl) { progressEl.style.display = 'none'; progressEl.innerHTML = ''; }
     }
 
     function _modalEsc(s) {
