@@ -93,9 +93,21 @@ def index():
 @metadata_bp.route("/cover/<int:item_id>")
 def cover_item(item_id):
     item = get_item_or_404(item_id)
-    if not item.cover_path or not os.path.exists(item.cover_path):
-        return ("", 404)
-    return send_file(item.cover_path)
+    if item.cover_path and os.path.exists(item.cover_path):
+        return send_file(item.cover_path)
+    # Group fallback: gruppmedlemmar delar omslag men cover-filen kan saknas
+    # på enskilda format. Återanvänd en siblings cover-fil om den finns.
+    if item.group_key:
+        siblings = (
+            LibraryItem.query
+            .filter(LibraryItem.group_key == item.group_key)
+            .filter(LibraryItem.id != item.id)
+            .all()
+        )
+        for sibling in siblings:
+            if sibling.cover_path and os.path.exists(sibling.cover_path):
+                return send_file(sibling.cover_path)
+    return ("", 404)
 
 
 SUPPORTED_LANGUAGES = [
