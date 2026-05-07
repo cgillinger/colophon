@@ -1,4 +1,5 @@
 import logging
+import re
 import shutil
 import subprocess
 import time
@@ -144,6 +145,54 @@ def read_all_ebook_meta_fields(file_path) -> dict[str, str]:
     return fields
 
 
+def _parse_calibre_sources(stderr: str) -> list[str]:
+    """Extract plugin names from Calibre verbose stderr output (three-method fallback)."""
+    sources_used: list[str] = []
+    lines = stderr.splitlines()
+
+    # Method 1: verbose plugin section headers  ****** PluginName (version) ******
+    plugin_pattern = re.compile(r'\*{6,}\s+(.+?)\s+\(\d+.*?\)\s+\*{6,}')
+    found_pattern = re.compile(r'Found\s+(\d+)\s+results?', re.IGNORECASE)
+    for i, line in enumerate(lines):
+        match = plugin_pattern.search(line)
+        if match:
+            plugin_name = match.group(1).strip()
+            found_count = 0
+            for j in range(i + 1, min(i + 5, len(lines))):
+                found_match = found_pattern.search(lines[j])
+                if found_match:
+                    found_count = int(found_match.group(1))
+                    break
+            if found_count > 0 and plugin_name not in sources_used:
+                sources_used.append(plugin_name)
+
+    if sources_used:
+        return sources_used
+
+    # Method 2: "Using plugins:" line
+    for line in lines:
+        if line.strip().lower().startswith("using plugins:"):
+            plugins_str = line.split(":", 1)[1].strip()
+            for part in plugins_str.split("),"):
+                name = part.split("(")[0].strip().rstrip(",").strip()
+                if name:
+                    sources_used.append(name)
+            break
+
+    if sources_used:
+        return sources_used
+
+    # Method 3: legacy "source:" lines
+    for line in lines:
+        s = line.strip()
+        if s.lower().startswith("source:"):
+            src = s.split(":", 1)[1].strip()
+            if src and src not in sources_used:
+                sources_used.append(src)
+
+    return sources_used
+
+
 def fetch_calibre_metadata_with_status(
     title: str = "",
     author: str = "",
@@ -187,7 +236,7 @@ def fetch_calibre_metadata_with_status(
     if not title and not author:
         return _result(False, "no_result", "Ingen söktitel eller -författare angiven.")
 
-    cmd = ["fetch-ebook-metadata", "--opf"]
+    cmd = ["fetch-ebook-metadata", "--opf", "--verbose"]
     if title:
         cmd += ["--title", title]
     if author:
@@ -230,13 +279,7 @@ def fetch_calibre_metadata_with_status(
             returncode=proc.returncode, stderr=stderr,
         )
 
-    sources_used: list[str] = []
-    for line in stderr.splitlines():
-        s = line.strip()
-        if s.lower().startswith("source:"):
-            src = s.split(":", 1)[1].strip()
-            if src and src not in sources_used:
-                sources_used.append(src)
+    sources_used: list[str] = _parse_calibre_sources(stderr)
 
     source_label = f"Calibre: {', '.join(sources_used)}" if sources_used else "Calibre"
     series_index = parsed.get("series_index")
@@ -316,7 +359,7 @@ def fetch_calibre_metadata(
     if not title and not author:
         return []
 
-    cmd = ["fetch-ebook-metadata", "--opf"]
+    cmd = ["fetch-ebook-metadata", "--opf", "--verbose"]
     if title:
         cmd += ["--title", title]
     if author:
@@ -346,13 +389,7 @@ def fetch_calibre_metadata(
     except CalibreError:
         return []
 
-    sources_used: list[str] = []
-    for line in (result.stderr or "").splitlines():
-        s = line.strip()
-        if s.lower().startswith("source:"):
-            src = s.split(":", 1)[1].strip()
-            if src and src not in sources_used:
-                sources_used.append(src)
+    sources_used: list[str] = _parse_calibre_sources(result.stderr or "")
 
     source_label = (
         f"Calibre: {', '.join(sources_used)}" if sources_used else "Calibre"
