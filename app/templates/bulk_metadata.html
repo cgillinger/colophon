@@ -218,6 +218,16 @@
             font-size: 13px;
             color: var(--text-secondary);
         }
+        .chip.chip-format {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-variant-numeric: tabular-nums;
+        }
+        .chip.chip-warn {
+            background: var(--badge-warn-bg);
+            color: var(--badge-warn-text);
+            border-color: var(--accent-yellow);
+        }
 
         /* Sticky batch bar */
         .batch-bar {
@@ -1370,6 +1380,14 @@
             {% if missing_count %}
                 <span class="chip" id="libraryChipMissing">{{ missing_count }} saknar metadata</span>
             {% endif %}
+            {% if format_counts %}
+                {% for ext, count in format_counts.items() %}
+                    <span class="chip chip-format">{{ count }} {{ ext }}</span>
+                {% endfor %}
+            {% endif %}
+            {% if missing_cover_count %}
+                <span class="chip chip-warn" id="libraryChipMissingCover">{{ missing_cover_count }} saknar omslag</span>
+            {% endif %}
             <div id="scanInline" style="display:none; font-size:13px; color:var(--accent-primary-text);">
                 <span id="scanInlineText">Skannar...</span>
             </div>
@@ -1401,6 +1419,7 @@
                 <option value="isbn">Saknar ISBN</option>
                 <option value="publisher">Saknar förlag</option>
                 <option value="genres">Saknar genre</option>
+                <option value="published_date">Saknar publiceringsdatum</option>
             </select>
 
             <select id="filterManual" onchange="applyFilters()" title="Manuellt redigerad">
@@ -1441,6 +1460,7 @@
                         <th data-sort="title">Bok <span class="sort-icon">▲</span></th>
                         <th data-sort="author">Författare <span class="sort-icon"></span></th>
                         <th data-sort="genres">Genre <span class="sort-icon"></span></th>
+                        <th data-sort="published" style="width:90px;">Publicerat <span class="sort-icon"></span></th>
                         <th data-sort="status">Status <span class="sort-icon"></span></th>
                         <th data-sort="ext">Filtyp <span class="sort-icon"></span></th>
                     </tr>
@@ -1452,6 +1472,7 @@
                             data-author="{{ (item.author or '')|lower }}"
                             data-isbn="{{ (item.isbn or '')|lower }}"
                             data-genres="{{ (item.genres or '')|lower }}"
+                            data-published="{{ (item.published_date or '') }}"
                             data-ext="{{ item.extension|lower }}"
                             data-status="{{ 'missing' if is_missing else 'has' }}"
                             data-has-series="{{ '1' if item.series else '0' }}"
@@ -1461,6 +1482,7 @@
                             data-has-isbn="{{ '1' if item.isbn else '0' }}"
                             data-has-publisher="{{ '1' if item.publisher else '0' }}"
                             data-has-genres="{{ '1' if item.genres else '0' }}"
+                            data-has-published="{{ '1' if item.published_date else '0' }}"
                             data-manual="{{ '1' if item.manual_metadata else '0' }}"
                             data-missing="{{ '1' if is_missing else '0' }}"
                             data-item-id="{{ item.id }}"
@@ -1490,6 +1512,13 @@
                             </td>
                             <td class="genres-cell" onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
                                 {% if item.genres %}<span class="meta">{{ item.genres }}</span>{% else %}<span class="meta">—</span>{% endif %}
+                            </td>
+                            <td class="published-cell" onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
+                                {% if item.published_date %}
+                                    <span class="meta" title="{{ item.published_date }}">{% if item.published_date|length >= 10 %}{{ item.published_date[:4] }}{% else %}{{ item.published_date }}{% endif %}</span>
+                                {% else %}
+                                    <span class="meta">—</span>
+                                {% endif %}
                             </td>
                             <td>
                                 {% if is_missing %}
@@ -1581,6 +1610,10 @@
                     <input type="text" id="modalGenres" class="modal-input" placeholder="t.ex. Fantasy, Äventyr">
                 </div>
                 <div class="modal-field">
+                    <label for="modalPublishedDate">Publiceringsdatum <span style="color:var(--text-tertiary); font-weight:normal;">(YYYY, YYYY-MM eller YYYY-MM-DD)</span></label>
+                    <input type="text" id="modalPublishedDate" class="modal-input" placeholder="t.ex. 2010 eller 2010-05-15" maxlength="20">
+                </div>
+                <div class="modal-field">
                     <label for="modalDescription">Synopsis</label>
                     <textarea id="modalDescription" class="modal-input modal-textarea" rows="5"></textarea>
                 </div>
@@ -1598,6 +1631,7 @@
                 <label class="field-check"><input type="checkbox" value="language" class="modal-field-check" checked> Språk</label>
                 <label class="field-check"><input type="checkbox" value="description" class="modal-field-check" checked> Synopsis</label>
                 <label class="field-check"><input type="checkbox" value="genres" class="modal-field-check" checked> Genre</label>
+                <label class="field-check"><input type="checkbox" value="published_date" class="modal-field-check" checked> Publiceringsdatum</label>
             </div>
             <div style="font-size:11px; margin-top:4px;">
                 <a href="#" onclick="toggleModalFields(true);return false;" style="color:var(--text-secondary);">Alla</a> ·
@@ -1615,6 +1649,7 @@
                     <label class="field-check"><input type="checkbox" class="modal-smart" value="isbn"> ISBN — ersätt om hämtad är ISBN-13</label>
                     <label class="field-check"><input type="checkbox" class="modal-smart" value="publisher"> Förlag — ersätt om befintlig = författarnamn</label>
                     <label class="field-check"><input type="checkbox" class="modal-smart" value="genres"> Genre — ersätt om hämtad har fler genrer</label>
+                    <label class="field-check"><input type="checkbox" class="modal-smart" value="published_date" checked> Publiceringsdatum — ersätt om hämtat är mer precist</label>
                     <label class="field-check"><input type="checkbox" class="modal-smart" value="description" checked> Synopsis — ersätt om hämtad 50%+ längre</label>
                 </div>
             </details>
@@ -1648,6 +1683,7 @@
                 <label class="field-check"><input type="checkbox" value="language" class="batch-field" checked> Språk</label>
                 <label class="field-check"><input type="checkbox" value="description" class="batch-field" checked> Synopsis</label>
                 <label class="field-check"><input type="checkbox" value="genres" class="batch-field" checked> Genre</label>
+                <label class="field-check"><input type="checkbox" value="published_date" class="batch-field" checked> Publiceringsdatum</label>
             </div>
             <div style="font-size:11px; margin-top:4px;">
                 <a href="#" onclick="toggleBatchFields(true);return false;" style="color:var(--text-secondary);">Alla</a> ·
@@ -1670,6 +1706,7 @@
                 <label class="field-check"><input type="checkbox" class="batch-smart" value="publisher"> Förlag — ersätt om befintlig = författarnamn</label>
                 <label class="field-check"><input type="checkbox" class="batch-smart" value="genres"> Genre — ersätt om hämtad har fler genrer</label>
                 <label class="field-check"><input type="checkbox" class="batch-smart" value="description" checked> Synopsis — ersätt om hämtad 50%+ längre</label>
+                <label class="field-check"><input type="checkbox" class="batch-smart" value="published_date" checked> Publiceringsdatum — ersätt om hämtat är mer precist</label>
             </div>
         </div>
 
@@ -2125,13 +2162,14 @@
     /* Filtering                                                             */
     /* -------------------------------------------------------------------- */
     var _missingFieldAttr = {
-        'series':      'hasSeries',
-        'description': 'hasDescription',
-        'author':      'hasAuthor',
-        'cover':       'hasCover',
-        'isbn':        'hasIsbn',
-        'publisher':   'hasPublisher',
-        'genres':      'hasGenres'
+        'series':         'hasSeries',
+        'description':    'hasDescription',
+        'author':         'hasAuthor',
+        'cover':          'hasCover',
+        'isbn':           'hasIsbn',
+        'publisher':      'hasPublisher',
+        'genres':         'hasGenres',
+        'published_date': 'hasPublished'
     };
 
     function applyFilters() {
@@ -2500,6 +2538,7 @@
         title: 'Titel', author: 'Författare', description: 'Synopsis',
         isbn: 'ISBN', publisher: 'Förlag', series: 'Serie',
         series_index: 'Del', language: 'Språk', genres: 'Genre',
+        published_date: 'Publiceringsdatum',
         cover: 'Omslag'
     };
     function _applyFieldLabel(f) {
@@ -2922,15 +2961,16 @@
         var ext = (data.extension || '').replace('.', '').toUpperCase();
         document.getElementById('modalFileInfo').innerHTML = (data.file_name || '—') + '<br>' + ext + ' · ' + size;
 
-        document.getElementById('modalTitle').value       = data.title       || '';
-        document.getElementById('modalAuthor').value      = data.author      || '';
-        document.getElementById('modalSeries').value      = data.series      || '';
-        document.getElementById('modalSeriesIndex').value = data.series_index || '';
-        document.getElementById('modalIsbn').value        = data.isbn        || '';
-        document.getElementById('modalPublisher').value   = data.publisher   || '';
-        document.getElementById('modalLanguage').value    = data.language    || '';
-        document.getElementById('modalGenres').value      = data.genres      || '';
-        document.getElementById('modalDescription').value = data.description || '';
+        document.getElementById('modalTitle').value         = data.title          || '';
+        document.getElementById('modalAuthor').value        = data.author         || '';
+        document.getElementById('modalSeries').value        = data.series         || '';
+        document.getElementById('modalSeriesIndex').value   = data.series_index   || '';
+        document.getElementById('modalIsbn').value          = data.isbn           || '';
+        document.getElementById('modalPublisher').value     = data.publisher      || '';
+        document.getElementById('modalLanguage').value      = data.language       || '';
+        document.getElementById('modalGenres').value        = data.genres         || '';
+        document.getElementById('modalPublishedDate').value = data.published_date || '';
+        document.getElementById('modalDescription').value   = data.description    || '';
 
         document.getElementById('modalAiBtn').style.display = data.ai_configured ? 'inline-flex' : 'none';
     }
@@ -2975,6 +3015,10 @@
         if (selectedFields.indexOf('genres') !== -1 && candidate.genres) {
             var genreEl = document.getElementById('modalGenres');
             if (genreEl) genreEl.value = candidate.genres;
+        }
+        if (selectedFields.indexOf('published_date') !== -1 && candidate.published_date) {
+            var pdEl = document.getElementById('modalPublishedDate');
+            if (pdEl) pdEl.value = candidate.published_date;
         }
     }
 
@@ -3279,6 +3323,10 @@
                 }
                 if (selectedFields.indexOf('description') !== -1 && s.description)
                     document.getElementById('modalDescription').value = s.description;
+                if (selectedFields.indexOf('published_date') !== -1 && s.published_date) {
+                    var pdEl2 = document.getElementById('modalPublishedDate');
+                    if (pdEl2) pdEl2.value = String(s.published_date).substring(0, 20);
+                }
                 setModalFeedback('success', 'AI-förslag inlagda. Granska och spara.');
             })
             .catch(function() {
@@ -3292,15 +3340,16 @@
         var title = document.getElementById('modalTitle').value.trim();
         if (!title) { setModalFeedback('error', 'Titel får inte vara tom.'); return; }
         var payload = {
-            title:        title,
-            author:       document.getElementById('modalAuthor').value.trim(),
-            series:       document.getElementById('modalSeries').value.trim(),
-            series_index: document.getElementById('modalSeriesIndex').value.trim(),
-            isbn:         document.getElementById('modalIsbn').value.trim(),
-            publisher:    document.getElementById('modalPublisher').value.trim(),
-            language:     document.getElementById('modalLanguage').value.trim(),
-            genres:       document.getElementById('modalGenres').value.trim(),
-            description:  document.getElementById('modalDescription').value.trim()
+            title:          title,
+            author:         document.getElementById('modalAuthor').value.trim(),
+            series:         document.getElementById('modalSeries').value.trim(),
+            series_index:   document.getElementById('modalSeriesIndex').value.trim(),
+            isbn:           document.getElementById('modalIsbn').value.trim(),
+            publisher:      document.getElementById('modalPublisher').value.trim(),
+            language:       document.getElementById('modalLanguage').value.trim(),
+            genres:         document.getElementById('modalGenres').value.trim(),
+            published_date: document.getElementById('modalPublishedDate').value.trim().substring(0, 20),
+            description:    document.getElementById('modalDescription').value.trim()
         };
         setModalFeedback('info', 'Sparar…');
         _setModalBusy(true);
@@ -3345,8 +3394,22 @@
             row.dataset.genres = (data.genres || '').toLowerCase();
             row.dataset.hasGenres = data.genres ? '1' : '0';
         }
-        // Status column is now td:nth-child(6)
-        var statusCell = row.querySelector('td:nth-child(6)');
+        var publishedEl = row.querySelector('.published-cell');
+        if (publishedEl) {
+            var pd = (data.published_date || '').toString();
+            if (pd) {
+                var label = pd.length >= 10 ? pd.substring(0, 4) : pd;
+                publishedEl.innerHTML =
+                    '<span class="meta" title="' + _modalEsc(pd) + '">'
+                    + _modalEsc(label) + '</span>';
+            } else {
+                publishedEl.innerHTML = '<span class="meta">—</span>';
+            }
+            row.dataset.published = pd;
+            row.dataset.hasPublished = pd ? '1' : '0';
+        }
+        // Status column is td:nth-child(7) now (Cover, Title, Author, Genre, Published, Status)
+        var statusCell = row.querySelector('td:nth-child(7)');
         if (statusCell) {
             var alreadySaved = false;
             statusCell.querySelectorAll('.badge').forEach(function(b) {
@@ -3456,9 +3519,9 @@
     var _bpFieldLabels = {
         title: 'Titel', author: 'Författare', description: 'Synopsis',
         isbn: 'ISBN', publisher: 'Förlag', series: 'Serie',
-        genres: 'Genre', cover: 'Omslag'
+        genres: 'Genre', published_date: 'Publicerat', cover: 'Omslag'
     };
-    var _bpAllFields = ['title', 'author', 'description', 'isbn', 'publisher', 'series', 'genres', 'cover'];
+    var _bpAllFields = ['title', 'author', 'description', 'isbn', 'publisher', 'series', 'genres', 'published_date', 'cover'];
 
     function _bpEsc(s) {
         return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -3647,15 +3710,16 @@
         coverDiv.innerHTML = coverHtml;
 
         var fields = [
-            { key: 'title',        label: 'Titel' },
-            { key: 'author',       label: 'Författare' },
-            { key: 'series',       label: 'Serie' },
-            { key: 'series_index', label: 'Del' },
-            { key: 'isbn',         label: 'ISBN' },
-            { key: 'publisher',    label: 'Förlag' },
-            { key: 'language',     label: 'Språk' },
-            { key: 'genres',       label: 'Genre' },
-            { key: 'description',  label: 'Synopsis' }
+            { key: 'title',          label: 'Titel' },
+            { key: 'author',         label: 'Författare' },
+            { key: 'series',         label: 'Serie' },
+            { key: 'series_index',   label: 'Del' },
+            { key: 'isbn',           label: 'ISBN' },
+            { key: 'publisher',      label: 'Förlag' },
+            { key: 'language',       label: 'Språk' },
+            { key: 'genres',         label: 'Genre' },
+            { key: 'published_date', label: 'Publiceringsdatum' },
+            { key: 'description',    label: 'Synopsis' }
         ];
 
         var before = data.before;
@@ -3778,15 +3842,16 @@
         var before = data.before;
         var candidate = data.candidate;
         var payload = {
-            title:        before.title || '',
-            author:       before.author || '',
-            series:       before.series || '',
-            series_index: before.series_index || '',
-            isbn:         before.isbn || '',
-            publisher:    before.publisher || '',
-            language:     before.language || '',
-            genres:       before.genres || '',
-            description:  before.description || ''
+            title:          before.title || '',
+            author:         before.author || '',
+            series:         before.series || '',
+            series_index:   before.series_index || '',
+            isbn:           before.isbn || '',
+            publisher:      before.publisher || '',
+            language:       before.language || '',
+            genres:         before.genres || '',
+            published_date: before.published_date || '',
+            description:    before.description || ''
         };
         fields.forEach(function(f) {
             if (f in payload) payload[f] = candidate[f] || '';

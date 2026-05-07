@@ -287,6 +287,8 @@ def fetch_calibre_metadata_with_status(
     tags = parsed.get("tags") or []
     genres = ", ".join(t for t in tags if t) if isinstance(tags, list) else str(tags)
 
+    pubdate = (parsed.get("date") or "").strip()[:20]
+
     candidate = {
         "source": source_label,
         "title": parsed.get("title") or title or "",
@@ -299,6 +301,7 @@ def fetch_calibre_metadata_with_status(
         "series_index": str(series_index) if series_index else "",
         "cover_url": parsed.get("cover_url") or "",
         "genres": genres,
+        "published_date": pubdate,
     }
 
     fields_found = []
@@ -310,6 +313,7 @@ def fetch_calibre_metadata_with_status(
     if parsed.get("series"): fields_found.append("series")
     if genres: fields_found.append("genres")
     if parsed.get("cover_url"): fields_found.append("cover")
+    if pubdate: fields_found.append("published_date")
     candidate["fields_found"] = fields_found
     candidate["plugins_used"] = list(sources_used)
 

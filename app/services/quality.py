@@ -70,6 +70,17 @@ def is_better_publisher(existing, fetched, author=""):
     return False, ""
 
 
+def is_better_published_date(existing, fetched):
+    """Fetched is better if it's more precise than existing."""
+    if not fetched:
+        return False, ""
+    if not existing:
+        return True, "Befintlig var tom"
+    if len(fetched) > len(existing):
+        return True, f"Mer precist ({fetched} vs {existing})"
+    return False, ""
+
+
 def is_better_title(existing, fetched):
     """Fetched is better if existing has parenthetical noise that we'd strip."""
     if not fetched:
@@ -94,6 +105,7 @@ QUALITY_HEURISTICS = {
     "publisher": is_better_publisher,
     "genres": is_better_genre,
     "description": is_better_synopsis,
+    "published_date": is_better_published_date,
 }
 
 

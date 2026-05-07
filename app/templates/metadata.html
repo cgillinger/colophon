@@ -408,6 +408,9 @@
                 <label for="genres">Genre <span style="color:var(--text-tertiary); font-weight:normal;">(kommaseparerat)</span></label>
                 <input id="genres" name="genres" value="{{ p.genres if pending else (item.genres or '') }}" placeholder="t.ex. Fantasy, Äventyr">
 
+                <label for="published_date">Publiceringsdatum <span style="color:var(--text-tertiary); font-weight:normal;">(YYYY, YYYY-MM eller YYYY-MM-DD)</span></label>
+                <input id="published_date" name="published_date" maxlength="20" value="{{ p.published_date if pending else (item.published_date or '') }}" placeholder="t.ex. 2010 eller 2010-05-15">
+
                 <label for="description">Synopsis</label>
                 <textarea id="description" name="description">{{ p.description if pending else (item.description or '') }}</textarea>
 

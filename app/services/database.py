@@ -29,6 +29,7 @@ def ensure_database_columns():
         "metadata_read_at": "ALTER TABLE library_items ADD COLUMN metadata_read_at DATETIME",
         "group_key": "ALTER TABLE library_items ADD COLUMN group_key VARCHAR(64)",
         "genres": "ALTER TABLE library_items ADD COLUMN genres TEXT",
+        "published_date": "ALTER TABLE library_items ADD COLUMN published_date VARCHAR(20)",
     }
 
     changed = False
