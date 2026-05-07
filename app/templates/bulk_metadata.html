@@ -104,12 +104,18 @@
             background: var(--bg-primary);
             border-bottom: 1px solid var(--border-light);
             display: flex;
-            align-items: center;
-            padding: 12px 20px;
-            gap: 14px;
+            justify-content: center;
             position: sticky;
             top: 0;
             z-index: 50;
+        }
+        .topbar-inner {
+            width: 100%;
+            max-width: 1300px;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
         }
         .topbar-brand {
             display: flex;
@@ -663,6 +669,9 @@
             text-align: left;
             color: var(--text-primary);
         }
+        table#bookTable tbody td {
+            vertical-align: top;
+        }
         table#bookTable th {
             background: var(--bg-secondary);
             color: var(--text-secondary);
@@ -688,8 +697,8 @@
         table#bookTable tbody tr:hover { background: var(--bg-secondary); }
 
         .cover {
-            width: 40px;
-            height: 56px;
+            width: 80px;
+            height: 120px;
             background: var(--cover-placeholder);
             border-radius: 4px;
             overflow: hidden;
@@ -871,6 +880,7 @@
             border-radius: 8px;
             max-width: 900px;
             width: 90%;
+            min-height: 60vh;
             max-height: 90vh;
             overflow-y: auto;
             padding: 24px;
@@ -1098,6 +1108,28 @@
             padding: 4px 10px;
             font-size: 12px;
         }
+        .btn.ai-ghost {
+            background: transparent;
+            color: var(--accent-purple);
+            border: 1px solid var(--accent-purple);
+        }
+        .btn.ai-ghost:hover {
+            background: rgba(108, 92, 231, 0.08);
+        }
+        [data-theme="dark"] .btn.ai-ghost:hover {
+            background: rgba(124, 111, 240, 0.12);
+        }
+        .spin {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid currentColor;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin .6s linear infinite;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         /* Grouped view */
         .group-hidden { display: none !important; }
@@ -1120,6 +1152,13 @@
             color: #ffffff;
         }
         #groupToggle.active i { color: #ffffff; }
+        #groupToggle {
+            min-width: 80px;
+            min-height: 36px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
 
         /* Danger / delete buttons */
         .btn-danger {
@@ -1154,21 +1193,23 @@
 <body>
 
 <header class="topbar">
-    <a class="topbar-brand" href="{{ url_for('metadata.bulk_metadata') }}">
-        <img src="{{ url_for('static', filename='icons/colophon-transparent.png') }}" alt="Colophon">
-        <span>Colophon</span>
-    </a>
-    <div class="topbar-search">
-        <i class="ti ti-search search-icon"></i>
-        <input type="text" id="filterSearch" placeholder="Sök titel, författare, ISBN, genre..." oninput="applyFilters()">
-    </div>
-    <div class="topbar-actions">
-        <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="Byt tema">
-            <i id="themeIcon" class="ti ti-sun"></i>
-        </button>
-        <a class="topbar-btn icon-only" href="{{ url_for('settings.ai_settings') }}" title="Inställningar">
-            <i class="ti ti-settings"></i>
+    <div class="topbar-inner">
+        <a class="topbar-brand" href="{{ url_for('metadata.bulk_metadata') }}">
+            <img src="{{ url_for('static', filename='icons/colophon-transparent.png') }}" alt="Colophon">
+            <span>Colophon</span>
         </a>
+        <div class="topbar-search">
+            <i class="ti ti-search search-icon"></i>
+            <input type="text" id="filterSearch" placeholder="Sök titel, författare, ISBN, genre..." oninput="applyFilters()">
+        </div>
+        <div class="topbar-actions">
+            <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="Byt tema">
+                <i id="themeIcon" class="ti ti-sun"></i>
+            </button>
+            <a class="topbar-btn icon-only" href="{{ url_for('settings.ai_settings') }}" title="Inställningar">
+                <i class="ti ti-settings"></i>
+            </a>
+        </div>
     </div>
 </header>
 
@@ -1321,7 +1362,7 @@
 
             <div class="btn-group">
                 <button class="filter-btn" type="button" onclick="selectAllBooks()">Alla</button>
-                <button class="filter-btn" type="button" onclick="selectMissingBooks()">Saknade</button>
+                <button class="filter-btn" type="button" onclick="selectMissingBooks()">Saknar metadata</button>
                 <button class="filter-btn" type="button" onclick="clearSelection()">Inga</button>
             </div>
 
@@ -1343,8 +1384,8 @@
             <table id="bookTable">
                 <thead>
                     <tr>
-                        <th style="width:36px;">Välj</th>
-                        <th style="width:60px;">Omslag</th>
+                        <th style="width:36px;"><input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll(this)" title="Markera alla/inga"></th>
+                        <th style="width:96px;">Omslag</th>
                         <th data-sort="title">Bok <span class="sort-icon">▲</span></th>
                         <th data-sort="author">Författare <span class="sort-icon"></span></th>
                         <th data-sort="genres">Genre <span class="sort-icon"></span></th>
@@ -1527,13 +1568,10 @@
             </details>
         </div>
         <div class="modal-actions">
-            <button type="button" class="btn" id="modalFetchBtn" onclick="fetchMetadata()">Hämta metadata</button>
-            <button type="button" class="btn purple" id="modalAiBtn" onclick="fetchAiMetadata()" style="display:none;">Fråga AI</button>
-            <button type="button" class="btn-danger" onclick="confirmDeleteBook()" title="Radera bok">
-                <i class="ti ti-trash"></i> Radera
-            </button>
+            <button type="button" class="btn primary" id="modalFetchBtn" onclick="fetchMetadata()"><i class="ti ti-search"></i> Hämta metadata</button>
+            <button type="button" class="btn ai-ghost" id="modalAiBtn" onclick="fetchAiMetadata()" style="display:none;"><i class="ti ti-sparkles"></i> Fråga AI</button>
             <div class="spacer"></div>
-            <button type="button" class="btn primary" onclick="saveMetadata()">Spara</button>
+            <button type="button" class="btn outline" id="modalSaveBtn" onclick="saveMetadata()">Spara</button>
             <button type="button" class="btn ghost" onclick="closeBookModal()">Avbryt</button>
         </div>
     </div>
@@ -1777,6 +1815,18 @@
         updateSelectedCount();
         updateBatchBar();
     }
+    function toggleSelectAll(master) {
+        var rows = document.querySelectorAll('#bookTableBody tr');
+        rows.forEach(function(row) {
+            if (row.style.display !== 'none') {
+                var cb = row.querySelector('input[type="checkbox"]');
+                if (cb) cb.checked = master.checked;
+            }
+        });
+        _syncGroupChildrenFromParents();
+        updateSelectedCount();
+        updateBatchBar();
+    }
     function deselectAll() {
         clearSelection();
     }
@@ -1922,6 +1972,9 @@
         if (!(e.target && e.target.classList && e.target.classList.contains('book-checkbox'))) {
             return;
         }
+        // Uncheck select-all when any row checkbox changes
+        var selectAll = document.getElementById('selectAllCheckbox');
+        if (selectAll && !e.target.checked) selectAll.checked = false;
         // In grouped view, toggling the parent's checkbox should mirror to
         // every (hidden) child format so the SSE submit picks them all up.
         if (_grouped) {
@@ -2817,6 +2870,18 @@
         }
     }
 
+    var _fetchBtnOrigHTML = '<i class="ti ti-search"></i> Hämta metadata';
+
+    function _setFetchingState(fetching) {
+        var btn = document.getElementById('modalFetchBtn');
+        if (!btn) return;
+        if (fetching) {
+            btn.innerHTML = '<span class="spin"></span> Hämtar metadata…';
+        } else {
+            btn.innerHTML = _fetchBtnOrigHTML;
+        }
+    }
+
     function fetchMetadata() {
         var id = _modalItemId;
         var selectedFields = _getSelectedFields();
@@ -2829,12 +2894,14 @@
 
         if (!window.EventSource) {
             setModalFeedback('info', 'Hämtar metadata…');
+            _setFetchingState(true);
             _setModalBusy(true);
             var url = '/metadata/' + id + '/fetch-json'
                 + '?smart_replace=' + encodeURIComponent(smartReplace.join(','));
             fetch(url, { method: 'POST' })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
+                    _setFetchingState(false);
                     _setModalBusy(false);
                     if (!data.ok) {
                         var msg = data.error === 'no_match' ? 'Inga säkra träffar hittades.' : 'Fel: ' + data.error;
@@ -2846,12 +2913,14 @@
                     setModalFeedback('success', 'Metadata hämtad' + src + '. Granska och spara.');
                 })
                 .catch(function() {
+                    _setFetchingState(false);
                     _setModalBusy(false);
                     setModalFeedback('error', 'Hämtning misslyckades.');
                 });
             return;
         }
 
+        _setFetchingState(true);
         _setModalBusy(true);
         progressEl.style.display = 'block';
         progressEl.innerHTML =
@@ -2939,6 +3008,7 @@
 
             if (d.type === 'book_done') {
                 sseSource.close();
+                _setFetchingState(false);
                 _setModalBusy(false);
                 var itemId = d.item_id;
 
@@ -2979,6 +3049,7 @@
         };
         sseSource.onerror = function() {
             sseSource.close();
+            _setFetchingState(false);
             _setModalBusy(false);
             progressEl.style.display = 'none';
             setModalFeedback('error', 'Sökningen misslyckades.');
@@ -3187,6 +3258,8 @@
     function _setModalBusy(busy) {
         document.getElementById('modalFetchBtn').disabled = busy;
         document.getElementById('modalAiBtn').disabled    = busy;
+        var saveBtn = document.getElementById('modalSaveBtn');
+        if (saveBtn) saveBtn.disabled = busy;
     }
     function _fmtBytes(b) {
         if (b < 1024)    return b + ' B';
