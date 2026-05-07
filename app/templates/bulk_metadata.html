@@ -101,12 +101,11 @@
         button, input, select, textarea { font-family: inherit; color: inherit; }
 
         .topbar {
-            height: 68px;
             background: var(--bg-primary);
             border-bottom: 1px solid var(--border-light);
             display: flex;
             align-items: center;
-            padding: 0 20px;
+            padding: 12px 20px;
             gap: 14px;
             position: sticky;
             top: 0;
@@ -121,12 +120,13 @@
             color: var(--text-primary);
         }
         .topbar-brand img {
-            width: 48px;
-            height: 48px;
-            border-radius: 10px;
+            width: 80px;
+            height: 80px;
+            border-radius: 12px;
             display: block;
-            object-fit: cover;
+            object-fit: contain;
         }
+        .topbar-brand span { font-size: 28px; }
         .topbar-spacer { flex: 1; }
         .topbar-actions {
             display: flex;
@@ -202,9 +202,13 @@
             flex-direction: column;
             gap: 10px;
         }
-        .action-card.library {
+        .action-card.enrich {
             background: var(--green-50);
             border-color: var(--green-200);
+        }
+        .action-card.library-card {
+            background: var(--bg-secondary);
+            border-color: var(--border-light);
         }
         .action-card-header {
             display: flex;
@@ -216,7 +220,7 @@
             letter-spacing: 0.04em;
             color: var(--text-secondary);
         }
-        .action-card.library .action-card-header {
+        .action-card.enrich .action-card-header {
             color: var(--accent-primary-text);
         }
         .action-card-header i { font-size: 16px; }
@@ -241,7 +245,7 @@
             font-size: 12px;
             color: var(--text-secondary);
         }
-        .action-card.library .action-chip {
+        .action-card.enrich .action-chip {
             background: var(--bg-primary);
             border-color: var(--green-200);
             color: var(--accent-primary-text);
@@ -652,7 +656,7 @@
         .bp-uncertain{ color: #ff9966; }
 
         /* Modals */
-        #bookModal, #bulkResultModal {
+        #bookModal, #bulkResultModal, #smartReplaceModal {
             position: fixed;
             inset: 0;
             z-index: 1000;
@@ -950,8 +954,9 @@
 
 <header class="topbar">
     <a class="topbar-brand" href="{{ url_for('metadata.bulk_metadata') }}">
-        <img src="{{ url_for('static', filename='icons/colophon.png') }}" alt="Colophon">
-        <span>Colophon</span>
+        <img src="{{ url_for('static', filename='icons/colophon-transparent.png') }}" alt="Colophon"
+             style="width:80px; height:80px; border-radius:12px; object-fit:contain;">
+        <span style="font-size:28px; font-weight:500;">Colophon</span>
     </a>
     <div class="topbar-spacer"></div>
     <div class="topbar-actions">
@@ -965,8 +970,6 @@
 </header>
 
 <div class="container">
-    <h1>Metadata</h1>
-
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             <div class="messages">
@@ -1069,27 +1072,7 @@
         </div>
 
         <div class="action-cards">
-            <div class="action-card library" id="libraryCard">
-                <div class="action-card-header">
-                    <i class="ti ti-folder"></i> Bibliotek
-                </div>
-                <div class="action-card-body">
-                    <button id="scanBtn" type="button" class="btn primary" onclick="startScan()">
-                        <i class="ti ti-refresh"></i> Hitta nya böcker
-                    </button>
-                    <div class="action-chips" id="libraryChips">
-                        <span class="action-chip">{{ total_count }} böcker</span>
-                        {% if missing_count %}
-                            <span class="action-chip">{{ missing_count }} saknar metadata</span>
-                        {% endif %}
-                    </div>
-                </div>
-                <div id="scanInline" style="display:none; font-size:13px; color:var(--accent-primary-text);">
-                    <span id="scanInlineText">Skannar...</span>
-                </div>
-            </div>
-
-            <div class="action-card">
+            <div class="action-card enrich">
                 <div class="action-card-header">
                     <i class="ti ti-sparkles"></i> Berika metadata
                 </div>
@@ -1115,6 +1098,26 @@
                             title="Inställningar för smart ersättning">
                         <i class="ti ti-adjustments-horizontal"></i> Smart ersättning
                     </button>
+                </div>
+            </div>
+
+            <div class="action-card library-card" id="libraryCard">
+                <div class="action-card-header">
+                    <i class="ti ti-folder"></i> Bibliotek
+                </div>
+                <div class="action-card-body">
+                    <button id="scanBtn" type="button" class="btn primary" onclick="startScan()">
+                        <i class="ti ti-refresh"></i> Hitta nya böcker
+                    </button>
+                    <div class="action-chips" id="libraryChips">
+                        <span class="action-chip">{{ total_count }} böcker</span>
+                        {% if missing_count %}
+                            <span class="action-chip">{{ missing_count }} saknar metadata</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div id="scanInline" style="display:none; font-size:13px; color:var(--accent-primary-text);">
+                    <span id="scanInlineText">Skannar...</span>
                 </div>
             </div>
         </div>
@@ -1272,12 +1275,15 @@
         <div id="paginationBar">
             <span id="paginationInfo">Visar 0 böcker</span>
             <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
-                <span>Visa:
-                    <a class="page-size-link" data-size="20" onclick="setPageSize(20);return false;">20</a> ·
-                    <a class="page-size-link" data-size="50" onclick="setPageSize(50);return false;">50</a> ·
-                    <a class="page-size-link" data-size="100" onclick="setPageSize(100);return false;">100</a> ·
-                    <a class="page-size-link" data-size="0" onclick="setPageSize(0);return false;">Alla</a>
-                </span>
+                <label style="font-size:13px; color:var(--text-secondary);">
+                    Visa:
+                    <select id="pageSizeSelect" onchange="setPageSize(this.value === 'all' ? 0 : parseInt(this.value))">
+                        <option value="20">20 per sida</option>
+                        <option value="50">50 per sida</option>
+                        <option value="100">100 per sida</option>
+                        <option value="all">Alla</option>
+                    </select>
+                </label>
                 <div id="pageButtons"></div>
             </div>
         </div>
@@ -1745,6 +1751,10 @@
     var _pageSize = parseInt(localStorage.getItem('colophon-pageSize'));
     if (isNaN(_pageSize)) _pageSize = 20;
     var _currentPage = 1;
+    (function() {
+        var sel = document.getElementById('pageSizeSelect');
+        if (sel) sel.value = _pageSize === 0 ? 'all' : _pageSize.toString();
+    })();
 
     function getFilteredRows() {
         return Array.from(document.querySelectorAll('#bookTableBody tr'))
@@ -1826,6 +1836,8 @@
         _pageSize = size;
         _currentPage = 1;
         localStorage.setItem('colophon-pageSize', size);
+        var sel = document.getElementById('pageSizeSelect');
+        if (sel) sel.value = size === 0 ? 'all' : size.toString();
         renderPagination();
     }
     function goToPage(page) {
