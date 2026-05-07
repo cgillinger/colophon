@@ -1443,7 +1443,6 @@
                 <div id="modalFileInfo" class="modal-fileinfo"></div>
             </div>
             <div class="modal-fields">
-                <div id="modalProgress" style="display:none; margin-bottom:12px;"></div>
                 <div class="modal-field">
                     <label for="modalTitle">Titel</label>
                     <input type="text" id="modalTitle" class="modal-input">
@@ -1494,6 +1493,7 @@
                 </div>
             </div>
         </div>
+        <div id="modalProgress" style="display:none; margin:12px 0;"></div>
         <div style="margin-top:14px; padding-top:14px; border-top:0.5px solid var(--border-light);">
             <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;">Hämta/uppdatera:</div>
             <div style="display:flex; flex-wrap:wrap; gap:6px;">
@@ -2692,6 +2692,9 @@
     function openBookModal(itemId) {
         _modalItemId = itemId;
         document.getElementById('bookModal').style.display = 'flex';
+        var mp = document.getElementById('modalProgress');
+        if (mp) { mp.innerHTML = ''; mp.style.display = 'none'; }
+        window._modalSourceDetails = {};
         setModalFeedback('info', 'Laddar...');
 
         fetch('/metadata/' + itemId + '/json')
@@ -2773,43 +2776,45 @@
     }
 
     function _renderModalSourceDetail(container, sourceDetails) {
+        if (!container) return;
         if (!sourceDetails || sourceDetails.length === 0) return;
-
-        var allFields = ['title', 'author', 'description', 'isbn', 'publisher', 'series', 'genres', 'cover'];
-        var fieldLabels = {
-            title: 'Titel', author: 'Författare', description: 'Synopsis',
-            isbn: 'ISBN', publisher: 'Förlag', series: 'Serie',
-            genres: 'Genre', cover: 'Omslag'
-        };
 
         var html = '';
         sourceDetails.forEach(function(sd) {
-            var iconCls = sd.ok ? 'ti-check' : 'ti-x';
-            var iconColor = sd.ok ? 'var(--accent-green, #059669)' : 'var(--text-tertiary, #999)';
+            var iconClass = sd.ok ? 'ti-check' : 'ti-x';
+            var iconColor = sd.ok ? 'var(--accent-green)' : 'var(--text-tertiary)';
 
-            html += '<div style="display:flex; align-items:flex-start; gap:10px; padding:8px 0; border-bottom:1px solid var(--border-light, #e5e7eb);">';
-            html += '<i class="ti ' + iconCls + '" style="font-size:16px; color:' + iconColor + '; margin-top:2px;"></i>';
-            html += '<span style="font-size:14px; font-weight:600; min-width:130px; color:var(--text-secondary, #666);">' + _esc(sd.source || '') + '</span>';
-            html += '<div style="display:flex; flex-wrap:wrap; gap:5px;">';
+            html += '<div class="bp-source-row">';
+            html += '<div class="bp-source-icon"><i class="ti ' + iconClass + '" style="font-size:14px;color:' + iconColor + '"></i></div>';
+            html += '<div class="bp-source-name">' + _esc(sd.source || '') + '</div>';
+            html += '<div class="bp-fields">';
 
             if (sd.ok && sd.fields_found && sd.fields_found.length > 0) {
-                allFields.forEach(function(f) {
+                _bpAllFields.forEach(function(f) {
                     var found = sd.fields_found.indexOf(f) !== -1;
-                    if (found) {
-                        html += '<span style="font-size:12px; padding:3px 8px; border-radius:4px; background:var(--badge-ok-bg, #d1fae5); color:var(--badge-ok-text, #065f46); display:inline-flex; align-items:center; gap:3px;">';
-                        html += '<i class="ti ti-check" style="font-size:11px;"></i> ' + fieldLabels[f] + '</span>';
-                    } else {
-                        html += '<span style="font-size:12px; padding:3px 8px; border-radius:4px; background:var(--bg-tertiary, #f3f4f6); color:var(--text-tertiary, #9ca3af);">' + fieldLabels[f] + '</span>';
-                    }
+                    var cls = found ? 'bp-field-found' : 'bp-field-missing';
+                    var icon = found ? '<i class="ti ti-check" style="font-size:11px"></i> ' : '';
+                    html += '<span class="bp-field-tag ' + cls + '">' + icon + _esc(_bpFieldLabels[f]) + '</span>';
                 });
-            } else if (!sd.ok) {
-                html += '<span style="font-size:12px; padding:3px 8px; border-radius:4px; background:var(--bg-tertiary, #f3f4f6); color:var(--text-tertiary, #9ca3af);">Inga träffar</span>';
+            } else {
+                html += '<span class="bp-field-tag bp-field-missing">Inga träffar</span>';
             }
 
             html += '</div></div>';
         });
 
         container.innerHTML = html;
+    }
+
+    function toggleModalProgressDetail(itemId, icon) {
+        var detail = document.getElementById('mp-detail-' + itemId);
+        if (!detail) return;
+        var expanded = detail.classList.toggle('expanded');
+        if (icon) icon.classList.toggle('open', expanded);
+        if (expanded) {
+            var details = window._modalSourceDetails && window._modalSourceDetails[itemId];
+            if (details) _renderModalSourceDetail(detail, details);
+        }
     }
 
     function fetchMetadata() {
@@ -2849,35 +2854,127 @@
 
         _setModalBusy(true);
         progressEl.style.display = 'block';
-        progressEl.innerHTML = '<div style="font-weight:500; margin-bottom:8px; font-size:13px; color:var(--text-secondary);">Söker metadata…</div>';
-        // Dölj gammal feedback under SSE-progress
+        progressEl.innerHTML =
+            '<div style="font-weight:500; margin-bottom:4px;">Söker metadata…</div>' +
+            '<div class="hint" style="font-size:12px; margin-bottom:8px;">' +
+            'Poäng: <span class="bp-ok">≥90 stark match</span> · ' +
+            '<span class="bp-warn">70–89 granska</span> · ' +
+            '<span class="bp-uncertain">50–69 osäker</span> · ' +
+            '<span class="bp-fail">&lt;50 ingen match</span></div>' +
+            '<table id="modalProgressTable" style="width:100%; border-collapse:collapse; font-size:13px;">' +
+            '<thead><tr>' +
+            '<th style="text-align:left; padding:8px 12px; border-bottom:1px solid var(--border-light); background:var(--bg-secondary); color:var(--text-secondary); font-size:12px; text-transform:uppercase; vertical-align:middle;">TITEL</th>' +
+            '<th style="text-align:center; padding:8px 12px; border-bottom:1px solid var(--border-light); background:var(--bg-secondary); color:var(--text-secondary); font-size:12px; text-transform:uppercase; vertical-align:middle;">GOOGLE</th>' +
+            '<th style="text-align:center; padding:8px 12px; border-bottom:1px solid var(--border-light); background:var(--bg-secondary); color:var(--text-secondary); font-size:12px; text-transform:uppercase; vertical-align:middle;">CALIBRE</th>' +
+            '<th style="text-align:center; padding:8px 12px; border-bottom:1px solid var(--border-light); background:var(--bg-secondary); color:var(--text-secondary); font-size:12px; text-transform:uppercase; vertical-align:middle;">POÄNG</th>' +
+            '<th style="text-align:center; padding:8px 12px; border-bottom:1px solid var(--border-light); background:var(--bg-secondary); color:var(--text-secondary); font-size:12px; text-transform:uppercase; vertical-align:middle;">RESULTAT</th>' +
+            '</tr></thead>' +
+            '<tbody id="modalProgressBody"></tbody>' +
+            '</table>';
         var fb = document.getElementById('modalFeedback');
         if (fb) fb.style.display = 'none';
+        if (!window._modalSourceDetails) window._modalSourceDetails = {};
 
         var url = '/metadata/bulk/stream?item_ids=' + id + '&max_items=1'
             + '&smart_replace=' + encodeURIComponent(smartReplace.join(','));
-        var modalSourceDetails = [];
         var sseSource = new EventSource(url);
 
         sseSource.onmessage = function(e) {
             var d;
             try { d = JSON.parse(e.data); } catch(ex) { return; }
 
-            if (d.type === 'progress' && d.source_details && d.source_details.length > 0) {
-                d.source_details.forEach(function(sd) { modalSourceDetails.push(sd); });
-                _renderModalSourceDetail(progressEl, modalSourceDetails);
+            if (d.type === 'book_start') {
+                var body = document.getElementById('modalProgressBody');
+                if (!body) return;
+                var title = d.title || 'Bok';
+                if (title.length > 45) title = title.substring(0, 45) + '…';
+                var fmtHtml = '';
+                if (d.formats && d.formats.length > 0) {
+                    fmtHtml = ' ' + d.formats.map(function(f) {
+                        return '<span class="format-badge">' + _esc(f) + '</span>';
+                    }).join(' ');
+                }
+                var expandIcon = ' <i class="ti ti-chevron-down bp-expand-icon open" onclick="toggleModalProgressDetail(' + d.item_id + ', this)" title="Visa källdetaljer"></i>';
+                var tr = document.createElement('tr');
+                tr.id = 'mp-row-' + d.item_id;
+                tr.className = 'bp-active';
+                tr.innerHTML =
+                    '<td style="padding:8px 12px; vertical-align:middle; border-bottom:1px solid var(--border-light);">' + _esc(title) + fmtHtml + expandIcon + '</td>' +
+                    '<td id="mp-google-' + d.item_id + '" style="text-align:center; padding:8px 12px; vertical-align:middle; border-bottom:1px solid var(--border-light);"><span class="bp-spinner"></span></td>' +
+                    '<td id="mp-calibre-' + d.item_id + '" style="text-align:center; padding:8px 12px; vertical-align:middle; border-bottom:1px solid var(--border-light);"><span class="bp-spinner"></span></td>' +
+                    '<td id="mp-score-' + d.item_id + '" style="text-align:center; padding:8px 12px; vertical-align:middle; border-bottom:1px solid var(--border-light); color:var(--text-tertiary);">—</td>' +
+                    '<td id="mp-result-' + d.item_id + '" style="text-align:center; padding:8px 12px; vertical-align:middle; border-bottom:1px solid var(--border-light); color:var(--text-tertiary);">—</td>';
+                body.appendChild(tr);
+                window._modalSourceDetails[d.item_id] = [];
+                var detailTr = document.createElement('tr');
+                detailTr.id = 'mp-detail-row-' + d.item_id;
+                detailTr.innerHTML = '<td colspan="5" style="padding:0; border-bottom:1px solid var(--border-light);"><div id="mp-detail-' + d.item_id + '" class="bp-source-detail expanded"></div></td>';
+                body.appendChild(detailTr);
             }
+
+            if (d.type === 'progress') {
+                var itemId = d.item_id;
+                var stageMap = { google_books: 'google', calibre: 'calibre' };
+                var key = stageMap[d.stage];
+                if (key) {
+                    var cell = document.getElementById('mp-' + key + '-' + itemId);
+                    if (cell) {
+                        if (d.status === 'searching') {
+                            cell.innerHTML = '<span class="bp-spinner"></span>';
+                        } else {
+                            var n = d.candidates_found || 0;
+                            cell.innerHTML = d.status === 'ok'
+                                ? '<span class="bp-ok">✓ ' + n + '</span>'
+                                : '<span class="bp-fail">✗</span>';
+                        }
+                    }
+                }
+                if (d.source_details && d.source_details.length > 0) {
+                    if (!window._modalSourceDetails[itemId]) window._modalSourceDetails[itemId] = [];
+                    d.source_details.forEach(function(sd) { window._modalSourceDetails[itemId].push(sd); });
+                    var detailEl = document.getElementById('mp-detail-' + itemId);
+                    if (detailEl) _renderModalSourceDetail(detailEl, window._modalSourceDetails[itemId]);
+                }
+            }
+
             if (d.type === 'book_done') {
                 sseSource.close();
                 _setModalBusy(false);
-                if (d.source_details && d.source_details.length > 0) modalSourceDetails = d.source_details;
-                _renderModalSourceDetail(progressEl, modalSourceDetails);
+                var itemId = d.item_id;
+
+                if (d.source_details && d.source_details.length > 0) {
+                    window._modalSourceDetails[itemId] = d.source_details;
+                    var detailEl = document.getElementById('mp-detail-' + itemId);
+                    if (detailEl) _renderModalSourceDetail(detailEl, window._modalSourceDetails[itemId]);
+                }
+
+                var scoreCell = document.getElementById('mp-score-' + itemId);
+                if (scoreCell && d.score != null) {
+                    var s = d.score;
+                    var cls = s >= 90 ? 'bp-ok' : s >= 70 ? 'bp-warn' : s >= 50 ? 'bp-uncertain' : 'bp-fail';
+                    scoreCell.innerHTML = '<span class="' + cls + '" style="font-weight:500;">' + Math.round(s) + '</span>';
+                }
+
+                var resultCell = document.getElementById('mp-result-' + itemId);
+                if (resultCell) {
+                    var resMap = {
+                        'auto_apply':    '<span class="bp-ok">✓ Sparad</span>',
+                        'review_needed': '<span class="bp-warn">👁 Granska</span>',
+                        'no_match':      '<span class="bp-fail">✗ Ingen träff</span>',
+                        'source_error':  '<span class="bp-fail">⚠ Källfel</span>'
+                    };
+                    resultCell.innerHTML = resMap[d.classification] || '<span class="bp-skip">—</span>';
+                }
+
+                var header = progressEl.querySelector('div:first-child');
+                if (header) header.textContent = 'Metadatasökning klar';
+
                 _applyFetchedToModal(d.candidate || {}, selectedFields);
-                // Behåll progressen synlig som referens efter sökningen.
                 var src = d.source ? ' (' + d.source + ')' : '';
                 var score = d.score ? ' · Poäng: ' + Math.round(d.score) : '';
                 setModalFeedback('success', 'Metadata hämtad' + src + score + '. Granska och spara.');
             }
+
             if (d.type === 'done') { sseSource.close(); }
         };
         sseSource.onerror = function() {
