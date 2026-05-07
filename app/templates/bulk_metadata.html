@@ -1313,9 +1313,23 @@
 
         /* View mode: Gallery */
         [data-view="gallery"] .cover { width: 80px; height: 120px; }
-        [data-view="gallery"] #bookTableBody td { padding: 14px 12px; }
-        [data-view="gallery"] .book-title { font-size: 15px; }
-        [data-view="gallery"] .author-cell { font-size: 13px; }
+        [data-view="gallery"] #bookTableBody td { padding: 16px 12px; }
+        [data-view="gallery"] .book-title { font-size: 16px; }
+        [data-view="gallery"] .author-cell { font-size: 14px; }
+
+        /* Stats badges (clickable) */
+        .stats-badge {
+            transition: box-shadow 0.15s, background 0.15s;
+            cursor: pointer;
+        }
+        .stats-badge:hover {
+            box-shadow: 0 0 0 2px var(--accent-green);
+        }
+        .stats-badge.badge-active {
+            background: var(--accent-green) !important;
+            color: #fff !important;
+            border-color: var(--accent-green) !important;
+        }
 
         /* Danger / delete buttons */
         .btn-danger {
@@ -1473,15 +1487,15 @@
             </button>
             <span class="chip" id="libraryChipTotal">{{ total_count }} böcker</span>
             {% if missing_count %}
-                <span class="chip" id="libraryChipMissing">{{ missing_count }} saknar metadata</span>
+                <span class="chip stats-badge" id="libraryChipMissing" onclick="toggleBadgeFilter('missing_metadata', '1', event)">{{ missing_count }} saknar metadata</span>
             {% endif %}
             {% if format_counts %}
                 {% for ext, count in format_counts.items() %}
-                    <span class="chip chip-format">{{ count }} {{ ext }}</span>
+                    <span class="chip chip-format stats-badge" onclick="toggleBadgeFilter('format', '{{ ext }}', event)">{{ count }} {{ ext }}</span>
                 {% endfor %}
             {% endif %}
             {% if missing_cover_count %}
-                <span class="chip chip-warn" id="libraryChipMissingCover">{{ missing_cover_count }} saknar omslag</span>
+                <span class="chip chip-warn stats-badge" id="libraryChipMissingCover" onclick="toggleBadgeFilter('missing_cover', '1', event)">{{ missing_cover_count }} saknar omslag</span>
             {% endif %}
             <div id="scanInline" style="display:none; font-size:13px; color:var(--accent-primary-text);">
                 <span id="scanInlineText">Skannar...</span>
@@ -1499,7 +1513,7 @@
             <div class="filter-sep"></div>
 
             <select id="filterStatus" onchange="applyFilters()" title="Status">
-                <option value="">Status: alla</option>
+                <option value="">Alla</option>
                 <option value="missing">Saknar metadata</option>
                 <option value="has">Har metadata</option>
             </select>
@@ -1520,20 +1534,7 @@
                 <option value="published_date">Saknar publiceringsdatum</option>
             </select>
 
-            <select id="filterManual" onchange="applyFilters()" title="Manuellt redigerad">
-                <option value="">Manuell: alla</option>
-                <option value="1">Manuellt redigerad</option>
-                <option value="0">Ej manuellt redigerad</option>
-            </select>
-
-            <div class="filter-sep"></div>
-            <div class="filter-spacer"></div>
-
-            <div class="btn-group">
-                <button class="filter-btn" type="button" onclick="selectAllBooks()">Alla</button>
-                <button class="filter-btn" type="button" onclick="selectMissingBooks()">Saknar metadata</button>
-                <button class="filter-btn" type="button" onclick="clearSelection()">Inga</button>
-            </div>
+            <span class="selected-count" id="selectedCount">0 valda</span>
 
             <div class="filter-sep"></div>
 
@@ -1546,7 +1547,6 @@
                     <i class="ti ti-trash"></i> Radera valda
                 </button>
             </span>
-            <span class="selected-count" id="selectedCount">0 valda</span>
         </div>
 
         <div class="table-wrap">
@@ -2010,16 +2010,6 @@
                 .forEach(function(cb) { cb.checked = parentCb.checked; });
         });
     }
-    function selectAllBooks() {
-        document.querySelectorAll('#bookTableBody tr').forEach(function(row) {
-            if (row.dataset.filterHidden === '1') return;
-            var cb = row.querySelector('.book-checkbox');
-            if (cb) cb.checked = true;
-        });
-        _syncGroupChildrenFromParents();
-        updateSelectedCount();
-        updateBatchBar();
-    }
     function clearSelection() {
         document.querySelectorAll('.book-checkbox').forEach(function(box) { box.checked = false; });
         updateSelectedCount();
@@ -2039,16 +2029,6 @@
     }
     function deselectAll() {
         clearSelection();
-    }
-    function selectMissingBooks() {
-        document.querySelectorAll('#bookTableBody tr[data-missing]').forEach(function(row) {
-            if (row.dataset.filterHidden === '1') return;
-            var cb = row.querySelector('.book-checkbox');
-            if (cb) cb.checked = row.getAttribute('data-missing') === '1';
-        });
-        _syncGroupChildrenFromParents();
-        updateSelectedCount();
-        updateBatchBar();
     }
     function updateBatchBar() {
         var checked = document.querySelectorAll('.book-checkbox:checked');
@@ -2296,11 +2276,30 @@
         'published_date': 'hasPublished'
     };
 
+    var _activeBadgeFilter = null;
+
+    function toggleBadgeFilter(type, value, event) {
+        var badges = document.querySelectorAll('.stats-badge');
+        var key = type + ':' + value;
+
+        if (_activeBadgeFilter === key) {
+            _activeBadgeFilter = null;
+            badges.forEach(function(b) { b.classList.remove('badge-active'); });
+        } else {
+            _activeBadgeFilter = key;
+            badges.forEach(function(b) { b.classList.remove('badge-active'); });
+            if (event && event.target) {
+                var badge = event.target.closest('.stats-badge');
+                if (badge) badge.classList.add('badge-active');
+            }
+        }
+        applyFilters();
+    }
+
     function applyFilters() {
         var search = document.getElementById('filterSearch').value.toLowerCase().trim();
         var status = document.getElementById('filterStatus').value;
         var missingField = document.getElementById('filterMissingField').value;
-        var manual = document.getElementById('filterManual').value;
         var ext = document.getElementById('filterExtension').value;
 
         document.querySelectorAll('#bookTableBody tr').forEach(function(row) {
@@ -2326,8 +2325,19 @@
                 var attrKey = _missingFieldAttr[missingField];
                 if (attrKey && row.dataset[attrKey] !== '0') show = false;
             }
-            if (show && manual !== '') {
-                if (row.dataset.manual !== manual) show = false;
+
+            if (show && _activeBadgeFilter) {
+                var parts = _activeBadgeFilter.split(':');
+                var filterType = parts[0];
+                var filterValue = parts[1];
+                if (filterType === 'format') {
+                    var rowExt = row.dataset.ext || '';
+                    if (rowExt.toLowerCase() !== filterValue.toLowerCase()) show = false;
+                } else if (filterType === 'missing_cover') {
+                    if ((row.dataset.hasCover || '') !== '0') show = false;
+                } else if (filterType === 'missing_metadata') {
+                    if (row.dataset.status !== 'missing') show = false;
+                }
             }
 
             row.dataset.filterHidden = show ? '' : '1';
