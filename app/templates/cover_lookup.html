@@ -79,17 +79,22 @@
             background: var(--bg-primary);
             border-bottom: 1px solid var(--border-light);
             display: flex;
-            align-items: center;
-            padding: 12px 20px;
-            gap: 14px;
+            justify-content: center;
             position: sticky;
             top: 0;
             z-index: 50;
         }
+        .topbar-inner {
+            width: 100%;
+            max-width: 1300px;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
         .topbar-brand { display: flex; align-items: center; gap: 12px; font-size: 20px; font-weight: 500; color: var(--text-primary); }
         .topbar-brand img { width: 96px; height: 96px; border-radius: 14px; display: block; object-fit: contain; }
         .topbar-brand span { font-size: 28px; font-weight: 500; }
-        .topbar-spacer { flex: 1; }
         .topbar-actions { display: flex; align-items: center; gap: 8px; }
         .topbar-btn {
             background: transparent;
@@ -102,10 +107,40 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
+            line-height: 1;
         }
         .topbar-btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
         .topbar-btn i { font-size: 22px; }
         .topbar-btn.icon-only { padding: 8px; }
+        .topbar-search {
+            flex: 1;
+            position: relative;
+            margin: 0;
+        }
+        .topbar-search i.search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-tertiary);
+            font-size: 18px;
+            pointer-events: none;
+        }
+        .topbar-search input {
+            width: 100%;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            color: var(--text-primary);
+            border-radius: 8px;
+            padding: 0 14px 0 42px;
+            font-size: 14px;
+            height: 42px;
+        }
+        .topbar-search input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px var(--accent-primary-light);
+        }
 
         .container { max-width: 1400px; margin: 0 auto; padding: 18px 20px 40px; }
         h1 { margin: 0 0 18px; font-size: 22px; font-weight: 600; }
@@ -201,19 +236,23 @@
 <body>
 
 <header class="topbar">
-    <a class="topbar-brand" href="{{ url_for('metadata.bulk_metadata') }}">
-        <img src="{{ url_for('static', filename='icons/colophon-transparent.png') }}" alt="Colophon"
-             style="width:80px; height:80px; border-radius:12px; object-fit:contain;">
-        <span style="font-size:28px; font-weight:500;">Colophon</span>
-    </a>
-    <div class="topbar-spacer"></div>
-    <div class="topbar-actions">
-        <a class="topbar-btn icon-only" href="{{ url_for('settings.ai_settings') }}" title="Inställningar">
-            <i class="ti ti-settings"></i>
+    <div class="topbar-inner">
+        <a class="topbar-brand" href="{{ url_for('metadata.bulk_metadata') }}">
+            <img src="{{ url_for('static', filename='icons/colophon-transparent.png') }}" alt="Colophon">
+            <span>Colophon</span>
         </a>
-        <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="Byt tema">
-            <i id="themeIcon" class="ti ti-sun"></i>
-        </button>
+        <form class="topbar-search" action="{{ url_for('metadata.bulk_metadata') }}" method="get">
+            <i class="ti ti-search search-icon"></i>
+            <input type="text" name="q" placeholder="Sök titel, författare, ISBN, genre...">
+        </form>
+        <div class="topbar-actions">
+            <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="Byt tema">
+                <i id="themeIcon" class="ti ti-sun"></i>
+            </button>
+            <a class="topbar-btn icon-only" href="{{ url_for('settings.ai_settings') }}" title="Inställningar">
+                <i class="ti ti-settings"></i>
+            </a>
+        </div>
     </div>
 </header>
 

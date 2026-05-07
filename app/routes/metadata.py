@@ -908,6 +908,20 @@ def bulk_stream():
                         "fields_skipped": rep_apply_result.get("fields_skipped", []),
                     }
 
+                # Per-field confidence: highlight fields the user should
+                # double-check on review_needed candidates. Fields without an
+                # entry are implicitly "ok".
+                field_confidence = {}
+                signals = result.get("signals") or {}
+                if signals.get("title_similarity", 1) < 0.8:
+                    field_confidence["title"] = "low"
+                if signals.get("author_similarity", 1) < 0.7:
+                    field_confidence["author"] = "low"
+                if not signals.get("isbn_exact_match"):
+                    field_confidence["isbn"] = "low"
+                if any("språk" in (w or "").lower() for w in warnings):
+                    field_confidence["language"] = "low"
+
                 ev_queue.put({
                     "type": "book_done",
                     "item_id": representative.id,
@@ -934,6 +948,7 @@ def bulk_stream():
                     "source_details": all_source_details,
                     "file_write_error": file_write_error,
                     "apply_details": apply_details,
+                    "field_confidence": field_confidence,
                 })
 
             try:
