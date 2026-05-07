@@ -297,6 +297,76 @@
             color: var(--text-secondary);
             font-size: 13px;
         }
+        .filter-sep {
+            width: 1px;
+            height: 24px;
+            background: var(--border-light);
+            margin: 0 4px;
+            flex-shrink: 0;
+        }
+        .filter-btn {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-light);
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .filter-btn:hover { background: var(--bg-secondary); color: var(--text-primary); }
+        .icon-toggle {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            border: 1px solid var(--border-light);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0;
+        }
+        .icon-toggle.active {
+            background: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-primary);
+        }
+        .btn-group {
+            display: flex;
+            gap: 0;
+        }
+        .btn-group .filter-btn {
+            border-radius: 0;
+            border-right: none;
+        }
+        .btn-group .filter-btn:first-child { border-radius: 6px 0 0 6px; }
+        .btn-group .filter-btn:last-child { border-radius: 0 6px 6px 0; border-right: 1px solid var(--border-light); }
+        .filter-check {
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border-light);
+            cursor: pointer;
+            user-select: none;
+        }
+        .filter-check input { margin: 0; }
+        .col-resize-handle {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            cursor: col-resize;
+            background: transparent;
+        }
+        .col-resize-handle:hover {
+            background: var(--accent-primary);
+            opacity: 0.3;
+        }
 
         .container {
             max-width: 1300px;
@@ -500,6 +570,7 @@
         }
         table#bookTable {
             width: 100%;
+            table-layout: fixed;
             border-collapse: collapse;
             background: transparent;
         }
@@ -1123,9 +1194,11 @@
         </div>
 
         <div class="filter-row">
-            <button id="groupToggle" class="btn ghost" type="button" onclick="toggleGroupView()" title="Gruppera format">
-                <i class="ti ti-list"></i> Alla format
+            <button id="groupToggle" class="filter-btn icon-toggle" type="button" onclick="toggleGroupView()" title="Gruppera format">
+                <i class="ti ti-stack-2"></i>
             </button>
+
+            <div class="filter-sep"></div>
 
             <select id="filterStatus" onchange="applyFilters()" title="Status">
                 <option value="">Status: alla</option>
@@ -1154,14 +1227,20 @@
                 <option value="0">Ej manuellt redigerad</option>
             </select>
 
+            <div class="filter-sep"></div>
             <div class="filter-spacer"></div>
 
-            <button class="btn ghost" type="button" onclick="selectAllBooks()">Välj alla</button>
-            <button class="btn ghost" type="button" onclick="selectMissingBooks()">Välj saknade</button>
-            <button class="btn ghost" type="button" onclick="clearSelection()">Avmarkera</button>
-            <label style="cursor:pointer; font-size:13px; color:var(--text-secondary); display:inline-flex; align-items:center; gap:6px;">
+            <div class="btn-group">
+                <button class="filter-btn" type="button" onclick="selectAllBooks()">Alla</button>
+                <button class="filter-btn" type="button" onclick="selectMissingBooks()">Saknade</button>
+                <button class="filter-btn" type="button" onclick="clearSelection()">Inga</button>
+            </div>
+
+            <div class="filter-sep"></div>
+
+            <label class="filter-check" id="dangerToggle" style="display:none;">
                 <input type="checkbox" id="showDangerZone" onchange="toggleDangerZone()">
-                Radering
+                <i class="ti ti-trash" style="font-size:14px;"></i>
             </label>
             <span id="dangerZone" style="display:none;">
                 <button type="button" class="btn-danger small" onclick="confirmBulkDelete()">
@@ -1861,9 +1940,6 @@
         var btn = document.getElementById('groupToggle');
         if (!btn) return;
         btn.classList.toggle('active', _grouped);
-        btn.innerHTML = _grouped
-            ? '<i class="ti ti-stack-2"></i> Grupperat'
-            : '<i class="ti ti-list"></i> Alla format';
     }
 
     function _resetGrouping() {
@@ -2912,6 +2988,52 @@
             }
         }
     });
+
+    /* -------------------------------------------------------------------- */
+    /* Resizable columns                                                     */
+    /* -------------------------------------------------------------------- */
+    (function() {
+        var table = document.getElementById('bookTable');
+        if (!table) return;
+        var ths = table.querySelectorAll('thead th');
+
+        ths.forEach(function(th, i) {
+            if (i === ths.length - 1) return;
+
+            var handle = document.createElement('div');
+            handle.className = 'col-resize-handle';
+            handle.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                var startX = e.pageX;
+                var startW = th.offsetWidth;
+                var next = ths[i + 1];
+                var nextW = next ? next.offsetWidth : 0;
+
+                function onMove(ev) {
+                    var diff = ev.pageX - startX;
+                    th.style.width = Math.max(50, startW + diff) + 'px';
+                    if (next) next.style.width = Math.max(50, nextW - diff) + 'px';
+                }
+                function onUp() {
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                    var widths = Array.from(ths).map(function(t) { return t.style.width || ''; });
+                    localStorage.setItem('colophon-col-widths', JSON.stringify(widths));
+                }
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+            });
+            th.style.position = 'relative';
+            th.appendChild(handle);
+        });
+
+        var saved = JSON.parse(localStorage.getItem('colophon-col-widths') || 'null');
+        if (saved) {
+            ths.forEach(function(th, i) {
+                if (saved[i]) th.style.width = saved[i];
+            });
+        }
+    })();
 </script>
 
 </body>
