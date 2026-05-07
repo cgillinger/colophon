@@ -922,6 +922,28 @@ def bulk_stream():
                 if any("språk" in (w or "").lower() for w in warnings):
                     field_confidence["language"] = "low"
 
+                # Per-source field values for the source-picker in the
+                # comparison modal. Synopsis is truncated to 500 chars per
+                # candidate so SSE messages stay reasonable.
+                all_candidates_payload = []
+                for scored in result.get("all_scored") or []:
+                    c = scored.get("candidate") or {}
+                    all_candidates_payload.append({
+                        "source": c.get("source", "") or "",
+                        "title": c.get("title", "") or "",
+                        "author": c.get("author", "") or "",
+                        "description": (c.get("description") or "")[:500],
+                        "isbn": c.get("isbn", "") or "",
+                        "publisher": c.get("publisher", "") or "",
+                        "series": c.get("series", "") or "",
+                        "series_index": c.get("series_index", "") or "",
+                        "language": c.get("language", "") or "",
+                        "genres": c.get("genres", "") or "",
+                        "published_date": c.get("published_date", "") or "",
+                        "cover_url": c.get("cover_url", "") or "",
+                        "score": round(scored.get("score") or 0),
+                    })
+
                 ev_queue.put({
                     "type": "book_done",
                     "item_id": representative.id,
@@ -949,6 +971,7 @@ def bulk_stream():
                     "file_write_error": file_write_error,
                     "apply_details": apply_details,
                     "field_confidence": field_confidence,
+                    "all_candidates": all_candidates_payload,
                 })
 
             try:
@@ -1561,6 +1584,8 @@ def fetch_metadata_json(item_id):
     ).strip()
 
     try:
+        from app.services.metadata_sources import choose_best_metadata_explained
+
         results = search_all_sources(
             title=item.title or "",
             author=item.author or "",
@@ -1568,13 +1593,38 @@ def fetch_metadata_json(item_id):
             query_text=query_text,
             include_calibre=True,
         )
-        best, best_score = choose_best_metadata(item, results)
-
-        if not best:
-            return jsonify({"ok": False, "error": "no_match"})
+        scoring = choose_best_metadata_explained(item, results)
+        best = scoring["best"]
+        best_score = scoring["score"]
 
         def _txt(v):
             return str(v).strip() if v is not None else ""
+
+        all_candidates_payload = []
+        for scored in scoring.get("all_scored") or []:
+            c = scored.get("candidate") or {}
+            all_candidates_payload.append({
+                "source": _txt(c.get("source")),
+                "title": _txt(c.get("title")),
+                "author": _txt(c.get("author")),
+                "description": _txt(c.get("description"))[:500],
+                "isbn": _txt(c.get("isbn")),
+                "publisher": _txt(c.get("publisher")),
+                "series": _txt(c.get("series")),
+                "series_index": _txt(c.get("series_index")),
+                "language": _txt(c.get("language")),
+                "genres": _txt(c.get("genres")),
+                "published_date": _txt(c.get("published_date"))[:20],
+                "cover_url": _txt(c.get("cover_url")),
+                "score": round(scored.get("score") or 0),
+            })
+
+        if not best:
+            return jsonify({
+                "ok": False,
+                "error": "no_match",
+                "all_candidates": all_candidates_payload,
+            })
 
         return jsonify({
             "ok": True,
@@ -1592,6 +1642,7 @@ def fetch_metadata_json(item_id):
             },
             "score": best_score,
             "source": best.get("source", ""),
+            "all_candidates": all_candidates_payload,
         })
     except Exception as error:
         logger.error("fetch_metadata_json error: %s", error)
