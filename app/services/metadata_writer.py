@@ -68,6 +68,10 @@ def apply_metadata_to_item(
                                        FILE_WRITE_ERROR_MESSAGES for labels
         cover_saved       bool  — True if cover was saved to the covers dir
         cover_attempted   bool  — True if a cover URL or local path was present
+        fields_added      list[str] — fields that were empty and got filled
+        fields_replaced   list[str] — fields that had a value and were overwritten
+        fields_skipped    list[str] — fields with a fetched value that we did not
+                                      write because the existing value was kept
     """
     is_explicit = selected_fields is not None
     selected = selected_fields or set()
@@ -94,12 +98,13 @@ def apply_metadata_to_item(
 
     db_updated = 0
     written_text: dict[str, str] = {}
+    fields_added: list[str] = []
+    fields_replaced: list[str] = []
+    fields_skipped: list[str] = []
 
     from app.services.metadata_sources import clean_text
 
     for field in _TEXT_FIELDS:
-        if not _should_write(field):
-            continue
         value = _stringify(result.get(field))
         if not value:
             continue
@@ -107,12 +112,26 @@ def apply_metadata_to_item(
             value = clean_text(value)
             if not value:
                 continue
-        setattr(item, field, value)
-        db_updated += 1
-        written_text[field] = value
+
+        current = _stringify(getattr(item, field, None))
+
+        if _should_write(field):
+            if current:
+                fields_replaced.append(field)
+            else:
+                fields_added.append(field)
+            setattr(item, field, value)
+            db_updated += 1
+            written_text[field] = value
+        else:
+            # Had a fetched value but did not write: existing kept.
+            # Skip the language policy-skip in implicit mode (never tracked).
+            if current and not (not is_explicit and field == "language"):
+                fields_skipped.append(field)
 
     cover_url = _stringify(result.get("cover_url"))
     cover_local_path = _stringify(result.get("cover_path"))
+    had_cover_before = bool(getattr(item, "cover_path", ""))
 
     if is_explicit:
         apply_cover = "cover" in selected
@@ -145,6 +164,14 @@ def apply_metadata_to_item(
                 cover_saved = True
                 cover_dest_for_file = new_path
 
+    if cover_saved:
+        if had_cover_before:
+            fields_replaced.append("cover")
+        else:
+            fields_added.append("cover")
+    elif (cover_url or cover_local_path) and not apply_cover and had_cover_before:
+        fields_skipped.append("cover")
+
     item.manual_metadata = True
 
     if "title" in written_text or "author" in written_text:
@@ -169,6 +196,9 @@ def apply_metadata_to_item(
         "file_write_error": file_write_error,
         "cover_saved": cover_saved,
         "cover_attempted": bool(cover_url) or bool(cover_local_path),
+        "fields_added": fields_added,
+        "fields_replaced": fields_replaced,
+        "fields_skipped": fields_skipped,
     }
 
 

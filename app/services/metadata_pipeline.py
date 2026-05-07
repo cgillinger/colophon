@@ -107,6 +107,7 @@ def run_metadata_enrichment(
     include_calibre=True,
     local_metadata=None,
     on_progress=None,
+    abort_check=None,
 ):
     """Search external sources for the best metadata candidate.
 
@@ -155,6 +156,9 @@ def run_metadata_enrichment(
                 "title": item_title,
                 **kwargs,
             })
+
+    def _aborted():
+        return abort_check is not None and abort_check()
 
     # Stage 1: read file metadata
     _emit(
@@ -213,7 +217,10 @@ def run_metadata_enrichment(
             warnings=[],
         )
 
-    # Stage 3: Calibre
+    # Stage 3: Calibre (skipped on abort to bail out faster)
+    if _aborted():
+        include_calibre = False
+
     if include_calibre:
         _emit(
             "calibre",

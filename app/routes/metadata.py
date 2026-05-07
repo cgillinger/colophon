@@ -53,6 +53,17 @@ from app.routes.helpers import get_item_or_404, save_uploaded_cover, get_int_for
 metadata_bp = Blueprint("metadata", __name__)
 
 
+# Single-user app — one shared abort flag across SSE streams.
+_abort_event = threading.Event()
+
+
+@metadata_bp.route("/metadata/abort", methods=["POST"])
+def abort_metadata():
+    """Signal any running metadata SSE stream to stop."""
+    _abort_event.set()
+    return jsonify({"ok": True})
+
+
 def _pick_search_representative(group_items):
     """Pick the item with the richest embedded metadata for searching."""
     def _richness(item):
@@ -652,6 +663,8 @@ def bulk_stream():
     cover_dir = app.config["COVER_DIR"]
     ev_queue = queue.SimpleQueue()
 
+    _abort_event.clear()
+
     def _run():
         with app.app_context():
             from app.models import LibraryItem as _Item, db as _db
@@ -686,6 +699,9 @@ def bulk_stream():
             processed = 0
 
             for group_key, group_items in groups.items():
+                if _abort_event.is_set():
+                    break
+
                 index += 1
 
                 if processed >= max_items:
@@ -737,6 +753,7 @@ def bulk_stream():
                         representative,
                         cover_dir=cover_dir,
                         on_progress=_progress_cb,
+                        abort_check=_abort_event.is_set,
                     )
                 except Exception:
                     app.logger.exception(
@@ -789,6 +806,7 @@ def bulk_stream():
                 best = result.get("best")
                 source = (best or {}).get("source") if best else None
                 file_write_error = None
+                rep_apply_result = None
 
                 # Detect source_error: all sources errored (not just no results)
                 source_results = result.get("source_results", [])
@@ -818,6 +836,8 @@ def bulk_stream():
                             write_to_file=True,
                             smart_replace_fields=smart_replace_fields,
                         )
+                        if member.id == representative.id:
+                            rep_apply_result = apply_result
                         if not apply_result.get("file_updated") and apply_result.get("file_write_error"):
                             if member.id == representative.id:
                                 file_write_error = apply_result.get("file_write_error")
@@ -847,6 +867,14 @@ def bulk_stream():
                         if is_better and reason:
                             quality_notes[field_name] = reason
 
+                apply_details = None
+                if rep_apply_result is not None:
+                    apply_details = {
+                        "fields_added": rep_apply_result.get("fields_added", []),
+                        "fields_replaced": rep_apply_result.get("fields_replaced", []),
+                        "fields_skipped": rep_apply_result.get("fields_skipped", []),
+                    }
+
                 ev_queue.put({
                     "type": "book_done",
                     "item_id": representative.id,
@@ -872,6 +900,7 @@ def bulk_stream():
                     "calibre_candidates": calibre_candidates,
                     "source_details": all_source_details,
                     "file_write_error": file_write_error,
+                    "apply_details": apply_details,
                 })
 
             try:
@@ -880,7 +909,14 @@ def bulk_stream():
                 app.logger.exception("bulk_stream db commit failed")
                 _db.session.rollback()
 
-            ev_queue.put({"type": "done", "summary": summary})
+            if _abort_event.is_set():
+                ev_queue.put({
+                    "type": "aborted",
+                    "processed": processed,
+                    "summary": summary,
+                })
+            else:
+                ev_queue.put({"type": "done", "summary": summary})
             ev_queue.put(None)
 
     threading.Thread(target=_run, daemon=True).start()
@@ -930,6 +966,7 @@ def enrich_stream(item_id):
 
     app = current_app._get_current_object()
     ev_queue = queue.SimpleQueue()
+    _abort_event.clear()
 
     def _run():
         with app.app_context():
@@ -945,6 +982,7 @@ def enrich_stream(item_id):
                     fresh_item,
                     cover_dir=app.config["COVER_DIR"],
                     on_progress=ev_queue.put,
+                    abort_check=_abort_event.is_set,
                 )
                 if result["ok"]:
                     _enrichment_cache[item_id] = {
