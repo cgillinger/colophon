@@ -2187,6 +2187,15 @@
         });
     })();
 
+    /* Pre-fill search from ?q= URL param (navigated from sub-page topbar) */
+    (function() {
+        var q = new URLSearchParams(window.location.search).get('q');
+        if (q) {
+            var el = document.getElementById('filterSearch');
+            if (el) { el.value = q; applyFilters(); }
+        }
+    })();
+
     /* -------------------------------------------------------------------- */
     /* Filtering                                                             */
     /* -------------------------------------------------------------------- */
