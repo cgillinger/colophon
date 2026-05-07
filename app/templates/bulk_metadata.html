@@ -976,8 +976,14 @@
             display: flex;
             gap: 10px;
             margin-top: 20px;
+            padding: 14px 0;
             align-items: center;
             flex-wrap: wrap;
+            position: sticky;
+            bottom: 0;
+            background: var(--bg-primary);
+            border-top: 1px solid var(--border-light);
+            z-index: 1;
         }
         .modal-actions .spacer { flex: 1; }
 
@@ -1160,6 +1166,15 @@
             border-left: 2px solid var(--accent-yellow);
         }
         .brm-aa-skipped td.brm-td-fetched { opacity: 0.55; }
+        /* Per-field confidence flag for review_needed candidates */
+        .brm-confidence-low td.brm-td-field {
+            border-left: 3px solid var(--accent-yellow);
+        }
+        .brm-confidence-icon {
+            color: var(--accent-yellow);
+            margin-right: 4px;
+            font-weight: 600;
+        }
         .brm-aa-badge {
             display: inline-block;
             padding: 3px 8px;
@@ -2745,6 +2760,7 @@
                     item_ids: d.item_ids || [d.item_id],
                     source_details: d.source_details || _sourceDetails[d.item_id] || [],
                     apply_details: d.apply_details || null,
+                    field_confidence: d.field_confidence || {},
                 };
                 if (d.source_details && d.source_details.length > 0) {
                     _sourceDetails[d.item_id] = d.source_details;
@@ -3113,13 +3129,27 @@
         if (!btn) return;
         if (fetching) {
             btn.dataset.fetching = '1';
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spin"></span> Hämtar metadata…';
+            btn.disabled = false;
+            btn.classList.remove('primary');
+            btn.classList.add('btn-danger-outline');
+            btn.innerHTML = '<i class="ti ti-x"></i> Avbryt';
+            btn.onclick = abortMetadata;
         } else {
             delete btn.dataset.fetching;
             btn.disabled = false;
+            btn.classList.remove('btn-danger-outline');
+            btn.classList.add('primary');
             btn.innerHTML = _fetchBtnOrigHTML;
             btn.onclick = fetchMetadata;
+        }
+    }
+
+    function abortMetadata() {
+        var btn = document.getElementById('modalFetchBtn');
+        fetch('/metadata/abort', {method: 'POST'}).catch(function(){});
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spin"></span> Avbryter…';
         }
     }
 
@@ -3478,7 +3508,10 @@
     }
     function _setModalBusy(busy) {
         var fetchBtn = document.getElementById('modalFetchBtn');
-        if (fetchBtn && !busy) fetchBtn.disabled = false;
+        // While the fetch button is in "Avbryt" mode it must stay clickable.
+        if (fetchBtn && fetchBtn.dataset.fetching !== '1') {
+            fetchBtn.disabled = busy;
+        }
         document.getElementById('modalAiBtn').disabled = busy;
         var saveBtn = document.getElementById('modalSaveBtn');
         if (saveBtn) saveBtn.disabled = busy;
@@ -3704,6 +3737,10 @@
 
         var before = data.before;
         var after = data.candidate;
+        var fieldConfidence = data.field_confidence || {};
+        // Only show low-confidence flags for review_needed candidates;
+        // auto_apply already has its own per-field colour scheme.
+        var showConfidence = data.classification === 'review_needed';
         var tbody = document.getElementById('brmBody');
         tbody.innerHTML = '';
 
@@ -3713,10 +3750,12 @@
             var changed = b !== a && a !== '';
             var checkable = a !== '' && b !== a;
             var isSynopsis = f.key === 'description';
+            var lowConfidence = showConfidence && fieldConfidence[f.key] === 'low';
 
             var tr = document.createElement('tr');
             tr.dataset.field = f.key;
             if (changed) tr.className = 'brm-changed';
+            if (lowConfidence) tr.classList.add('brm-confidence-low');
 
             var checkHtml = '';
             if (checkable) {
@@ -3748,8 +3787,10 @@
                     + _brmEsc(note) + '</small>';
             }
 
+            var labelHtml = (lowConfidence ? '<span class="brm-confidence-icon" title="Låg konfidans — granska detta fält">⚠</span>' : '')
+                + '<strong>' + _brmEsc(f.label) + '</strong>';
             tr.innerHTML =
-                '<td class="' + fieldCellCls + '"><strong>' + _brmEsc(f.label) + '</strong></td>' +
+                '<td class="' + fieldCellCls + '">' + labelHtml + '</td>' +
                 '<td class="' + currentCellCls + '">' + _cellContent(b) + '</td>' +
                 '<td class="brm-td-pick">' + checkHtml + '</td>' +
                 '<td class="' + fetchedCellCls + '">' + fetchedHtml + '</td>';
