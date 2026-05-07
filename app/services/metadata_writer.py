@@ -50,6 +50,7 @@ def apply_metadata_to_item(
     overwrite=False,
     write_to_file=True,
     selected_fields=None,
+    smart_replace_fields=None,
 ):
     """Apply a metadata result-dict to both the database and the ebook file.
 
@@ -70,6 +71,7 @@ def apply_metadata_to_item(
     """
     is_explicit = selected_fields is not None
     selected = selected_fields or set()
+    smart_replace = smart_replace_fields or set()
 
     def _should_write(field):
         if is_explicit:
@@ -79,8 +81,16 @@ def apply_metadata_to_item(
         value = _stringify(result.get(field))
         if not value:
             return False
-        current = getattr(item, field, None)
-        return overwrite or not current
+        current = _stringify(getattr(item, field, None))
+        if overwrite or not current:
+            return True
+        if field in smart_replace:
+            from app.services.quality import evaluate_quality
+
+            author = _stringify(getattr(item, "author", "")) if field == "publisher" else ""
+            is_better, _ = evaluate_quality(field, current, value, author=author)
+            return is_better
+        return False
 
     db_updated = 0
     written_text: dict[str, str] = {}

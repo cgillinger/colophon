@@ -862,6 +862,37 @@
             user-select: none;
         }
         .brm-expand-toggle:hover { filter: brightness(1.1); }
+        .brm-quality-note {
+            display: inline-block;
+            margin-top: 4px;
+            font-size: 12px;
+            color: var(--accent-green);
+        }
+        .smart-replace-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+        .smart-replace-options label {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 8px 10px;
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .smart-replace-options label:hover { background: var(--bg-tertiary); }
+        .smart-replace-options input[type="checkbox"] { margin-top: 3px; }
+        .smart-replace-options small {
+            color: var(--text-secondary);
+            font-weight: normal;
+        }
+        .btn.btn-sm {
+            padding: 4px 10px;
+            font-size: 12px;
+        }
 
         /* Grouped view */
         .group-hidden { display: none !important; }
@@ -1079,6 +1110,11 @@
                         <input type="checkbox" name="overwrite" value="1">
                         Ersätt befintlig
                     </label>
+                    <button type="button" class="btn ghost btn-sm"
+                            onclick="openSmartReplaceSettings()"
+                            title="Inställningar för smart ersättning">
+                        <i class="ti ti-adjustments-horizontal"></i> Smart ersättning
+                    </button>
                 </div>
             </div>
         </div>
@@ -1338,6 +1374,35 @@
     </div>
 </div>
 
+<!-- Smart-replace settings modal -->
+<div id="smartReplaceModal" style="display:none;">
+    <div class="modal-box" style="max-width:520px;">
+        <h2 style="margin-top:0;">Smart ersättning</h2>
+        <p class="hint" style="margin-bottom:14px;">
+            Välj fält där hämtad metadata kan ersätta befintlig om den bedöms ha högre kvalitet.
+            Tomma fält fylls alltid; rutan "Ersätt befintlig" skriver över allt.
+        </p>
+        <div class="smart-replace-options">
+            <label><input type="checkbox" value="title" class="sr-field">
+                <span><strong>Titel</strong> <small>— ersätt om befintlig har serie/marknadsföring i parenteser</small></span></label>
+            <label><input type="checkbox" value="author" class="sr-field">
+                <span><strong>Författare</strong> <small>— ersätt om befintlig har hakparenteser [Efternamn, Förnamn]</small></span></label>
+            <label><input type="checkbox" value="isbn" class="sr-field">
+                <span><strong>ISBN</strong> <small>— ersätt om hämtad är giltig ISBN-13</small></span></label>
+            <label><input type="checkbox" value="publisher" class="sr-field">
+                <span><strong>Förlag</strong> <small>— ersätt om befintlig matchar författarnamn</small></span></label>
+            <label><input type="checkbox" value="genres" class="sr-field">
+                <span><strong>Genre</strong> <small>— ersätt om hämtad listar fler genrer</small></span></label>
+            <label><input type="checkbox" value="description" class="sr-field">
+                <span><strong>Synopsis</strong> <small>— ersätt om hämtad är 50%+ längre</small></span></label>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn primary" onclick="saveSmartReplaceSettings()">Spara</button>
+            <button type="button" class="btn ghost" onclick="closeSmartReplaceModal()">Avbryt</button>
+        </div>
+    </div>
+</div>
+
 <!-- Bulk result comparison modal -->
 <div id="bulkResultModal" style="display:none;">
     <div class="modal-box" style="max-width:900px;">
@@ -1366,6 +1431,38 @@
     /* -------------------------------------------------------------------- */
     /* Theme toggle                                                          */
     /* -------------------------------------------------------------------- */
+    /* -------------------------------------------------------------------- */
+    /* Smart-replace settings (persisted in localStorage)                    */
+    /* -------------------------------------------------------------------- */
+    function _loadSmartReplace() {
+        try {
+            var raw = localStorage.getItem('colophon-smart-replace');
+            if (raw) return JSON.parse(raw);
+        } catch (e) { /* fall through to default */ }
+        return ['description'];
+    }
+    function openSmartReplaceSettings() {
+        document.getElementById('smartReplaceModal').style.display = 'flex';
+        var saved = _loadSmartReplace();
+        document.querySelectorAll('.sr-field').forEach(function(cb) {
+            cb.checked = saved.indexOf(cb.value) !== -1;
+        });
+    }
+    function saveSmartReplaceSettings() {
+        var selected = [];
+        document.querySelectorAll('.sr-field:checked').forEach(function(cb) {
+            selected.push(cb.value);
+        });
+        localStorage.setItem('colophon-smart-replace', JSON.stringify(selected));
+        closeSmartReplaceModal();
+    }
+    function closeSmartReplaceModal() {
+        document.getElementById('smartReplaceModal').style.display = 'none';
+    }
+    document.getElementById('smartReplaceModal').addEventListener('click', function(e) {
+        if (e.target === this) closeSmartReplaceModal();
+    });
+
     function toggleTheme() {
         var current = document.documentElement.getAttribute('data-theme');
         var next = current === 'dark' ? 'light' : 'dark';
@@ -1904,10 +2001,14 @@
 
             var overwrite = document.querySelector('input[name="overwrite"]').checked ? '1' : '0';
             var maxItems = document.getElementById('max_items').value || '25';
+            var smartReplace = JSON.parse(
+                localStorage.getItem('colophon-smart-replace') || '["description"]'
+            );
 
             var url = '/metadata/bulk/stream?item_ids=' + itemIds.join(',')
                 + '&overwrite=' + overwrite
-                + '&max_items=' + maxItems;
+                + '&max_items=' + maxItems
+                + '&smart_replace=' + encodeURIComponent(smartReplace.join(','));
 
             var progress = document.getElementById('bulkProgress');
             progress.style.display = 'block';
@@ -1981,6 +2082,7 @@
                         score: d.score,
                         source: d.source || '',
                         warnings: d.warnings || [],
+                        quality_notes: d.quality_notes || {},
                         item_ids: d.item_ids || [d.item_id],
                     };
 
@@ -2570,11 +2672,18 @@
             var currentCellCls = 'brm-td-current' + (b ? '' : ' brm-empty');
             var fetchedCellCls = 'brm-td-fetched' + (a ? '' : ' brm-empty');
 
+            var fetchedHtml = _cellContent(a);
+            var note = (data.quality_notes || {})[f.key];
+            if (note) {
+                fetchedHtml += '<br><small class="brm-quality-note">⬆ '
+                    + _brmEsc(note) + '</small>';
+            }
+
             tr.innerHTML =
                 '<td class="' + fieldCellCls + '"><strong>' + _brmEsc(f.label) + '</strong></td>' +
                 '<td class="' + currentCellCls + '">' + _cellContent(b) + '</td>' +
                 '<td class="brm-td-pick">' + checkHtml + '</td>' +
-                '<td class="' + fetchedCellCls + '">' + _cellContent(a) + '</td>';
+                '<td class="' + fetchedCellCls + '">' + fetchedHtml + '</td>';
             tbody.appendChild(tr);
         });
 
@@ -2697,7 +2806,9 @@
     /* -------------------------------------------------------------------- */
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
-            if (document.getElementById('bulkResultModal').style.display === 'flex') {
+            if (document.getElementById('smartReplaceModal').style.display === 'flex') {
+                closeSmartReplaceModal();
+            } else if (document.getElementById('bulkResultModal').style.display === 'flex') {
                 closeBulkResultModal();
             } else if (document.getElementById('bookModal').style.display === 'flex') {
                 closeBookModal();

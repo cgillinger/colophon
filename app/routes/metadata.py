@@ -613,6 +613,11 @@ def bulk_stream():
     overwrite = request.args.get("overwrite", "0") == "1"
     max_items = _parse_int(request.args.get("max_items"), 25, 1, 100)
 
+    smart_replace_raw = request.args.get("smart_replace", "")
+    smart_replace_fields = {
+        f.strip() for f in smart_replace_raw.split(",") if f.strip()
+    }
+
     item_ids = []
     for part in raw_ids.split(","):
         part = part.strip()
@@ -791,6 +796,7 @@ def bulk_stream():
                             cover_dir=cover_dir,
                             overwrite=overwrite,
                             write_to_file=True,
+                            smart_replace_fields=smart_replace_fields,
                         )
                         if not apply_result.get("file_updated") and apply_result.get("file_write_error"):
                             if member.id == representative.id:
@@ -801,6 +807,25 @@ def bulk_stream():
                 fetched_payload = result.get("fetched_payload") or {}
                 warnings = result.get("warnings") or []
                 rep_before = before_snapshots.get(representative.id, {})
+
+                # Per-field quality notes ("why is the fetched value better?")
+                # — shown beneath each row in the comparison modal.
+                quality_notes = {}
+                if fetched_payload:
+                    from app.services.quality import evaluate_quality
+                    rep_author = rep_before.get("author", "")
+                    for field_name in (
+                        "title", "author", "isbn", "publisher", "genres", "description",
+                    ):
+                        existing = rep_before.get(field_name, "")
+                        fetched_val = fetched_payload.get(field_name, "")
+                        if not existing or not fetched_val:
+                            continue
+                        is_better, reason = evaluate_quality(
+                            field_name, existing, fetched_val, author=rep_author,
+                        )
+                        if is_better and reason:
+                            quality_notes[field_name] = reason
 
                 ev_queue.put({
                     "type": "book_done",
@@ -817,6 +842,7 @@ def bulk_stream():
                     "before": rep_before,
                     "candidate": fetched_payload,
                     "warnings": warnings,
+                    "quality_notes": quality_notes,
                     "has_cover_before": bool(rep_before.get("cover_path")),
                     "cover_url_fetched": fetched_payload.get("cover_url", "") or "",
                     "has_cover_fetched": bool(result.get("cover_path")),

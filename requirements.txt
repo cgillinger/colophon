@@ -8,3 +8,4 @@ python-dotenv==1.0.1
 playwright
 requests
 gunicorn
+langdetect==1.0.9

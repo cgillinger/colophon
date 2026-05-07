@@ -9,6 +9,11 @@ from ebooklib import epub, ITEM_IMAGE
 
 from app.models import LibraryItem, db
 from app.services.grouping import compute_group_key
+from app.services.language_detect import (
+    detect_language_from_text,
+    extract_text_sample_from_epub,
+)
+from app.services.text_utils import clean_title
 
 logger = logging.getLogger(__name__)
 
@@ -156,6 +161,28 @@ def extract_local_metadata(file_path, cover_dir=None) -> dict:
         if base["source"] != "filename":
             warnings.append("Titel saknas i filenens metadata – använder filnamn.")
         base["source"] = "filename"
+
+    # Strip series/marketing noise from the title and promote any captured
+    # series info into the dedicated fields when they're empty.
+    if base["title"]:
+        info = clean_title(base["title"])
+        base["title"] = info["cleaned_title"]
+        if info["extracted_series"] and not base.get("series"):
+            base["series"] = info["extracted_series"]
+        if info["extracted_series_index"] and not base.get("series_index"):
+            base["series_index"] = info["extracted_series_index"]
+
+    # If the file didn't declare a usable language, try to detect one from
+    # the text body. EPUB/KEPUB only — ebooklib can't read MOBI/AZW3.
+    if not base["language"] or base["language"].lower() in ("und", "unknown"):
+        if extension in (".epub", ".kepub"):
+            sample = extract_text_sample_from_epub(str(file_path))
+            detected = detect_language_from_text(sample)
+            if detected:
+                base["language"] = detected
+                logger.debug(
+                    "Detected language %s for %s", detected, file_path.name
+                )
 
     base["quality"] = _assess_quality(base)
     return base

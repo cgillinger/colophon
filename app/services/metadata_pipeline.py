@@ -306,16 +306,29 @@ def run_metadata_enrichment(
         return str(value).strip() if value not in (None, "") else ""
 
     from app.services.metadata_sources import clean_text as _clean
+    from app.services.text_utils import clean_title as _clean_title
+
+    raw_title = _txt(best.get("title"))
+    title_info = _clean_title(raw_title) if raw_title else {
+        "cleaned_title": "",
+        "extracted_series": None,
+        "extracted_series_index": None,
+        "was_modified": False,
+    }
+    candidate_series = _txt(best.get("series")) or (title_info["extracted_series"] or "")
+    candidate_series_index = _txt(best.get("series_index")) or (
+        title_info["extracted_series_index"] or ""
+    )
 
     fetched_payload = {
-        "title": _txt(best.get("title")),
+        "title": title_info["cleaned_title"] or raw_title,
         "author": _txt(best.get("author")),
         "description": _clean(_txt(best.get("description"))),
         "publisher": _txt(best.get("publisher")),
         "isbn": _txt(best.get("isbn")),
         "language": _txt(best.get("language")),
-        "series": _txt(best.get("series")),
-        "series_index": _txt(best.get("series_index")),
+        "series": candidate_series,
+        "series_index": candidate_series_index,
         "genres": _txt(best.get("genres")),
         "cover_url": _txt(best.get("cover_url")),
         "cover_path": cover_path_for_preview,

@@ -14,6 +14,7 @@
 | beautifulsoup4 | MIT | https://www.crummy.com/software/BeautifulSoup |
 | mutagen | GPL-2.0-or-later | https://github.com/quodlibet/mutagen |
 | playwright | Apache-2.0 | https://github.com/microsoft/playwright-python |
+| langdetect | Apache-2.0 | https://github.com/Mimino666/langdetect |
 
 ## Vendor / frontend assets (bundled)
 
