@@ -190,7 +190,7 @@
             align-items: center;
             gap: 12px;
             background: #f0f4f8;
-            border: 1px solid #cdd6e0;
+            border: 2px solid var(--green-200);
             border-radius: 10px;
             padding: 12px 16px;
             margin-bottom: 14px;
@@ -198,7 +198,11 @@
         }
         [data-theme="dark"] .library-bar {
             background: #1a2332;
-            border-color: #2a3a50;
+            border-color: var(--green-700);
+        }
+        [data-theme="dark"] #bookTable,
+        [data-theme="dark"] .filter-row {
+            border-color: var(--green-800);
         }
         .chip {
             background: var(--bg-primary);
@@ -216,13 +220,13 @@
             left: 0;
             right: 0;
             background: var(--bg-primary);
-            border-top: 1.5px solid var(--accent-primary);
-            padding: 12px 24px;
+            border-top: 4px solid var(--accent-primary);
+            padding: 16px 24px;
             display: flex;
             align-items: center;
             gap: 16px;
             z-index: 900;
-            box-shadow: 0 -4px 16px rgba(0,0,0,0.08);
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
         }
         .batch-bar span { font-weight: 500; color: var(--text-primary); }
 
@@ -344,7 +348,7 @@
         /* Filter row (chips) */
         .filter-row {
             background: var(--bg-primary);
-            border: 1px solid var(--border-light);
+            border: 1px solid var(--green-200);
             border-radius: 10px;
             padding: 10px 12px;
             margin-bottom: 14px;
@@ -646,6 +650,9 @@
             table-layout: fixed;
             border-collapse: collapse;
             background: transparent;
+            border: 1px solid var(--green-200);
+            border-radius: 8px;
+            overflow: hidden;
         }
         table#bookTable th,
         table#bookTable td {
@@ -1428,7 +1435,6 @@
 <!-- Book modal -->
 <div id="bookModal" style="display:none;">
     <div class="modal-box">
-        <div id="modalProgress" style="display:none; margin-bottom:12px;"></div>
         <div id="modalFeedback" class="modal-feedback" style="display:none;"></div>
         <div class="modal-grid">
             <div>
@@ -1436,6 +1442,7 @@
                 <div id="modalFileInfo" class="modal-fileinfo"></div>
             </div>
             <div class="modal-fields">
+                <div id="modalProgress" style="display:none; margin-bottom:12px;"></div>
                 <div class="modal-field">
                     <label for="modalTitle">Titel</label>
                     <input type="text" id="modalTitle" class="modal-input">
@@ -1788,7 +1795,7 @@
         var count = document.getElementById('batchBarCount');
         if (!bar) return;
 
-        if (checked.length > 0) {
+        if (checked.length > 1) {
             bar.style.display = 'flex';
             if (_grouped) {
                 var groupKeys = new Set();
@@ -2766,21 +2773,34 @@
 
     function _renderModalSourceDetail(container, sourceDetails) {
         if (!sourceDetails || sourceDetails.length === 0) return;
-        var html = '<div style="font-size:12px; color:var(--text-secondary);">';
+        var allFields = ['title', 'author', 'description', 'isbn', 'publisher', 'series', 'genres', 'cover'];
+        var fieldLabels = {
+            title: 'Titel', author: 'Författare', description: 'Synopsis',
+            isbn: 'ISBN', publisher: 'Förlag', series: 'Serie',
+            genres: 'Genre', cover: 'Omslag'
+        };
+        var html = '';
         sourceDetails.forEach(function(sd) {
-            var fields = (sd.fields_found || []).map(function(f) {
-                return '<span class="field-tag">' + _esc(f) + '</span>';
-            }).join(' ');
-            var icon = sd.ok ? '✓' : '✗';
-            var color = sd.ok ? 'var(--accent-green)' : 'var(--accent-red)';
-            html += '<div style="margin-bottom:4px;">'
-                + '<span style="color:' + color + '; font-weight:600;">' + icon + '</span> '
-                + '<strong>' + _esc(sd.source || sd.plugin || '') + '</strong>'
-                + (sd.duration_ms ? ' <span style="color:var(--text-tertiary);">' + sd.duration_ms + 'ms</span>' : '')
-                + (fields ? ' ' + fields : '')
-                + '</div>';
+            var iconCls = sd.ok ? 'ti-check' : 'ti-x';
+            var iconColor = sd.ok ? 'var(--accent-green)' : 'var(--text-tertiary)';
+            html += '<div style="display:flex; align-items:flex-start; gap:10px; padding:6px 0; border-bottom:0.5px solid var(--border-light);">';
+            html += '<i class="ti ' + iconCls + '" style="font-size:14px; color:' + iconColor + '; margin-top:2px;" aria-hidden="true"></i>';
+            html += '<span style="font-size:13px; font-weight:500; min-width:110px; color:var(--text-secondary);">' + _esc(sd.source || '') + '</span>';
+            html += '<div style="display:flex; flex-wrap:wrap; gap:4px;">';
+            if (sd.ok && sd.fields_found && sd.fields_found.length > 0) {
+                allFields.forEach(function(f) {
+                    var found = sd.fields_found.indexOf(f) !== -1;
+                    if (found) {
+                        html += '<span class="bp-field-tag bp-field-found"><i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i> ' + fieldLabels[f] + '</span>';
+                    } else {
+                        html += '<span class="bp-field-tag bp-field-missing">' + fieldLabels[f] + '</span>';
+                    }
+                });
+            } else if (!sd.ok) {
+                html += '<span class="bp-field-tag bp-field-missing">Inga träffar</span>';
+            }
+            html += '</div></div>';
         });
-        html += '</div>';
         container.innerHTML = html;
     }
 
