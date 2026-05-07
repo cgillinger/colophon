@@ -392,6 +392,8 @@ def scan_directory(root_path, db_session=None, on_progress=None, cover_dir=None)
     files = discover_ebook_files(root)
     total = len(files)
 
+    touched_items = []
+
     for idx, file_path in enumerate(files, 1):
         absolute_path = str(file_path.resolve())
         existing = existing_by_path.get(absolute_path)
@@ -434,7 +436,8 @@ def scan_directory(root_path, db_session=None, on_progress=None, cover_dir=None)
                 "source": "filename", "quality": "minimal", "warnings": [],
             }
 
-        upsert_library_item(file_path, meta, existing=existing, db_session=session)
+        item = upsert_library_item(file_path, meta, existing=existing, db_session=session)
+        touched_items.append(item)
 
         if existing:
             result["updated"] += 1
@@ -452,6 +455,26 @@ def scan_directory(root_path, db_session=None, on_progress=None, cover_dir=None)
                 "source": meta.get("source"),
                 **result,
             })
+
+    # Flush so touched items get their IDs and group_keys before sync.
+    session.flush()
+
+    # Gruppsynk: korsberika metadata inom varje formatgrupp som berördes.
+    if touched_items:
+        from collections import defaultdict
+        from app.services.metadata_writer import sync_group_metadata
+
+        affected_keys = {it.group_key for it in touched_items if it.group_key}
+        if affected_keys:
+            groups: dict = defaultdict(list)
+            for item in session.query(LibraryItem).filter(
+                LibraryItem.group_key.in_(affected_keys)
+            ).all():
+                groups[item.group_key].append(item)
+
+            for members in groups.values():
+                if len(members) > 1:
+                    sync_group_metadata(members)
 
     session.commit()
     return result
