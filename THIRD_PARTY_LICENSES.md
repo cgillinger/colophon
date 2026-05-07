@@ -15,6 +15,12 @@
 | mutagen | GPL-2.0-or-later | https://github.com/quodlibet/mutagen |
 | playwright | Apache-2.0 | https://github.com/microsoft/playwright-python |
 
+## Vendor / frontend assets (bundled)
+
+| Package | License | URL |
+|---|---|---|
+| @tabler/icons-webfont | MIT | https://github.com/tabler/tabler-icons |
+
 ## System tools (runtime dependencies, not bundled)
 
 | Tool | License | URL |

@@ -12,7 +12,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabler-icons/tabler-icons.min.css') }}">
     <title>Metadata - Colophon</title>
     <style>
         :root, [data-theme="light"] {
@@ -2577,6 +2577,22 @@
                 '<td class="' + fetchedCellCls + '">' + _cellContent(a) + '</td>';
             tbody.appendChild(tr);
         });
+
+        if (data.classification === 'auto_apply') {
+            var allSame = fields.every(function(f) {
+                return (before[f.key] || '').toString().trim() === (after[f.key] || '').toString().trim();
+            });
+            if (allSame) {
+                var formatCount = (data.item_ids || [itemId]).length;
+                var formatLabel = formatCount === 1 ? 'format' : 'format';
+                document.getElementById('brmMeta').textContent +=
+                    ' — Metadata sparades automatiskt till ' + formatCount + ' ' + formatLabel + '.';
+                tbody.querySelectorAll('.brm-check').forEach(function(cb) {
+                    cb.checked = false;
+                    cb.disabled = true;
+                });
+            }
+        }
     }
 
     function closeBulkResultModal() {
