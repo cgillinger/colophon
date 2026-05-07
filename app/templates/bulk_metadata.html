@@ -710,6 +710,53 @@
             text-transform: uppercase;
         }
         .bp-active { background: var(--bg-secondary); }
+
+        /* Per-source detail (expanded) */
+        .bp-source-detail {
+            padding: 4px 16px 8px;
+            display: none;
+        }
+        .bp-source-detail.expanded { display: block; }
+        .bp-source-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 6px 0;
+            border-bottom: 0.5px solid var(--border-light);
+        }
+        .bp-source-row:last-child { border-bottom: none; }
+        .bp-source-icon { width: 18px; text-align: center; padding-top: 2px; }
+        .bp-source-name {
+            font-size: 12px;
+            font-weight: 500;
+            min-width: 120px;
+            color: var(--text-secondary);
+        }
+        .bp-fields { display: flex; flex-wrap: wrap; gap: 4px; }
+        .bp-field-tag {
+            font-size: 11px;
+            padding: 2px 7px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .bp-field-found {
+            background: var(--badge-ok-bg);
+            color: var(--badge-ok-text);
+        }
+        .bp-field-missing {
+            background: var(--bg-tertiary);
+            color: var(--text-tertiary);
+        }
+        .bp-expand-icon {
+            cursor: pointer;
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-left: 4px;
+            transition: transform 0.15s;
+        }
+        .bp-expand-icon.open { transform: rotate(180deg); }
         .bp-spinner {
             display: inline-block;
             width: 16px;
@@ -2204,6 +2251,7 @@
                     document.querySelectorAll('#bulkProgressBody tr.bp-active').forEach(function(r) {
                         r.classList.remove('bp-active');
                     });
+                    _sourceDetails[d.item_id] = [];
                     var tr = document.createElement('tr');
                     tr.id = 'bp-row-' + d.item_id;
                     tr.className = 'bp-active';
@@ -2217,13 +2265,21 @@
                         }).join(' ');
                     }
 
+                    var expandIcon = ' <i class="ti ti-chevron-down bp-expand-icon" onclick="event.stopPropagation(); toggleProgressDetail(' + d.item_id + ', this)" title="Visa källdetaljer"></i>';
+
                     tr.innerHTML =
-                        '<td>' + _esc(title) + fmtHtml + '</td>' +
+                        '<td>' + _esc(title) + fmtHtml + expandIcon + '</td>' +
                         '<td style="text-align:center;" id="bp-google-' + d.item_id + '"></td>' +
                         '<td style="text-align:center;" id="bp-calibre-' + d.item_id + '"></td>' +
                         '<td style="text-align:center;" id="bp-score-' + d.item_id + '"></td>' +
                         '<td style="text-align:center;" id="bp-result-' + d.item_id + '"></td>';
                     body.appendChild(tr);
+
+                    var detailTr = document.createElement('tr');
+                    detailTr.id = 'bp-detail-row-' + d.item_id;
+                    detailTr.innerHTML = '<td colspan="5" style="padding:0; border-bottom:1px solid var(--border-light);"><div id="bp-detail-' + d.item_id + '" class="bp-source-detail"></div></td>';
+                    body.appendChild(detailTr);
+
                     var unit = d.total === 1 ? 'grupp' : 'grupper';
                     summaryEl.textContent = d.index + ' av ' + d.total + ' ' + unit + '…';
 
@@ -2243,6 +2299,16 @@
                             }
                         }
                     }
+                    if (d.source_details && d.source_details.length > 0) {
+                        if (!_sourceDetails[d.item_id]) _sourceDetails[d.item_id] = [];
+                        d.source_details.forEach(function(sd) {
+                            _sourceDetails[d.item_id].push(sd);
+                        });
+                        var detailEl = document.getElementById('bp-detail-' + d.item_id);
+                        if (detailEl && detailEl.classList.contains('expanded')) {
+                            _renderSourceDetail(d.item_id);
+                        }
+                    }
 
                 } else if (d.type === 'book_done') {
                     // Cache result data for comparison modal — keyed by representative
@@ -2257,7 +2323,15 @@
                         warnings: d.warnings || [],
                         quality_notes: d.quality_notes || {},
                         item_ids: d.item_ids || [d.item_id],
+                        source_details: d.source_details || _sourceDetails[d.item_id] || [],
                     };
+                    if (d.source_details && d.source_details.length > 0) {
+                        _sourceDetails[d.item_id] = d.source_details;
+                        var detailEl2 = document.getElementById('bp-detail-' + d.item_id);
+                        if (detailEl2 && detailEl2.classList.contains('expanded')) {
+                            _renderSourceDetail(d.item_id);
+                        }
+                    }
 
                     var tr = document.getElementById('bp-row-' + d.item_id);
                     if (!tr) {
@@ -2696,6 +2770,66 @@
     document.getElementById('bookModal').addEventListener('click', function(e) {
         if (e.target === this) closeBookModal();
     });
+
+    /* -------------------------------------------------------------------- */
+    /* Per-source detail (expandable progress row)                           */
+    /* -------------------------------------------------------------------- */
+    var _sourceDetails = {};
+    var _bpFieldLabels = {
+        title: 'Titel', author: 'Författare', description: 'Synopsis',
+        isbn: 'ISBN', publisher: 'Förlag', series: 'Serie',
+        genres: 'Genre', cover: 'Omslag'
+    };
+    var _bpAllFields = ['title', 'author', 'description', 'isbn', 'publisher', 'series', 'genres', 'cover'];
+
+    function _bpEsc(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function _renderSourceDetail(itemId) {
+        var container = document.getElementById('bp-detail-' + itemId);
+        if (!container) return;
+
+        var details = _sourceDetails[itemId] || [];
+        if (details.length === 0) {
+            container.innerHTML = '<div style="font-size:12px; color:var(--text-tertiary); padding:6px 0;">Inga källdetaljer.</div>';
+            return;
+        }
+
+        var html = '';
+        details.forEach(function(sd) {
+            var iconClass = sd.ok ? 'ti-check' : 'ti-x';
+            var iconColor = sd.ok ? 'var(--accent-green)' : 'var(--text-tertiary)';
+
+            html += '<div class="bp-source-row">';
+            html += '<div class="bp-source-icon"><i class="ti ' + iconClass + '" style="font-size:14px;color:' + iconColor + '"></i></div>';
+            html += '<div class="bp-source-name">' + _bpEsc(sd.source) + '</div>';
+            html += '<div class="bp-fields">';
+
+            if (sd.ok && sd.fields_found && sd.fields_found.length > 0) {
+                _bpAllFields.forEach(function(f) {
+                    var found = sd.fields_found.indexOf(f) !== -1;
+                    var cls = found ? 'bp-field-found' : 'bp-field-missing';
+                    var icon = found ? '<i class="ti ti-check" style="font-size:11px"></i> ' : '';
+                    html += '<span class="bp-field-tag ' + cls + '">' + icon + _bpEsc(_bpFieldLabels[f]) + '</span>';
+                });
+            } else {
+                html += '<span class="bp-field-tag bp-field-missing">Inga träffar</span>';
+            }
+
+            html += '</div></div>';
+        });
+
+        container.innerHTML = html;
+    }
+
+    function toggleProgressDetail(itemId, icon) {
+        var detail = document.getElementById('bp-detail-' + itemId);
+        if (!detail) return;
+        var expanded = detail.classList.toggle('expanded');
+        if (icon) icon.classList.toggle('open', expanded);
+        if (expanded) _renderSourceDetail(itemId);
+    }
 
     /* -------------------------------------------------------------------- */
     /* Bulk result comparison modal                                          */
