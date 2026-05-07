@@ -1175,6 +1175,77 @@
             margin-right: 4px;
             font-weight: 600;
         }
+        /* Per-field source picker (expanded under a comparison row) */
+        .brm-table tr.brm-field-row {
+            cursor: pointer;
+        }
+        .brm-table tr.brm-field-row:hover td {
+            background: var(--bg-secondary);
+        }
+        .expand-hint {
+            display: inline-block;
+            transition: transform 0.2s;
+            font-size: 10px;
+            color: var(--text-tertiary);
+            margin-right: 4px;
+        }
+        tr.brm-expanded .expand-hint {
+            transform: rotate(90deg);
+            color: var(--accent-green);
+        }
+        .field-sources-wrap {
+            padding: 10px 14px 14px 28px;
+            background: var(--bg-secondary);
+        }
+        .field-sources-wrap .field-sources-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+        .source-option {
+            padding: 8px 12px;
+            margin: 4px 0;
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            background: var(--bg-primary);
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .source-option:hover {
+            border-color: var(--accent-green);
+            background: var(--accent-primary-light);
+        }
+        .source-option-selected {
+            border-color: var(--accent-green);
+            background: var(--accent-primary-light);
+        }
+        .source-option-source {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .source-option-score {
+            color: var(--text-secondary);
+            font-size: 11px;
+            margin-left: 6px;
+        }
+        .source-option-value {
+            font-size: 13px;
+            color: var(--text-primary);
+            margin-top: 3px;
+            white-space: pre-wrap;
+        }
+        .source-option-empty {
+            color: var(--text-tertiary);
+            font-size: 12px;
+            font-style: italic;
+        }
+        .synopsis-toggle {
+            color: var(--accent-primary-text);
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 12px;
+        }
         .brm-aa-badge {
             display: inline-block;
             padding: 3px 8px;
@@ -2761,6 +2832,7 @@
                     source_details: d.source_details || _sourceDetails[d.item_id] || [],
                     apply_details: d.apply_details || null,
                     field_confidence: d.field_confidence || {},
+                    all_candidates: d.all_candidates || [],
                 };
                 if (d.source_details && d.source_details.length > 0) {
                     _sourceDetails[d.item_id] = d.source_details;
@@ -3590,6 +3662,7 @@
     /* -------------------------------------------------------------------- */
     var _brmItemId = null;
     var _bulkResultData = {};
+    var _brmOverrides = {};
 
     function _brmEsc(str) {
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -3622,6 +3695,7 @@
 
     function openBulkResultModal(itemId) {
         _brmItemId = itemId;
+        _brmOverrides = {};
         document.getElementById('bulkResultModal').style.display = 'flex';
         document.getElementById('brmFeedback').style.display = 'none';
 
@@ -3754,8 +3828,14 @@
 
             var tr = document.createElement('tr');
             tr.dataset.field = f.key;
-            if (changed) tr.className = 'brm-changed';
+            tr.classList.add('brm-field-row');
+            if (changed) tr.classList.add('brm-changed');
             if (lowConfidence) tr.classList.add('brm-confidence-low');
+            tr.addEventListener('click', function(e) {
+                // Don't toggle when interacting with checkbox / synopsis links etc.
+                if (e.target.closest('input, a, .brm-expand-toggle')) return;
+                _brmToggleFieldSources(tr, f.key);
+            });
 
             var checkHtml = '';
             if (checkable) {
@@ -3787,7 +3867,8 @@
                     + _brmEsc(note) + '</small>';
             }
 
-            var labelHtml = (lowConfidence ? '<span class="brm-confidence-icon" title="Låg konfidans — granska detta fält">⚠</span>' : '')
+            var labelHtml = '<span class="expand-hint">▸</span>'
+                + (lowConfidence ? '<span class="brm-confidence-icon" title="Låg konfidans — granska detta fält">⚠</span>' : '')
                 + '<strong>' + _brmEsc(f.label) + '</strong>';
             tr.innerHTML =
                 '<td class="' + fieldCellCls + '">' + labelHtml + '</td>' +
@@ -3832,8 +3913,143 @@
     function closeBulkResultModal() {
         document.getElementById('bulkResultModal').style.display = 'none';
         _brmItemId = null;
+        _brmOverrides = {};
         var coverDiv = document.getElementById('brmCoverCompare');
         if (coverDiv) coverDiv.innerHTML = '';
+    }
+
+    function _brmCellPreview(text, fieldKey) {
+        if (!text) return _brmEsc('(tomt)');
+        if (fieldKey === 'description' && text.length > 200) {
+            return '<span class="brm-syn-preview">' + _brmEsc(text.substring(0, 200)) + '…</span>'
+                + '<span class="brm-syn-full" style="display:none;">' + _brmEsc(text) + '</span>'
+                + '<br><span class="brm-expand-toggle" onclick="_brmToggleSyn(this)">Visa hela</span>';
+        }
+        return _brmEsc(text);
+    }
+
+    function _brmToggleFieldSources(row, fieldKey) {
+        var existing = row.nextElementSibling;
+        if (existing && existing.classList.contains('brm-field-sources')) {
+            existing.remove();
+            row.classList.remove('brm-expanded');
+            return;
+        }
+        // Collapse any other open source panel first.
+        document.querySelectorAll('#brmBody tr.brm-field-sources').forEach(function(r) {
+            var prev = r.previousElementSibling;
+            if (prev) prev.classList.remove('brm-expanded');
+            r.remove();
+        });
+
+        var data = _bulkResultData[_brmItemId];
+        var candidates = (data && data.all_candidates) || [];
+        var currentValue = (_brmOverrides[fieldKey] !== undefined)
+            ? _brmOverrides[fieldKey]
+            : ((data && data.candidate && data.candidate[fieldKey]) || '');
+
+        var detail = document.createElement('tr');
+        detail.className = 'brm-field-sources';
+        var td = document.createElement('td');
+        td.colSpan = 4;
+        td.style.padding = '0';
+
+        var wrap = document.createElement('div');
+        wrap.className = 'field-sources-wrap';
+        var label = document.createElement('div');
+        label.className = 'field-sources-label';
+        label.textContent = 'Välj källa:';
+        wrap.appendChild(label);
+
+        var rendered = 0;
+        candidates.forEach(function(c, i) {
+            var value = (c[fieldKey] || '').toString();
+            if (!value) return;
+            rendered += 1;
+
+            var opt = document.createElement('div');
+            opt.className = 'source-option';
+            opt.dataset.field = fieldKey;
+            opt.dataset.value = value;
+            if (value === currentValue) opt.classList.add('source-option-selected');
+
+            var head = document.createElement('div');
+            head.innerHTML =
+                '<span class="source-option-source">' + _brmEsc(c.source || ('Källa ' + (i + 1))) + '</span>'
+                + '<span class="source-option-score">poäng ' + (c.score != null ? c.score : '–') + '</span>';
+            opt.appendChild(head);
+
+            var body = document.createElement('div');
+            body.className = 'source-option-value';
+            if (fieldKey === 'description' && value.length > 200) {
+                var shortSpan = document.createElement('span');
+                shortSpan.textContent = value.substring(0, 200) + '… ';
+                var fullSpan = document.createElement('span');
+                fullSpan.style.display = 'none';
+                fullSpan.textContent = value;
+                var toggle = document.createElement('a');
+                toggle.href = '#';
+                toggle.className = 'synopsis-toggle';
+                toggle.textContent = 'Visa mer';
+                toggle.addEventListener('click', function(ev) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    shortSpan.style.display = 'none';
+                    toggle.style.display = 'none';
+                    fullSpan.style.display = 'inline';
+                });
+                body.appendChild(shortSpan);
+                body.appendChild(toggle);
+                body.appendChild(fullSpan);
+            } else {
+                body.textContent = value;
+            }
+            opt.appendChild(body);
+
+            opt.addEventListener('click', function(ev) {
+                ev.stopPropagation();
+                _brmSelectSourceValue(fieldKey, opt, value);
+            });
+            wrap.appendChild(opt);
+        });
+
+        if (rendered === 0) {
+            var empty = document.createElement('div');
+            empty.className = 'source-option-empty';
+            empty.textContent = 'Inga källor har data för detta fält.';
+            wrap.appendChild(empty);
+        }
+
+        td.appendChild(wrap);
+        detail.appendChild(td);
+        row.parentNode.insertBefore(detail, row.nextSibling);
+        row.classList.add('brm-expanded');
+    }
+
+    function _brmSelectSourceValue(fieldKey, optEl, value) {
+        // Mark this option as selected within its panel.
+        var wrap = optEl.parentNode;
+        wrap.querySelectorAll('.source-option').forEach(function(o) {
+            o.classList.remove('source-option-selected');
+        });
+        optEl.classList.add('source-option-selected');
+
+        // Update the "Hämtat" cell in the field row above the source panel.
+        var detailRow = optEl.closest('tr.brm-field-sources');
+        var fieldRow = detailRow ? detailRow.previousElementSibling : null;
+        if (fieldRow) {
+            var fetchedCell = fieldRow.querySelector('td.brm-td-fetched');
+            if (fetchedCell) {
+                fetchedCell.classList.remove('brm-empty');
+                fetchedCell.innerHTML = _brmCellPreview(value, fieldKey);
+            }
+            // Auto-check the field's "use this" checkbox.
+            var cb = fieldRow.querySelector('.brm-check');
+            if (cb) cb.checked = true;
+            fieldRow.classList.add('brm-changed');
+        }
+
+        _brmOverrides[fieldKey] = value;
     }
 
     function saveBulkResult() {
@@ -3875,7 +4091,14 @@
             description:    before.description || ''
         };
         fields.forEach(function(f) {
-            if (f in payload) payload[f] = candidate[f] || '';
+            if (!(f in payload)) return;
+            // Per-field override from the source picker takes precedence over
+            // the auto-picked best candidate value.
+            if (Object.prototype.hasOwnProperty.call(_brmOverrides, f)) {
+                payload[f] = _brmOverrides[f];
+            } else {
+                payload[f] = candidate[f] || '';
+            }
         });
 
         var allIds = data.item_ids || [itemId];
