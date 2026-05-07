@@ -104,12 +104,18 @@
             background: var(--bg-primary);
             border-bottom: 1px solid var(--border-light);
             display: flex;
-            align-items: center;
-            padding: 12px 20px;
-            gap: 14px;
+            justify-content: center;
             position: sticky;
             top: 0;
             z-index: 50;
+        }
+        .topbar-inner {
+            width: 100%;
+            max-width: 1300px;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
         }
         .topbar-brand {
             display: flex;
@@ -663,6 +669,9 @@
             text-align: left;
             color: var(--text-primary);
         }
+        table#bookTable tbody td {
+            vertical-align: top;
+        }
         table#bookTable th {
             background: var(--bg-secondary);
             color: var(--text-secondary);
@@ -688,8 +697,8 @@
         table#bookTable tbody tr:hover { background: var(--bg-secondary); }
 
         .cover {
-            width: 40px;
-            height: 56px;
+            width: 80px;
+            height: 120px;
             background: var(--cover-placeholder);
             border-radius: 4px;
             overflow: hidden;
@@ -871,6 +880,7 @@
             border-radius: 8px;
             max-width: 900px;
             width: 90%;
+            min-height: 60vh;
             max-height: 90vh;
             overflow-y: auto;
             padding: 24px;
@@ -1098,6 +1108,80 @@
             padding: 4px 10px;
             font-size: 12px;
         }
+        .btn.ai-ghost {
+            background: transparent;
+            color: var(--accent-purple);
+            border: 1px solid var(--accent-purple);
+        }
+        .btn.ai-ghost:hover {
+            background: rgba(108, 92, 231, 0.08);
+        }
+        [data-theme="dark"] .btn.ai-ghost:hover {
+            background: rgba(124, 111, 240, 0.12);
+        }
+        .btn.btn-danger-outline {
+            background: transparent;
+            color: var(--accent-red);
+            border: 1px solid var(--accent-red);
+        }
+        .btn.btn-danger-outline:hover {
+            background: rgba(220, 53, 69, 0.08);
+        }
+        [data-theme="dark"] .btn.btn-danger-outline:hover {
+            background: rgba(255, 107, 107, 0.12);
+        }
+        /* Auto-apply read-only modal markers */
+        .auto-apply-info {
+            background: var(--bg-info);
+            color: var(--text-info);
+            border-radius: 6px;
+            padding: 10px 14px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .brm-aa-added td.brm-td-fetched {
+            background: var(--badge-ok-bg);
+            color: var(--text-primary);
+            border-left: 2px solid var(--accent-green);
+        }
+        .brm-aa-replaced td.brm-td-fetched {
+            background: var(--badge-warn-bg);
+            color: var(--text-primary);
+            border-left: 2px solid var(--accent-yellow);
+        }
+        .brm-aa-skipped td.brm-td-fetched { opacity: 0.55; }
+        .brm-aa-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .brm-aa-badge.added {
+            background: var(--badge-ok-bg);
+            color: var(--badge-ok-text);
+        }
+        .brm-aa-badge.replaced {
+            background: var(--badge-warn-bg);
+            color: var(--badge-warn-text);
+        }
+        .brm-aa-badge.skipped {
+            background: var(--bg-tertiary);
+            color: var(--text-tertiary);
+        }
+        .spin {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid currentColor;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin .6s linear infinite;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         /* Grouped view */
         .group-hidden { display: none !important; }
@@ -1120,6 +1204,13 @@
             color: #ffffff;
         }
         #groupToggle.active i { color: #ffffff; }
+        #groupToggle {
+            min-width: 80px;
+            min-height: 36px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
 
         /* Danger / delete buttons */
         .btn-danger {
@@ -1154,21 +1245,23 @@
 <body>
 
 <header class="topbar">
-    <a class="topbar-brand" href="{{ url_for('metadata.bulk_metadata') }}">
-        <img src="{{ url_for('static', filename='icons/colophon-transparent.png') }}" alt="Colophon">
-        <span>Colophon</span>
-    </a>
-    <div class="topbar-search">
-        <i class="ti ti-search search-icon"></i>
-        <input type="text" id="filterSearch" placeholder="Sök titel, författare, ISBN, genre..." oninput="applyFilters()">
-    </div>
-    <div class="topbar-actions">
-        <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="Byt tema">
-            <i id="themeIcon" class="ti ti-sun"></i>
-        </button>
-        <a class="topbar-btn icon-only" href="{{ url_for('settings.ai_settings') }}" title="Inställningar">
-            <i class="ti ti-settings"></i>
+    <div class="topbar-inner">
+        <a class="topbar-brand" href="{{ url_for('metadata.bulk_metadata') }}">
+            <img src="{{ url_for('static', filename='icons/colophon-transparent.png') }}" alt="Colophon">
+            <span>Colophon</span>
         </a>
+        <div class="topbar-search">
+            <i class="ti ti-search search-icon"></i>
+            <input type="text" id="filterSearch" placeholder="Sök titel, författare, ISBN, genre..." oninput="applyFilters()">
+        </div>
+        <div class="topbar-actions">
+            <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="Byt tema">
+                <i id="themeIcon" class="ti ti-sun"></i>
+            </button>
+            <a class="topbar-btn icon-only" href="{{ url_for('settings.ai_settings') }}" title="Inställningar">
+                <i class="ti ti-settings"></i>
+            </a>
+        </div>
     </div>
 </header>
 
@@ -1321,7 +1414,7 @@
 
             <div class="btn-group">
                 <button class="filter-btn" type="button" onclick="selectAllBooks()">Alla</button>
-                <button class="filter-btn" type="button" onclick="selectMissingBooks()">Saknade</button>
+                <button class="filter-btn" type="button" onclick="selectMissingBooks()">Saknar metadata</button>
                 <button class="filter-btn" type="button" onclick="clearSelection()">Inga</button>
             </div>
 
@@ -1343,8 +1436,8 @@
             <table id="bookTable">
                 <thead>
                     <tr>
-                        <th style="width:36px;">Välj</th>
-                        <th style="width:60px;">Omslag</th>
+                        <th style="width:36px;"><input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll(this)" title="Markera alla/inga"></th>
+                        <th style="width:96px;">Omslag</th>
                         <th data-sort="title">Bok <span class="sort-icon">▲</span></th>
                         <th data-sort="author">Författare <span class="sort-icon"></span></th>
                         <th data-sort="genres">Genre <span class="sort-icon"></span></th>
@@ -1527,13 +1620,10 @@
             </details>
         </div>
         <div class="modal-actions">
-            <button type="button" class="btn" id="modalFetchBtn" onclick="fetchMetadata()">Hämta metadata</button>
-            <button type="button" class="btn purple" id="modalAiBtn" onclick="fetchAiMetadata()" style="display:none;">Fråga AI</button>
-            <button type="button" class="btn-danger" onclick="confirmDeleteBook()" title="Radera bok">
-                <i class="ti ti-trash"></i> Radera
-            </button>
+            <button type="button" class="btn primary" id="modalFetchBtn" onclick="fetchMetadata()"><i class="ti ti-search"></i> Hämta metadata</button>
+            <button type="button" class="btn ai-ghost" id="modalAiBtn" onclick="fetchAiMetadata()" style="display:none;"><i class="ti ti-sparkles"></i> Fråga AI</button>
             <div class="spacer"></div>
-            <button type="button" class="btn primary" onclick="saveMetadata()">Spara</button>
+            <button type="button" class="btn outline" id="modalSaveBtn" onclick="saveMetadata()">Spara</button>
             <button type="button" class="btn ghost" onclick="closeBookModal()">Avbryt</button>
         </div>
     </div>
@@ -1610,7 +1700,12 @@
 
         <!-- Progress (dold tills sökning startar) -->
         <div id="batchProgress" style="display:none;">
-            <div id="batchProgressTitle" style="font-weight:500; margin-bottom:4px;">Söker metadata…</div>
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+                <div id="batchProgressTitle" style="font-weight:500; flex:1;">Söker metadata…</div>
+                <button type="button" class="btn btn-danger-outline" id="batchAbortBtn" onclick="abortBatchSearch()">
+                    <i class="ti ti-x"></i> Avbryt sökning
+                </button>
+            </div>
             <div id="batchProgressSub" class="hint" style="margin-bottom:8px;"></div>
             <div class="hint" style="font-size:12px; margin-bottom:8px;">
                 Poäng:
@@ -1652,8 +1747,9 @@
         <h2 id="brmTitle" style="margin-top:0;"></h2>
         <div id="brmFeedback" class="modal-feedback" style="display:none;"></div>
         <div id="brmMeta" style="font-size:13px; color:var(--text-secondary); margin-bottom:14px;"></div>
+        <div id="brmAutoApplyInfo" class="auto-apply-info" style="display:none;"></div>
         <table class="brm-table">
-            <thead>
+            <thead id="brmHead">
                 <tr>
                     <th style="width:18%;">Fält</th>
                     <th style="width:36%;" class="brm-th-current">📋 Nuvarande</th>
@@ -1664,7 +1760,7 @@
             <tbody id="brmBody"></tbody>
         </table>
         <div class="modal-actions">
-            <button type="button" class="btn primary" onclick="saveBulkResult()">Spara valda</button>
+            <button type="button" class="btn primary" id="brmSaveBtn" onclick="saveBulkResult()">Spara valda</button>
             <button type="button" class="btn ghost" onclick="closeBulkResultModal()">Stäng</button>
         </div>
     </div>
@@ -1774,6 +1870,18 @@
     }
     function clearSelection() {
         document.querySelectorAll('.book-checkbox').forEach(function(box) { box.checked = false; });
+        updateSelectedCount();
+        updateBatchBar();
+    }
+    function toggleSelectAll(master) {
+        var rows = document.querySelectorAll('#bookTableBody tr');
+        rows.forEach(function(row) {
+            if (row.style.display !== 'none') {
+                var cb = row.querySelector('input[type="checkbox"]');
+                if (cb) cb.checked = master.checked;
+            }
+        });
+        _syncGroupChildrenFromParents();
         updateSelectedCount();
         updateBatchBar();
     }
@@ -1922,6 +2030,9 @@
         if (!(e.target && e.target.classList && e.target.classList.contains('book-checkbox'))) {
             return;
         }
+        // Uncheck select-all when any row checkbox changes
+        var selectAll = document.getElementById('selectAllCheckbox');
+        if (selectAll && !e.target.checked) selectAll.checked = false;
         // In grouped view, toggling the parent's checkbox should mirror to
         // every (hidden) child format so the SSE submit picks them all up.
         if (_grouped) {
@@ -2385,6 +2496,77 @@
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
+    var _applyFieldLabels = {
+        title: 'Titel', author: 'Författare', description: 'Synopsis',
+        isbn: 'ISBN', publisher: 'Förlag', series: 'Serie',
+        series_index: 'Del', language: 'Språk', genres: 'Genre',
+        cover: 'Omslag'
+    };
+    function _applyFieldLabel(f) {
+        return _applyFieldLabels[f] || f;
+    }
+
+    function _resultLabel(d) {
+        if (d.classification === 'auto_apply') {
+            var details = d.apply_details || {};
+            var added = details.fields_added || [];
+            var replaced = details.fields_replaced || [];
+            if (added.length === 0 && replaced.length === 0) {
+                return '<span class="bp-skip">— Inga ändringar</span>';
+            }
+            var parts = [];
+            if (added.length > 0) parts.push('Lade till ' + added.length + ' fält');
+            if (replaced.length > 0) parts.push('ersatte ' + replaced.length);
+            var cls = replaced.length > 0 ? 'bp-warn' : 'bp-ok';
+            return '<span class="' + cls + '">✓ ' + parts.join(', ') + '</span>';
+        }
+        var labels = {
+            'review_needed': '<span class="bp-warn">👁 Granska</span>',
+            'no_match':      '<span class="bp-fail">✗ Ingen träff</span>',
+            'skipped':       '<span class="bp-skip">⏭ Hoppad</span>',
+            'source_error':  '<span class="bp-fail">⚠ Källfel</span>'
+        };
+        return labels[d.classification] || _esc(d.classification || '');
+    }
+
+    function _resultTooltip(d) {
+        if (d.classification !== 'auto_apply') return '';
+        var details = d.apply_details || {};
+        var added = details.fields_added || [];
+        var replaced = details.fields_replaced || [];
+        var skipped = details.fields_skipped || [];
+
+        var lines = [];
+        if (added.length) lines.push('Lade till: ' + added.map(_applyFieldLabel).join(', '));
+        if (replaced.length) lines.push('Ersatte (bättre kvalitet): ' + replaced.map(_applyFieldLabel).join(', '));
+        if (skipped.length) lines.push('Behöll befintliga: ' + skipped.map(_applyFieldLabel).join(', '));
+        if (lines.length === 0) {
+            lines.push('Boken hade redan all metadata — inget ändrades.');
+        }
+        return lines.join('\n');
+    }
+
+    function abortBatchSearch() {
+        var btn = document.getElementById('batchAbortBtn');
+        fetch('/metadata/abort', {method: 'POST'}).catch(function(){});
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spin"></span> Avbryter…';
+        }
+    }
+    function _resetBatchAbortBtn() {
+        var btn = document.getElementById('batchAbortBtn');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ti ti-x"></i> Avbryt sökning';
+            btn.style.display = '';
+        }
+    }
+    function _hideBatchAbortBtn() {
+        var btn = document.getElementById('batchAbortBtn');
+        if (btn) btn.style.display = 'none';
+    }
+
     function startBatchSearch() {
         if (!window.EventSource) { alert('Din webbläsare stöder inte SSE.'); return; }
 
@@ -2410,6 +2592,7 @@
         var titleEl = document.getElementById('batchProgressTitle');
         body.innerHTML = '';
         titleEl.textContent = 'Söker metadata…';
+        _resetBatchAbortBtn();
 
         var counts = { saved: 0, review: 0, done: 0 };
         var source = new EventSource(url);
@@ -2484,6 +2667,7 @@
                     quality_notes: d.quality_notes || {},
                     item_ids: d.item_ids || [d.item_id],
                     source_details: d.source_details || _sourceDetails[d.item_id] || [],
+                    apply_details: d.apply_details || null,
                 };
                 if (d.source_details && d.source_details.length > 0) {
                     _sourceDetails[d.item_id] = d.source_details;
@@ -2544,19 +2728,18 @@
 
                 var resultCell = document.getElementById('bp-result-' + d.item_id);
                 if (resultCell) {
-                    var labels = {
-                        'auto_apply':    '<span class="bp-ok">✓ Sparad</span>',
-                        'review_needed': '<span class="bp-warn">👁 Granska</span>',
-                        'no_match':      '<span class="bp-fail">✗ Ingen träff</span>',
-                        'skipped':       '<span class="bp-skip">⏭ Hoppad</span>',
-                        'source_error':  '<span class="bp-fail">⚠ Källfel</span>'
-                    };
-                    resultCell.innerHTML = labels[d.classification] || d.classification;
+                    var label = _resultLabel(d);
+                    var tip = _resultTooltip(d);
+                    resultCell.innerHTML = tip
+                        ? '<span title="' + _esc(tip) + '">' + label + '</span>'
+                        : label;
                 }
 
                 if (d.classification !== 'skipped') {
                     tr.style.cursor = 'pointer';
-                    tr.title = 'Klicka för att jämföra och spara fält';
+                    tr.title = d.classification === 'auto_apply'
+                        ? 'Klicka för att se vad som lades till'
+                        : 'Klicka för att jämföra och spara fält';
                     (function(itemId) { tr.onclick = function() { openBulkResultModal(itemId); }; })(d.item_id);
                 }
 
@@ -2570,6 +2753,7 @@
 
             } else if (d.type === 'done') {
                 source.close();
+                _hideBatchAbortBtn();
                 titleEl.textContent = 'Metadatasökning klar';
                 var s = d.summary || {};
                 var parts = [];
@@ -2583,8 +2767,26 @@
                 document.getElementById('batchResultSummary').innerHTML =
                     summary + ' <button type="button" class="btn ghost btn-sm" style="margin-left:8px;" onclick="location.reload()">Ladda om</button>';
 
+            } else if (d.type === 'aborted') {
+                source.close();
+                _hideBatchAbortBtn();
+                var processed = d.processed || 0;
+                titleEl.textContent = 'Sökning avbruten — '
+                    + processed + ' bok' + (processed !== 1 ? 'er' : '') + ' bearbetade';
+                var s = d.summary || {};
+                var parts = [];
+                if (s.updated) parts.push(s.updated + ' sparade');
+                if (s.review_needed) parts.push(s.review_needed + ' granskning');
+                if (s.no_match) parts.push(s.no_match + ' ingen träff');
+                if (s.source_errors) parts.push(s.source_errors + ' källfel');
+                document.getElementById('batchResult').style.display = 'block';
+                document.getElementById('batchResultSummary').innerHTML =
+                    'Avbruten. ' + (parts.join(' · ') || 'Inget hann bearbetas.')
+                    + ' <button type="button" class="btn ghost btn-sm" style="margin-left:8px;" onclick="location.reload()">Ladda om</button>';
+
             } else if (d.type === 'error') {
                 source.close();
+                _hideBatchAbortBtn();
                 titleEl.textContent = 'Fel: ' + (d.message || 'okänt fel');
                 document.getElementById('batchActions').style.display = 'flex';
             }
@@ -2592,6 +2794,7 @@
 
         source.onerror = function() {
             source.close();
+            _hideBatchAbortBtn();
             titleEl.textContent = 'Anslutningen bröts.';
             document.getElementById('batchActions').style.display = 'flex';
         };
@@ -2817,6 +3020,36 @@
         }
     }
 
+    var _fetchBtnOrigHTML = '<i class="ti ti-search"></i> Hämta metadata';
+
+    function _setFetchingState(fetching) {
+        var btn = document.getElementById('modalFetchBtn');
+        if (!btn) return;
+        if (fetching) {
+            btn.dataset.fetching = '1';
+            btn.disabled = false;
+            btn.classList.remove('primary');
+            btn.classList.add('btn-danger-outline');
+            btn.innerHTML = '<i class="ti ti-x"></i> Avbryt';
+            btn.onclick = abortMetadata;
+        } else {
+            delete btn.dataset.fetching;
+            btn.classList.remove('btn-danger-outline');
+            btn.classList.add('primary');
+            btn.innerHTML = _fetchBtnOrigHTML;
+            btn.onclick = fetchMetadata;
+        }
+    }
+
+    function abortMetadata() {
+        var btn = document.getElementById('modalFetchBtn');
+        fetch('/metadata/abort', {method: 'POST'}).catch(function(){});
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spin"></span> Avbryter…';
+        }
+    }
+
     function fetchMetadata() {
         var id = _modalItemId;
         var selectedFields = _getSelectedFields();
@@ -2829,12 +3062,14 @@
 
         if (!window.EventSource) {
             setModalFeedback('info', 'Hämtar metadata…');
+            _setFetchingState(true);
             _setModalBusy(true);
             var url = '/metadata/' + id + '/fetch-json'
                 + '?smart_replace=' + encodeURIComponent(smartReplace.join(','));
             fetch(url, { method: 'POST' })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
+                    _setFetchingState(false);
                     _setModalBusy(false);
                     if (!data.ok) {
                         var msg = data.error === 'no_match' ? 'Inga säkra träffar hittades.' : 'Fel: ' + data.error;
@@ -2846,12 +3081,14 @@
                     setModalFeedback('success', 'Metadata hämtad' + src + '. Granska och spara.');
                 })
                 .catch(function() {
+                    _setFetchingState(false);
                     _setModalBusy(false);
                     setModalFeedback('error', 'Hämtning misslyckades.');
                 });
             return;
         }
 
+        _setFetchingState(true);
         _setModalBusy(true);
         progressEl.style.display = 'block';
         progressEl.innerHTML =
@@ -2937,8 +3174,18 @@
                 }
             }
 
+            if (d.type === 'aborted') {
+                sseSource.close();
+                _setFetchingState(false);
+                _setModalBusy(false);
+                progressEl.style.display = 'none';
+                setModalFeedback('info', 'Sökning avbruten.');
+                return;
+            }
+
             if (d.type === 'book_done') {
                 sseSource.close();
+                _setFetchingState(false);
                 _setModalBusy(false);
                 var itemId = d.item_id;
 
@@ -2957,13 +3204,11 @@
 
                 var resultCell = document.getElementById('mp-result-' + itemId);
                 if (resultCell) {
-                    var resMap = {
-                        'auto_apply':    '<span class="bp-ok">✓ Sparad</span>',
-                        'review_needed': '<span class="bp-warn">👁 Granska</span>',
-                        'no_match':      '<span class="bp-fail">✗ Ingen träff</span>',
-                        'source_error':  '<span class="bp-fail">⚠ Källfel</span>'
-                    };
-                    resultCell.innerHTML = resMap[d.classification] || '<span class="bp-skip">—</span>';
+                    var label = _resultLabel(d);
+                    var tip = _resultTooltip(d);
+                    resultCell.innerHTML = tip
+                        ? '<span title="' + _esc(tip) + '">' + label + '</span>'
+                        : label;
                 }
 
                 var header = progressEl.querySelector('div:first-child');
@@ -2979,6 +3224,7 @@
         };
         sseSource.onerror = function() {
             sseSource.close();
+            _setFetchingState(false);
             _setModalBusy(false);
             progressEl.style.display = 'none';
             setModalFeedback('error', 'Sökningen misslyckades.');
@@ -3185,8 +3431,14 @@
         el.className = 'modal-feedback';
     }
     function _setModalBusy(busy) {
-        document.getElementById('modalFetchBtn').disabled = busy;
-        document.getElementById('modalAiBtn').disabled    = busy;
+        var fetchBtn = document.getElementById('modalFetchBtn');
+        // While the fetch button is in "Avbryt" mode it must stay clickable.
+        if (fetchBtn && fetchBtn.dataset.fetching !== '1') {
+            fetchBtn.disabled = busy;
+        }
+        document.getElementById('modalAiBtn').disabled = busy;
+        var saveBtn = document.getElementById('modalSaveBtn');
+        if (saveBtn) saveBtn.disabled = busy;
     }
     function _fmtBytes(b) {
         if (b < 1024)    return b + ' B';
@@ -3298,6 +3550,11 @@
         document.getElementById('brmFeedback').style.display = 'none';
 
         var data = _bulkResultData[itemId];
+        var infoEl = document.getElementById('brmAutoApplyInfo');
+        var saveBtn = document.getElementById('brmSaveBtn');
+        if (infoEl) infoEl.style.display = 'none';
+        if (saveBtn) saveBtn.style.display = '';
+
         if (!data) {
             document.getElementById('brmTitle').textContent = 'Inget resultat';
             document.getElementById('brmMeta').textContent = '';
@@ -3306,14 +3563,48 @@
             return;
         }
 
-        document.getElementById('brmTitle').textContent = data.title || 'Bok';
+        var isAutoApply = data.classification === 'auto_apply';
+
+        document.getElementById('brmTitle').textContent = isAutoApply
+            ? '✓ Metadata lades till automatiskt'
+            : (data.title || 'Bok');
         var metaParts = [];
+        if (isAutoApply && data.title) metaParts.push(data.title);
         if (data.source) metaParts.push('Källa: ' + data.source);
         if (data.score !== null && data.score !== undefined) {
             metaParts.push('Poäng: ' + Math.round(data.score));
         }
         metaParts.push(_brmClassLabel(data.classification));
         document.getElementById('brmMeta').textContent = metaParts.join(' · ');
+
+        if (isAutoApply) {
+            if (saveBtn) saveBtn.style.display = 'none';
+            var details = data.apply_details || {};
+            var added = details.fields_added || [];
+            var replaced = details.fields_replaced || [];
+            var skipped = details.fields_skipped || [];
+            var lines = [];
+            if (added.length === 0 && replaced.length === 0 && skipped.length === 0) {
+                lines.push('ℹ Inga ändringar — boken hade redan all metadata.');
+            } else {
+                lines.push('ℹ Befintliga fält behölls. Bara tomma fält fylldes i.');
+                if (replaced.length) {
+                    var qNotes = data.quality_notes || {};
+                    var noted = [];
+                    replaced.forEach(function(f) {
+                        if (qNotes[f]) {
+                            noted.push(_applyFieldLabel(f) + ' ersattes — ' + qNotes[f] + '.');
+                        }
+                    });
+                    if (noted.length) lines = lines.concat(noted);
+                    else lines.push(replaced.length + ' fält ersattes pga bättre kvalitet.');
+                }
+            }
+            if (infoEl) {
+                infoEl.style.display = 'block';
+                infoEl.innerHTML = lines.map(function(l) { return _brmEsc(l); }).join('<br>');
+            }
+        }
 
         // Cover compare row — current (DB) vs. fetched (external URL)
         var beforeCoverPath = (data.before && data.before.cover_path) || '';
@@ -3380,6 +3671,7 @@
             var isSynopsis = f.key === 'description';
 
             var tr = document.createElement('tr');
+            tr.dataset.field = f.key;
             if (changed) tr.className = 'brm-changed';
 
             var checkHtml = '';
@@ -3420,20 +3712,35 @@
             tbody.appendChild(tr);
         });
 
-        if (data.classification === 'auto_apply') {
-            var allSame = fields.every(function(f) {
-                return (before[f.key] || '').toString().trim() === (after[f.key] || '').toString().trim();
+        if (isAutoApply) {
+            var formatCount = (data.item_ids || [itemId]).length;
+            document.getElementById('brmMeta').textContent +=
+                ' — Sparat till ' + formatCount + ' format.';
+            var details2 = data.apply_details || {};
+            var addedSet = {};
+            (details2.fields_added || []).forEach(function(f) { addedSet[f] = 1; });
+            var replacedSet = {};
+            (details2.fields_replaced || []).forEach(function(f) { replacedSet[f] = 1; });
+            var skippedSet = {};
+            (details2.fields_skipped || []).forEach(function(f) { skippedSet[f] = 1; });
+
+            tbody.querySelectorAll('tr').forEach(function(tr) {
+                var key = tr.dataset.field;
+                var pickCell = tr.querySelector('.brm-td-pick');
+                if (!pickCell) return;
+                if (addedSet[key]) {
+                    tr.classList.add('brm-aa-added');
+                    pickCell.innerHTML = '<span class="brm-aa-badge added">Nytt</span>';
+                } else if (replacedSet[key]) {
+                    tr.classList.add('brm-aa-replaced');
+                    pickCell.innerHTML = '<span class="brm-aa-badge replaced">Ersatt</span>';
+                } else if (skippedSet[key]) {
+                    tr.classList.add('brm-aa-skipped');
+                    pickCell.innerHTML = '<span class="brm-aa-badge skipped">Behölls</span>';
+                } else {
+                    pickCell.innerHTML = '';
+                }
             });
-            if (allSame) {
-                var formatCount = (data.item_ids || [itemId]).length;
-                var formatLabel = formatCount === 1 ? 'format' : 'format';
-                document.getElementById('brmMeta').textContent +=
-                    ' — Metadata sparades automatiskt till ' + formatCount + ' ' + formatLabel + '.';
-                tbody.querySelectorAll('.brm-check').forEach(function(cb) {
-                    cb.checked = false;
-                    cb.disabled = true;
-                });
-            }
         }
     }
 
