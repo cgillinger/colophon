@@ -19,6 +19,7 @@ class LibraryItem(db.Model):
     publisher = db.Column(db.String(500), nullable=True)
     language = db.Column(db.String(100), nullable=True)
     genres = db.Column(db.Text, nullable=True)
+    published_date = db.Column(db.String(20), nullable=True)
 
     file_path = db.Column(db.String(2000), nullable=False, unique=True)
     file_name = db.Column(db.String(500), nullable=False)

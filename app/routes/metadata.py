@@ -155,6 +155,7 @@ _ENRICHMENT_FIELDS = [
     ("series", "Serie"),
     ("series_index", "Del"),
     ("genres", "Genre"),
+    ("published_date", "Publiceringsdatum"),
 ]
 
 
@@ -209,6 +210,7 @@ def metadata_item(item_id):
         language = request.form.get("language", "").strip()
         description = clean_text(request.form.get("description", ""))
         genres = request.form.get("genres", "").strip()
+        published_date = request.form.get("published_date", "").strip()[:20]
 
         if not title:
             flash("Titel får inte vara tom.", "error")
@@ -223,6 +225,7 @@ def metadata_item(item_id):
         item.language = language or None
         item.description = description or None
         item.genres = genres or None
+        item.published_date = published_date or None
         item.group_key = compute_group_key(item.title or "", item.author or "")
 
         uploaded_cover = request.files.get("cover")
@@ -273,6 +276,8 @@ def metadata_item(item_id):
             written_text["description"] = description
         if genres:
             written_text["genres"] = genres
+        if published_date:
+            written_text["published_date"] = published_date
         write_result = write_metadata_to_file(item, written_text, cover_to_embed)
 
         db.session.commit()
@@ -612,6 +617,30 @@ def bulk_metadata():
         )
     ).count()
 
+    from sqlalchemy import func
+    raw_counts = (
+        db.session.query(
+            func.lower(LibraryItem.extension),
+            func.count(),
+        )
+        .group_by(func.lower(LibraryItem.extension))
+        .all()
+    )
+    format_counts = {}
+    for ext, count in raw_counts:
+        if not ext:
+            continue
+        label = ext.lstrip(".").upper() or "OKÄNT"
+        format_counts[label] = format_counts.get(label, 0) + count
+    format_counts = dict(sorted(format_counts.items()))
+
+    missing_cover_count = LibraryItem.query.filter(
+        db.or_(
+            LibraryItem.cover_path.is_(None),
+            LibraryItem.cover_path == "",
+        )
+    ).count()
+
     return render_template(
         "bulk_metadata.html",
         items=items,
@@ -619,6 +648,8 @@ def bulk_metadata():
         summary=summary,
         total_count=total_count,
         missing_count=missing_count,
+        format_counts=format_counts,
+        missing_cover_count=missing_cover_count,
     )
 
 
@@ -736,6 +767,7 @@ def bulk_stream():
                         "language": it.language or "",
                         "genres": it.genres or "",
                         "description": it.description or "",
+                        "published_date": it.published_date or "",
                         "cover_path": it.cover_path or "",
                     }
 
@@ -856,6 +888,7 @@ def bulk_stream():
                     rep_author = rep_before.get("author", "")
                     for field_name in (
                         "title", "author", "isbn", "publisher", "genres", "description",
+                        "published_date",
                     ):
                         existing = rep_before.get(field_name, "")
                         fetched_val = fetched_payload.get(field_name, "")
@@ -1232,6 +1265,7 @@ _AI_PREVIEW_FIELDS = [
     ("publisher", "Förlag"),
     ("genres", "Genre"),
     ("description", "Synopsis"),
+    ("published_date", "Publiceringsdatum"),
 ]
 
 _AI_DISPLAY_ONLY: set = set()
@@ -1366,6 +1400,7 @@ def metadata_json(item_id):
         "language": item.language or "",
         "description": item.description or "",
         "genres": item.genres or "",
+        "published_date": item.published_date or "",
         "file_name": item.file_name,
         "extension": item.extension,
         "size_bytes": item.size_bytes,
@@ -1395,11 +1430,15 @@ def save_metadata_json(item_id):
     item.language = (data.get("language") or "").strip() or None
     item.description = clean_text(data.get("description") or "") or None
     item.genres = (data.get("genres") or "").strip() or None
+    item.published_date = (data.get("published_date") or "").strip()[:20] or None
     item.manual_metadata = True
     item.group_key = compute_group_key(item.title or "", item.author or "")
 
     written_text = {}
-    for field in ("title", "author", "series", "series_index", "isbn", "publisher", "language", "description", "genres"):
+    for field in (
+        "title", "author", "series", "series_index", "isbn", "publisher",
+        "language", "description", "genres", "published_date",
+    ):
         val = getattr(item, field)
         if val:
             written_text[field] = val
@@ -1534,6 +1573,7 @@ def fetch_metadata_json(item_id):
                 "series": _txt(best.get("series")),
                 "series_index": _txt(best.get("series_index")),
                 "genres": _txt(best.get("genres")),
+                "published_date": _txt(best.get("published_date"))[:20],
             },
             "score": best_score,
             "source": best.get("source", ""),

@@ -36,6 +36,9 @@ Publisher: {publisher}
 Language: {language}
 Description: {description}
 
+For publication_date, return the original release year (or "YYYY-MM" / "YYYY-MM-DD" if you are confident).
+Do not guess — return null if you don't know.
+
 Return this JSON shape:
 {{
   "series": {{ "value": string|null, "confidence": "high"|"medium"|"low", "reason": string }},
@@ -45,12 +48,14 @@ Return this JSON shape:
   "description": {{ "value": string|null, "confidence": "high"|"medium"|"low", "reason": string }},
   "title": {{ "value": string|null, "confidence": "high"|"medium"|"low", "reason": string }},
   "authors": {{ "value": array|null, "confidence": "high"|"medium"|"low", "reason": string }},
-  "publisher": {{ "value": string|null, "confidence": "high"|"medium"|"low", "reason": string }}
+  "publisher": {{ "value": string|null, "confidence": "high"|"medium"|"low", "reason": string }},
+  "publication_date": {{ "value": string|null, "confidence": "high"|"medium"|"low", "reason": string }}
 }}"""
 
 _KNOWN_FIELDS = {
     "series", "series_index", "language", "subjects",
     "description", "title", "authors", "publisher",
+    "publication_date",
 }
 
 # Map UI/DB field names to AI prompt field names. Fields mapped to None
@@ -65,6 +70,7 @@ _FIELD_MAP = {
     "language": "language",
     "description": "description",
     "genres": "subjects",
+    "published_date": "publication_date",
 }
 
 
@@ -248,6 +254,12 @@ def fetch_ai_suggestions(item: LibraryItem, fields=None) -> dict:
         elif field == "series_index":
             suggestions["series_index"] = {
                 "value": str(value),
+                "confidence": confidence,
+                "reason": reason,
+            }
+        elif field == "publication_date":
+            suggestions["published_date"] = {
+                "value": str(value)[:20],
                 "confidence": confidence,
                 "reason": reason,
             }

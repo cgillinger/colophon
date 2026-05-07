@@ -19,6 +19,7 @@ _TEXT_FIELDS = (
     "language",
     "description",
     "genres",
+    "published_date",
 )
 
 _FILE_WRITABLE_EXTS = {".epub", ".mobi", ".azw3", ".kepub"}
@@ -247,6 +248,8 @@ def write_metadata_to_file(item, written_text, cover_path):
         args += ["--series", written_text["series"]]
     if "series_index" in written_text:
         args += ["--index", written_text["series_index"]]
+    if "published_date" in written_text:
+        args += ["--date", written_text["published_date"]]
     if cover_path and os.path.exists(cover_path):
         args += ["--cover", cover_path]
 

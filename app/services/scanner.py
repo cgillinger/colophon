@@ -138,6 +138,7 @@ def extract_local_metadata(file_path, cover_dir=None) -> dict:
         "title": "", "author": "", "description": "",
         "isbn": "", "publisher": "", "language": "",
         "series": "", "series_index": "", "genres": "",
+        "published_date": "",
         "cover_path": None,
         "source": "filename", "quality": "minimal", "warnings": warnings,
     }
@@ -197,6 +198,15 @@ def _extract_epub_metadata(file_path, cover_dir, warnings: list) -> dict:
     publisher = _first_metadata_value(book, "DC", "publisher")
     language = _first_metadata_value(book, "DC", "language")
 
+    published_date = ""
+    try:
+        dates = book.get_metadata("DC", "date") or []
+        if dates:
+            raw_date = (dates[0][0] or "").strip()
+            published_date = raw_date[:20]
+    except Exception:
+        logger.debug("Kunde inte läsa dc:date", exc_info=True)
+
     genres = ""
     try:
         subjects = book.get_metadata("DC", "subject") or []
@@ -229,6 +239,7 @@ def _extract_epub_metadata(file_path, cover_dir, warnings: list) -> dict:
         "series": "",
         "series_index": "",
         "genres": genres,
+        "published_date": published_date,
         "cover_path": cover_path,
         "source": "ebooklib",
     }
@@ -246,6 +257,7 @@ def _extract_ebook_meta_metadata(file_path, warnings: list) -> dict:
         warnings.append("ebook-meta returnerade inga fält.")
         return {"source": "filename"}
 
+    pub = (fields.get("published") or fields.get("publishing date") or "").strip()
     return {
         "title": fields.get("title") or "",
         "author": fields.get("author(s)") or "",
@@ -256,6 +268,7 @@ def _extract_ebook_meta_metadata(file_path, warnings: list) -> dict:
         "series": "",
         "series_index": "",
         "genres": fields.get("tags") or "",
+        "published_date": pub[:20],
         "cover_path": None,
         "source": "ebook-meta",
     }
@@ -311,6 +324,8 @@ def upsert_library_item(file_path, metadata: dict, existing=None, db_session=Non
                 existing.series_index = metadata["series_index"]
             if metadata.get("genres"):
                 existing.genres = metadata["genres"]
+            if metadata.get("published_date"):
+                existing.published_date = metadata["published_date"]
             if metadata.get("cover_path") and not existing.cover_locked:
                 existing.cover_path = metadata["cover_path"]
 
@@ -334,6 +349,7 @@ def upsert_library_item(file_path, metadata: dict, existing=None, db_session=Non
         series=metadata.get("series") or None,
         series_index=metadata.get("series_index") or None,
         genres=metadata.get("genres") or None,
+        published_date=metadata.get("published_date") or None,
         cover_path=metadata.get("cover_path"),
         file_path=absolute_path,
         file_name=file_path.name,

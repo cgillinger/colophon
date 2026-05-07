@@ -150,6 +150,8 @@ def result_from_google_volume(volume):
     else:
         genres = clean_text(categories)
 
+    published_date = clean_text(info.get("publishedDate", ""))[:20]
+
     result = {
         "source": "Google Books API",
         "title": title,
@@ -162,6 +164,7 @@ def result_from_google_volume(volume):
         "series_index": "",
         "cover_url": google_books_image_url(info.get("imageLinks", {})),
         "genres": genres,
+        "published_date": published_date,
     }
 
     fields_found = []
@@ -172,6 +175,7 @@ def result_from_google_volume(volume):
     if result["publisher"]: fields_found.append("publisher")
     if result["cover_url"]: fields_found.append("cover")
     if result["genres"]: fields_found.append("genres")
+    if result["published_date"]: fields_found.append("published_date")
     result["fields_found"] = fields_found
 
     return result
