@@ -203,7 +203,7 @@ def _extract_epub_metadata(file_path, cover_dir, warnings: list) -> dict:
         dates = book.get_metadata("DC", "date") or []
         if dates:
             raw_date = (dates[0][0] or "").strip()
-            published_date = raw_date[:20]
+            published_date = raw_date[:10] if len(raw_date) >= 10 else raw_date
     except Exception:
         logger.debug("Kunde inte läsa dc:date", exc_info=True)
 
