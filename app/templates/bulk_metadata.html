@@ -824,7 +824,11 @@
             font-size: 12px;
             text-transform: uppercase;
         }
+        #batchProgressTable tbody tr:nth-child(even) { background: var(--bg-secondary); }
         .bp-active { background: var(--bg-secondary); }
+        .bp-score-strong { box-shadow: inset 3px 0 0 var(--accent-green); }
+        .bp-score-likely  { box-shadow: inset 3px 0 0 var(--accent-yellow, #f59e0b); }
+        .bp-score-weak    { box-shadow: inset 3px 0 0 var(--accent-red, #ef4444); }
 
         /* Per-source detail (expanded) */
         .bp-source-detail {
@@ -2051,7 +2055,7 @@
             <div style="margin-bottom:16px;">Valda böcker: <strong id="batchBookCount">0</strong></div>
 
             <div style="margin-top:16px;">
-                <div class="batch-field-group-label">Textfält</div>
+                <div class="batch-field-group-label">Grunduppgifter</div>
                 <div class="batch-field-checks">
                     <label class="field-check"><input type="checkbox" class="bw-field" value="title"> Titel</label>
                     <label class="field-check"><input type="checkbox" class="bw-field" value="author"> Författare</label>
@@ -2063,13 +2067,12 @@
                     <label class="field-check"><input type="checkbox" class="bw-field" value="published_date" checked> Publiceringsdatum</label>
                 </div>
 
-                <div class="batch-field-group-label" style="margin-top:12px;">Långtext</div>
+                <div class="batch-field-group-label" style="margin-top:12px;">Beskrivning</div>
                 <div class="batch-field-checks">
                     <label class="field-check"><input type="checkbox" class="bw-field" value="description" checked> Synopsis</label>
                 </div>
 
-                <div class="batch-field-group-label" style="margin-top:12px;">Visuellt</div>
-                <div class="batch-field-checks">
+                <div class="batch-field-checks" style="margin-top:12px;">
                     <label class="field-check"><input type="checkbox" class="bw-field" value="cover" checked> Omslag</label>
                 </div>
 
@@ -2098,12 +2101,10 @@
                 </div>
                 <div id="batchProgressSub" class="hint" style="margin-bottom:8px;"></div>
                 <div class="hint" style="font-size:12px; margin-bottom:8px;">
-                    Poäng:
-                    <span class="bp-ok">≥90 stark match</span> ·
-                    <span class="bp-warn">70–89 granska</span> ·
-                    <span class="bp-uncertain">50–69 osäker</span> ·
-                    <span class="bp-fail">&lt;50 ingen match</span>
-                    — Klicka på en rad för att jämföra och välja fält att spara.
+                    <span class="bp-ok">✓ ≥90 stark match</span> ·
+                    <span class="bp-warn">● 70–89 trolig</span> ·
+                    <span class="bp-uncertain">⚠ 50–69 osäker</span> ·
+                    <span class="bp-skip">— &lt;50 svag</span>
                 </div>
                 <table id="batchProgressTable">
                     <thead>
@@ -2571,6 +2572,9 @@
         container.innerHTML =
             '<div class="batch-review-header">Granskar: ' + fieldSummary +
             ' <a href="#" class="batch-add-field" onclick="event.preventDefault();_batchShowAddField(this)">[+ lägg till fält]</a></div>' +
+            '<div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">' +
+            '📄 Nuvarande &nbsp;→&nbsp; 🔍 Hämtat' +
+            '</div>' +
             '<div style="overflow-x:auto;">' +
             '<table class="batch-review-table"><thead><tr><th>Bok</th>' + colLabels + '</tr></thead>' +
             '<tbody>' + rows.join('') + '</tbody>' +
@@ -2758,7 +2762,7 @@
             ' <a href="#" class="batch-add-field" onclick="event.preventDefault();_batchShowAddField(this)">[+ lägg till fält]</a></div>' +
             '<div style="overflow-x:auto;">' +
             '<table class="batch-review-table"><thead><tr>' +
-            '<th>Bok</th><th>Nuvarande</th><th>Hämtat</th><th>Förändring</th>' +
+            '<th>Bok</th><th>📄 Nuvarande</th><th>🔍 Hämtat</th><th>Förändring</th>' +
             '</tr></thead><tbody>' + rows.join('') + '</tbody></table></div>' +
             '<div style="margin-top:16px;display:flex;gap:8px;align-items:center;">' +
             '<button type="button" class="btn primary" onclick="_batchSaveSynopsis()">Spara valda &amp; fortsätt</button>' +
@@ -3000,21 +3004,35 @@
             }
         });
 
-        var html = '<h2 style="font-size:18px;font-weight:600;margin-bottom:20px;">Batch klar!</h2>';
+        var totalUpdates = 0;
+        Object.keys(fc).forEach(function(f) { totalUpdates += (fc[f] || 0); });
+        var booksAffected = _batchWizard.results.saved || 0;
+        var anyFieldsSaved = savedItems.length > 0;
 
-        html += '<div class="batch-summary-section"><h3>Sparade</h3>';
-        if (savedItems.length > 0) {
-            html += savedItems.join('');
+        var html;
+        if (anyFieldsSaved) {
+            html = '<div style="text-align:center; padding:40px 0 20px;">' +
+                   '<div style="font-size:48px; color:var(--accent-green);">✓</div>' +
+                   '<h3 style="margin-top:12px; font-size:18px; font-weight:600;">Batch klar!</h3>' +
+                   '<p style="color:var(--text-secondary); margin-top:8px; font-size:13px;">' +
+                   totalUpdates + ' fält uppdaterade · ' + booksAffected + ' böcker berörda' +
+                   '</p>' +
+                   '</div>' +
+                   '<div class="batch-summary-section" style="margin-top:0;">' + savedItems.join('') + '</div>';
         } else {
-            html += '<div class="batch-summary-item"><span class="brt-no-match">Inga fält sparades.</span></div>';
+            html = '<div style="text-align:center; padding:40px 0 20px;">' +
+                   '<div style="font-size:48px; color:var(--text-tertiary);">○</div>' +
+                   '<h3 style="margin-top:12px; font-size:18px; font-weight:600;">Inga ändringar gjordes</h3>' +
+                   '</div>';
         }
-        html += '</div>';
 
         if (remainingItems.length > 0) {
             html += '<div class="batch-summary-section"><h3>Kvarstår</h3>' + remainingItems.join('') + '</div>';
         }
 
-        html += '<button type="button" class="btn ghost" onclick="closeBatchModal()">Stäng</button>';
+        html += '<div style="text-align:center; margin-top:20px;">' +
+                '<button type="button" class="btn ghost" onclick="closeBatchModal()">Stäng</button>' +
+                '</div>';
         container.innerHTML = html;
     }
 
@@ -3777,6 +3795,8 @@
         body.innerHTML = '';
         titleEl.textContent = 'Söker metadata…';
         _resetBatchAbortBtn();
+        var existingContinueBtn = document.getElementById('batchContinueBtn');
+        if (existingContinueBtn) existingContinueBtn.style.display = 'none';
 
         var counts = { saved: 0, review: 0, done: 0 };
         var source = new EventSource(url);
@@ -3810,19 +3830,14 @@
                         return '<span class="format-badge">' + _esc(f) + '</span>';
                     }).join(' ');
                 }
-                var expandIcon = ' <i class="ti ti-chevron-down bp-expand-icon open" onclick="event.stopPropagation(); toggleProgressDetail(' + d.item_id + ', this)" title="Visa källdetaljer"></i>';
                 tr.innerHTML =
-                    '<td>' + _esc(title) + fmtHtml + expandIcon + '</td>' +
+                    '<td>' + _esc(title) + fmtHtml + '</td>' +
                     '<td style="text-align:center;" id="bp-google-' + d.item_id + '"></td>' +
                     '<td style="text-align:center;" id="bp-calibre-' + d.item_id + '"></td>' +
                     '<td style="text-align:center;" id="bp-score-' + d.item_id + '"></td>' +
                     '<td style="text-align:center;" id="bp-result-' + d.item_id + '"></td>';
                 body.appendChild(tr);
-                var detailTr = document.createElement('tr');
-                detailTr.id = 'bp-detail-row-' + d.item_id;
-                detailTr.innerHTML = '<td colspan="5" style="padding:0; border-bottom:1px solid var(--border-light);"><div id="bp-detail-' + d.item_id + '" class="bp-source-detail expanded"></div></td>';
-                body.appendChild(detailTr);
-                var unit = d.total === 1 ? 'grupp' : 'grupper';
+                var unit = d.total === 1 ? 'bok' : 'böcker';
                 summaryEl.textContent = d.index + ' av ' + d.total + ' ' + unit + '…';
 
             } else if (d.type === 'progress') {
@@ -3921,6 +3936,11 @@
                         else if (s >= 50) { cls = 'bp-uncertain'; tooltip = 'Osäker match'; }
                         else { cls = 'bp-fail'; tooltip = 'Svag match'; }
                         scoreCell.innerHTML = '<span class="' + cls + '" title="' + tooltip + '">' + s + '</span>';
+                        var bpTr = document.getElementById('bp-row-' + d.item_id);
+                        if (bpTr) {
+                            var bpCls = s >= 90 ? 'bp-score-strong' : s >= 70 ? 'bp-score-likely' : 'bp-score-weak';
+                            bpTr.classList.add(bpCls);
+                        }
                     } else {
                         scoreCell.textContent = '—';
                     }
@@ -3928,25 +3948,28 @@
 
                 var resultCell = document.getElementById('bp-result-' + d.item_id);
                 if (resultCell) {
-                    var label = _resultLabel(d);
-                    var tip = _resultTooltip(d);
-                    resultCell.innerHTML = tip
-                        ? '<span title="' + _esc(tip) + '">' + label + '</span>'
-                        : label;
-                }
-
-                if (d.classification !== 'skipped') {
-                    tr.style.cursor = 'pointer';
-                    tr.title = d.classification === 'auto_apply'
-                        ? 'Klicka för att se vad som lades till'
-                        : 'Klicka för att jämföra och spara fält';
-                    (function(itemId) { tr.onclick = function() { openBulkResultModal(itemId); }; })(d.item_id);
+                    if (d.classification === 'no_match') {
+                        resultCell.innerHTML = '<span class="bp-fail" title="Ingen träff">✗</span>';
+                    } else if (d.classification === 'source_error') {
+                        resultCell.innerHTML = '<span class="bp-fail" title="Källfel">⚠</span>';
+                    } else if (d.classification === 'skipped') {
+                        resultCell.innerHTML = '<span class="bp-skip" title="Hoppad">—</span>';
+                    } else {
+                        var rs = Math.round(d.score || 0);
+                        var rIcon, rCls, rTip;
+                        if (rs >= 90)      { rIcon = '✓'; rCls = 'bp-ok';        rTip = 'Stark match (' + rs + 'p)'; }
+                        else if (rs >= 70) { rIcon = '●'; rCls = 'bp-warn';      rTip = 'Trolig match (' + rs + 'p) — granskas i steg 3'; }
+                        else if (rs >= 50) { rIcon = '⚠'; rCls = 'bp-uncertain'; rTip = 'Osäker match (' + rs + 'p)'; }
+                        else               { rIcon = '—'; rCls = 'bp-skip';      rTip = 'Svag match (' + rs + 'p)'; }
+                        var autoTip = _resultTooltip(d);
+                        resultCell.innerHTML = '<span class="' + rCls + '" title="' + _esc(autoTip || rTip) + '">' + rIcon + '</span>';
+                    }
                 }
 
                 counts.done += 1;
                 if (d.classification === 'auto_apply') counts.saved += 1;
                 if (d.classification === 'review_needed') counts.review += 1;
-                var doneUnit = d.total === 1 ? 'grupp' : 'grupper';
+                var doneUnit = d.total === 1 ? 'bok' : 'böcker';
                 summaryEl.textContent = counts.done + ' av ' + d.total + ' ' + doneUnit + ' klara'
                     + (counts.saved ? ' — ' + counts.saved + ' sparade' : '')
                     + (counts.review ? ', ' + counts.review + ' granskning' : '');
