@@ -188,6 +188,9 @@ def apply_metadata_to_item(
             cover_path=cover_dest_for_file,
         )
         file_updated = write_result["ok"]
+        if file_updated:
+            from datetime import datetime
+            item.file_modified_by_colophon = datetime.utcnow()
         if not file_updated:
             file_write_error = write_result["error"]
 

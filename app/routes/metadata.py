@@ -641,6 +641,10 @@ def bulk_metadata():
         )
     ).count()
 
+    from app.services.upstream_sync import upstream_configured, get_unsynced_count
+    upstream_enabled = upstream_configured()
+    unsynced_count = get_unsynced_count() if upstream_enabled else 0
+
     return render_template(
         "bulk_metadata.html",
         items=items,
@@ -650,6 +654,24 @@ def bulk_metadata():
         missing_count=missing_count,
         format_counts=format_counts,
         missing_cover_count=missing_cover_count,
+        upstream_enabled=upstream_enabled,
+        unsynced_count=unsynced_count,
+    )
+
+
+@metadata_bp.route("/sync/push")
+def sync_push():
+    """SSE endpoint: push locally-modified files to upstream."""
+    from app.services.upstream_sync import push_to_upstream
+
+    def generate():
+        for ev in push_to_upstream():
+            yield f"data: {json.dumps(ev)}\n\n"
+
+    return Response(
+        generate(),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 
