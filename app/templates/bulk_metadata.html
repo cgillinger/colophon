@@ -916,6 +916,41 @@
         }
         #batchModal .modal-box { padding: 24px; }
         #batchModal #batchProgressTable td, #batchModal #batchProgressTable th { font-size: 13px; }
+
+        /* Batch wizard */
+        .batch-step { padding: 0; }
+        .batch-field-group-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 6px;
+        }
+        .batch-field-checks {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .batch-wizard-steps {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-tertiary);
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 0.5px solid var(--border-light);
+            flex-wrap: wrap;
+        }
+        .batch-wizard-steps .active {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        .batch-wizard-steps .separator {
+            color: var(--border-medium);
+        }
+
         .modal-box {
             background: var(--bg-primary);
             border: 1px solid var(--border-light);
@@ -1809,116 +1844,119 @@
     </div>
 </div>
 
-<!-- Batch operations modal -->
+<!-- Batch operations modal (wizard) -->
 <div id="batchModal" style="display:none;">
     <div class="modal-box" style="max-width:800px; max-height:90vh; overflow-y:auto;">
 
         <h2 id="batchTitle" style="margin-top:0;">Batchoperationer</h2>
-        <div id="batchSubtitle" class="hint" style="margin-bottom:16px;"></div>
+        <div id="batchSubtitle" class="hint" style="margin-bottom:12px;"></div>
 
-        <!-- Fältväljare -->
-        <div style="margin-bottom:14px;">
-            <div style="font-size:13px; color:var(--text-secondary); margin-bottom:6px;">Hämta/uppdatera:</div>
-            <div style="display:flex; flex-wrap:wrap; gap:6px;">
-                <label class="field-check"><input type="checkbox" value="title" class="batch-field" checked> Titel</label>
-                <label class="field-check"><input type="checkbox" value="author" class="batch-field" checked> Författare</label>
-                <label class="field-check"><input type="checkbox" value="series" class="batch-field" checked> Serie</label>
-                <label class="field-check"><input type="checkbox" value="isbn" class="batch-field" checked> ISBN</label>
-                <label class="field-check"><input type="checkbox" value="publisher" class="batch-field" checked> Förlag</label>
-                <label class="field-check"><input type="checkbox" value="language" class="batch-field" checked> Språk</label>
-                <label class="field-check"><input type="checkbox" value="description" class="batch-field" checked> Synopsis</label>
-                <label class="field-check"><input type="checkbox" value="genres" class="batch-field" checked> Genre</label>
-                <label class="field-check"><input type="checkbox" value="published_date" class="batch-field" checked> Publiceringsdatum</label>
-            </div>
-            <div style="font-size:11px; margin-top:4px;">
-                <a href="#" onclick="toggleBatchFields(true);return false;" style="color:var(--text-secondary);">Alla</a> ·
-                <a href="#" onclick="toggleBatchFields(false);return false;" style="color:var(--text-secondary);">Inga</a>
-            </div>
+        <!-- Stegindikator -->
+        <div class="batch-wizard-steps" id="batchWizardSteps">
+            <span class="step-1 active">1. Välj fält</span>
+            <span class="separator">→</span>
+            <span class="step-2">2. Sökning</span>
+            <span class="separator">→</span>
+            <span class="step-3">3. Granska</span>
+            <span class="separator">→</span>
+            <span class="step-4">4. Klart</span>
         </div>
 
-        <!-- Smart ersättning (inline) -->
-        <div style="margin-bottom:14px; padding:12px; background:var(--bg-secondary); border-radius:8px;">
-            <div style="font-size:13px; font-weight:500; margin-bottom:8px;">
-                <i class="ti ti-adjustments-horizontal" style="font-size:15px;"></i> Smart ersättning
-            </div>
-            <div style="font-size:12px; color:var(--text-secondary); margin-bottom:8px;">
-                Ersätt befintliga fält om hämtad data bedöms ha högre kvalitet:
-            </div>
-            <div style="display:flex; flex-direction:column; gap:6px;">
-                <label class="field-check"><input type="checkbox" class="batch-smart" value="title"> Titel — rensa serie/marknadsföring i parenteser</label>
-                <label class="field-check"><input type="checkbox" class="batch-smart" value="author" checked> Författare — ta bort [Efternamn, Förnamn]</label>
-                <label class="field-check"><input type="checkbox" class="batch-smart" value="isbn"> ISBN — ersätt om hämtad är ISBN-13</label>
-                <label class="field-check"><input type="checkbox" class="batch-smart" value="publisher"> Förlag — ersätt om befintlig = författarnamn</label>
-                <label class="field-check"><input type="checkbox" class="batch-smart" value="genres"> Genre — ersätt om hämtad har fler genrer</label>
-                <label class="field-check"><input type="checkbox" class="batch-smart" value="description" checked> Synopsis — ersätt om hämtad 50%+ längre</label>
-                <label class="field-check"><input type="checkbox" class="batch-smart" value="published_date" checked> Publiceringsdatum — ersätt om hämtat är mer precist</label>
-            </div>
+        <!-- Dolda kontroller (behålls så att befintlig SSE-logik fungerar). -->
+        <div style="display:none;" aria-hidden="true">
+            <input type="checkbox" id="batchOverwrite">
+            <input type="number" id="batchMaxItems" value="25">
+            <input type="checkbox" class="batch-smart" value="author" checked>
+            <input type="checkbox" class="batch-smart" value="description" checked>
+            <input type="checkbox" class="batch-smart" value="published_date" checked>
         </div>
 
-        <!-- Inställningar -->
-        <div style="display:flex; gap:16px; margin-bottom:16px; font-size:13px; align-items:center;">
-            <label style="display:flex; align-items:center; gap:6px;">
-                <input type="checkbox" id="batchOverwrite"> Ersätt alla befintliga fält
-            </label>
-            <label style="display:flex; align-items:center; gap:6px;">
-                Max: <input type="number" id="batchMaxItems" value="25" min="1" max="100"
-                    style="width:60px; padding:4px 6px; background:var(--bg-secondary); border:1px solid var(--border-light); border-radius:5px; color:var(--text-primary);">
-            </label>
-        </div>
+        <!-- Steg 1: Fältval -->
+        <div id="batchStep1" class="batch-step">
+            <div style="margin-bottom:16px;">Valda böcker: <strong id="batchBookCount">0</strong></div>
 
-        <!-- Action-knappar -->
-        <div id="batchActions" style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
-            <button class="btn primary" type="button" onclick="startBatchSearch()">
-                <i class="ti ti-search"></i> Sök metadata
-            </button>
-            <button class="btn purple" type="button" onclick="startBatchAI()">
-                <i class="ti ti-sparkles"></i> Fråga AI
-            </button>
-            <div style="flex:1;"></div>
-            <button class="btn-danger" type="button" onclick="confirmBatchDelete()">
-                <i class="ti ti-trash"></i> Radera valda
-            </button>
-        </div>
+            <div style="margin-top:16px;">
+                <div class="batch-field-group-label">Textfält</div>
+                <div class="batch-field-checks">
+                    <label class="field-check"><input type="checkbox" class="bw-field" value="title"> Titel</label>
+                    <label class="field-check"><input type="checkbox" class="bw-field" value="author"> Författare</label>
+                    <label class="field-check"><input type="checkbox" class="bw-field" value="series" checked> Serie</label>
+                    <label class="field-check"><input type="checkbox" class="bw-field" value="isbn" checked> ISBN</label>
+                    <label class="field-check"><input type="checkbox" class="bw-field" value="publisher" checked> Förlag</label>
+                    <label class="field-check"><input type="checkbox" class="bw-field" value="language" checked> Språk</label>
+                    <label class="field-check"><input type="checkbox" class="bw-field" value="genres" checked> Genre</label>
+                    <label class="field-check"><input type="checkbox" class="bw-field" value="published_date" checked> Publiceringsdatum</label>
+                </div>
 
-        <!-- Progress (dold tills sökning startar) -->
-        <div id="batchProgress" style="display:none;">
-            <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
-                <div id="batchProgressTitle" style="font-weight:500; flex:1;">Söker metadata…</div>
-                <button type="button" class="btn btn-danger-outline" id="batchAbortBtn" onclick="abortBatchSearch()">
-                    <i class="ti ti-x"></i> Avbryt sökning
+                <div class="batch-field-group-label" style="margin-top:12px;">Långtext</div>
+                <div class="batch-field-checks">
+                    <label class="field-check"><input type="checkbox" class="bw-field" value="description" checked> Synopsis</label>
+                </div>
+
+                <div class="batch-field-group-label" style="margin-top:12px;">Visuellt</div>
+                <div class="batch-field-checks">
+                    <label class="field-check"><input type="checkbox" class="bw-field" value="cover" checked> Omslag</label>
+                </div>
+
+                <div style="font-size:11px; margin-top:6px;">
+                    <a href="#" onclick="toggleBwFields(true);return false;" style="color:var(--text-secondary);">Alla</a> ·
+                    <a href="#" onclick="toggleBwFields(false);return false;" style="color:var(--text-secondary);">Inga</a>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn primary" type="button" onclick="batchWizardStartSearch()">
+                    <i class="ti ti-search"></i> Sök
                 </button>
+                <button class="btn ghost" type="button" onclick="closeBatchModal()">Avbryt</button>
             </div>
-            <div id="batchProgressSub" class="hint" style="margin-bottom:8px;"></div>
-            <div class="hint" style="font-size:12px; margin-bottom:8px;">
-                Poäng:
-                <span class="bp-ok">≥90 stark match</span> ·
-                <span class="bp-warn">70–89 granska</span> ·
-                <span class="bp-uncertain">50–69 osäker</span> ·
-                <span class="bp-fail">&lt;50 ingen match</span>
-                — Klicka på en rad för att jämföra och välja fält att spara.
-            </div>
-            <table id="batchProgressTable">
-                <thead>
-                    <tr>
-                        <th style="width:40%;">Titel</th>
-                        <th style="width:15%; text-align:center;">Google</th>
-                        <th style="width:15%; text-align:center;">Calibre</th>
-                        <th style="width:15%; text-align:center;">Poäng</th>
-                        <th style="width:15%; text-align:center;">Resultat</th>
-                    </tr>
-                </thead>
-                <tbody id="batchProgressBody"></tbody>
-            </table>
         </div>
 
-        <!-- Resultat-sammanfattning -->
-        <div id="batchResult" style="display:none; margin-top:12px;">
-            <div id="batchResultSummary" style="font-weight:500;"></div>
+        <!-- Steg 2: Sökning (progress) -->
+        <div id="batchStep2" class="batch-step" style="display:none;">
+            <div id="batchProgress">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+                    <div id="batchProgressTitle" style="font-weight:500; flex:1;">Söker metadata…</div>
+                    <button type="button" class="btn btn-danger-outline" id="batchAbortBtn" onclick="abortBatchSearch()">
+                        <i class="ti ti-x"></i> Avbryt sökning
+                    </button>
+                </div>
+                <div id="batchProgressSub" class="hint" style="margin-bottom:8px;"></div>
+                <div class="hint" style="font-size:12px; margin-bottom:8px;">
+                    Poäng:
+                    <span class="bp-ok">≥90 stark match</span> ·
+                    <span class="bp-warn">70–89 granska</span> ·
+                    <span class="bp-uncertain">50–69 osäker</span> ·
+                    <span class="bp-fail">&lt;50 ingen match</span>
+                    — Klicka på en rad för att jämföra och välja fält att spara.
+                </div>
+                <table id="batchProgressTable">
+                    <thead>
+                        <tr>
+                            <th style="width:40%;">Titel</th>
+                            <th style="width:15%; text-align:center;">Google</th>
+                            <th style="width:15%; text-align:center;">Calibre</th>
+                            <th style="width:15%; text-align:center;">Poäng</th>
+                            <th style="width:15%; text-align:center;">Resultat</th>
+                        </tr>
+                    </thead>
+                    <tbody id="batchProgressBody"></tbody>
+                </table>
+            </div>
         </div>
 
-        <!-- Stäng -->
-        <div style="display:flex; gap:10px; margin-top:16px; justify-content:flex-end;">
-            <button class="btn ghost" type="button" onclick="closeBatchModal()">Stäng</button>
+        <!-- Steg 3: Granskning (placeholder, implementeras i senare uppdrag) -->
+        <div id="batchStep3" class="batch-step" style="display:none;">
+            <div id="batchReviewContainer"></div>
+        </div>
+
+        <!-- Steg 4: Sammanfattning (utvidgas i senare uppdrag) -->
+        <div id="batchStep4" class="batch-step" style="display:none;">
+            <div id="batchSummaryContainer">
+                <div id="batchResult">
+                    <div id="batchResultSummary" style="font-weight:500;"></div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -2133,11 +2171,61 @@
         }
     }
 
+    /* ------------------------------------------------------------------ */
+    /* Batch wizard — tillstånd och stegnavigering                         */
+    /* ------------------------------------------------------------------ */
+    var _batchWizard = {
+        step: 1,
+        selectedFields: [],
+        selectedItemIds: [],
+        searchCache: {},
+        reviewQueue: [],
+        reviewIndex: 0,
+        results: { saved: 0, skipped: 0, noMatch: 0 }
+    };
+
+    var _BATCH_TEXT_FIELDS = [
+        'title', 'author', 'series', 'isbn',
+        'publisher', 'language', 'genres', 'published_date'
+    ];
+
+    function _resetBatchWizardState() {
+        _batchWizard.step = 1;
+        _batchWizard.selectedFields = [];
+        _batchWizard.selectedItemIds = [];
+        _batchWizard.searchCache = {};
+        _batchWizard.reviewQueue = [];
+        _batchWizard.reviewIndex = 0;
+        _batchWizard.results = { saved: 0, skipped: 0, noMatch: 0 };
+    }
+
+    function _batchSetStep(step) {
+        _batchWizard.step = step;
+        for (var i = 1; i <= 4; i++) {
+            var el = document.getElementById('batchStep' + i);
+            if (el) el.style.display = (i === step) ? '' : 'none';
+        }
+        var indicator = document.getElementById('batchWizardSteps');
+        if (indicator) {
+            indicator.querySelectorAll('span').forEach(function(span) {
+                span.classList.remove('active');
+            });
+            var active = indicator.querySelector('.step-' + step);
+            if (active) active.classList.add('active');
+        }
+    }
+
     function openBatchModal() {
         var checked = document.querySelectorAll('.book-checkbox:checked');
         if (checked.length === 0) return;
 
+        _resetBatchWizardState();
+
+        var itemIds = _getBatchItemIds();
+        _batchWizard.selectedItemIds = itemIds.slice();
+
         var subtitle = '';
+        var bookCount = itemIds.length;
         if (_grouped) {
             var groupKeys = new Set();
             checked.forEach(function(cb) {
@@ -2146,21 +2234,21 @@
             });
             subtitle = groupKeys.size + ' grupp' + (groupKeys.size !== 1 ? 'er' : '') + ' valda';
         } else {
-            subtitle = checked.length + ' bok' + (checked.length !== 1 ? 'er' : '') + ' valda';
+            subtitle = bookCount + ' bok' + (bookCount !== 1 ? 'er' : '') + ' valda';
         }
 
         document.getElementById('batchSubtitle').textContent = subtitle;
-        document.getElementById('batchProgress').style.display = 'none';
-        document.getElementById('batchResult').style.display = 'none';
-        document.getElementById('batchActions').style.display = 'flex';
+        var bookCountEl = document.getElementById('batchBookCount');
+        if (bookCountEl) bookCountEl.textContent = bookCount;
+
         document.getElementById('batchModal').style.display = 'flex';
+        _batchSetStep(1);
     }
 
     function closeBatchModal() {
         document.getElementById('batchModal').style.display = 'none';
-        document.getElementById('batchProgress').style.display = 'none';
-        document.getElementById('batchResult').style.display = 'none';
-        document.getElementById('batchActions').style.display = 'flex';
+        _resetBatchWizardState();
+        _batchSetStep(1);
     }
 
     document.getElementById('batchModal').addEventListener('click', function(e) {
@@ -2172,10 +2260,35 @@
         return el && el.style.display === 'flex';
     }
 
-    function toggleBatchFields(checked) {
-        document.querySelectorAll('.batch-field').forEach(function(cb) {
+    function toggleBwFields(checked) {
+        document.querySelectorAll('.bw-field').forEach(function(cb) {
             cb.checked = checked;
         });
+    }
+
+    function batchWizardStartSearch() {
+        var fields = Array.from(document.querySelectorAll('.bw-field:checked'))
+            .map(function(cb) { return cb.value; });
+
+        if (fields.length === 0) {
+            alert('Välj minst ett fält att hämta.');
+            return;
+        }
+
+        _batchWizard.selectedFields = fields;
+
+        var queue = [];
+        var hasTextField = fields.some(function(f) {
+            return _BATCH_TEXT_FIELDS.indexOf(f) !== -1;
+        });
+        if (hasTextField) queue.push('textfields');
+        if (fields.indexOf('description') !== -1) queue.push('synopsis');
+        if (fields.indexOf('cover') !== -1) queue.push('cover');
+        _batchWizard.reviewQueue = queue;
+        _batchWizard.reviewIndex = 0;
+
+        _batchSetStep(2);
+        startBatchSearch();
     }
 
     function _getBatchItemIds() {
@@ -2837,11 +2950,15 @@
     function startBatchSearch() {
         if (!window.EventSource) { alert('Din webbläsare stöder inte SSE.'); return; }
 
-        var itemIds = _getBatchItemIds();
+        var itemIds = (_batchWizard.selectedItemIds && _batchWizard.selectedItemIds.length)
+            ? _batchWizard.selectedItemIds
+            : _getBatchItemIds();
         if (itemIds.length === 0) { alert('Välj minst en bok.'); return; }
 
-        var overwrite = document.getElementById('batchOverwrite').checked ? '1' : '0';
-        var maxItems = document.getElementById('batchMaxItems').value || '25';
+        var overwriteEl = document.getElementById('batchOverwrite');
+        var overwrite = (overwriteEl && overwriteEl.checked) ? '1' : '0';
+        var maxItemsEl = document.getElementById('batchMaxItems');
+        var maxItems = (maxItemsEl && maxItemsEl.value) || '25';
         var smartReplace = Array.from(document.querySelectorAll('.batch-smart:checked'))
             .map(function(cb) { return cb.value; });
 
@@ -2849,10 +2966,6 @@
             + '&overwrite=' + overwrite
             + '&max_items=' + maxItems
             + '&smart_replace=' + encodeURIComponent(smartReplace.join(','));
-
-        document.getElementById('batchActions').style.display = 'none';
-        document.getElementById('batchProgress').style.display = 'block';
-        document.getElementById('batchResult').style.display = 'none';
 
         var body = document.getElementById('batchProgressBody');
         var summaryEl = document.getElementById('batchProgressSub');
@@ -3041,9 +3154,9 @@
                 if (s.source_errors) parts.push(s.source_errors + ' källfel');
                 if (s.skipped) parts.push(s.skipped + ' hoppade');
                 var summary = parts.join(' · ') || 'Klar.';
-                document.getElementById('batchResult').style.display = 'block';
                 document.getElementById('batchResultSummary').innerHTML =
                     summary + ' <button type="button" class="btn ghost btn-sm" style="margin-left:8px;" onclick="location.reload()">Ladda om</button>';
+                _batchSetStep(4);
 
             } else if (d.type === 'aborted') {
                 source.close();
@@ -3057,16 +3170,15 @@
                 if (s.review_needed) parts.push(s.review_needed + ' granskning');
                 if (s.no_match) parts.push(s.no_match + ' ingen träff');
                 if (s.source_errors) parts.push(s.source_errors + ' källfel');
-                document.getElementById('batchResult').style.display = 'block';
                 document.getElementById('batchResultSummary').innerHTML =
                     'Avbruten. ' + (parts.join(' · ') || 'Inget hann bearbetas.')
                     + ' <button type="button" class="btn ghost btn-sm" style="margin-left:8px;" onclick="location.reload()">Ladda om</button>';
+                _batchSetStep(4);
 
             } else if (d.type === 'error') {
                 source.close();
                 _hideBatchAbortBtn();
                 titleEl.textContent = 'Fel: ' + (d.message || 'okänt fel');
-                document.getElementById('batchActions').style.display = 'flex';
             }
         };
 
@@ -3074,7 +3186,6 @@
             source.close();
             _hideBatchAbortBtn();
             titleEl.textContent = 'Anslutningen bröts.';
-            document.getElementById('batchActions').style.display = 'flex';
         };
     }
 
