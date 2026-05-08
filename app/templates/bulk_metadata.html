@@ -951,6 +951,74 @@
             color: var(--border-medium);
         }
 
+        /* Batch review table */
+        .batch-review-header {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 14px;
+        }
+        .batch-add-field {
+            font-size: 12px;
+            margin-left: 8px;
+            color: var(--accent-primary);
+            text-decoration: none;
+        }
+        .batch-review-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .batch-review-table th {
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 0.5px solid var(--border-light);
+            white-space: nowrap;
+        }
+        .batch-review-table td {
+            padding: 8px 10px;
+            border-bottom: 0.5px solid var(--border-light);
+            vertical-align: middle;
+        }
+        .batch-review-table tr:hover { background: var(--bg-secondary); }
+        .brt-arrow { color: var(--accent-green); font-size: 11px; margin: 0 4px; }
+        .brt-new-value { color: var(--accent-green); font-weight: 500; }
+        .brt-no-match { color: var(--text-tertiary); }
+        .brt-same { color: var(--text-secondary); font-size: 12px; }
+        .brt-current { color: var(--text-tertiary); font-size: 12px; }
+        .brt-dropdown-icon {
+            cursor: pointer;
+            color: var(--text-tertiary);
+            font-size: 11px;
+            margin-left: 4px;
+            user-select: none;
+        }
+        .brt-dropdown-icon:hover { color: var(--text-primary); }
+        .brt-alt-panel {
+            margin-top: 6px;
+            background: var(--bg-primary);
+            border: 0.5px solid var(--border-light);
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .brt-alt-option {
+            padding: 6px 10px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            font-size: 12px;
+        }
+        .brt-alt-option:hover { background: var(--bg-secondary); }
+        .brt-alt-option.selected { background: var(--bg-secondary); }
+        .brt-alt-meta { font-size: 11px; color: var(--text-tertiary); white-space: nowrap; }
+
         .modal-box {
             background: var(--bg-primary);
             border: 1px solid var(--border-light);
@@ -2291,11 +2359,233 @@
         startBatchSearch();
     }
 
+    var _TEXTFIELD_DISPLAY_ORDER = [
+        'title', 'author', 'series', 'series_index',
+        'isbn', 'publisher', 'language', 'genres', 'published_date'
+    ];
+    var _brtCellValues = {};
+    var _brtCols = [];
+    var _brtAltPanelData = {};
+
     function _batchRenderReview() {
         var container = document.getElementById('batchReviewContainer');
         if (!container) return;
-        var currentReview = _batchWizard.reviewQueue[_batchWizard.reviewIndex] || '(inget)';
-        container.innerHTML = '<p>Granskningsvy för: ' + _esc(currentReview) + ' (implementeras i uppdrag 3–5)</p>';
+        var currentReview = _batchWizard.reviewQueue[_batchWizard.reviewIndex];
+        if (!currentReview) { _batchSetStep(4); return; }
+        if (currentReview === 'textfields') {
+            _batchRenderTextFieldReview(container);
+        } else {
+            container.innerHTML = '<p>Granskningsvy för: ' + _esc(currentReview) + ' (implementeras i uppdrag 4–5)</p>';
+        }
+    }
+
+    function _batchRenderTextFieldReview(container) {
+        var selectedFields = _batchWizard.selectedFields;
+
+        _brtCols = [];
+        _TEXTFIELD_DISPLAY_ORDER.forEach(function(f) {
+            if (f === 'series_index') {
+                if (selectedFields.indexOf('series') !== -1) _brtCols.push('series_index');
+            } else {
+                if (selectedFields.indexOf(f) !== -1) _brtCols.push(f);
+            }
+        });
+
+        _brtCellValues = {};
+        _brtAltPanelData = {};
+
+        var colLabels = _brtCols.map(function(f) {
+            return '<th>' + _esc(_applyFieldLabels[f] || f) + '</th>';
+        }).join('');
+
+        var rows = [];
+        _batchWizard.selectedItemIds.forEach(function(itemId) {
+            var data = _batchWizard.searchCache[itemId];
+            if (!data) return;
+            var before = data.before || {};
+            var candidate = data.candidate || {};
+            var allCandidates = data.all_candidates || [];
+
+            _brtCellValues[itemId] = {};
+            var hasChange = false;
+
+            var tds = _brtCols.map(function(field) {
+                var current = (before[field] != null) ? String(before[field]) : '';
+                var fetched = (candidate[field] != null) ? String(candidate[field]) : '';
+                _brtCellValues[itemId][field] = fetched || current;
+
+                var cellHtml;
+                if (!fetched) {
+                    cellHtml = '<span class="brt-no-match">—</span>';
+                } else if (fetched === current) {
+                    cellHtml = '<span class="brt-same">' + _esc(fetched) + ' ✓</span>';
+                } else {
+                    hasChange = true;
+                    var altCount = 0;
+                    allCandidates.forEach(function(c) {
+                        var v = c[field];
+                        if (v != null && String(v) && String(v) !== fetched) altCount++;
+                    });
+                    var dropIcon = altCount > 0
+                        ? ' <span class="brt-dropdown-icon" onclick="event.stopPropagation();_brtToggleAltPanel(this,\'' + itemId + '\',\'' + field + '\')" title="Visa alternativ">▾</span>'
+                        : '';
+                    cellHtml = '<span class="brt-current">' + _esc(current || '(tomt)') + '</span>' +
+                        '<span class="brt-arrow">→</span>' +
+                        '<span class="brt-new-value" id="brt-cell-' + itemId + '-' + field + '">' + _esc(fetched) + '</span>' +
+                        dropIcon;
+                }
+                return '<td>' + cellHtml + '</td>';
+            }).join('');
+
+            var title = data.title || String(itemId);
+            if (title.length > 35) title = title.substring(0, 35) + '…';
+            var isChecked = hasChange ? ' checked' : '';
+
+            rows.push('<tr>' +
+                '<td><label style="display:flex;align-items:center;gap:6px;cursor:pointer;">' +
+                '<input type="checkbox" class="brt-row-check" data-item-id="' + itemId + '"' + isChecked + '>' +
+                '<span>' + _esc(title) + '</span></label></td>' +
+                tds + '</tr>');
+        });
+
+        var fieldSummary = _brtCols.map(function(f) {
+            return '<strong>' + _esc(_applyFieldLabels[f] || f) + '</strong>';
+        }).join(' · ');
+
+        container.innerHTML =
+            '<div class="batch-review-header">Granskar: ' + fieldSummary +
+            ' <a href="#" class="batch-add-field" onclick="event.preventDefault()">[+ lägg till fält]</a></div>' +
+            '<div style="overflow-x:auto;">' +
+            '<table class="batch-review-table"><thead><tr><th>Bok</th>' + colLabels + '</tr></thead>' +
+            '<tbody>' + rows.join('') + '</tbody>' +
+            '</table></div>' +
+            '<div style="margin-top:16px;display:flex;gap:8px;align-items:center;">' +
+            '<button type="button" class="btn primary" onclick="_batchSaveTextFields()">Spara valda &amp; fortsätt</button>' +
+            '<button type="button" class="btn ghost" onclick="_batchSkipReview()">Hoppa över</button>' +
+            '<button type="button" class="btn ghost" onclick="closeBatchModal()">Avbryt</button>' +
+            '</div>';
+    }
+
+    function _brtToggleAltPanel(iconEl, itemId, field) {
+        var cell = iconEl.closest('td');
+        var existing = cell.querySelector('.brt-alt-panel');
+        if (existing) { existing.remove(); return; }
+
+        var data = _batchWizard.searchCache[itemId];
+        if (!data) return;
+        var candidate = data.candidate || {};
+        var allCandidates = data.all_candidates || [];
+        var bestVal = (candidate[field] != null) ? String(candidate[field]) : '';
+
+        var alts = [];
+        if (bestVal) alts.push({ value: bestVal, source: data.source || '', score: data.score || 0 });
+        allCandidates.forEach(function(c) {
+            var v = c[field];
+            if (v != null && String(v) && String(v) !== bestVal) {
+                alts.push({ value: String(v), source: c.source || '', score: c.score || 0 });
+            }
+        });
+
+        var key = itemId + '-' + field;
+        _brtAltPanelData[key] = alts;
+
+        var selectedVal = (_brtCellValues[itemId] && _brtCellValues[itemId][field] != null)
+            ? _brtCellValues[itemId][field] : bestVal;
+
+        var panel = document.createElement('div');
+        panel.className = 'brt-alt-panel';
+        panel.innerHTML = alts.map(function(alt, i) {
+            var isSel = alt.value === selectedVal;
+            return '<div class="brt-alt-option' + (isSel ? ' selected' : '') + '" data-idx="' + i + '">' +
+                '<span>' + _esc(alt.value) + '</span>' +
+                '<span class="brt-alt-meta">' + _esc(alt.source) +
+                ' (' + Math.round(alt.score) + 'p)' + (isSel ? ' ← vald' : '') + '</span>' +
+                '</div>';
+        }).join('');
+
+        panel.addEventListener('click', function(e) {
+            var opt = e.target.closest('.brt-alt-option');
+            if (!opt) return;
+            var idx = parseInt(opt.dataset.idx, 10);
+            var alt = _brtAltPanelData[key][idx];
+            if (!alt) return;
+            if (!_brtCellValues[itemId]) _brtCellValues[itemId] = {};
+            _brtCellValues[itemId][field] = alt.value;
+            var display = document.getElementById('brt-cell-' + itemId + '-' + field);
+            if (display) display.textContent = alt.value;
+            panel.remove();
+        });
+
+        cell.appendChild(panel);
+    }
+
+    function _batchSaveTextFields() {
+        var container = document.getElementById('batchReviewContainer');
+        if (!container) { _batchAdvanceReview(); return; }
+        var checked = Array.from(container.querySelectorAll('.brt-row-check:checked'));
+        if (checked.length === 0) { _batchAdvanceReview(); return; }
+
+        var pending = checked.length;
+        var savedCount = 0;
+
+        function _onAllDone() {
+            _batchWizard.results.saved += savedCount;
+            _batchAdvanceReview();
+        }
+
+        checked.forEach(function(cb) {
+            var itemId = cb.dataset.itemId;
+            var data = _batchWizard.searchCache[itemId];
+            if (!data) { pending--; if (pending === 0) _onAllDone(); return; }
+
+            var candidate = data.candidate || {};
+            var payload = {};
+            _brtCols.forEach(function(field) {
+                var val = (_brtCellValues[itemId] && _brtCellValues[itemId][field] != null)
+                    ? _brtCellValues[itemId][field]
+                    : ((candidate[field] != null) ? String(candidate[field]) : null);
+                if (val !== null && val !== '') payload[field] = val;
+            });
+
+            var allIds = data.item_ids || [itemId];
+            var remaining = allIds.length;
+            var ok = true;
+
+            allIds.forEach(function(id) {
+                fetch('/metadata/' + id + '/save-json', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(result) {
+                    if (!result.ok) ok = false;
+                    remaining--;
+                    if (remaining === 0) {
+                        if (ok) savedCount++;
+                        pending--;
+                        if (pending === 0) _onAllDone();
+                    }
+                })
+                .catch(function() {
+                    remaining--;
+                    if (remaining === 0) { pending--; if (pending === 0) _onAllDone(); }
+                });
+            });
+        });
+    }
+
+    function _batchSkipReview() {
+        _batchAdvanceReview();
+    }
+
+    function _batchAdvanceReview() {
+        _batchWizard.reviewIndex++;
+        if (_batchWizard.reviewIndex >= _batchWizard.reviewQueue.length) {
+            _batchSetStep(4);
+        } else {
+            _batchRenderReview();
+        }
     }
 
     function _getBatchItemIds() {
