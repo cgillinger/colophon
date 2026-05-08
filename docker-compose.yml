@@ -8,6 +8,7 @@ services:
     volumes:
       - ${COLOPHON_LIBRARY_HOST:-./bibliotek}:/books:rw
       - ${COLOPHON_DATA_HOST:-./data}:/data:rw
+      # - ${COLOPHON_UPSTREAM_HOST:-./upstream}:/upstream:rw
     env_file:
       - .env
     restart: unless-stopped

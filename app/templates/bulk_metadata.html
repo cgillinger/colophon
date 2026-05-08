@@ -227,6 +227,22 @@
             color: var(--badge-warn-text);
             border-color: var(--accent-yellow);
         }
+        .chip.chip-sync {
+            background: var(--badge-sync-bg, rgba(66, 133, 244, 0.15));
+            color: var(--badge-sync-text, #4285f4);
+            border: 1.5px solid var(--badge-sync-border, rgba(66, 133, 244, 0.4));
+        }
+        .sync-bar {
+            background: var(--bg-primary);
+            border: 2px solid var(--badge-sync-border, rgba(66, 133, 244, 0.4));
+            border-radius: 10px;
+            padding: 10px 16px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
 
         /* Sticky batch bar */
         .batch-bar {
@@ -1497,6 +1513,12 @@
             {% if missing_cover_count %}
                 <span class="chip chip-warn stats-badge" id="libraryChipMissingCover" onclick="toggleBadgeFilter('missing_cover', '1', event)">{{ missing_cover_count }} saknar omslag</span>
             {% endif %}
+            {% if upstream_enabled and unsynced_count %}
+                <span class="chip chip-sync stats-badge" id="libraryChipUnsynced"
+                      onclick="toggleBadgeFilter('unsynced', '1', event)">
+                    {{ unsynced_count }} osynkade
+                </span>
+            {% endif %}
             <div id="scanInline" style="display:none; font-size:13px; color:var(--accent-primary-text);">
                 <span id="scanInlineText">Skannar...</span>
             </div>
@@ -1549,6 +1571,13 @@
             </span>
         </div>
 
+        <div id="syncBar" class="sync-bar" style="display:none;">
+            <span id="syncBarText"></span>
+            <button type="button" class="btn primary" onclick="startPushSync()">
+                <i class="ti ti-upload"></i> Synka till bibliotek
+            </button>
+        </div>
+
         <div class="table-wrap">
             <table id="bookTable">
                 <thead>
@@ -1583,6 +1612,7 @@
                             data-has-published="{{ '1' if item.published_date else '0' }}"
                             data-manual="{{ '1' if item.manual_metadata else '0' }}"
                             data-missing="{{ '1' if is_missing else '0' }}"
+                            data-unsynced="{{ '1' if item.file_modified_by_colophon and (not item.upstream_synced_at or item.file_modified_by_colophon > item.upstream_synced_at) else '0' }}"
                             data-item-id="{{ item.id }}"
                             data-group-key="{{ item.group_key or '' }}">
                             <td>
@@ -1951,6 +1981,35 @@
     /* -------------------------------------------------------------------- */
     /* Scan SSE                                                              */
     /* -------------------------------------------------------------------- */
+    function startPushSync() {
+        var bar = document.getElementById('syncBar');
+        var text = document.getElementById('syncBarText');
+        var btn = bar.querySelector('button');
+        btn.disabled = true;
+        text.textContent = 'Synkar...';
+
+        var source = new EventSource('/sync/push');
+        source.onmessage = function(e) {
+            var d = JSON.parse(e.data);
+            if (d.type === 'progress') {
+                text.textContent = 'Synkar ' + d.current + '/' + d.total + ': ' + d.file;
+            } else if (d.type === 'file_error') {
+                console.error('[Colophon sync]', d.file, d.error);
+            } else if (d.type === 'done') {
+                source.close();
+                var msg = d.synced + ' filer synkade.';
+                if (d.errors > 0) msg += ' ' + d.errors + ' fel.';
+                text.textContent = msg;
+                setTimeout(function() { location.reload(); }, 1500);
+            }
+        };
+        source.onerror = function() {
+            source.close();
+            text.textContent = 'Anslutningen bröts.';
+            btn.disabled = false;
+        };
+    }
+
     function startScan() {
         var btn = document.getElementById('scanBtn');
         var inline = document.getElementById('scanInline');
@@ -1968,7 +2027,9 @@
         var source = new EventSource('/scan?progress=1');
         source.onmessage = function(e) {
             var d = JSON.parse(e.data);
-            if (d.type === 'progress') {
+            if (d.type === 'upstream_pull') {
+                if (inlineText) inlineText.textContent = 'Hämtar från bibliotek: ' + d.file;
+            } else if (d.type === 'progress') {
                 if (inlineText) inlineText.textContent = 'Skannar: ' + d.file;
             } else if (d.type === 'done') {
                 if (inlineText) inlineText.textContent = 'Klar! Tillagda: ' + d.added + ', uppdaterade: ' + d.updated + ', borttagna: ' + d.removed;
@@ -2337,11 +2398,25 @@
                     if ((row.dataset.hasCover || '') !== '0') show = false;
                 } else if (filterType === 'missing_metadata') {
                     if (row.dataset.status !== 'missing') show = false;
+                } else if (filterType === 'unsynced') {
+                    if ((row.dataset.unsynced || '') !== '1') show = false;
                 }
             }
 
             row.dataset.filterHidden = show ? '' : '1';
         });
+
+        var syncBar = document.getElementById('syncBar');
+        var syncBarText = document.getElementById('syncBarText');
+        if (syncBar) {
+            if (_activeBadgeFilter === 'unsynced:1') {
+                var unsyncedRows = document.querySelectorAll('#bookTableBody tr[data-unsynced="1"]');
+                syncBarText.textContent = unsyncedRows.length + ' filer redo att synka till bibliotek';
+                syncBar.style.display = 'flex';
+            } else {
+                syncBar.style.display = 'none';
+            }
+        }
 
         renderPagination();
     }

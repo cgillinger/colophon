@@ -30,6 +30,8 @@ def ensure_database_columns():
         "group_key": "ALTER TABLE library_items ADD COLUMN group_key VARCHAR(64)",
         "genres": "ALTER TABLE library_items ADD COLUMN genres TEXT",
         "published_date": "ALTER TABLE library_items ADD COLUMN published_date VARCHAR(20)",
+        "file_modified_by_colophon": "ALTER TABLE library_items ADD COLUMN file_modified_by_colophon DATETIME",
+        "upstream_synced_at": "ALTER TABLE library_items ADD COLUMN upstream_synced_at DATETIME",
     }
 
     changed = False

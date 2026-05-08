@@ -40,6 +40,9 @@ class LibraryItem(db.Model):
     polished_at = db.Column(db.DateTime, nullable=True)
     metadata_read_at = db.Column(db.DateTime, nullable=True)
 
+    file_modified_by_colophon = db.Column(db.DateTime, nullable=True)
+    upstream_synced_at = db.Column(db.DateTime, nullable=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

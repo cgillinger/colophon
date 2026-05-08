@@ -31,6 +31,8 @@ All variables are read from `.env` (loaded via `env_file` in `docker-compose.yml
 | `COLOPHON_GOOGLE_BOOKS_KEY` | No | — | Google Books API key for metadata lookups |
 | `COLOPHON_MISTRAL_API_KEY` | No | — | Mistral AI API key for AI-assisted metadata suggestions |
 | `COLOPHON_MISTRAL_MODEL` | No | `mistral-small-latest` | Mistral model name |
+| `COLOPHON_UPSTREAM_DIR` | No | — | Path to the upstream library inside the container (e.g. `/upstream`). See [Upstream sync](#upstream-sync-optional). |
+| `COLOPHON_UPSTREAM_HOST` | No | — | Host path mounted as `COLOPHON_UPSTREAM_DIR` (used by docker-compose) |
 
 ---
 
@@ -58,6 +60,21 @@ Colophon processes books in four stages:
 3. **Polish** — If a Mistral API key is configured, the AI can suggest improvements to series, description, and subjects for a selected book. Suggestions are generated on demand from the book's metadata page.
 
 4. **Review** — Every AI suggestion is held in a review queue. Nothing is written to the database until you explicitly accept or reject each suggestion in the web interface.
+
+---
+
+## Upstream sync (optional)
+
+Colophon can work against a local copy of your book library and sync
+changes back to the original location (e.g. a Komga library on a NAS).
+
+1. Set `COLOPHON_UPSTREAM_DIR=/upstream` in `.env`
+2. Uncomment the upstream volume mount in `docker-compose.yml`
+3. Point it at your original library path
+
+When configured, "Hitta nya böcker" will pull new files from upstream
+before scanning. A blue "N osynkade" badge appears in the library bar
+when files have been modified locally. Click it to review, then push.
 
 ---
 

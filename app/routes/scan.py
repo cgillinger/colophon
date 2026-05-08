@@ -43,7 +43,13 @@ def _scan_sse():
         with app.app_context():
             from app.models import db as _db
             from app.services.scanner import scan_directory as _scan
+            from app.services.upstream_sync import upstream_configured, pull_from_upstream
             try:
+                if upstream_configured():
+                    for ev in pull_from_upstream():
+                        ev["type"] = "upstream_pull"
+                        ev_queue.put(ev)
+
                 summary = _scan(
                     library_dir,
                     _db.session,

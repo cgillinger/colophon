@@ -13,6 +13,8 @@ class Config:
     SQLALCHEMY_DATABASE_URI = "sqlite:///" + os.path.join(DATA_DIR, "colophon.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    UPSTREAM_DIR = os.environ.get("COLOPHON_UPSTREAM_DIR", "").strip() or None
+
     SESSION_TYPE = "filesystem"
     SESSION_FILE_DIR = str(_VAR_DIR / "sessions")
     SESSION_PERMANENT = False
