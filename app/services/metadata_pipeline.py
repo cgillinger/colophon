@@ -377,7 +377,7 @@ def run_metadata_enrichment(
         "series": candidate_series,
         "series_index": candidate_series_index,
         "genres": _txt(best.get("genres")),
-        "published_date": _txt(best.get("published_date"))[:20],
+        "published_date": _txt(best.get("published_date"))[:10],
         "cover_url": _txt(best.get("cover_url")),
         "cover_path": cover_path_for_preview,
     }

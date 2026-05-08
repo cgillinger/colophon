@@ -259,7 +259,7 @@ def fetch_ai_suggestions(item: LibraryItem, fields=None) -> dict:
             }
         elif field == "publication_date":
             suggestions["published_date"] = {
-                "value": str(value)[:20],
+                "value": str(value)[:10],
                 "confidence": confidence,
                 "reason": reason,
             }

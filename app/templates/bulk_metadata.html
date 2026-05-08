@@ -2527,6 +2527,7 @@
             var tds = _brtCols.map(function(field) {
                 var current = (before[field] != null) ? String(before[field]) : '';
                 var fetched = (candidate[field] != null) ? String(candidate[field]) : '';
+                if (field === 'published_date') { current = _cleanDate(current); fetched = _cleanDate(fetched); }
                 _brtCellValues[itemId][field] = fetched || current;
 
                 var cellHtml;
@@ -2659,6 +2660,7 @@
                 var val = (_brtCellValues[itemId] && _brtCellValues[itemId][field] != null)
                     ? _brtCellValues[itemId][field]
                     : ((candidate[field] != null) ? String(candidate[field]) : null);
+                if (field === 'published_date' && val) val = _cleanDate(val);
                 if (val !== null && val !== '') payload[field] = val;
             });
 
@@ -3675,6 +3677,14 @@
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
+    function _cleanDate(val) {
+        if (!val || typeof val !== 'string') return val;
+        if (val.length > 10 && val[4] === '-' && val[7] === '-') {
+            return val.substring(0, 10);
+        }
+        return val;
+    }
+
     var _applyFieldLabels = {
         title: 'Titel', author: 'Författare', description: 'Synopsis',
         isbn: 'ISBN', publisher: 'Förlag', series: 'Serie',
@@ -4144,7 +4154,7 @@
         document.getElementById('modalPublisher').value     = data.publisher      || '';
         document.getElementById('modalLanguage').value      = data.language       || '';
         document.getElementById('modalGenres').value        = data.genres         || '';
-        document.getElementById('modalPublishedDate').value = data.published_date || '';
+        document.getElementById('modalPublishedDate').value = _cleanDate(data.published_date || '');
         document.getElementById('modalDescription').value   = data.description    || '';
 
         document.getElementById('modalAiBtn').style.display = data.ai_configured ? 'inline-flex' : 'none';
@@ -4193,7 +4203,7 @@
         }
         if (selectedFields.indexOf('published_date') !== -1 && candidate.published_date) {
             var pdEl = document.getElementById('modalPublishedDate');
-            if (pdEl) pdEl.value = candidate.published_date;
+            if (pdEl) pdEl.value = _cleanDate(candidate.published_date);
         }
     }
 
@@ -4616,7 +4626,7 @@
                     document.getElementById('modalDescription').value = s.description;
                 if (selectedFields.indexOf('published_date') !== -1 && s.published_date) {
                     var pdEl2 = document.getElementById('modalPublishedDate');
-                    if (pdEl2) pdEl2.value = String(s.published_date).substring(0, 20);
+                    if (pdEl2) pdEl2.value = _cleanDate(String(s.published_date));
                 }
                 setModalFeedback('success', 'AI-förslag inlagda. Granska och spara.');
             })
@@ -4639,7 +4649,7 @@
             publisher:      document.getElementById('modalPublisher').value.trim(),
             language:       document.getElementById('modalLanguage').value.trim(),
             genres:         document.getElementById('modalGenres').value.trim(),
-            published_date: document.getElementById('modalPublishedDate').value.trim().substring(0, 20),
+            published_date: _cleanDate(document.getElementById('modalPublishedDate').value.trim()),
             description:    document.getElementById('modalDescription').value.trim()
         };
         setModalFeedback('info', 'Sparar…');
@@ -5072,6 +5082,7 @@
         fields.forEach(function(f) {
             var b = (before[f.key] || '').toString().trim();
             var a = (after[f.key] || '').toString().trim();
+            if (f.key === 'published_date') { b = _cleanDate(b); a = _cleanDate(a); }
             var changed = b !== a && a !== '';
             var checkable = a !== '' && b !== a;
             var isSynopsis = f.key === 'description';
@@ -5338,7 +5349,7 @@
             publisher:      before.publisher || '',
             language:       before.language || '',
             genres:         before.genres || '',
-            published_date: before.published_date || '',
+            published_date: _cleanDate(before.published_date || ''),
             description:    before.description || ''
         };
         fields.forEach(function(f) {
@@ -5351,6 +5362,7 @@
                 payload[f] = candidate[f] || '';
             }
         });
+        if (payload.published_date) payload.published_date = _cleanDate(payload.published_date);
 
         var allIds = data.item_ids || [itemId];
         var completed = 0;
