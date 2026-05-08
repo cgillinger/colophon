@@ -983,12 +983,29 @@
             color: var(--accent-primary);
             text-decoration: none;
         }
+        .batch-review-scroll {
+            position: relative;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 0 -4px;
+            padding: 0 4px;
+        }
+        .batch-review-scroll.has-overflow::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 28px;
+            background: linear-gradient(to right, transparent, var(--bg-primary));
+            pointer-events: none;
+        }
         .batch-review-table {
             width: 100%;
-            table-layout: fixed;
             border-collapse: collapse;
             font-size: 13px;
         }
+        .batch-review-table.brt-many-cols { min-width: max-content; }
         .batch-review-table th {
             background: var(--bg-secondary);
             color: var(--text-secondary);
@@ -1001,7 +1018,7 @@
             white-space: nowrap;
             overflow: hidden;
         }
-        .batch-review-table th:first-child { width: 160px; }
+        .batch-review-table th:first-child { width: 160px; min-width: 160px; }
         .batch-review-table td {
             padding: 8px 10px;
             border-bottom: 0.5px solid var(--border-light);
@@ -1009,14 +1026,16 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            max-width: 0;
         }
+        .batch-review-table:not(.brt-many-cols) td { max-width: 0; }
+        .batch-review-table.brt-many-cols td { max-width: 220px; }
         .batch-review-table tr:hover { background: var(--bg-secondary); }
         .brt-arrow { color: var(--accent-green); font-size: 11px; margin: 0 4px; }
         .brt-new-value { color: var(--accent-green); font-weight: 500; }
         .brt-no-match { color: var(--text-tertiary); }
         .brt-same { color: var(--text-secondary); font-size: 12px; }
         .brt-current { color: var(--text-tertiary); font-size: 12px; }
+        .brt-invalid { color: var(--accent-warn, #b58900); }
         .brt-dropdown-icon {
             cursor: pointer;
             color: var(--text-tertiary);
@@ -1056,6 +1075,8 @@
             display: flex;
             flex-direction: column;
             gap: 6px;
+            overflow: hidden;
+            max-width: 100%;
         }
         .source-alt-row {
             display: flex;
@@ -1086,7 +1107,9 @@
         .source-alt-fields {
             display: flex;
             flex-wrap: wrap;
-            gap: 4px 10px;
+            gap: 4px 16px;
+            font-size: 12px;
+            max-width: 100%;
         }
         .source-alt-field {
             font-size: 11px;
@@ -1094,7 +1117,7 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            max-width: 200px;
+            max-width: 100%;
         }
         .source-alt-field-label {
             color: var(--text-tertiary);
@@ -2467,6 +2490,8 @@
         'publisher', 'language', 'genres', 'published_date'
     ];
 
+    var _batchSSESource = null;
+
     function _resetBatchWizardState() {
         _batchWizard.step = 1;
         _batchWizard.selectedFields = [];
@@ -2519,9 +2544,27 @@
             if (el) el.style.display = (i === step) ? '' : 'none';
         }
         _renderWizardSteps();
+        _batchUpdateSubtitle();
         if (step === 4) {
             var sc = document.getElementById('batchSummaryContainer');
             if (sc) _batchRenderSummary(sc);
+        }
+    }
+
+    function _batchUpdateSubtitle() {
+        var subtitle = document.getElementById('batchSubtitle');
+        if (!subtitle) return;
+        var bookCount = (_batchWizard.selectedItemIds || []).length;
+        if (!bookCount) return;
+        var bookText = bookCount + ' bok' + (bookCount !== 1 ? 'er' : '') + ' valda';
+        var fields = _batchWizard.selectedFields || [];
+        if (_batchWizard.step >= 2 && fields.length > 0) {
+            var fieldLabels = fields.map(function(f) {
+                return _applyFieldLabels[f] || f;
+            });
+            subtitle.textContent = bookText + ' · ' + fieldLabels.join(', ');
+        } else {
+            subtitle.textContent = bookText;
         }
     }
 
@@ -2610,15 +2653,28 @@
     var _brtAltPanelData = {};
     var _brtSourceCandidates = {};
 
+    function _isValidLanguageCode(code) {
+        if (!code || typeof code !== 'string') return false;
+        var c = code.trim().toLowerCase();
+        return c.length >= 2 && c.length <= 3 && /^[a-z]+$/.test(c);
+    }
+
     function _brtCellHtml(itemId, field, current, fetchedVal) {
         if (!fetchedVal) {
             return '<span class="brt-no-match">—</span>';
         } else if (fetchedVal === current) {
             return '<span class="brt-same">' + _esc(fetchedVal) + ' ✓</span>';
         } else {
+            var newValHtml;
+            if (field === 'language' && !_isValidLanguageCode(fetchedVal)) {
+                newValHtml = '<span class="brt-new-value brt-invalid" id="brt-cell-' + itemId + '-' + field +
+                    '" title="Ogiltig språkkod">⚠ ' + _esc(fetchedVal) + '</span>';
+            } else {
+                newValHtml = '<span class="brt-new-value" id="brt-cell-' + itemId + '-' + field + '">' +
+                    _esc(fetchedVal) + '</span>';
+            }
             return '<span class="brt-current">' + _esc(current || '(tomt)') + '</span>' +
-                '<span class="brt-arrow">→</span>' +
-                '<span class="brt-new-value" id="brt-cell-' + itemId + '-' + field + '">' + _esc(fetchedVal) + '</span>';
+                '<span class="brt-arrow">→</span>' + newValHtml;
         }
     }
 
@@ -2703,14 +2759,20 @@
             _brtCellValues[itemId] = {};
             var hasChange = false;
 
+            var hasInvalidOnly = true;
             var tds = _brtCols.map(function(field) {
                 var current = (before[field] != null) ? String(before[field]) : '';
                 var fetched = (candidate[field] != null) ? String(candidate[field]) : '';
                 if (field === 'published_date') { current = _cleanDate(current); fetched = _cleanDate(fetched); }
                 _brtCellValues[itemId][field] = fetched || current;
-                if (fetched && fetched !== current) hasChange = true;
+                if (fetched && fetched !== current) {
+                    hasChange = true;
+                    var invalid = (field === 'language' && !_isValidLanguageCode(fetched));
+                    if (!invalid) hasInvalidOnly = false;
+                }
                 return '<td data-field="' + field + '">' + _brtCellHtml(itemId, field, current, fetched) + '</td>';
             }).join('');
+            if (!hasChange) hasInvalidOnly = false;
 
             // Build deduplicated source list (sources with ≥1 value for selected fields)
             var seenSrc = {};
@@ -2734,7 +2796,7 @@
 
             var title = data.title || String(itemId);
             if (title.length > 35) title = title.substring(0, 35) + '…';
-            var isChecked = hasChange ? ' checked' : '';
+            var isChecked = (hasChange && !hasInvalidOnly) ? ' checked' : '';
             var expandArrow = hasAlts ? '<span class="expand-arrow">▶</span>' : '';
             var rowCls = 'batch-review-row' + (hasAlts ? ' has-alts' : '');
             var rowClick = hasAlts ? ' onclick="_brtToggleExpandRow(this)"' : '';
@@ -2779,14 +2841,16 @@
             return '<strong>' + _esc(_applyFieldLabels[f] || f) + '</strong>';
         }).join(' · ');
 
+        var manyCols = _brtCols.length > 5;
+        var tableCls = 'batch-review-table' + (manyCols ? ' brt-many-cols' : '');
         container.innerHTML =
             '<div class="batch-review-header">Granskar: ' + fieldSummary +
             ' <a href="#" class="batch-add-field" onclick="event.preventDefault();_batchShowAddField(this)">[+ lägg till fält]</a></div>' +
             '<div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">' +
             '📄 Nuvarande &nbsp;→&nbsp; 🔍 Hämtat' +
             '</div>' +
-            '<div style="overflow-x:auto;">' +
-            '<table class="batch-review-table"><thead><tr><th>Bok</th>' + colLabels + '</tr></thead>' +
+            '<div class="batch-review-scroll" id="batchReviewScroll">' +
+            '<table class="' + tableCls + '"><thead><tr><th>Bok</th>' + colLabels + '</tr></thead>' +
             '<tbody>' + rows.join('') + '</tbody>' +
             '</table></div>' +
             '<div style="margin-top:16px;display:flex;gap:8px;align-items:center;">' +
@@ -2794,7 +2858,33 @@
             '<button type="button" class="btn ghost" onclick="_batchSkipReview()">Hoppa över</button>' +
             '<button type="button" class="btn ghost" onclick="closeBatchModal()">Avbryt</button>' +
             '</div>';
+        _brtUpdateScrollHint();
     }
+
+    function _brtUpdateScrollHint() {
+        var el = document.getElementById('batchReviewScroll');
+        if (!el) return;
+        function update() {
+            var node = document.getElementById('batchReviewScroll');
+            if (!node) {
+                window.removeEventListener('resize', update);
+                return;
+            }
+            if (node.scrollWidth > node.clientWidth + 4 &&
+                node.scrollLeft + node.clientWidth < node.scrollWidth - 4) {
+                node.classList.add('has-overflow');
+            } else {
+                node.classList.remove('has-overflow');
+            }
+        }
+        update();
+        el.addEventListener('scroll', update);
+        if (!_brtScrollResizeBound) {
+            window.addEventListener('resize', update);
+            _brtScrollResizeBound = true;
+        }
+    }
+    var _brtScrollResizeBound = false;
 
     function _brtToggleAltPanel(iconEl, itemId, field) {
         var cell = iconEl.closest('td');
@@ -2879,13 +2969,18 @@
                 if (f === 'published_date') v = _cleanDate(v);
                 if (v) payload[f] = v;
             });
-            // Override with user-reviewed values for selected fields only
+            // Track which fields the user-reviewed values are actually changing.
+            var changedFields = [];
             _brtCols.forEach(function(field) {
                 var val = (_brtCellValues[itemId] && _brtCellValues[itemId][field] != null)
                     ? _brtCellValues[itemId][field]
                     : ((candidate[field] != null) ? String(candidate[field]) : null);
                 if (field === 'published_date' && val) val = _cleanDate(val);
-                if (val !== null && val !== '') payload[field] = val;
+                if (val == null || val === '') return;
+                var prev = (before[field] != null) ? String(before[field]) : '';
+                if (field === 'published_date') prev = _cleanDate(prev);
+                payload[field] = val;
+                if (String(val) !== prev) changedFields.push(field);
             });
 
             var allIds = data.item_ids || [itemId];
@@ -2898,15 +2993,17 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 })
-                .then(function(r) { return r.json(); })
+                .then(function(r) {
+                    return r.json().catch(function() { return { ok: false, error: 'http_' + r.status }; });
+                })
                 .then(function(result) {
-                    if (!result.ok) ok = false;
+                    if (!result || !result.ok) ok = false;
                     remaining--;
                     if (remaining === 0) {
-                        if (ok) {
+                        if (ok && changedFields.length > 0) {
                             savedCount++;
                             var fc = _batchWizard.results.fieldCounts;
-                            Object.keys(payload).forEach(function(f) {
+                            changedFields.forEach(function(f) {
                                 fc[f] = (fc[f] || 0) + 1;
                             });
                         }
@@ -2915,6 +3012,7 @@
                     }
                 })
                 .catch(function() {
+                    ok = false;
                     remaining--;
                     if (remaining === 0) { pending--; if (pending === 0) _onAllDone(); }
                 });
@@ -3058,6 +3156,7 @@
 
     function _batchRenderCoverReview(container) {
         var cards = [];
+        var hiddenNoFetch = 0;
         _batchWizard.selectedItemIds.forEach(function(itemId) {
             var data = _batchWizard.searchCache[itemId];
             if (!data) return;
@@ -3066,13 +3165,11 @@
             var coverUrlFetched = data.cover_url_fetched || null;
             var hasCoverFetched = data.has_cover_fetched || false;
 
-            var isChecked = false, isDisabled = false;
-            if (!hasCoverBefore && hasCoverFetched) {
-                isChecked = true;
-            } else if (!hasCoverFetched) {
-                isDisabled = true;
-            }
-            var checkAttrs = (isChecked ? ' checked' : '') + (isDisabled ? ' disabled' : '');
+            // Skip books where no new cover was fetched — nothing to review.
+            if (!hasCoverFetched) { hiddenNoFetch++; return; }
+
+            var isChecked = !hasCoverBefore;
+            var checkAttrs = isChecked ? ' checked' : '';
 
             var currentHtml = hasCoverBefore
                 ? '<img src="/cover/' + itemId + '" alt="" onerror="this.outerHTML=\'<div class=&quot;cover-placeholder&quot;>📖</div>\'">'
@@ -3099,10 +3196,20 @@
             );
         });
 
+        var hiddenNote = '';
+        if (hiddenNoFetch > 0) {
+            hiddenNote = '<div class="hint" style="font-size:12px; margin-bottom:8px;">' +
+                hiddenNoFetch + ' bok' + (hiddenNoFetch !== 1 ? 'er' : '') +
+                ' utan hämtat omslag visas inte.</div>';
+        }
+        var body = cards.length
+            ? '<div class="cover-review-grid">' + cards.join('') + '</div>'
+            : '<div class="hint" style="padding:16px 0;">Inget nytt omslag hittades för någon bok.</div>';
         container.innerHTML =
             '<div class="batch-review-header">Granskar: <strong>Omslag</strong>' +
             ' <a href="#" class="batch-add-field" onclick="event.preventDefault();_batchShowAddField(this)">[+ lägg till fält]</a></div>' +
-            '<div class="cover-review-grid">' + cards.join('') + '</div>' +
+            hiddenNote +
+            body +
             '<div style="margin-top:16px;display:flex;gap:8px;align-items:center;">' +
             '<button type="button" class="btn primary" onclick="_batchSaveCover()">Spara valda &amp; fortsätt</button>' +
             '<button type="button" class="btn ghost" onclick="_batchSkipReview()">Hoppa över</button>' +
@@ -3238,11 +3345,14 @@
                    totalUpdates + ' fält uppdaterade · ' + booksAffected + ' böcker berörda' +
                    '</p>' +
                    '</div>' +
-                   '<div class="batch-summary-section" style="margin-top:0;">' + savedItems.join('') + '</div>';
+                   '<div class="batch-summary-section" style="margin-top:0;"><h3>Sparade</h3>' + savedItems.join('') + '</div>';
         } else {
             html = '<div style="text-align:center; padding:40px 0 20px;">' +
                    '<div style="font-size:48px; color:var(--text-tertiary);">○</div>' +
-                   '<h3 style="margin-top:12px; font-size:18px; font-weight:600;">Inga ändringar gjordes</h3>' +
+                   '<h3 style="margin-top:12px; font-size:18px; font-weight:600;">Inga fält uppdaterades</h3>' +
+                   '<p style="color:var(--text-secondary); margin-top:8px; font-size:13px;">' +
+                   'Inga av de hämtade värdena skiljde sig från befintliga, eller så valdes inga rader.' +
+                   '</p>' +
                    '</div>';
         }
 
@@ -3975,11 +4085,32 @@
     }
 
     function abortBatchSearch() {
-        var btn = document.getElementById('batchAbortBtn');
+        // Close SSE stream immediately on the client so UI stops blocking.
+        if (_batchSSESource) {
+            try { _batchSSESource.close(); } catch (e) {}
+            _batchSSESource = null;
+        }
+        // Tell the backend to stop in the background.
         fetch('/metadata/abort', {method: 'POST'}).catch(function(){});
-        if (btn) {
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spin"></span> Avbryter…';
+
+        var titleEl = document.getElementById('batchProgressTitle');
+        if (titleEl) titleEl.textContent = 'Sökning avbruten';
+        _hideBatchAbortBtn();
+
+        // Show "Continue to review" if any books finished and were cached.
+        if (Object.keys(_batchWizard.searchCache).length > 0) {
+            var continueBtnA = document.getElementById('batchContinueBtn');
+            if (!continueBtnA) {
+                continueBtnA = document.createElement('button');
+                continueBtnA.id = 'batchContinueBtn';
+                continueBtnA.type = 'button';
+                continueBtnA.className = 'btn primary';
+                continueBtnA.style.marginTop = '16px';
+                continueBtnA.textContent = 'Fortsätt till granskning →';
+                continueBtnA.onclick = function() { _batchSetStep(3); _batchRenderReview(); };
+                document.getElementById('batchStep2').appendChild(continueBtnA);
+            }
+            continueBtnA.style.display = '';
         }
     }
     function _resetBatchAbortBtn() {
@@ -4020,6 +4151,7 @@
 
         var counts = { saved: 0, review: 0, done: 0 };
         var source = new EventSource(url);
+        _batchSSESource = source;
 
         source.onmessage = function(e) {
             var d;
@@ -4196,6 +4328,7 @@
 
             } else if (d.type === 'done') {
                 source.close();
+                _batchSSESource = null;
                 _hideBatchAbortBtn();
                 titleEl.textContent = 'Metadatasökning klar';
                 var s = d.summary || {};
@@ -4221,6 +4354,7 @@
 
             } else if (d.type === 'aborted') {
                 source.close();
+                _batchSSESource = null;
                 _hideBatchAbortBtn();
                 var processed = d.processed || 0;
                 titleEl.textContent = 'Sökning avbruten — '
@@ -4249,6 +4383,7 @@
 
             } else if (d.type === 'error') {
                 source.close();
+                _batchSSESource = null;
                 _hideBatchAbortBtn();
                 titleEl.textContent = 'Fel: ' + (d.message || 'okänt fel');
             }
@@ -4256,6 +4391,7 @@
 
         source.onerror = function() {
             source.close();
+            _batchSSESource = null;
             _hideBatchAbortBtn();
             titleEl.textContent = 'Anslutningen bröts.';
         };
