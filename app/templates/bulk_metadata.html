@@ -824,7 +824,11 @@
             font-size: 12px;
             text-transform: uppercase;
         }
+        #batchProgressTable tbody tr:nth-child(even) { background: var(--bg-secondary); }
         .bp-active { background: var(--bg-secondary); }
+        .bp-score-strong { box-shadow: inset 3px 0 0 var(--accent-green); }
+        .bp-score-likely  { box-shadow: inset 3px 0 0 var(--accent-yellow, #f59e0b); }
+        .bp-score-weak    { box-shadow: inset 3px 0 0 var(--accent-red, #ef4444); }
 
         /* Per-source detail (expanded) */
         .bp-source-detail {
@@ -1018,6 +1022,68 @@
         .brt-alt-option:hover { background: var(--bg-secondary); }
         .brt-alt-option.selected { background: var(--bg-secondary); }
         .brt-alt-meta { font-size: 11px; color: var(--text-tertiary); white-space: nowrap; }
+
+        /* Step 3 — expandable source alternatives */
+        .batch-review-row.has-alts { cursor: pointer; }
+        .batch-review-row.has-alts:hover { background: var(--bg-secondary); }
+        .batch-review-expand td { padding: 0 !important; border-bottom: 0.5px solid var(--border-light); }
+        .batch-review-expand { background: var(--bg-secondary); }
+        .source-alternatives {
+            padding: 8px 12px 8px 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .source-alt-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 5px 10px;
+            border-radius: var(--border-radius-md, 6px);
+            border: 0.5px solid transparent;
+            transition: border-color 0.15s;
+        }
+        .source-alt-row:hover { border-color: var(--border-medium, var(--border-light)); }
+        .source-alt-row.selected {
+            border-color: var(--accent-green);
+            background: rgba(99, 153, 34, 0.06);
+        }
+        .source-alt-name {
+            font-weight: 500;
+            font-size: 12px;
+            min-width: 100px;
+            color: var(--text-secondary);
+        }
+        .source-alt-field {
+            font-size: 12px;
+            flex: 1;
+            color: var(--text-primary);
+        }
+        .source-alt-field-label {
+            color: var(--text-tertiary);
+            font-size: 11px;
+            margin-right: 2px;
+        }
+        .source-alt-use {
+            font-size: 11px;
+            padding: 3px 10px;
+            border: 0.5px solid var(--accent-green);
+            color: var(--accent-green);
+            background: transparent;
+            border-radius: var(--border-radius-md, 6px);
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .source-alt-use:hover { background: var(--accent-green); color: #fff; }
+        .expand-arrow {
+            display: inline-block;
+            font-size: 10px;
+            color: var(--text-tertiary);
+            margin-right: 5px;
+            transition: transform 0.15s;
+            user-select: none;
+        }
+        .batch-review-row.expanded .expand-arrow { transform: rotate(90deg); }
 
         /* Synopsis review */
         .synopsis-compare {
@@ -2051,7 +2117,7 @@
             <div style="margin-bottom:16px;">Valda böcker: <strong id="batchBookCount">0</strong></div>
 
             <div style="margin-top:16px;">
-                <div class="batch-field-group-label">Textfält</div>
+                <div class="batch-field-group-label">Grunduppgifter</div>
                 <div class="batch-field-checks">
                     <label class="field-check"><input type="checkbox" class="bw-field" value="title"> Titel</label>
                     <label class="field-check"><input type="checkbox" class="bw-field" value="author"> Författare</label>
@@ -2063,13 +2129,12 @@
                     <label class="field-check"><input type="checkbox" class="bw-field" value="published_date" checked> Publiceringsdatum</label>
                 </div>
 
-                <div class="batch-field-group-label" style="margin-top:12px;">Långtext</div>
+                <div class="batch-field-group-label" style="margin-top:12px;">Beskrivning</div>
                 <div class="batch-field-checks">
                     <label class="field-check"><input type="checkbox" class="bw-field" value="description" checked> Synopsis</label>
                 </div>
 
-                <div class="batch-field-group-label" style="margin-top:12px;">Visuellt</div>
-                <div class="batch-field-checks">
+                <div class="batch-field-checks" style="margin-top:12px;">
                     <label class="field-check"><input type="checkbox" class="bw-field" value="cover" checked> Omslag</label>
                 </div>
 
@@ -2098,12 +2163,10 @@
                 </div>
                 <div id="batchProgressSub" class="hint" style="margin-bottom:8px;"></div>
                 <div class="hint" style="font-size:12px; margin-bottom:8px;">
-                    Poäng:
-                    <span class="bp-ok">≥90 stark match</span> ·
-                    <span class="bp-warn">70–89 granska</span> ·
-                    <span class="bp-uncertain">50–69 osäker</span> ·
-                    <span class="bp-fail">&lt;50 ingen match</span>
-                    — Klicka på en rad för att jämföra och välja fält att spara.
+                    <span class="bp-ok">✓ ≥90 stark match</span> ·
+                    <span class="bp-warn">● 70–89 trolig</span> ·
+                    <span class="bp-uncertain">⚠ 50–69 osäker</span> ·
+                    <span class="bp-skip">— &lt;50 svag</span>
                 </div>
                 <table id="batchProgressTable">
                     <thead>
@@ -2477,6 +2540,53 @@
     var _brtCellValues = {};
     var _brtCols = [];
     var _brtAltPanelData = {};
+    var _brtSourceCandidates = {};
+
+    function _brtCellHtml(itemId, field, current, fetchedVal) {
+        if (!fetchedVal) {
+            return '<span class="brt-no-match">—</span>';
+        } else if (fetchedVal === current) {
+            return '<span class="brt-same">' + _esc(fetchedVal) + ' ✓</span>';
+        } else {
+            return '<span class="brt-current">' + _esc(current || '(tomt)') + '</span>' +
+                '<span class="brt-arrow">→</span>' +
+                '<span class="brt-new-value" id="brt-cell-' + itemId + '-' + field + '">' + _esc(fetchedVal) + '</span>';
+        }
+    }
+
+    function _brtToggleExpandRow(tr) {
+        var expandTr = tr.nextElementSibling;
+        if (!expandTr || !expandTr.classList.contains('batch-review-expand')) return;
+        var isExpanded = expandTr.style.display !== 'none';
+        expandTr.style.display = isExpanded ? 'none' : '';
+        tr.classList.toggle('expanded', !isExpanded);
+    }
+
+    function batchUseSource(itemId, idx) {
+        var sources = _brtSourceCandidates[itemId];
+        if (!sources || !sources[idx]) return;
+        var c = sources[idx];
+        if (!_brtCellValues[itemId]) _brtCellValues[itemId] = {};
+        var before = (_batchWizard.searchCache[itemId] || {}).before || {};
+        _brtCols.forEach(function(f) {
+            var v = (c[f] != null) ? String(c[f]) : '';
+            if (f === 'published_date') v = _cleanDate(v);
+            if (!v) return;
+            _brtCellValues[itemId][f] = v;
+            var cur = (before[f] != null) ? String(before[f]) : '';
+            if (f === 'published_date') cur = _cleanDate(cur);
+            var td = document.querySelector('tr.batch-review-row[data-item-id="' + itemId + '"] td[data-field="' + f + '"]');
+            if (td) td.innerHTML = _brtCellHtml(itemId, f, cur, v);
+        });
+        var expandTr = document.querySelector('tr.batch-review-expand[data-item-id="' + itemId + '"]');
+        if (expandTr) {
+            expandTr.querySelectorAll('.source-alt-row').forEach(function(row, i) {
+                row.classList.toggle('selected', i === idx);
+            });
+        }
+        var cb = document.querySelector('.brt-row-check[data-item-id="' + itemId + '"]');
+        if (cb) cb.checked = true;
+    }
 
     function _batchRenderReview() {
         var container = document.getElementById('batchReviewContainer');
@@ -2508,6 +2618,7 @@
 
         _brtCellValues = {};
         _brtAltPanelData = {};
+        _brtSourceCandidates = {};
 
         var colLabels = _brtCols.map(function(f) {
             return '<th>' + _esc(_applyFieldLabels[f] || f) + '</th>';
@@ -2527,40 +2638,71 @@
             var tds = _brtCols.map(function(field) {
                 var current = (before[field] != null) ? String(before[field]) : '';
                 var fetched = (candidate[field] != null) ? String(candidate[field]) : '';
+                if (field === 'published_date') { current = _cleanDate(current); fetched = _cleanDate(fetched); }
                 _brtCellValues[itemId][field] = fetched || current;
-
-                var cellHtml;
-                if (!fetched) {
-                    cellHtml = '<span class="brt-no-match">—</span>';
-                } else if (fetched === current) {
-                    cellHtml = '<span class="brt-same">' + _esc(fetched) + ' ✓</span>';
-                } else {
-                    hasChange = true;
-                    var altCount = 0;
-                    allCandidates.forEach(function(c) {
-                        var v = c[field];
-                        if (v != null && String(v) && String(v) !== fetched) altCount++;
-                    });
-                    var dropIcon = altCount > 0
-                        ? ' <span class="brt-dropdown-icon" onclick="event.stopPropagation();_brtToggleAltPanel(this,\'' + itemId + '\',\'' + field + '\')" title="Visa alternativ">▾</span>'
-                        : '';
-                    cellHtml = '<span class="brt-current">' + _esc(current || '(tomt)') + '</span>' +
-                        '<span class="brt-arrow">→</span>' +
-                        '<span class="brt-new-value" id="brt-cell-' + itemId + '-' + field + '">' + _esc(fetched) + '</span>' +
-                        dropIcon;
-                }
-                return '<td>' + cellHtml + '</td>';
+                if (fetched && fetched !== current) hasChange = true;
+                return '<td data-field="' + field + '">' + _brtCellHtml(itemId, field, current, fetched) + '</td>';
             }).join('');
+
+            // Build deduplicated source list (sources with ≥1 value for selected fields)
+            var seenSrc = {};
+            var srcList = [];
+            var bestSrc = data.source || '';
+            var bestHasVal = _brtCols.some(function(f) { return candidate[f] != null && String(candidate[f]); });
+            if (bestHasVal) {
+                seenSrc[bestSrc] = true;
+                srcList.push(Object.assign({}, candidate, { source: bestSrc, score: data.score || 0 }));
+            }
+            allCandidates.forEach(function(c) {
+                var src = c.source || '';
+                if (seenSrc[src]) return;
+                var hasVal = _brtCols.some(function(f) { return c[f] != null && String(c[f]); });
+                if (!hasVal) return;
+                seenSrc[src] = true;
+                srcList.push(c);
+            });
+            _brtSourceCandidates[itemId] = srcList;
+            var hasAlts = srcList.length > 1;
 
             var title = data.title || String(itemId);
             if (title.length > 35) title = title.substring(0, 35) + '…';
             var isChecked = hasChange ? ' checked' : '';
+            var expandArrow = hasAlts ? '<span class="expand-arrow">▶</span>' : '';
+            var rowCls = 'batch-review-row' + (hasAlts ? ' has-alts' : '');
+            var rowClick = hasAlts ? ' onclick="_brtToggleExpandRow(this)"' : '';
 
-            rows.push('<tr>' +
-                '<td><label style="display:flex;align-items:center;gap:6px;cursor:pointer;">' +
-                '<input type="checkbox" class="brt-row-check" data-item-id="' + itemId + '"' + isChecked + '>' +
+            rows.push(
+                '<tr class="' + rowCls + '" data-item-id="' + itemId + '"' + rowClick + '>' +
+                '<td><label style="display:flex;align-items:center;gap:4px;cursor:pointer;" onclick="event.stopPropagation();">' +
+                expandArrow +
+                '<input type="checkbox" class="brt-row-check" data-item-id="' + itemId + '"' + isChecked + ' onclick="event.stopPropagation();">' +
                 '<span>' + _esc(title) + '</span></label></td>' +
-                tds + '</tr>');
+                tds + '</tr>'
+            );
+
+            if (hasAlts) {
+                var altRowsHtml = srcList.map(function(c, idx) {
+                    var isFirst = (idx === 0);
+                    var fieldsHtml = _brtCols.map(function(f) {
+                        var v = (c[f] != null) ? String(c[f]) : '';
+                        if (f === 'published_date') v = _cleanDate(v);
+                        if (!v) return '';
+                        return '<span class="source-alt-field"><span class="source-alt-field-label">' +
+                            _esc(_applyFieldLabels[f] || f) + ':</span> ' + _esc(v) + '</span>';
+                    }).filter(Boolean).join('');
+                    return '<div class="source-alt-row' + (isFirst ? ' selected' : '') + '">' +
+                        '<span class="source-alt-name">' + _esc(c.source || 'Okänd') + '</span>' +
+                        fieldsHtml +
+                        '<button class="source-alt-use" onclick="event.stopPropagation();batchUseSource(\'' + itemId + '\',' + idx + ')">Använd</button>' +
+                        '</div>';
+                }).join('');
+                rows.push(
+                    '<tr class="batch-review-expand" data-item-id="' + itemId + '" style="display:none;">' +
+                    '<td colspan="' + (_brtCols.length + 1) + '">' +
+                    '<div class="source-alternatives">' + altRowsHtml + '</div>' +
+                    '</td></tr>'
+                );
+            }
         });
 
         var fieldSummary = _brtCols.map(function(f) {
@@ -2570,6 +2712,9 @@
         container.innerHTML =
             '<div class="batch-review-header">Granskar: ' + fieldSummary +
             ' <a href="#" class="batch-add-field" onclick="event.preventDefault();_batchShowAddField(this)">[+ lägg till fält]</a></div>' +
+            '<div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">' +
+            '📄 Nuvarande &nbsp;→&nbsp; 🔍 Hämtat' +
+            '</div>' +
             '<div style="overflow-x:auto;">' +
             '<table class="batch-review-table"><thead><tr><th>Bok</th>' + colLabels + '</tr></thead>' +
             '<tbody>' + rows.join('') + '</tbody>' +
@@ -2659,6 +2804,7 @@
                 var val = (_brtCellValues[itemId] && _brtCellValues[itemId][field] != null)
                     ? _brtCellValues[itemId][field]
                     : ((candidate[field] != null) ? String(candidate[field]) : null);
+                if (field === 'published_date' && val) val = _cleanDate(val);
                 if (val !== null && val !== '') payload[field] = val;
             });
 
@@ -2756,7 +2902,7 @@
             ' <a href="#" class="batch-add-field" onclick="event.preventDefault();_batchShowAddField(this)">[+ lägg till fält]</a></div>' +
             '<div style="overflow-x:auto;">' +
             '<table class="batch-review-table"><thead><tr>' +
-            '<th>Bok</th><th>Nuvarande</th><th>Hämtat</th><th>Förändring</th>' +
+            '<th>Bok</th><th>📄 Nuvarande</th><th>🔍 Hämtat</th><th>Förändring</th>' +
             '</tr></thead><tbody>' + rows.join('') + '</tbody></table></div>' +
             '<div style="margin-top:16px;display:flex;gap:8px;align-items:center;">' +
             '<button type="button" class="btn primary" onclick="_batchSaveSynopsis()">Spara valda &amp; fortsätt</button>' +
@@ -2998,21 +3144,35 @@
             }
         });
 
-        var html = '<h2 style="font-size:18px;font-weight:600;margin-bottom:20px;">Batch klar!</h2>';
+        var totalUpdates = 0;
+        Object.keys(fc).forEach(function(f) { totalUpdates += (fc[f] || 0); });
+        var booksAffected = _batchWizard.results.saved || 0;
+        var anyFieldsSaved = savedItems.length > 0;
 
-        html += '<div class="batch-summary-section"><h3>Sparade</h3>';
-        if (savedItems.length > 0) {
-            html += savedItems.join('');
+        var html;
+        if (anyFieldsSaved) {
+            html = '<div style="text-align:center; padding:40px 0 20px;">' +
+                   '<div style="font-size:48px; color:var(--accent-green);">✓</div>' +
+                   '<h3 style="margin-top:12px; font-size:18px; font-weight:600;">Batch klar!</h3>' +
+                   '<p style="color:var(--text-secondary); margin-top:8px; font-size:13px;">' +
+                   totalUpdates + ' fält uppdaterade · ' + booksAffected + ' böcker berörda' +
+                   '</p>' +
+                   '</div>' +
+                   '<div class="batch-summary-section" style="margin-top:0;">' + savedItems.join('') + '</div>';
         } else {
-            html += '<div class="batch-summary-item"><span class="brt-no-match">Inga fält sparades.</span></div>';
+            html = '<div style="text-align:center; padding:40px 0 20px;">' +
+                   '<div style="font-size:48px; color:var(--text-tertiary);">○</div>' +
+                   '<h3 style="margin-top:12px; font-size:18px; font-weight:600;">Inga ändringar gjordes</h3>' +
+                   '</div>';
         }
-        html += '</div>';
 
         if (remainingItems.length > 0) {
             html += '<div class="batch-summary-section"><h3>Kvarstår</h3>' + remainingItems.join('') + '</div>';
         }
 
-        html += '<button type="button" class="btn ghost" onclick="closeBatchModal()">Stäng</button>';
+        html += '<div style="text-align:center; margin-top:20px;">' +
+                '<button type="button" class="btn ghost" onclick="closeBatchModal()">Stäng</button>' +
+                '</div>';
         container.innerHTML = html;
     }
 
@@ -3675,6 +3835,14 @@
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
+    function _cleanDate(val) {
+        if (!val || typeof val !== 'string') return val;
+        if (val.length > 10 && val[4] === '-' && val[7] === '-') {
+            return val.substring(0, 10);
+        }
+        return val;
+    }
+
     var _applyFieldLabels = {
         title: 'Titel', author: 'Författare', description: 'Synopsis',
         isbn: 'ISBN', publisher: 'Förlag', series: 'Serie',
@@ -3767,6 +3935,8 @@
         body.innerHTML = '';
         titleEl.textContent = 'Söker metadata…';
         _resetBatchAbortBtn();
+        var existingContinueBtn = document.getElementById('batchContinueBtn');
+        if (existingContinueBtn) existingContinueBtn.style.display = 'none';
 
         var counts = { saved: 0, review: 0, done: 0 };
         var source = new EventSource(url);
@@ -3800,19 +3970,14 @@
                         return '<span class="format-badge">' + _esc(f) + '</span>';
                     }).join(' ');
                 }
-                var expandIcon = ' <i class="ti ti-chevron-down bp-expand-icon open" onclick="event.stopPropagation(); toggleProgressDetail(' + d.item_id + ', this)" title="Visa källdetaljer"></i>';
                 tr.innerHTML =
-                    '<td>' + _esc(title) + fmtHtml + expandIcon + '</td>' +
+                    '<td>' + _esc(title) + fmtHtml + '</td>' +
                     '<td style="text-align:center;" id="bp-google-' + d.item_id + '"></td>' +
                     '<td style="text-align:center;" id="bp-calibre-' + d.item_id + '"></td>' +
                     '<td style="text-align:center;" id="bp-score-' + d.item_id + '"></td>' +
                     '<td style="text-align:center;" id="bp-result-' + d.item_id + '"></td>';
                 body.appendChild(tr);
-                var detailTr = document.createElement('tr');
-                detailTr.id = 'bp-detail-row-' + d.item_id;
-                detailTr.innerHTML = '<td colspan="5" style="padding:0; border-bottom:1px solid var(--border-light);"><div id="bp-detail-' + d.item_id + '" class="bp-source-detail expanded"></div></td>';
-                body.appendChild(detailTr);
-                var unit = d.total === 1 ? 'grupp' : 'grupper';
+                var unit = d.total === 1 ? 'bok' : 'böcker';
                 summaryEl.textContent = d.index + ' av ' + d.total + ' ' + unit + '…';
 
             } else if (d.type === 'progress') {
@@ -3911,6 +4076,11 @@
                         else if (s >= 50) { cls = 'bp-uncertain'; tooltip = 'Osäker match'; }
                         else { cls = 'bp-fail'; tooltip = 'Svag match'; }
                         scoreCell.innerHTML = '<span class="' + cls + '" title="' + tooltip + '">' + s + '</span>';
+                        var bpTr = document.getElementById('bp-row-' + d.item_id);
+                        if (bpTr) {
+                            var bpCls = s >= 90 ? 'bp-score-strong' : s >= 70 ? 'bp-score-likely' : 'bp-score-weak';
+                            bpTr.classList.add(bpCls);
+                        }
                     } else {
                         scoreCell.textContent = '—';
                     }
@@ -3918,25 +4088,28 @@
 
                 var resultCell = document.getElementById('bp-result-' + d.item_id);
                 if (resultCell) {
-                    var label = _resultLabel(d);
-                    var tip = _resultTooltip(d);
-                    resultCell.innerHTML = tip
-                        ? '<span title="' + _esc(tip) + '">' + label + '</span>'
-                        : label;
-                }
-
-                if (d.classification !== 'skipped') {
-                    tr.style.cursor = 'pointer';
-                    tr.title = d.classification === 'auto_apply'
-                        ? 'Klicka för att se vad som lades till'
-                        : 'Klicka för att jämföra och spara fält';
-                    (function(itemId) { tr.onclick = function() { openBulkResultModal(itemId); }; })(d.item_id);
+                    if (d.classification === 'no_match') {
+                        resultCell.innerHTML = '<span class="bp-fail" title="Ingen träff">✗</span>';
+                    } else if (d.classification === 'source_error') {
+                        resultCell.innerHTML = '<span class="bp-fail" title="Källfel">⚠</span>';
+                    } else if (d.classification === 'skipped') {
+                        resultCell.innerHTML = '<span class="bp-skip" title="Hoppad">—</span>';
+                    } else {
+                        var rs = Math.round(d.score || 0);
+                        var rIcon, rCls, rTip;
+                        if (rs >= 90)      { rIcon = '✓'; rCls = 'bp-ok';        rTip = 'Stark match (' + rs + 'p)'; }
+                        else if (rs >= 70) { rIcon = '●'; rCls = 'bp-warn';      rTip = 'Trolig match (' + rs + 'p) — granskas i steg 3'; }
+                        else if (rs >= 50) { rIcon = '⚠'; rCls = 'bp-uncertain'; rTip = 'Osäker match (' + rs + 'p)'; }
+                        else               { rIcon = '—'; rCls = 'bp-skip';      rTip = 'Svag match (' + rs + 'p)'; }
+                        var autoTip = _resultTooltip(d);
+                        resultCell.innerHTML = '<span class="' + rCls + '" title="' + _esc(autoTip || rTip) + '">' + rIcon + '</span>';
+                    }
                 }
 
                 counts.done += 1;
                 if (d.classification === 'auto_apply') counts.saved += 1;
                 if (d.classification === 'review_needed') counts.review += 1;
-                var doneUnit = d.total === 1 ? 'grupp' : 'grupper';
+                var doneUnit = d.total === 1 ? 'bok' : 'böcker';
                 summaryEl.textContent = counts.done + ' av ' + d.total + ' ' + doneUnit + ' klara'
                     + (counts.saved ? ' — ' + counts.saved + ' sparade' : '')
                     + (counts.review ? ', ' + counts.review + ' granskning' : '');
@@ -4144,7 +4317,7 @@
         document.getElementById('modalPublisher').value     = data.publisher      || '';
         document.getElementById('modalLanguage').value      = data.language       || '';
         document.getElementById('modalGenres').value        = data.genres         || '';
-        document.getElementById('modalPublishedDate').value = data.published_date || '';
+        document.getElementById('modalPublishedDate').value = _cleanDate(data.published_date || '');
         document.getElementById('modalDescription').value   = data.description    || '';
 
         document.getElementById('modalAiBtn').style.display = data.ai_configured ? 'inline-flex' : 'none';
@@ -4193,10 +4366,17 @@
         }
         if (selectedFields.indexOf('published_date') !== -1 && candidate.published_date) {
             var pdEl = document.getElementById('modalPublishedDate');
-            if (pdEl) pdEl.value = candidate.published_date;
+            if (pdEl) pdEl.value = _cleanDate(candidate.published_date);
         }
     }
 
+    // ============================================================
+    // DELADE FUNKTIONER — används av BÅDE enboksmodal och batch
+    // Ändra med försiktighet — testa båda flödena!
+    // Berörda: _renderModalSourceDetail, _applyFetchedToModal,
+    //          saveMetadata, fetchAiMetadata, _populateModal,
+    //          _cleanDate (lib/util, definierad i batch-sektionen)
+    // ============================================================
     function _renderModalSourceDetail(container, sourceDetails) {
         if (!container) return;
         if (!sourceDetails || sourceDetails.length === 0) return;
@@ -4616,7 +4796,7 @@
                     document.getElementById('modalDescription').value = s.description;
                 if (selectedFields.indexOf('published_date') !== -1 && s.published_date) {
                     var pdEl2 = document.getElementById('modalPublishedDate');
-                    if (pdEl2) pdEl2.value = String(s.published_date).substring(0, 20);
+                    if (pdEl2) pdEl2.value = _cleanDate(String(s.published_date));
                 }
                 setModalFeedback('success', 'AI-förslag inlagda. Granska och spara.');
             })
@@ -4639,7 +4819,7 @@
             publisher:      document.getElementById('modalPublisher').value.trim(),
             language:       document.getElementById('modalLanguage').value.trim(),
             genres:         document.getElementById('modalGenres').value.trim(),
-            published_date: document.getElementById('modalPublishedDate').value.trim().substring(0, 20),
+            published_date: _cleanDate(document.getElementById('modalPublishedDate').value.trim()),
             description:    document.getElementById('modalDescription').value.trim()
         };
         setModalFeedback('info', 'Sparar…');
@@ -4665,7 +4845,9 @@
     }
 
     function _updateTableRow(itemId, data) {
-        var row = document.querySelector('tr[data-item-id="' + itemId + '"]');
+        // Scope to #bookTableBody so batch-review rows with the same data-item-id are never matched.
+        var tbody = document.getElementById('bookTableBody');
+        var row = (tbody || document).querySelector('tr[data-item-id="' + itemId + '"]');
         if (!row) return;
 
         var titleEl = row.querySelector('.book-title');
@@ -5072,6 +5254,7 @@
         fields.forEach(function(f) {
             var b = (before[f.key] || '').toString().trim();
             var a = (after[f.key] || '').toString().trim();
+            if (f.key === 'published_date') { b = _cleanDate(b); a = _cleanDate(a); }
             var changed = b !== a && a !== '';
             var checkable = a !== '' && b !== a;
             var isSynopsis = f.key === 'description';
@@ -5338,7 +5521,7 @@
             publisher:      before.publisher || '',
             language:       before.language || '',
             genres:         before.genres || '',
-            published_date: before.published_date || '',
+            published_date: _cleanDate(before.published_date || ''),
             description:    before.description || ''
         };
         fields.forEach(function(f) {
@@ -5351,6 +5534,7 @@
                 payload[f] = candidate[f] || '';
             }
         });
+        if (payload.published_date) payload.published_date = _cleanDate(payload.published_date);
 
         var allIds = data.item_ids || [itemId];
         var completed = 0;

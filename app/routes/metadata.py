@@ -211,7 +211,7 @@ def metadata_item(item_id):
         language = request.form.get("language", "").strip()
         description = clean_text(request.form.get("description", ""))
         genres = request.form.get("genres", "").strip()
-        published_date = request.form.get("published_date", "").strip()[:20]
+        published_date = request.form.get("published_date", "").strip()[:10]
 
         if not title:
             flash("Titel får inte vara tom.", "error")
@@ -1536,7 +1536,7 @@ def save_metadata_json(item_id):
     item.language = (data.get("language") or "").strip() or None
     item.description = clean_text(data.get("description") or "") or None
     item.genres = (data.get("genres") or "").strip() or None
-    item.published_date = (data.get("published_date") or "").strip()[:20] or None
+    item.published_date = (data.get("published_date") or "").strip()[:10] or None
     item.manual_metadata = True
     item.group_key = compute_group_key(item.title or "", item.author or "")
 
@@ -1684,7 +1684,7 @@ def fetch_metadata_json(item_id):
                 "series_index": _txt(c.get("series_index")),
                 "language": _txt(c.get("language")),
                 "genres": _txt(c.get("genres")),
-                "published_date": _txt(c.get("published_date"))[:20],
+                "published_date": _txt(c.get("published_date"))[:10],
                 "cover_url": _txt(c.get("cover_url")),
                 "score": round(scored.get("score") or 0),
             })
@@ -1708,7 +1708,7 @@ def fetch_metadata_json(item_id):
                 "series": _txt(best.get("series")),
                 "series_index": _txt(best.get("series_index")),
                 "genres": _txt(best.get("genres")),
-                "published_date": _txt(best.get("published_date"))[:20],
+                "published_date": _txt(best.get("published_date"))[:10],
             },
             "score": best_score,
             "source": best.get("source", ""),

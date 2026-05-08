@@ -287,7 +287,7 @@ def fetch_calibre_metadata_with_status(
     tags = parsed.get("tags") or []
     genres = ", ".join(t for t in tags if t) if isinstance(tags, list) else str(tags)
 
-    pubdate = (parsed.get("date") or "").strip()[:20]
+    pubdate = (parsed.get("date") or "").strip()[:10]
 
     candidate = {
         "source": source_label,
