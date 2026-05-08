@@ -9,9 +9,9 @@ logger = logging.getLogger(__name__)
 
 
 def upstream_configured() -> bool:
-    """Return True if UPSTREAM_DIR is set and the path exists."""
-    from flask import current_app
-    upstream_dir = current_app.config.get("UPSTREAM_DIR")
+    """Return True if upstream dir is set (env or db) and the path exists."""
+    from app.services.app_settings import get_upstream_dir
+    upstream_dir = get_upstream_dir()
     if not upstream_dir:
         return False
     return os.path.isdir(upstream_dir)
@@ -25,7 +25,9 @@ def pull_from_upstream():
     --delete is intentionally omitted to prevent data loss.
     """
     from flask import current_app
-    upstream_dir = current_app.config.get("UPSTREAM_DIR", "").rstrip("/")
+    from app.services.app_settings import get_upstream_dir
+
+    upstream_dir = (get_upstream_dir() or "").rstrip("/")
     library_dir = current_app.config.get("LIBRARY_DIR", "").rstrip("/")
 
     if not upstream_dir or not os.path.isdir(upstream_dir):
@@ -111,8 +113,9 @@ def push_to_upstream():
     """
     from flask import current_app
     from app.models import db, LibraryItem
+    from app.services.app_settings import get_upstream_dir
 
-    upstream_dir = current_app.config.get("UPSTREAM_DIR", "").rstrip("/")
+    upstream_dir = (get_upstream_dir() or "").rstrip("/")
     library_dir = current_app.config.get("LIBRARY_DIR", "").rstrip("/")
 
     if not upstream_dir or not os.path.isdir(upstream_dir):

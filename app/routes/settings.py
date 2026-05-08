@@ -1,13 +1,14 @@
 import logging
 import os
-from calendar import monthrange
 from datetime import date
+from pathlib import Path
 
-from flask import Blueprint, flash, redirect, render_template, url_for
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 from sqlalchemy import text
 
 from app.models import db
 from app.services.ai_metadata import test_ai_connection
+from app.services.app_settings import get_setting, get_upstream_dir, set_setting
 
 logger = logging.getLogger(__name__)
 
@@ -71,12 +72,62 @@ def ai_settings():
             "recent": [],
         }
 
+    upstream_dir = get_upstream_dir()
+    upstream_env_override = bool(os.environ.get("COLOPHON_UPSTREAM_DIR", "").strip())
+    upstream_ok = bool(
+        upstream_dir
+        and os.path.isdir(upstream_dir)
+        and any(os.scandir(upstream_dir))
+    )
+    if upstream_ok:
+        upstream_file_count = sum(1 for _ in os.scandir(upstream_dir) if _.is_file())
+    else:
+        upstream_file_count = 0
+
+    last_sync = None
+    try:
+        from app.models import LibraryItem
+        from sqlalchemy import func
+        row = db.session.query(func.max(LibraryItem.upstream_synced_at)).scalar()
+        if row:
+            last_sync = str(row)[:16].replace("T", " ")
+    except Exception:
+        pass
+
     return render_template(
         "settings_ai.html",
         configured=configured,
         model=model,
         stats=stats,
+        upstream_dir=upstream_dir,
+        upstream_env_override=upstream_env_override,
+        upstream_ok=upstream_ok,
+        upstream_file_count=upstream_file_count,
+        last_sync=last_sync,
     )
+
+
+@settings_bp.route("/settings/upstream", methods=["POST"])
+def save_upstream():
+    if os.environ.get("COLOPHON_UPSTREAM_DIR", "").strip():
+        flash("Huvudbiblioteket konfigureras via miljövariabel.", "error")
+        return redirect(url_for("settings.ai_settings"))
+
+    if request.form.get("clear"):
+        set_setting("upstream_dir", "")
+        flash("Huvudbibliotek borttaget.", "success")
+    else:
+        path = request.form.get("upstream_dir", "").strip()
+        if path and not os.path.isdir(path):
+            flash(f'Sökvägen "{path}" hittades inte.', "error")
+        else:
+            set_setting("upstream_dir", path)
+            if path:
+                flash("Huvudbibliotek sparat.", "success")
+            else:
+                flash("Huvudbibliotek borttaget.", "success")
+
+    return redirect(url_for("settings.ai_settings"))
 
 
 @settings_bp.route("/settings/ai/test", methods=["POST"])

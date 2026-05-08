@@ -63,18 +63,52 @@ Colophon processes books in four stages:
 
 ---
 
-## Upstream sync (optional)
+## Upstream sync — Huvudbibliotek (valfritt)
 
-Colophon can work against a local copy of your book library and sync
-changes back to the original location (e.g. a Komga library on a NAS).
+Colophon arbetar mot en lokal kopia av ditt bibliotek. Metadata skrivs
+till filerna lokalt, och när du är nöjd synkar du ändringarna tillbaka
+till huvudbiblioteket. Det skyddar originalfilerna — om en skrivning
+misslyckas eller ger oönskat resultat påverkas inte originalet.
 
-1. Set `COLOPHON_UPSTREAM_DIR=/upstream` in `.env`
-2. Uncomment the upstream volume mount in `docker-compose.yml`
-3. Point it at your original library path
+Om du inte har ett separat bibliotek (t.ex. Komga, NAS-mapp eller
+nätverksresurs) behöver du inte konfigurera detta. Colophon fungerar
+då direkt mot sin bokmapp precis som vanligt.
 
-When configured, "Hitta nya böcker" will pull new files from upstream
-before scanning. A blue "N osynkade" badge appears in the library bar
-when files have been modified locally. Click it to review, then push.
+### Utan Docker
+
+Gå till **Inställningar** i Colophons webb-UI och ange sökvägen till
+huvudbiblioteket. Alternativt: sätt `COLOPHON_UPSTREAM_DIR` i `.env`.
+
+### Med Docker
+
+Docker-containrar kan bara se mappar som är monterade vid start.
+Lägg till en volym i `docker-compose.yml`:
+
+```yaml
+services:
+  colophon:
+    volumes:
+      - ${COLOPHON_LIBRARY_HOST:-./bibliotek}:/books:rw
+      - ${COLOPHON_DATA_HOST:-./data}:/data:rw
+      - /sökväg/till/ditt/bibliotek:/upstream:rw    # ← lägg till
+```
+
+Sätt sedan i `.env`:
+
+```
+COLOPHON_UPSTREAM_DIR=/upstream
+```
+
+Starta om med `docker compose up -d`.
+
+`/upstream` är sökvägen inuti containern. Host-sökvägen (t.ex. `/mnt/synology_komga` eller en NFS-mount) anges i docker-compose. Du kan också använda `COLOPHON_UPSTREAM_HOST` i `.env` och referera till den i docker-compose.
+
+### Användning
+
+1. **Hitta nya böcker** hämtar automatiskt nya filer från huvudbiblioteket innan den skannar.
+2. Arbeta med metadata som vanligt — berika, redigera, spara.
+3. En blå pill **"N osynkade"** visar hur många filer som ändrats lokalt men inte synkats.
+4. Klicka på pillen → se vilka filer som berörs → **Synka till bibliotek** skickar dem till huvudbiblioteket.
 
 ---
 

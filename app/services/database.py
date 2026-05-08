@@ -151,6 +151,16 @@ def backfill_language_detection():
         logger.info("Backfilled language for %d items", updated)
 
 
+def ensure_app_settings_table():
+    db.session.execute(text("""
+        CREATE TABLE IF NOT EXISTS app_settings (
+            key VARCHAR(100) PRIMARY KEY,
+            value TEXT
+        )
+    """))
+    db.session.commit()
+
+
 def ensure_ai_usage_log_table():
     db.session.execute(text("""
         CREATE TABLE IF NOT EXISTS ai_usage_log (
