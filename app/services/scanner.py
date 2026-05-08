@@ -268,7 +268,7 @@ def _extract_ebook_meta_metadata(file_path, warnings: list) -> dict:
         "series": "",
         "series_index": "",
         "genres": fields.get("tags") or "",
-        "published_date": pub[:20],
+        "published_date": pub[:10] if len(pub) >= 10 else pub,
         "cover_path": None,
         "source": "ebook-meta",
     }
