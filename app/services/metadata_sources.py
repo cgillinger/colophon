@@ -150,7 +150,7 @@ def result_from_google_volume(volume):
     else:
         genres = clean_text(categories)
 
-    published_date = clean_text(info.get("publishedDate", ""))[:20]
+    published_date = clean_text(info.get("publishedDate", ""))[:10]
 
     result = {
         "source": "Google Books API",
