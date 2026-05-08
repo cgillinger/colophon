@@ -1148,6 +1148,203 @@
         }
         .batch-review-row.expanded .expand-arrow { transform: rotate(90deg); }
 
+        /* Step 3 — card layout (.brc) for batch text-field review */
+        .brc {
+            border: 0.5px solid var(--border-light);
+            border-radius: var(--border-radius-lg, 12px);
+            overflow: hidden;
+            margin-bottom: 12px;
+            background: var(--bg-primary);
+        }
+        .brc.brc-checked {
+            border-color: var(--accent-green);
+            border-width: 1.5px;
+        }
+        .brc.brc-no-changes {
+            opacity: 0.7;
+        }
+        .brc.brc-no-changes .brc-body,
+        .brc.brc-no-changes .brc-src-toggle,
+        .brc.brc-no-changes .brc-src-panel {
+            display: none;
+        }
+        .brc.brc-no-changes.brc-expanded .brc-body,
+        .brc.brc-no-changes.brc-expanded .brc-src-toggle {
+            display: block;
+        }
+        .brc.brc-no-changes.brc-expanded .brc-body {
+            padding: 0 16px 2px;
+        }
+        .brc-top {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            cursor: pointer;
+        }
+        .brc-top input[type=checkbox] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent-green);
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        .brc-title {
+            font-size: 14px;
+            font-weight: 500;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .brc-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: var(--border-radius-md, 8px);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .brc-badge-change { background: #EAF3DE; color: #3B6D11; }
+        .brc-badge-ok { background: var(--bg-primary); color: var(--text-tertiary); }
+        .brc-body {
+            padding: 0 16px 2px;
+        }
+        .brc-field {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            padding: 7px 0;
+            border-bottom: 0.5px solid var(--border-light);
+            font-size: 13px;
+        }
+        .brc-field:last-child { border-bottom: none; }
+        .brc-marker {
+            width: 3px;
+            border-radius: 2px;
+            align-self: stretch;
+            margin-right: 4px;
+            flex-shrink: 0;
+        }
+        .brc-marker-changed { background: var(--accent-green); }
+        .brc-marker-none { background: transparent; }
+        .brc-label {
+            width: 100px;
+            min-width: 100px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: var(--text-tertiary);
+        }
+        .brc-cur { color: var(--text-tertiary); font-size: 12px; }
+        .brc-arrow { color: var(--accent-green); font-size: 11px; margin: 0 2px; }
+        .brc-new { color: var(--accent-green); font-weight: 500; word-break: break-word; }
+        .brc-from {
+            font-size: 10px;
+            font-style: italic;
+            margin-left: 6px;
+            color: var(--text-tertiary);
+        }
+        .brc-same { color: var(--text-secondary); font-size: 12px; word-break: break-word; }
+        .brc-nomatch { color: var(--text-tertiary); font-size: 12px; }
+        .brc-invalid { color: var(--accent-warn, #b58900); }
+        .brc-src-toggle {
+            padding: 8px 16px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border-top: 0.5px solid var(--border-light);
+            background: var(--bg-primary);
+            user-select: none;
+        }
+        .brc-src-toggle:hover { background: var(--bg-secondary); }
+        .brc-src-toggle i {
+            font-size: 13px;
+            transition: transform 0.15s;
+        }
+        .brc-src-toggle.open i { transform: rotate(0deg); }
+        .brc-src-toggle:not(.open) i { transform: rotate(-90deg); }
+        .brc-src-panel {
+            border-top: 0.5px solid var(--border-light);
+            background: var(--bg-secondary);
+            padding: 10px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .brc-source {
+            background: var(--bg-primary);
+            border: 0.5px solid var(--border-light);
+            border-radius: var(--border-radius-md, 8px);
+            padding: 10px 12px;
+        }
+        .brc-src-header {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+        .brc-src-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+            min-width: 0;
+        }
+        .brc-src-useall {
+            font-size: 11px;
+            padding: 3px 10px;
+            border: 0.5px solid var(--accent-green);
+            color: var(--accent-green);
+            background: transparent;
+            border-radius: var(--border-radius-md, 8px);
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .brc-src-useall:hover {
+            background: var(--accent-green);
+            color: white;
+        }
+        .brc-src-fields {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .brc-sf {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.1s;
+            border: 0.5px solid transparent;
+        }
+        .brc-sf:hover { background: var(--bg-secondary); }
+        .brc-sf-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: var(--text-tertiary);
+            min-width: 60px;
+            flex-shrink: 0;
+        }
+        .brc-sf-value {
+            font-size: 12px;
+            color: var(--text-primary);
+            flex: 1;
+            word-break: break-word;
+        }
+
         /* Synopsis review */
         .synopsis-compare {
             display: grid;
@@ -2728,7 +2925,8 @@
         }
     }
 
-    function _batchRenderTextFieldReview(container) {
+    /* Legacy table-based renderer — preserved as fallback only. NOT called. */
+    function _batchRenderTextFieldReview_TABLE(container) {
         var selectedFields = _batchWizard.selectedFields;
 
         _brtCols = [];
@@ -2939,10 +3137,389 @@
         cell.appendChild(panel);
     }
 
+    /* ============================================================ */
+    /* Card-based text-field review (Step 3) — new implementation     */
+    /* ============================================================ */
+    var _BRC_SOURCE_COLORS = [
+        { bg: '#EAF3DE', border: '#97C459', text: '#3B6D11' },
+        { bg: '#FAEEDA', border: '#EF9F27', text: '#854F0B' },
+        { bg: '#E6F1FB', border: '#85B7EB', text: '#0C447C' },
+        { bg: '#FBEAF0', border: '#ED93B1', text: '#72243E' },
+        { bg: '#EEEDFE', border: '#AFA9EC', text: '#3C3489' }
+    ];
+
+    // Per-item, per-field user choices: { itemId: { field: { value, sourceIdx, sourceName } } }
+    var _brcFieldChoices = {};
+    // Per-item rendered source list (deduplicated, value-bearing) for save/cherry-pick lookup.
+    var _brcSourcesByItem = {};
+    // Selected ordered field columns for the current render.
+    var _brcCols = [];
+    // Bound flag for the delegated container listener.
+    var _brcDelegationBound = false;
+
+    function _brcResolveCols(selectedFields) {
+        var cols = [];
+        _TEXTFIELD_DISPLAY_ORDER.forEach(function(f) {
+            if (f === 'series_index') {
+                if (selectedFields.indexOf('series') !== -1) cols.push('series_index');
+            } else {
+                if (selectedFields.indexOf(f) !== -1) cols.push(f);
+            }
+        });
+        return cols;
+    }
+
+    function _brcFieldValue(obj, field) {
+        var v = (obj && obj[field] != null) ? String(obj[field]) : '';
+        if (field === 'published_date') v = _cleanDate(v);
+        return v;
+    }
+
+    function _brcBuildSourceList(data, cols) {
+        var candidate = data.candidate || {};
+        var allCandidates = data.all_candidates || [];
+        var bestSrc = data.source || '';
+        var seen = {};
+        var list = [];
+        var bestHasVal = cols.some(function(f) { return _brcFieldValue(candidate, f); });
+        if (bestHasVal && bestSrc) {
+            seen[bestSrc] = true;
+            list.push(Object.assign({}, candidate, { source: bestSrc, score: data.score || 0 }));
+        }
+        allCandidates.forEach(function(c) {
+            var src = c.source || '';
+            if (!src || seen[src]) return;
+            var hasVal = cols.some(function(f) { return _brcFieldValue(c, f); });
+            if (!hasVal) return;
+            seen[src] = true;
+            list.push(c);
+        });
+        return list;
+    }
+
+    function _brcRenderSourcePanel(itemId, sources, cols) {
+        if (!sources.length) return '';
+        var html = sources.map(function(c, idx) {
+            var color = _BRC_SOURCE_COLORS[idx % _BRC_SOURCE_COLORS.length];
+            var fieldsHtml = cols.map(function(f) {
+                var v = _brcFieldValue(c, f);
+                if (!v) return '';
+                return '<div class="brc-sf" data-field="' + _esc(f) + '">' +
+                    '<span class="brc-sf-label">' + _esc(_applyFieldLabels[f] || f) + '</span>' +
+                    '<span class="brc-sf-value">' + _esc(v) + '</span>' +
+                    '</div>';
+            }).filter(Boolean).join('');
+            if (!fieldsHtml) return '';
+            return '<div class="brc-source" data-source-idx="' + idx + '" data-source-color-text="' +
+                _esc(color.text) + '" data-source-color-bg="' + _esc(color.bg) +
+                '" data-source-color-border="' + _esc(color.border) + '">' +
+                '<div class="brc-src-header">' +
+                '<span class="brc-src-name" style="color:' + color.text + '">' +
+                _esc(c.source || 'Okänd') + '</span>' +
+                '<button type="button" class="brc-src-useall">Använd alla</button>' +
+                '</div>' +
+                '<div class="brc-src-fields">' + fieldsHtml + '</div>' +
+                '</div>';
+        }).filter(Boolean).join('');
+        return html;
+    }
+
+    function _brcRenderField(field, current, fetched, sourceName, sourceColor) {
+        var labelHtml = '<span class="brc-label">' + _esc(_applyFieldLabels[field] || field) + '</span>';
+        if (!fetched && !current) {
+            return '<div class="brc-field" data-field="' + _esc(field) + '">' +
+                '<div class="brc-marker brc-marker-none"></div>' + labelHtml +
+                '<span class="brc-nomatch">— Inga träffar</span>' +
+                '</div>';
+        }
+        if (!fetched || fetched === current) {
+            var shownVal = fetched || current;
+            return '<div class="brc-field" data-field="' + _esc(field) + '">' +
+                '<div class="brc-marker brc-marker-none"></div>' + labelHtml +
+                '<span class="brc-same">' + _esc(shownVal) + ' ✓</span>' +
+                '</div>';
+        }
+        var color = sourceColor || _BRC_SOURCE_COLORS[0];
+        var invalid = (field === 'language' && !_isValidLanguageCode(fetched));
+        var newCls = 'brc-new' + (invalid ? ' brc-invalid' : '');
+        var newAttr = invalid ? ' title="Ogiltig språkkod"' : '';
+        var newPrefix = invalid ? '⚠ ' : '';
+        return '<div class="brc-field" data-field="' + _esc(field) + '">' +
+            '<div class="brc-marker brc-marker-changed" style="background:' + color.text + '"></div>' +
+            labelHtml +
+            '<span class="brc-cur">' + _esc(current || '(tomt)') + '</span>' +
+            '<span class="brc-arrow" style="color:' + color.text + '">→</span>' +
+            '<span class="' + newCls + '"' + newAttr + ' style="color:' + color.text + '">' +
+            newPrefix + _esc(fetched) + '</span>' +
+            (sourceName ? '<span class="brc-from" style="color:' + color.text + '">' +
+                _esc(sourceName) + '</span>' : '') +
+            '</div>';
+    }
+
+    function _batchRenderTextFieldReview(container) {
+        var selectedFields = _batchWizard.selectedFields;
+        var cols = _brcResolveCols(selectedFields);
+        _brcCols = cols;
+        _brcFieldChoices = {};
+        _brcSourcesByItem = {};
+
+        var cards = [];
+        _batchWizard.selectedItemIds.forEach(function(itemId) {
+            var data = _batchWizard.searchCache[itemId];
+            if (!data) return;
+            var before = data.before || {};
+            var candidate = data.candidate || {};
+
+            var sources = _brcBuildSourceList(data, cols);
+            _brcSourcesByItem[itemId] = sources;
+
+            // Source colors keyed by source name (matches by index in source list).
+            var srcColors = {};
+            sources.forEach(function(c, idx) {
+                srcColors[c.source || ''] = _BRC_SOURCE_COLORS[idx % _BRC_SOURCE_COLORS.length];
+            });
+
+            var changeCount = 0;
+            var fieldsHtml = cols.map(function(field) {
+                var current = _brcFieldValue(before, field);
+                var fetched = _brcFieldValue(candidate, field);
+                var sourceName = '';
+                var sourceColor = null;
+                if (fetched && fetched !== current) {
+                    changeCount++;
+                    sourceName = data.source || '';
+                    sourceColor = srcColors[sourceName] || _BRC_SOURCE_COLORS[0];
+                }
+                return _brcRenderField(field, current, fetched, sourceName, sourceColor);
+            }).join('');
+
+            var noChanges = (changeCount === 0);
+            var hasSources = sources.length > 0;
+            var srcCount = sources.length;
+            var srcToggleHtml = hasSources
+                ? '<div class="brc-src-toggle"><i class="ti ti-chevron-down"></i> ' +
+                    srcCount + ' ' + (srcCount === 1 ? 'källa' : 'källor') + ' tillgängliga</div>'
+                : '';
+            var srcPanelHtml = hasSources
+                ? '<div class="brc-src-panel" style="display:none;">' +
+                    _brcRenderSourcePanel(itemId, sources, cols) + '</div>'
+                : '';
+
+            var title = data.title || String(itemId);
+            var isChecked = !noChanges;
+            var badgeCls = noChanges ? 'brc-badge brc-badge-ok' : 'brc-badge brc-badge-change';
+            var badgeText = noChanges ? 'Inga ändringar' : (changeCount + ' ' + (changeCount === 1 ? 'ändring' : 'ändringar'));
+            var cardCls = 'brc' + (isChecked ? ' brc-checked' : '') + (noChanges ? ' brc-no-changes' : '');
+
+            cards.push(
+                '<div class="' + cardCls + '" data-item-id="' + _esc(String(itemId)) + '">' +
+                    '<div class="brc-top">' +
+                        '<input type="checkbox" class="brc-check" data-item-id="' + _esc(String(itemId)) + '"' +
+                            (isChecked ? ' checked' : '') + ' />' +
+                        '<span class="brc-title">' + _esc(title) + '</span>' +
+                        '<span class="' + badgeCls + '">' + _esc(badgeText) + '</span>' +
+                    '</div>' +
+                    '<div class="brc-body">' + fieldsHtml + '</div>' +
+                    srcToggleHtml +
+                    srcPanelHtml +
+                '</div>'
+            );
+        });
+
+        var fieldSummary = cols.map(function(f) {
+            return '<strong>' + _esc(_applyFieldLabels[f] || f) + '</strong>';
+        }).join(' · ');
+
+        container.innerHTML =
+            '<div class="batch-review-header">Granskar: ' + fieldSummary +
+            ' <a href="#" class="batch-add-field" onclick="event.preventDefault();_batchShowAddField(this)">[+ lägg till fält]</a></div>' +
+            '<div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:10px;">' +
+            '📄 Nuvarande &nbsp;→&nbsp; 🔍 Hämtat' +
+            '</div>' +
+            '<div class="brc-list">' + cards.join('') + '</div>' +
+            '<div style="margin-top:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+            '<button type="button" class="btn primary" onclick="_batchSaveTextFields()">Spara valda &amp; fortsätt</button>' +
+            '<button type="button" class="btn ghost" onclick="_batchSkipReview()">Hoppa över</button>' +
+            '<button type="button" class="btn ghost" onclick="closeBatchModal()">Avbryt</button>' +
+            '</div>';
+
+        _brcBindDelegation(container);
+    }
+
+    function _brcBindDelegation(container) {
+        if (_brcDelegationBound) return;
+        _brcDelegationBound = true;
+        container.addEventListener('click', _brcOnClick);
+    }
+
+    function _brcOnClick(e) {
+        // Checkbox toggle
+        var check = e.target.closest('.brc-check');
+        if (check) {
+            var card = check.closest('.brc');
+            if (card) card.classList.toggle('brc-checked', check.checked);
+            return;
+        }
+
+        // Source panel toggle
+        var toggle = e.target.closest('.brc-src-toggle');
+        if (toggle) {
+            var crd = toggle.closest('.brc');
+            var panel = crd && crd.querySelector('.brc-src-panel');
+            if (panel) {
+                var isOpen = panel.style.display !== 'none';
+                panel.style.display = isOpen ? 'none' : 'block';
+                toggle.classList.toggle('open', !isOpen);
+            }
+            return;
+        }
+
+        // "Använd alla" — apply all fields from this source
+        var useAll = e.target.closest('.brc-src-useall');
+        if (useAll) {
+            e.stopPropagation();
+            var srcEl = useAll.closest('.brc-source');
+            var cardEl = useAll.closest('.brc');
+            if (srcEl && cardEl) _brcApplyAllFromSource(cardEl, srcEl);
+            return;
+        }
+
+        // Cherry-pick a single field from a source
+        var sf = e.target.closest('.brc-sf');
+        if (sf) {
+            var srcE = sf.closest('.brc-source');
+            var cardE = sf.closest('.brc');
+            if (srcE && cardE) _brcCherryPick(cardE, srcE, sf);
+            return;
+        }
+
+        // Card header click — expand/collapse no-change cards
+        var top = e.target.closest('.brc-top');
+        if (top && !e.target.closest('.brc-check')) {
+            var crd2 = top.closest('.brc');
+            if (crd2 && crd2.classList.contains('brc-no-changes')) {
+                crd2.classList.toggle('brc-expanded');
+            }
+        }
+    }
+
+    function _brcGetColor(srcEl) {
+        return {
+            text: srcEl.dataset.sourceColorText || _BRC_SOURCE_COLORS[0].text,
+            bg: srcEl.dataset.sourceColorBg || _BRC_SOURCE_COLORS[0].bg,
+            border: srcEl.dataset.sourceColorBorder || _BRC_SOURCE_COLORS[0].border
+        };
+    }
+
+    function _brcUpdateCardField(cardEl, field, newValue, sourceName, color) {
+        var fieldEl = cardEl.querySelector('.brc-body .brc-field[data-field="' + field + '"]');
+        if (!fieldEl) return;
+        var before = ((_batchWizard.searchCache[cardEl.dataset.itemId] || {}).before) || {};
+        var current = _brcFieldValue(before, field);
+
+        // Rebuild as a "changed" or "same" row depending on the new value.
+        var labelLabel = _applyFieldLabels[field] || field;
+        if (!newValue) {
+            fieldEl.outerHTML = '<div class="brc-field" data-field="' + field + '">' +
+                '<div class="brc-marker brc-marker-none"></div>' +
+                '<span class="brc-label">' + _esc(labelLabel) + '</span>' +
+                '<span class="brc-nomatch">— Inga träffar</span>' +
+                '</div>';
+            return;
+        }
+        if (newValue === current) {
+            fieldEl.outerHTML = '<div class="brc-field" data-field="' + field + '">' +
+                '<div class="brc-marker brc-marker-none"></div>' +
+                '<span class="brc-label">' + _esc(labelLabel) + '</span>' +
+                '<span class="brc-same">' + _esc(newValue) + ' ✓</span>' +
+                '</div>';
+            return;
+        }
+        var invalid = (field === 'language' && !_isValidLanguageCode(newValue));
+        var newCls = 'brc-new' + (invalid ? ' brc-invalid' : '');
+        var newAttr = invalid ? ' title="Ogiltig språkkod"' : '';
+        var newPrefix = invalid ? '⚠ ' : '';
+        fieldEl.outerHTML = '<div class="brc-field" data-field="' + field + '">' +
+            '<div class="brc-marker brc-marker-changed" style="background:' + color.text + '"></div>' +
+            '<span class="brc-label">' + _esc(labelLabel) + '</span>' +
+            '<span class="brc-cur">' + _esc(current || '(tomt)') + '</span>' +
+            '<span class="brc-arrow" style="color:' + color.text + '">→</span>' +
+            '<span class="' + newCls + '"' + newAttr + ' style="color:' + color.text + '">' +
+            newPrefix + _esc(newValue) + '</span>' +
+            (sourceName ? '<span class="brc-from" style="color:' + color.text + '">' +
+                _esc(sourceName) + '</span>' : '') +
+            '</div>';
+    }
+
+    function _brcMarkPicked(cardEl, srcEl, sfEl, color) {
+        // Clear .brc-sf-picked from all rows in this card matching the same field.
+        var field = sfEl.dataset.field;
+        var allSf = cardEl.querySelectorAll('.brc-source .brc-sf[data-field="' + field + '"]');
+        allSf.forEach(function(el) {
+            el.classList.remove('brc-sf-picked');
+            el.style.background = '';
+            el.style.border = '0.5px solid transparent';
+            var val = el.querySelector('.brc-sf-value');
+            if (val) {
+                val.style.color = '';
+                val.style.fontWeight = '';
+            }
+        });
+        sfEl.classList.add('brc-sf-picked');
+        sfEl.style.background = color.bg;
+        sfEl.style.border = '0.5px solid ' + color.border;
+        var valEl = sfEl.querySelector('.brc-sf-value');
+        if (valEl) {
+            valEl.style.color = color.text;
+            valEl.style.fontWeight = '500';
+        }
+    }
+
+    function _brcCherryPick(cardEl, srcEl, sfEl) {
+        var itemId = cardEl.dataset.itemId;
+        var field = sfEl.dataset.field;
+        var sourceIdx = parseInt(srcEl.dataset.sourceIdx, 10);
+        var sources = _brcSourcesByItem[itemId] || [];
+        var srcObj = sources[sourceIdx];
+        if (!srcObj) return;
+        var value = _brcFieldValue(srcObj, field);
+        if (!value) return;
+        var sourceName = srcObj.source || '';
+        var color = _brcGetColor(srcEl);
+
+        if (!_brcFieldChoices[itemId]) _brcFieldChoices[itemId] = {};
+        _brcFieldChoices[itemId][field] = { value: value, sourceIdx: sourceIdx, sourceName: sourceName };
+
+        _brcUpdateCardField(cardEl, field, value, sourceName, color);
+        _brcMarkPicked(cardEl, srcEl, sfEl, color);
+    }
+
+    function _brcApplyAllFromSource(cardEl, srcEl) {
+        var itemId = cardEl.dataset.itemId;
+        var sourceIdx = parseInt(srcEl.dataset.sourceIdx, 10);
+        var sources = _brcSourcesByItem[itemId] || [];
+        var srcObj = sources[sourceIdx];
+        if (!srcObj) return;
+        var sourceName = srcObj.source || '';
+        var color = _brcGetColor(srcEl);
+        if (!_brcFieldChoices[itemId]) _brcFieldChoices[itemId] = {};
+
+        var sfRows = srcEl.querySelectorAll('.brc-sf');
+        sfRows.forEach(function(sfEl) {
+            var field = sfEl.dataset.field;
+            var value = _brcFieldValue(srcObj, field);
+            if (!value) return;
+            if (_brcCols.indexOf(field) === -1) return;
+            _brcFieldChoices[itemId][field] = { value: value, sourceIdx: sourceIdx, sourceName: sourceName };
+            _brcUpdateCardField(cardEl, field, value, sourceName, color);
+            _brcMarkPicked(cardEl, srcEl, sfEl, color);
+        });
+    }
+
     function _batchSaveTextFields() {
         var container = document.getElementById('batchReviewContainer');
         if (!container) { _batchAdvanceReview(); return; }
-        var checked = Array.from(container.querySelectorAll('.brt-row-check:checked'));
+        var checked = Array.from(container.querySelectorAll('.brc-check:checked'));
         if (checked.length === 0) { _batchAdvanceReview(); return; }
 
         var pending = checked.length;
@@ -2960,8 +3537,8 @@
 
             var candidate = data.candidate || {};
             var before = data.before || {};
-            // Seed payload from current DB values so required fields (title) are always present
-            // and unselected fields are not cleared to null on save.
+            // Seed payload from current DB values so required fields (title) are present
+            // and unselected fields are not cleared on save.
             var _ALL_FIELDS = ['title','author','series','series_index','isbn','publisher','language','genres','published_date','description'];
             var payload = {};
             _ALL_FIELDS.forEach(function(f) {
@@ -2969,12 +3546,18 @@
                 if (f === 'published_date') v = _cleanDate(v);
                 if (v) payload[f] = v;
             });
-            // Track which fields the user-reviewed values are actually changing.
+
             var changedFields = [];
-            _brtCols.forEach(function(field) {
-                var val = (_brtCellValues[itemId] && _brtCellValues[itemId][field] != null)
-                    ? _brtCellValues[itemId][field]
-                    : ((candidate[field] != null) ? String(candidate[field]) : null);
+            var choices = _brcFieldChoices[itemId] || {};
+            _brcCols.forEach(function(field) {
+                var val;
+                if (choices[field] && choices[field].value != null) {
+                    val = choices[field].value;
+                } else if (candidate[field] != null) {
+                    val = String(candidate[field]);
+                } else {
+                    val = null;
+                }
                 if (field === 'published_date' && val) val = _cleanDate(val);
                 if (val == null || val === '') return;
                 var prev = (before[field] != null) ? String(before[field]) : '';
