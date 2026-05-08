@@ -1361,18 +1361,34 @@
         }
         .synopsis-col-text {
             font-size: 13px;
-            line-height: 1.5;
+            line-height: 1.6;
             color: var(--text-primary);
-            max-height: 200px;
+            max-height: 300px;
             overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
         }
+        .synopsis-col-text-fetched { color: var(--accent-green); }
         .synopsis-flag-new { color: var(--accent-green); font-weight: 500; }
         .synopsis-flag-longer { color: var(--accent-green); }
         .synopsis-flag-shorter { color: var(--accent-yellow); font-weight: 500; }
         .synopsis-flag-same { color: var(--text-tertiary); }
         .bsyn-row { cursor: pointer; }
         .bsyn-row:hover { background: var(--bg-secondary); }
-        .bsyn-expand-row td { padding: 0 10px 10px; border-bottom: 0.5px solid var(--border-light); }
+        /* Override .batch-review-table td truncation for the expand row so full text is visible. */
+        .batch-review-table .bsyn-expand-row td,
+        .batch-review-table.brt-many-cols .bsyn-expand-row td {
+            padding: 12px 16px;
+            border-bottom: 0.5px solid var(--border-light);
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+            max-width: none;
+        }
+        .batch-review-table tr.bsyn-expand-row:hover { background: transparent; }
+        @media (max-width: 600px) {
+            .synopsis-compare { grid-template-columns: 1fr; }
+        }
 
         /* Cover review */
         .cover-review-grid {
@@ -3205,7 +3221,7 @@
                 var v = _brcFieldValue(c, f);
                 if (!v) return '';
                 return '<div class="brc-sf" data-field="' + _esc(f) + '">' +
-                    '<span class="brc-sf-label">' + _esc(_applyFieldLabels[f] || f) + '</span>' +
+                    '<span class="brc-sf-label">' + _esc(_brcFieldLabels[f] || f) + '</span>' +
                     '<span class="brc-sf-value">' + _esc(v) + '</span>' +
                     '</div>';
             }).filter(Boolean).join('');
@@ -3225,7 +3241,7 @@
     }
 
     function _brcRenderField(field, current, fetched, sourceName, sourceColor) {
-        var labelHtml = '<span class="brc-label">' + _esc(_applyFieldLabels[field] || field) + '</span>';
+        var labelHtml = '<span class="brc-label">' + _esc(_brcFieldLabels[field] || field) + '</span>';
         if (!fetched && !current) {
             return '<div class="brc-field" data-field="' + _esc(field) + '">' +
                 '<div class="brc-marker brc-marker-none"></div>' + labelHtml +
@@ -3327,7 +3343,7 @@
         });
 
         var fieldSummary = cols.map(function(f) {
-            return '<strong>' + _esc(_applyFieldLabels[f] || f) + '</strong>';
+            return '<strong>' + _esc(_brcFieldLabels[f] || f) + '</strong>';
         }).join(' · ');
 
         container.innerHTML =
@@ -3418,7 +3434,7 @@
         var current = _brcFieldValue(before, field);
 
         // Rebuild as a "changed" or "same" row depending on the new value.
-        var labelLabel = _applyFieldLabels[field] || field;
+        var labelLabel = _brcFieldLabels[field] || field;
         if (!newValue) {
             fieldEl.outerHTML = '<div class="brc-field" data-field="' + field + '">' +
                 '<div class="brc-marker brc-marker-none"></div>' +
@@ -3638,6 +3654,9 @@
             if (title.length > 35) title = title.substring(0, 35) + '…';
             var checkedAttr = isChecked ? ' checked' : '';
 
+            var curLabel = 'Nuvarande' + (curLen ? ' (' + curLen + ' tecken)' : '');
+            var fetchedLabel = 'Hämtat' + (fetchedLen ? ' (' + fetchedLen + ' tecken)' : '');
+
             rows.push(
                 '<tr class="bsyn-row" data-item-id="' + itemId + '">' +
                 '<td onclick="event.stopPropagation();"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;">' +
@@ -3650,10 +3669,10 @@
                 '<tr class="bsyn-expand-row" data-item-id="' + itemId + '" style="display:none;">' +
                 '<td colspan="4">' +
                 '<div class="synopsis-compare">' +
-                '<div class="synopsis-col"><div class="synopsis-col-label">Nuvarande</div>' +
+                '<div class="synopsis-col"><div class="synopsis-col-label">' + _esc(curLabel) + '</div>' +
                 '<div class="synopsis-col-text">' + _esc(curDesc || '(ingen text)') + '</div></div>' +
-                '<div class="synopsis-col"><div class="synopsis-col-label">Hämtat</div>' +
-                '<div class="synopsis-col-text">' + _esc(fetchedDesc || '(ingen text)') + '</div></div>' +
+                '<div class="synopsis-col"><div class="synopsis-col-label">' + _esc(fetchedLabel) + '</div>' +
+                '<div class="synopsis-col-text synopsis-col-text-fetched">' + _esc(fetchedDesc || '(ingen text)') + '</div></div>' +
                 '</div></td></tr>'
             );
         });
@@ -4626,6 +4645,15 @@
     function _applyFieldLabel(f) {
         return _applyFieldLabels[f] || f;
     }
+
+    // Shorter labels for the narrow-card review layout (.brc-label is 100px wide).
+    var _brcFieldLabels = {
+        title: 'Titel', author: 'Författare', description: 'Synopsis',
+        isbn: 'ISBN', publisher: 'Förlag', series: 'Serie',
+        series_index: 'Del', language: 'Språk', genres: 'Genre',
+        published_date: 'Datum',
+        cover: 'Omslag'
+    };
 
     function _resultLabel(d) {
         if (d.classification === 'auto_apply') {
