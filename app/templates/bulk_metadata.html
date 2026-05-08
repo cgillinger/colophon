@@ -2291,6 +2291,13 @@
         startBatchSearch();
     }
 
+    function _batchRenderReview() {
+        var container = document.getElementById('batchReviewContainer');
+        if (!container) return;
+        var currentReview = _batchWizard.reviewQueue[_batchWizard.reviewIndex] || '(inget)';
+        container.innerHTML = '<p>Granskningsvy för: ' + _esc(currentReview) + ' (implementeras i uppdrag 3–5)</p>';
+    }
+
     function _getBatchItemIds() {
         var checked = Array.from(document.querySelectorAll('.book-checkbox:checked'));
         var itemIds = [];
@@ -2955,17 +2962,11 @@
             : _getBatchItemIds();
         if (itemIds.length === 0) { alert('Välj minst en bok.'); return; }
 
-        var overwriteEl = document.getElementById('batchOverwrite');
-        var overwrite = (overwriteEl && overwriteEl.checked) ? '1' : '0';
         var maxItemsEl = document.getElementById('batchMaxItems');
         var maxItems = (maxItemsEl && maxItemsEl.value) || '25';
-        var smartReplace = Array.from(document.querySelectorAll('.batch-smart:checked'))
-            .map(function(cb) { return cb.value; });
 
         var url = '/metadata/bulk/stream?item_ids=' + itemIds.join(',')
-            + '&overwrite=' + overwrite
-            + '&max_items=' + maxItems
-            + '&smart_replace=' + encodeURIComponent(smartReplace.join(','));
+            + '&max_items=' + maxItems;
 
         var body = document.getElementById('batchProgressBody');
         var summaryEl = document.getElementById('batchProgressSub');
@@ -3045,7 +3046,7 @@
                 }
 
             } else if (d.type === 'book_done') {
-                _bulkResultData[d.item_id] = {
+                var _cacheEntry = {
                     title: d.title || '',
                     before: d.before || {},
                     candidate: d.candidate || {},
@@ -3059,7 +3060,12 @@
                     apply_details: d.apply_details || null,
                     field_confidence: d.field_confidence || {},
                     all_candidates: d.all_candidates || [],
+                    has_cover_before: d.has_cover_before || false,
+                    cover_url_fetched: d.cover_url_fetched || null,
+                    has_cover_fetched: d.has_cover_fetched || false,
                 };
+                _bulkResultData[d.item_id] = _cacheEntry;
+                _batchWizard.searchCache[d.item_id] = _cacheEntry;
                 if (d.source_details && d.source_details.length > 0) {
                     _sourceDetails[d.item_id] = d.source_details;
                     var detailEl2 = document.getElementById('bp-detail-' + d.item_id);
@@ -3153,10 +3159,19 @@
                 if (s.no_match) parts.push(s.no_match + ' ingen träff');
                 if (s.source_errors) parts.push(s.source_errors + ' källfel');
                 if (s.skipped) parts.push(s.skipped + ' hoppade');
-                var summary = parts.join(' · ') || 'Klar.';
-                document.getElementById('batchResultSummary').innerHTML =
-                    summary + ' <button type="button" class="btn ghost btn-sm" style="margin-left:8px;" onclick="location.reload()">Ladda om</button>';
-                _batchSetStep(4);
+                summaryEl.textContent = parts.join(' · ') || 'Klar.';
+                var continueBtn = document.getElementById('batchContinueBtn');
+                if (!continueBtn) {
+                    continueBtn = document.createElement('button');
+                    continueBtn.id = 'batchContinueBtn';
+                    continueBtn.type = 'button';
+                    continueBtn.className = 'btn primary';
+                    continueBtn.style.marginTop = '16px';
+                    continueBtn.textContent = 'Fortsätt till granskning →';
+                    continueBtn.onclick = function() { _batchSetStep(3); _batchRenderReview(); };
+                    document.getElementById('batchStep2').appendChild(continueBtn);
+                }
+                continueBtn.style.display = '';
 
             } else if (d.type === 'aborted') {
                 source.close();
@@ -3170,10 +3185,21 @@
                 if (s.review_needed) parts.push(s.review_needed + ' granskning');
                 if (s.no_match) parts.push(s.no_match + ' ingen träff');
                 if (s.source_errors) parts.push(s.source_errors + ' källfel');
-                document.getElementById('batchResultSummary').innerHTML =
-                    'Avbruten. ' + (parts.join(' · ') || 'Inget hann bearbetas.')
-                    + ' <button type="button" class="btn ghost btn-sm" style="margin-left:8px;" onclick="location.reload()">Ladda om</button>';
-                _batchSetStep(4);
+                summaryEl.textContent = 'Avbruten. ' + (parts.join(' · ') || 'Inget hann bearbetas.');
+                if (Object.keys(_batchWizard.searchCache).length > 0) {
+                    var continueBtnA = document.getElementById('batchContinueBtn');
+                    if (!continueBtnA) {
+                        continueBtnA = document.createElement('button');
+                        continueBtnA.id = 'batchContinueBtn';
+                        continueBtnA.type = 'button';
+                        continueBtnA.className = 'btn primary';
+                        continueBtnA.style.marginTop = '16px';
+                        continueBtnA.textContent = 'Fortsätt till granskning →';
+                        continueBtnA.onclick = function() { _batchSetStep(3); _batchRenderReview(); };
+                        document.getElementById('batchStep2').appendChild(continueBtnA);
+                    }
+                    continueBtnA.style.display = '';
+                }
 
             } else if (d.type === 'error') {
                 source.close();
