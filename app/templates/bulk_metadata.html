@@ -1019,6 +1019,35 @@
         .brt-alt-option.selected { background: var(--bg-secondary); }
         .brt-alt-meta { font-size: 11px; color: var(--text-tertiary); white-space: nowrap; }
 
+        /* Synopsis review */
+        .synopsis-compare {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            padding: 12px 0;
+        }
+        .synopsis-col-label {
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+        .synopsis-col-text {
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--text-primary);
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .synopsis-flag-new { color: var(--accent-green); font-weight: 500; }
+        .synopsis-flag-longer { color: var(--accent-green); }
+        .synopsis-flag-shorter { color: var(--accent-yellow); font-weight: 500; }
+        .synopsis-flag-same { color: var(--text-tertiary); }
+        .bsyn-row { cursor: pointer; }
+        .bsyn-row:hover { background: var(--bg-secondary); }
+        .bsyn-expand-row td { padding: 0 10px 10px; border-bottom: 0.5px solid var(--border-light); }
+
         .modal-box {
             background: var(--bg-primary);
             border: 1px solid var(--border-light);
@@ -2374,8 +2403,10 @@
         if (!currentReview) { _batchSetStep(4); return; }
         if (currentReview === 'textfields') {
             _batchRenderTextFieldReview(container);
+        } else if (currentReview === 'synopsis') {
+            _batchRenderSynopsisReview(container);
         } else {
-            container.innerHTML = '<p>Granskningsvy för: ' + _esc(currentReview) + ' (implementeras i uppdrag 4–5)</p>';
+            container.innerHTML = '<p>Granskningsvy för: ' + _esc(currentReview) + ' (implementeras i uppdrag 5)</p>';
         }
     }
 
@@ -2547,6 +2578,136 @@
                 if (val !== null && val !== '') payload[field] = val;
             });
 
+            var allIds = data.item_ids || [itemId];
+            var remaining = allIds.length;
+            var ok = true;
+
+            allIds.forEach(function(id) {
+                fetch('/metadata/' + id + '/save-json', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(result) {
+                    if (!result.ok) ok = false;
+                    remaining--;
+                    if (remaining === 0) {
+                        if (ok) savedCount++;
+                        pending--;
+                        if (pending === 0) _onAllDone();
+                    }
+                })
+                .catch(function() {
+                    remaining--;
+                    if (remaining === 0) { pending--; if (pending === 0) _onAllDone(); }
+                });
+            });
+        });
+    }
+
+    function _batchRenderSynopsisReview(container) {
+        var rows = [];
+        _batchWizard.selectedItemIds.forEach(function(itemId) {
+            var data = _batchWizard.searchCache[itemId];
+            if (!data) return;
+            var curDesc = (data.before && data.before.description) ? data.before.description : '';
+            var fetchedDesc = (data.candidate && data.candidate.description) ? data.candidate.description : '';
+            var curLen = curDesc.length;
+            var fetchedLen = fetchedDesc.length;
+
+            var flagHtml, isChecked;
+            if (!fetchedLen) {
+                flagHtml = '<span class="synopsis-flag-same">Inga träffar</span>';
+                isChecked = false;
+            } else if (!curLen) {
+                flagHtml = '<span class="synopsis-flag-new">Nytt</span>';
+                isChecked = true;
+            } else if (fetchedLen > curLen * 1.1) {
+                var times = Math.round(fetchedLen / curLen);
+                flagHtml = '<span class="synopsis-flag-longer">' + times + 'x längre</span>';
+                isChecked = true;
+            } else if (fetchedLen < curLen * 0.9) {
+                flagHtml = '<span class="synopsis-flag-shorter">⚠ Kortare</span>';
+                isChecked = false;
+            } else {
+                flagHtml = '<span class="synopsis-flag-same">Likvärdig</span>';
+                isChecked = false;
+            }
+
+            var curDisplay = curLen ? curLen + ' tecken' : '(tomt)';
+            var fetchedDisplay = fetchedLen ? fetchedLen + ' tecken' : '—';
+            var title = data.title || String(itemId);
+            if (title.length > 35) title = title.substring(0, 35) + '…';
+            var checkedAttr = isChecked ? ' checked' : '';
+
+            rows.push(
+                '<tr class="bsyn-row" data-item-id="' + itemId + '">' +
+                '<td onclick="event.stopPropagation();"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;">' +
+                '<input type="checkbox" class="bsyn-check" data-item-id="' + itemId + '"' + checkedAttr + '>' +
+                '<span>' + _esc(title) + '</span></label></td>' +
+                '<td>' + _esc(curDisplay) + '</td>' +
+                '<td>' + _esc(fetchedDisplay) + '</td>' +
+                '<td>' + flagHtml + '</td>' +
+                '</tr>' +
+                '<tr class="bsyn-expand-row" data-item-id="' + itemId + '" style="display:none;">' +
+                '<td colspan="4">' +
+                '<div class="synopsis-compare">' +
+                '<div class="synopsis-col"><div class="synopsis-col-label">Nuvarande</div>' +
+                '<div class="synopsis-col-text">' + _esc(curDesc || '(ingen text)') + '</div></div>' +
+                '<div class="synopsis-col"><div class="synopsis-col-label">Hämtat</div>' +
+                '<div class="synopsis-col-text">' + _esc(fetchedDesc || '(ingen text)') + '</div></div>' +
+                '</div></td></tr>'
+            );
+        });
+
+        container.innerHTML =
+            '<div class="batch-review-header">Granskar: <strong>Synopsis</strong>' +
+            ' <a href="#" class="batch-add-field" onclick="event.preventDefault()">[+ lägg till fält]</a></div>' +
+            '<div style="overflow-x:auto;">' +
+            '<table class="batch-review-table"><thead><tr>' +
+            '<th>Bok</th><th>Nuvarande</th><th>Hämtat</th><th>Förändring</th>' +
+            '</tr></thead><tbody>' + rows.join('') + '</tbody></table></div>' +
+            '<div style="margin-top:16px;display:flex;gap:8px;align-items:center;">' +
+            '<button type="button" class="btn primary" onclick="_batchSaveSynopsis()">Spara valda &amp; fortsätt</button>' +
+            '<button type="button" class="btn ghost" onclick="_batchSkipReview()">Hoppa över</button>' +
+            '<button type="button" class="btn ghost" onclick="closeBatchModal()">Avbryt</button>' +
+            '</div>';
+
+        container.querySelectorAll('.bsyn-row').forEach(function(row) {
+            row.addEventListener('click', function() {
+                var itemId = row.dataset.itemId;
+                var expandRow = container.querySelector('.bsyn-expand-row[data-item-id="' + itemId + '"]');
+                if (expandRow) {
+                    expandRow.style.display = expandRow.style.display === 'none' ? '' : 'none';
+                }
+            });
+        });
+    }
+
+    function _batchSaveSynopsis() {
+        var container = document.getElementById('batchReviewContainer');
+        if (!container) { _batchAdvanceReview(); return; }
+        var checked = Array.from(container.querySelectorAll('.bsyn-check:checked'));
+        if (checked.length === 0) { _batchAdvanceReview(); return; }
+
+        var pending = checked.length;
+        var savedCount = 0;
+
+        function _onAllDone() {
+            _batchWizard.results.saved += savedCount;
+            _batchAdvanceReview();
+        }
+
+        checked.forEach(function(cb) {
+            var itemId = cb.dataset.itemId;
+            var data = _batchWizard.searchCache[itemId];
+            if (!data) { pending--; if (pending === 0) _onAllDone(); return; }
+
+            var fetchedDesc = (data.candidate && data.candidate.description) ? data.candidate.description : '';
+            if (!fetchedDesc) { pending--; if (pending === 0) _onAllDone(); return; }
+
+            var payload = { description: fetchedDesc };
             var allIds = data.item_ids || [itemId];
             var remaining = allIds.length;
             var ok = true;
