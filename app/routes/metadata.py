@@ -4,6 +4,7 @@ import os
 import queue
 import shutil
 import threading
+from datetime import datetime
 from pathlib import Path
 
 from app.services.ai_metadata import fetch_ai_suggestions
@@ -280,6 +281,8 @@ def metadata_item(item_id):
             written_text["published_date"] = published_date
         write_result = write_metadata_to_file(item, written_text, cover_to_embed)
 
+        if write_result["ok"]:
+            item.file_modified_by_colophon = datetime.utcnow()
         db.session.commit()
 
         flash("Metadata sparad.", "success")
@@ -361,6 +364,8 @@ def apply_cover(item_id):
 
     write_result = write_metadata_to_file(item, {}, cover_path)
 
+    if write_result["ok"]:
+        item.file_modified_by_colophon = datetime.utcnow()
     db.session.commit()
 
     if source:
@@ -1543,6 +1548,8 @@ def save_metadata_json(item_id):
             written_text[field] = val
 
     write_result = write_metadata_to_file(item, written_text, None)
+    if write_result["ok"]:
+        item.file_modified_by_colophon = datetime.utcnow()
     db.session.commit()
 
     resp = {"ok": True}
