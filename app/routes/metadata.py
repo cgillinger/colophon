@@ -668,10 +668,12 @@ def bulk_metadata():
 def sync_push():
     """SSE endpoint: push locally-modified files to upstream."""
     from app.services.upstream_sync import push_to_upstream
+    app = current_app._get_current_object()
 
     def generate():
-        for ev in push_to_upstream():
-            yield f"data: {json.dumps(ev)}\n\n"
+        with app.app_context():
+            for ev in push_to_upstream():
+                yield f"data: {json.dumps(ev)}\n\n"
 
     return Response(
         generate(),
