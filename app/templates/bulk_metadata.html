@@ -1487,7 +1487,7 @@
             </button>
             <span class="chip" id="libraryChipTotal">{{ total_count }} böcker</span>
             {% if missing_count %}
-                <span class="chip stats-badge" id="libraryChipMissing" onclick="toggleBadgeFilter('missing_metadata', '1', event)">{{ missing_count }} ofullständiga</span>
+                <span class="chip stats-badge" id="libraryChipMissing" onclick="toggleBadgeFilter('missing_metadata', '1', event)">{{ missing_count }} ej kompletta</span>
             {% endif %}
             {% if format_counts %}
                 {% for ext, count in format_counts.items() %}
