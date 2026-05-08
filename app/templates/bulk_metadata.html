@@ -4370,6 +4370,13 @@
         }
     }
 
+    // ============================================================
+    // DELADE FUNKTIONER — används av BÅDE enboksmodal och batch
+    // Ändra med försiktighet — testa båda flödena!
+    // Berörda: _renderModalSourceDetail, _applyFetchedToModal,
+    //          saveMetadata, fetchAiMetadata, _populateModal,
+    //          _cleanDate (lib/util, definierad i batch-sektionen)
+    // ============================================================
     function _renderModalSourceDetail(container, sourceDetails) {
         if (!container) return;
         if (!sourceDetails || sourceDetails.length === 0) return;
@@ -4838,7 +4845,9 @@
     }
 
     function _updateTableRow(itemId, data) {
-        var row = document.querySelector('tr[data-item-id="' + itemId + '"]');
+        // Scope to #bookTableBody so batch-review rows with the same data-item-id are never matched.
+        var tbody = document.getElementById('bookTableBody');
+        var row = (tbody || document).querySelector('tr[data-item-id="' + itemId + '"]');
         if (!row) return;
 
         var titleEl = row.querySelector('.book-title');
