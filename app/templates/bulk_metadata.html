@@ -1094,6 +1094,38 @@
         .cover-meta { font-size: 13px; text-align: center; }
         .cover-meta label { display: flex; align-items: center; gap: 6px; justify-content: center; cursor: pointer; }
 
+        /* Batch summary */
+        .batch-summary-section { margin-bottom: 20px; }
+        .batch-summary-section h3 { font-size: 14px; font-weight: 500; margin-bottom: 8px; }
+        .batch-summary-item {
+            font-size: 13px;
+            padding: 4px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .batch-summary-item .count { font-weight: 500; min-width: 24px; }
+        .batch-summary-remaining { color: var(--text-secondary); }
+        .batch-summary-link {
+            font-size: 12px;
+            color: var(--accent-primary-text);
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        .batch-add-field-pop {
+            position: absolute;
+            background: var(--bg-primary);
+            border: 0.5px solid var(--border-light);
+            border-radius: var(--border-radius-md, 8px);
+            padding: 10px 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 160px;
+        }
+
         .modal-box {
             background: var(--bg-primary);
             border: 1px solid var(--border-light);
@@ -2324,7 +2356,7 @@
         searchCache: {},
         reviewQueue: [],
         reviewIndex: 0,
-        results: { saved: 0, skipped: 0, noMatch: 0 }
+        results: { saved: 0, skipped: 0, noMatch: 0, fieldCounts: {} }
     };
 
     var _BATCH_TEXT_FIELDS = [
@@ -2339,7 +2371,7 @@
         _batchWizard.searchCache = {};
         _batchWizard.reviewQueue = [];
         _batchWizard.reviewIndex = 0;
-        _batchWizard.results = { saved: 0, skipped: 0, noMatch: 0 };
+        _batchWizard.results = { saved: 0, skipped: 0, noMatch: 0, fieldCounts: {} };
     }
 
     function _batchSetStep(step) {
@@ -2355,6 +2387,10 @@
             });
             var active = indicator.querySelector('.step-' + step);
             if (active) active.classList.add('active');
+        }
+        if (step === 4) {
+            var sc = document.getElementById('batchSummaryContainer');
+            if (sc) _batchRenderSummary(sc);
         }
     }
 
@@ -2533,7 +2569,7 @@
 
         container.innerHTML =
             '<div class="batch-review-header">Granskar: ' + fieldSummary +
-            ' <a href="#" class="batch-add-field" onclick="event.preventDefault()">[+ lägg till fält]</a></div>' +
+            ' <a href="#" class="batch-add-field" onclick="event.preventDefault();_batchShowAddField(this)">[+ lägg till fält]</a></div>' +
             '<div style="overflow-x:auto;">' +
             '<table class="batch-review-table"><thead><tr><th>Bok</th>' + colLabels + '</tr></thead>' +
             '<tbody>' + rows.join('') + '</tbody>' +
@@ -2641,7 +2677,13 @@
                     if (!result.ok) ok = false;
                     remaining--;
                     if (remaining === 0) {
-                        if (ok) savedCount++;
+                        if (ok) {
+                            savedCount++;
+                            var fc = _batchWizard.results.fieldCounts;
+                            Object.keys(payload).forEach(function(f) {
+                                fc[f] = (fc[f] || 0) + 1;
+                            });
+                        }
                         pending--;
                         if (pending === 0) _onAllDone();
                     }
@@ -2711,7 +2753,7 @@
 
         container.innerHTML =
             '<div class="batch-review-header">Granskar: <strong>Synopsis</strong>' +
-            ' <a href="#" class="batch-add-field" onclick="event.preventDefault()">[+ lägg till fält]</a></div>' +
+            ' <a href="#" class="batch-add-field" onclick="event.preventDefault();_batchShowAddField(this)">[+ lägg till fält]</a></div>' +
             '<div style="overflow-x:auto;">' +
             '<table class="batch-review-table"><thead><tr>' +
             '<th>Bok</th><th>Nuvarande</th><th>Hämtat</th><th>Förändring</th>' +
@@ -2744,6 +2786,10 @@
 
         function _onAllDone() {
             _batchWizard.results.saved += savedCount;
+            if (savedCount > 0) {
+                var fc = _batchWizard.results.fieldCounts;
+                fc.description = (fc.description || 0) + savedCount;
+            }
             _batchAdvanceReview();
         }
 
@@ -2829,7 +2875,7 @@
 
         container.innerHTML =
             '<div class="batch-review-header">Granskar: <strong>Omslag</strong>' +
-            ' <a href="#" class="batch-add-field" onclick="event.preventDefault()">[+ lägg till fält]</a></div>' +
+            ' <a href="#" class="batch-add-field" onclick="event.preventDefault();_batchShowAddField(this)">[+ lägg till fält]</a></div>' +
             '<div class="cover-review-grid">' + cards.join('') + '</div>' +
             '<div style="margin-top:16px;display:flex;gap:8px;align-items:center;">' +
             '<button type="button" class="btn primary" onclick="_batchSaveCover()">Spara valda &amp; fortsätt</button>' +
@@ -2849,6 +2895,10 @@
 
         function _onAllDone() {
             _batchWizard.results.saved += savedCount;
+            if (savedCount > 0) {
+                var fc = _batchWizard.results.fieldCounts;
+                fc.cover = (fc.cover || 0) + savedCount;
+            }
             _batchAdvanceReview();
         }
 
@@ -2887,6 +2937,158 @@
         } else {
             _batchRenderReview();
         }
+    }
+
+    var _BATCH_FIELD_LABELS = {
+        title: 'Titel', author: 'Författare', series: 'Serie', series_index: 'Del',
+        isbn: 'ISBN', publisher: 'Förlag', language: 'Språk', genres: 'Genre',
+        published_date: 'Publiceringsdatum', description: 'Synopsis', cover: 'Omslag'
+    };
+    var _BATCH_MISSING_FILTER = {
+        author: 'author', series: 'series', isbn: 'isbn', publisher: 'publisher',
+        genres: 'genres', published_date: 'published_date',
+        description: 'description', cover: 'cover'
+    };
+
+    function _batchRenderSummary(container) {
+        if (!container) return;
+        var fc = _batchWizard.results.fieldCounts || {};
+        var cache = _batchWizard.searchCache;
+        var selectedFields = _batchWizard.selectedFields;
+
+        var savedItems = [];
+        Object.keys(fc).forEach(function(field) {
+            var count = fc[field];
+            if (count > 0) {
+                var label = _BATCH_FIELD_LABELS[field] || field;
+                savedItems.push(
+                    '<div class="batch-summary-item"><span class="count">' + count + '</span>' +
+                    '<span>' + _esc(label) + ' uppdaterat för ' + count +
+                    ' bok' + (count !== 1 ? 'er' : '') + '</span></div>'
+                );
+            }
+        });
+
+        var remainingItems = [];
+        selectedFields.forEach(function(field) {
+            var filterKey = _BATCH_MISSING_FILTER[field];
+            if (!filterKey) return;
+            var count = 0;
+            _batchWizard.selectedItemIds.forEach(function(itemId) {
+                var data = cache[itemId];
+                if (!data) return;
+                var wasMissing = field === 'cover'
+                    ? !data.has_cover_before
+                    : !(data.before && data.before[field]);
+                var noFetch = field === 'cover'
+                    ? !data.has_cover_fetched
+                    : !(data.candidate && data.candidate[field]);
+                if (wasMissing && noFetch) count++;
+            });
+            if (count > 0) {
+                var label = _BATCH_FIELD_LABELS[field] || field;
+                remainingItems.push(
+                    '<div class="batch-summary-item batch-summary-remaining">' +
+                    '<span class="count">' + count + '</span>' +
+                    '<span>' + count + ' bok' + (count !== 1 ? 'er' : '') +
+                    ' saknar ' + _esc(label.toLowerCase()) + '</span>' +
+                    '<span class="batch-summary-link" onclick="_batchFilterMissing(\'' + filterKey + '\')">[Visa]</span>' +
+                    '</div>'
+                );
+            }
+        });
+
+        var html = '<h2 style="font-size:18px;font-weight:600;margin-bottom:20px;">Batch klar!</h2>';
+
+        html += '<div class="batch-summary-section"><h3>Sparade</h3>';
+        if (savedItems.length > 0) {
+            html += savedItems.join('');
+        } else {
+            html += '<div class="batch-summary-item"><span class="brt-no-match">Inga fält sparades.</span></div>';
+        }
+        html += '</div>';
+
+        if (remainingItems.length > 0) {
+            html += '<div class="batch-summary-section"><h3>Kvarstår</h3>' + remainingItems.join('') + '</div>';
+        }
+
+        html += '<button type="button" class="btn ghost" onclick="closeBatchModal()">Stäng</button>';
+        container.innerHTML = html;
+    }
+
+    function _batchFilterMissing(fieldKey) {
+        closeBatchModal();
+        var filterSelect = document.getElementById('filterMissingField');
+        if (filterSelect) {
+            filterSelect.value = fieldKey;
+            applyFilters();
+        }
+    }
+
+    var _BATCH_ADD_FIELD_LIST = [
+        { key: 'title',        label: 'Titel' },
+        { key: 'author',       label: 'Författare' },
+        { key: 'series',       label: 'Serie' },
+        { key: 'isbn',         label: 'ISBN' },
+        { key: 'publisher',    label: 'Förlag' },
+        { key: 'language',     label: 'Språk' },
+        { key: 'genres',       label: 'Genre' },
+        { key: 'published_date', label: 'Datum' },
+        { key: 'description',  label: 'Synopsis' },
+        { key: 'cover',        label: 'Omslag' }
+    ];
+
+    function _batchShowAddField(anchor) {
+        var existing = document.getElementById('batchAddFieldPopover');
+        if (existing) { existing.remove(); return; }
+
+        var pop = document.createElement('div');
+        pop.id = 'batchAddFieldPopover';
+        pop.className = 'batch-add-field-pop';
+
+        var currentReview = _batchWizard.reviewQueue[_batchWizard.reviewIndex];
+        var textKeys = ['title','author','series','isbn','publisher','language','genres','published_date'];
+
+        _BATCH_ADD_FIELD_LIST.forEach(function(f) {
+            var selected = _batchWizard.selectedFields.indexOf(f.key) !== -1;
+            var canAdd = !selected && currentReview === 'textfields' && textKeys.indexOf(f.key) !== -1;
+
+            var label = document.createElement('label');
+            label.className = 'field-check';
+            var cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.checked = selected;
+            cb.disabled = !canAdd;
+            if (canAdd) {
+                cb.addEventListener('change', function() {
+                    if (this.checked) {
+                        _batchWizard.selectedFields.push(f.key);
+                        pop.remove();
+                        _batchRenderReview();
+                    }
+                });
+            }
+            label.appendChild(cb);
+            label.appendChild(document.createTextNode(' ' + f.label));
+            pop.appendChild(label);
+        });
+
+        var header = anchor.closest('.batch-review-header');
+        (header || anchor.parentNode).style.position = 'relative';
+        pop.style.top = '22px';
+        pop.style.left = 'auto';
+        pop.style.right = '0';
+        (header || anchor.parentNode).appendChild(pop);
+
+        setTimeout(function() {
+            function _outside(e) {
+                if (!pop.contains(e.target) && e.target !== anchor) {
+                    pop.remove();
+                    document.removeEventListener('click', _outside);
+                }
+            }
+            document.addEventListener('click', _outside);
+        }, 0);
     }
 
     function _getBatchItemIds() {
