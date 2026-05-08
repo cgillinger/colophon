@@ -1784,8 +1784,8 @@
             </div>
         </div>
         <div style="margin-top:10px; padding:10px; background:var(--bg-secondary); border-radius:6px; font-size:12px;">
-            <details>
-                <summary style="cursor:pointer; font-weight:500; user-select:none;">
+            <details id="smartReplaceDetails">
+                <summary style="cursor:pointer; font-weight:500; user-select:none; position:relative; z-index:2;">
                     <i class="ti ti-adjustments-horizontal" style="font-size:13px;"></i> Smart ersättning
                 </summary>
                 <div style="margin-top:8px; display:flex; flex-direction:column; gap:4px;">
@@ -3179,8 +3179,8 @@
         if (mp) { mp.innerHTML = ''; mp.style.display = 'none'; }
         window._modalSourceDetails = {};
         // Collapse smart-replace and clear its checkboxes on each open
-        var details = document.querySelector('#bookModal details');
-        if (details) details.removeAttribute('open');
+        var details = document.getElementById('smartReplaceDetails');
+        if (details) details.open = false;
         document.querySelectorAll('.modal-smart').forEach(function(cb) { cb.checked = false; });
         setModalFeedback('info', 'Laddar...');
 
