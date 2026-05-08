@@ -2000,6 +2000,8 @@
                 var msg = d.synced + ' filer synkade.';
                 if (d.errors > 0) msg += ' ' + d.errors + ' fel.';
                 text.textContent = msg;
+                var pill = document.getElementById('libraryChipUnsynced');
+                if (pill) { pill.textContent = '0 osynkade'; pill.style.display = 'none'; }
                 setTimeout(function() { location.reload(); }, 1500);
             }
         };
@@ -3589,6 +3591,7 @@
                 _setModalBusy(false);
                 if (!data.ok) { setModalFeedback('error', 'Fel: ' + (data.error || 'okänt fel')); return; }
                 _updateTableRow(id, payload);
+                _updateUnsyncedPill(1);
                 closeBookModal();
             })
             .catch(function() {
@@ -3647,6 +3650,30 @@
                 statusCell.appendChild(document.createTextNode(' '));
                 statusCell.appendChild(badge);
             }
+        }
+        row.dataset.unsynced = '1';
+    }
+
+    function _updateUnsyncedPill(delta) {
+        var pill = document.getElementById('libraryChipUnsynced');
+        if (!pill) {
+            if (delta <= 0) return;
+            var bar = document.querySelector('.library-bar .stats-row');
+            if (!bar) return;
+            pill = document.createElement('span');
+            pill.className = 'chip chip-sync stats-badge';
+            pill.id = 'libraryChipUnsynced';
+            pill.onclick = function(e) { toggleBadgeFilter('unsynced', '1', e); };
+            bar.appendChild(pill);
+        }
+        var text = pill.textContent.trim();
+        var current = parseInt(text) || 0;
+        var newCount = current + delta;
+        if (newCount <= 0) {
+            pill.style.display = 'none';
+        } else {
+            pill.style.display = '';
+            pill.textContent = newCount + ' osynkade';
         }
     }
 
