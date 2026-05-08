@@ -864,6 +864,11 @@
             background: var(--bg-tertiary);
             color: var(--text-tertiary);
         }
+        .modal-input.source-highlight {
+            border: 2px solid var(--accent-red) !important;
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
         .bp-expand-icon {
             cursor: pointer;
             font-size: 12px;
@@ -3151,10 +3156,12 @@
     /* Book modal                                                            */
     /* -------------------------------------------------------------------- */
     var _modalItemId = null;
+    var _modalAllCandidates = [];
     var _coverUrlBase = '{{ url_for("metadata.cover_item", item_id=0) }}'.replace(/\/0$/, '');
 
     function openBookModal(itemId) {
         _modalItemId = itemId;
+        _modalAllCandidates = [];
         document.getElementById('bookModal').style.display = 'flex';
         var mp = document.getElementById('modalProgress');
         if (mp) { mp.innerHTML = ''; mp.style.display = 'none'; }
@@ -3267,7 +3274,12 @@
                     var found = sd.fields_found.indexOf(f) !== -1;
                     var cls = found ? 'bp-field-found' : 'bp-field-missing';
                     var icon = found ? '<i class="ti ti-check" style="font-size:11px"></i> ' : '';
-                    html += '<span class="bp-field-tag ' + cls + '">' + icon + _esc(_bpFieldLabels[f]) + '</span>';
+                    var extra = '';
+                    if (found) {
+                        extra = ' style="cursor:pointer;" title="Klicka för att använda detta värde"' +
+                            ' onclick="_modalFieldTagClick(' + JSON.stringify(sd.source || '') + ',' + JSON.stringify(f) + ')"';
+                    }
+                    html += '<span class="bp-field-tag ' + cls + '"' + extra + '>' + icon + _esc(_bpFieldLabels[f]) + '</span>';
                 });
             } else {
                 html += '<span class="bp-field-tag bp-field-missing">Inga träffar</span>';
@@ -3277,6 +3289,56 @@
         });
 
         container.innerHTML = html;
+    }
+
+    var _modalFieldInputMap = {
+        title:          'modalTitle',
+        author:         'modalAuthor',
+        description:    'modalDescription',
+        isbn:           'modalIsbn',
+        publisher:      'modalPublisher',
+        series:         'modalSeries',
+        genres:         'modalGenres',
+        published_date: 'modalPublishedDate'
+    };
+
+    function _modalFieldTagClick(sourceName, fieldKey) {
+        var inputId = _modalFieldInputMap[fieldKey];
+        if (!inputId) return;
+
+        var sourceNameLower = (sourceName || '').toLowerCase();
+        var candidate = null;
+        for (var i = 0; i < _modalAllCandidates.length; i++) {
+            var c = _modalAllCandidates[i];
+            var cSource = (c.source || '').toLowerCase();
+            if (cSource.indexOf(sourceNameLower) !== -1 || sourceNameLower.indexOf(cSource) !== -1) {
+                candidate = c;
+                break;
+            }
+        }
+        if (!candidate) {
+            console.warn('[colophon] No candidate found for source:', sourceName,
+                'available:', _modalAllCandidates.map(function(c) { return c.source; }));
+            return;
+        }
+
+        var value = candidate[fieldKey];
+        if (value == null || value === '') return;
+
+        var inputEl = document.getElementById(inputId);
+        if (!inputEl) return;
+        inputEl.value = value;
+
+        if (fieldKey === 'series' && candidate.series_index != null) {
+            var siEl = document.getElementById('modalSeriesIndex');
+            if (siEl) siEl.value = candidate.series_index;
+        }
+
+        document.querySelectorAll('.modal-input.source-highlight').forEach(function(el) {
+            el.classList.remove('source-highlight');
+        });
+        inputEl.classList.add('source-highlight');
+        inputEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     function toggleModalProgressDetail(itemId, icon) {
@@ -3459,6 +3521,7 @@
                 _setFetchingState(false);
                 _setModalBusy(false);
                 var itemId = d.item_id;
+                _modalAllCandidates = d.all_candidates || [];
 
                 if (d.source_details && d.source_details.length > 0) {
                     window._modalSourceDetails[itemId] = d.source_details;
