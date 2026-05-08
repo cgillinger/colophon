@@ -864,6 +864,18 @@
             background: var(--bg-tertiary);
             color: var(--text-tertiary);
         }
+        .bp-field-clickable {
+            cursor: pointer;
+            transition: box-shadow 0.15s, transform 0.1s;
+        }
+        .bp-field-clickable:hover {
+            box-shadow: 0 0 0 2px var(--accent-green);
+            transform: scale(1.05);
+        }
+        .bp-field-active {
+            box-shadow: 0 0 0 2px var(--accent-green);
+            font-weight: 600;
+        }
         .modal-input.source-highlight {
             border: 2px solid var(--accent-red) !important;
             box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
@@ -3272,14 +3284,13 @@
             if (sd.ok && sd.fields_found && sd.fields_found.length > 0) {
                 _bpAllFields.forEach(function(f) {
                     var found = sd.fields_found.indexOf(f) !== -1;
-                    var cls = found ? 'bp-field-found' : 'bp-field-missing';
                     var icon = found ? '<i class="ti ti-check" style="font-size:11px"></i> ' : '';
-                    var extra = '';
                     if (found) {
-                        extra = ' style="cursor:pointer;" title="Klicka för att använda detta värde"' +
-                            ' onclick="_modalFieldTagClick(' + JSON.stringify(sd.source || '') + ',' + JSON.stringify(f) + ')"';
+                        html += '<span class="bp-field-tag bp-field-found bp-field-clickable" data-field="' + f + '" data-source="' + _esc(sd.source || '') + '">'
+                            + icon + _esc(_bpFieldLabels[f]) + '</span>';
+                    } else {
+                        html += '<span class="bp-field-tag bp-field-missing">' + _esc(_bpFieldLabels[f]) + '</span>';
                     }
-                    html += '<span class="bp-field-tag ' + cls + '"' + extra + '>' + icon + _esc(_bpFieldLabels[f]) + '</span>';
                 });
             } else {
                 html += '<span class="bp-field-tag bp-field-missing">Inga träffar</span>';
@@ -3289,6 +3300,66 @@
         });
 
         container.innerHTML = html;
+        container.addEventListener('click', function(e) {
+            var tag = e.target.closest('.bp-field-clickable');
+            if (!tag) return;
+
+            var fieldKey = tag.dataset.field;
+            var sourceName = tag.dataset.source;
+            if (!fieldKey || !sourceName) return;
+
+            var candidate = null;
+            for (var i = 0; i < _modalAllCandidates.length; i++) {
+                var c = _modalAllCandidates[i];
+                var cSource = (c.source || '').toLowerCase();
+                var sName = sourceName.toLowerCase();
+                if (cSource === sName || cSource.indexOf(sName) !== -1 || sName.indexOf(cSource) !== -1) {
+                    if (c[fieldKey] && c[fieldKey].toString().trim()) {
+                        candidate = c;
+                        break;
+                    }
+                }
+            }
+
+            if (!candidate) {
+                console.warn('Ingen kandidat hittad for kalla:', sourceName, 'falt:', fieldKey,
+                    'Tillgangliga:', _modalAllCandidates.map(function(c) { return c.source; }));
+                return;
+            }
+
+            var value = candidate[fieldKey].toString().trim();
+
+            var fieldToInputId = {
+                title: 'modalTitle',
+                author: 'modalAuthor',
+                series: 'modalSeries',
+                series_index: 'modalSeriesIndex',
+                isbn: 'modalIsbn',
+                publisher: 'modalPublisher',
+                language: 'modalLanguage',
+                genres: 'modalGenres',
+                published_date: 'modalPublishedDate',
+                description: 'modalDescription'
+            };
+            var inputId = fieldToInputId[fieldKey];
+            if (!inputId) return;
+
+            var inputEl = document.getElementById(inputId);
+            if (!inputEl) return;
+
+            inputEl.value = value;
+
+            document.querySelectorAll('.modal-input.source-highlight').forEach(function(el) {
+                el.classList.remove('source-highlight');
+            });
+            inputEl.classList.add('source-highlight');
+            inputEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+            container.querySelectorAll('.bp-field-clickable').forEach(function(t) {
+                t.classList.remove('bp-field-active');
+            });
+            tag.classList.add('bp-field-active');
+        });
     }
 
     var _modalFieldInputMap = {
@@ -3819,9 +3890,13 @@
             if (sd.ok && sd.fields_found && sd.fields_found.length > 0) {
                 _bpAllFields.forEach(function(f) {
                     var found = sd.fields_found.indexOf(f) !== -1;
-                    var cls = found ? 'bp-field-found' : 'bp-field-missing';
                     var icon = found ? '<i class="ti ti-check" style="font-size:11px"></i> ' : '';
-                    html += '<span class="bp-field-tag ' + cls + '">' + icon + _bpEsc(_bpFieldLabels[f]) + '</span>';
+                    if (found) {
+                        html += '<span class="bp-field-tag bp-field-found bp-field-clickable" data-field="' + f + '" data-source="' + _bpEsc(sd.source || '') + '">'
+                            + icon + _bpEsc(_bpFieldLabels[f]) + '</span>';
+                    } else {
+                        html += '<span class="bp-field-tag bp-field-missing">' + _bpEsc(_bpFieldLabels[f]) + '</span>';
+                    }
                 });
             } else {
                 html += '<span class="bp-field-tag bp-field-missing">Inga träffar</span>';
@@ -3831,6 +3906,68 @@
         });
 
         container.innerHTML = html;
+        var bulkData = _bulkResultData[itemId];
+        var candidates = (bulkData && bulkData.all_candidates) || [];
+        container.addEventListener('click', function(e) {
+            var tag = e.target.closest('.bp-field-clickable');
+            if (!tag) return;
+
+            var fieldKey = tag.dataset.field;
+            var sourceName = tag.dataset.source;
+            if (!fieldKey || !sourceName) return;
+
+            var candidate = null;
+            for (var i = 0; i < candidates.length; i++) {
+                var c = candidates[i];
+                var cSource = (c.source || '').toLowerCase();
+                var sName = sourceName.toLowerCase();
+                if (cSource === sName || cSource.indexOf(sName) !== -1 || sName.indexOf(cSource) !== -1) {
+                    if (c[fieldKey] && c[fieldKey].toString().trim()) {
+                        candidate = c;
+                        break;
+                    }
+                }
+            }
+
+            if (!candidate) {
+                console.warn('Ingen kandidat hittad for kalla:', sourceName, 'falt:', fieldKey,
+                    'Tillgangliga:', candidates.map(function(c) { return c.source; }));
+                return;
+            }
+
+            var value = candidate[fieldKey].toString().trim();
+
+            var fieldToInputId = {
+                title: 'modalTitle',
+                author: 'modalAuthor',
+                series: 'modalSeries',
+                series_index: 'modalSeriesIndex',
+                isbn: 'modalIsbn',
+                publisher: 'modalPublisher',
+                language: 'modalLanguage',
+                genres: 'modalGenres',
+                published_date: 'modalPublishedDate',
+                description: 'modalDescription'
+            };
+            var inputId = fieldToInputId[fieldKey];
+            if (!inputId) return;
+
+            var inputEl = document.getElementById(inputId);
+            if (!inputEl) return;
+
+            inputEl.value = value;
+
+            document.querySelectorAll('.modal-input.source-highlight').forEach(function(el) {
+                el.classList.remove('source-highlight');
+            });
+            inputEl.classList.add('source-highlight');
+            inputEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+            container.querySelectorAll('.bp-field-clickable').forEach(function(t) {
+                t.classList.remove('bp-field-active');
+            });
+            tag.classList.add('bp-field-active');
+        });
     }
 
     function toggleProgressDetail(itemId, icon) {
