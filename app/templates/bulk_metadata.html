@@ -954,6 +954,22 @@
         .batch-wizard-steps .separator {
             color: var(--border-medium);
         }
+        .batch-step-link {
+            color: var(--text-tertiary);
+            text-decoration: none;
+            cursor: default;
+        }
+        .batch-step-link.completed {
+            color: var(--accent-primary);
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        .batch-step-link.active {
+            color: var(--text-primary);
+            font-weight: 500;
+            text-decoration: none;
+            cursor: default;
+        }
 
         /* Batch review table */
         .batch-review-header {
@@ -969,6 +985,7 @@
         }
         .batch-review-table {
             width: 100%;
+            table-layout: fixed;
             border-collapse: collapse;
             font-size: 13px;
         }
@@ -982,11 +999,17 @@
             text-align: left;
             border-bottom: 0.5px solid var(--border-light);
             white-space: nowrap;
+            overflow: hidden;
         }
+        .batch-review-table th:first-child { width: 160px; }
         .batch-review-table td {
             padding: 8px 10px;
             border-bottom: 0.5px solid var(--border-light);
             vertical-align: middle;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 0;
         }
         .batch-review-table tr:hover { background: var(--bg-secondary); }
         .brt-arrow { color: var(--accent-green); font-size: 11px; margin: 0 4px; }
@@ -1029,50 +1052,67 @@
         .batch-review-expand td { padding: 0 !important; border-bottom: 0.5px solid var(--border-light); }
         .batch-review-expand { background: var(--bg-secondary); }
         .source-alternatives {
-            padding: 8px 12px 8px 40px;
+            padding: 8px 12px 8px 28px;
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 6px;
         }
         .source-alt-row {
             display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 5px 10px;
+            flex-direction: column;
+            gap: 4px;
+            padding: 6px 10px;
             border-radius: var(--border-radius-md, 6px);
-            border: 0.5px solid transparent;
+            border: 0.5px solid var(--border-light);
+            background: var(--bg-primary);
             transition: border-color 0.15s;
         }
         .source-alt-row:hover { border-color: var(--border-medium, var(--border-light)); }
         .source-alt-row.selected {
             border-color: var(--accent-green);
-            background: rgba(99, 153, 34, 0.06);
+            background: rgba(99, 153, 34, 0.04);
+        }
+        .source-alt-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
         }
         .source-alt-name {
             font-weight: 500;
             font-size: 12px;
-            min-width: 100px;
             color: var(--text-secondary);
         }
+        .source-alt-fields {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 10px;
+        }
         .source-alt-field {
-            font-size: 12px;
-            flex: 1;
+            font-size: 11px;
             color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 200px;
         }
         .source-alt-field-label {
             color: var(--text-tertiary);
-            font-size: 11px;
+            font-size: 10px;
             margin-right: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
         }
         .source-alt-use {
             font-size: 11px;
-            padding: 3px 10px;
+            padding: 2px 9px;
             border: 0.5px solid var(--accent-green);
             color: var(--accent-green);
             background: transparent;
             border-radius: var(--border-radius-md, 6px);
             cursor: pointer;
             white-space: nowrap;
+            flex-shrink: 0;
         }
         .source-alt-use:hover { background: var(--accent-green); color: #fff; }
         .expand-arrow {
@@ -2437,20 +2477,48 @@
         _batchWizard.results = { saved: 0, skipped: 0, noMatch: 0, fieldCounts: {} };
     }
 
+    var _STEP_LABELS = ['', '1. Välj fält', '2. Sökning', '3. Granska', '4. Klart'];
+
+    function _renderWizardSteps() {
+        var indicator = document.getElementById('batchWizardSteps');
+        if (!indicator) return;
+        var currentStep = _batchWizard.step;
+        var parts = [];
+        for (var i = 1; i <= 4; i++) {
+            if (i > 1) parts.push('<span class="separator">→</span>');
+            var label = _STEP_LABELS[i];
+            if (i < currentStep) {
+                parts.push('<a class="batch-step-link completed step-' + i + '" href="#" onclick="event.preventDefault();_batchGoToStep(' + i + ')">' + label + '</a>');
+            } else if (i === currentStep) {
+                parts.push('<span class="batch-step-link active step-' + i + '">' + label + '</span>');
+            } else {
+                parts.push('<span class="batch-step-link step-' + i + '">' + label + '</span>');
+            }
+        }
+        indicator.innerHTML = parts.join('');
+    }
+
+    function _batchGoToStep(step) {
+        if (step >= _batchWizard.step) return;
+        if (step === 3) {
+            _batchWizard.reviewIndex = 0;
+            _batchSetStep(3);
+            var container = document.getElementById('batchReviewContainer');
+            if (container) _batchRenderTextFieldReview(container);
+        } else if (step === 1) {
+            _batchSetStep(1);
+        } else if (step === 2) {
+            _batchSetStep(2);
+        }
+    }
+
     function _batchSetStep(step) {
         _batchWizard.step = step;
         for (var i = 1; i <= 4; i++) {
             var el = document.getElementById('batchStep' + i);
             if (el) el.style.display = (i === step) ? '' : 'none';
         }
-        var indicator = document.getElementById('batchWizardSteps');
-        if (indicator) {
-            indicator.querySelectorAll('span').forEach(function(span) {
-                span.classList.remove('active');
-            });
-            var active = indicator.querySelector('.step-' + step);
-            if (active) active.classList.add('active');
-        }
+        _renderWizardSteps();
         if (step === 4) {
             var sc = document.getElementById('batchSummaryContainer');
             if (sc) _batchRenderSummary(sc);
@@ -2688,12 +2756,14 @@
                         if (f === 'published_date') v = _cleanDate(v);
                         if (!v) return '';
                         return '<span class="source-alt-field"><span class="source-alt-field-label">' +
-                            _esc(_applyFieldLabels[f] || f) + ':</span> ' + _esc(v) + '</span>';
+                            _esc(_applyFieldLabels[f] || f) + '</span>' + _esc(v) + '</span>';
                     }).filter(Boolean).join('');
                     return '<div class="source-alt-row' + (isFirst ? ' selected' : '') + '">' +
+                        '<div class="source-alt-header">' +
                         '<span class="source-alt-name">' + _esc(c.source || 'Okänd') + '</span>' +
-                        fieldsHtml +
                         '<button class="source-alt-use" onclick="event.stopPropagation();batchUseSource(\'' + itemId + '\',' + idx + ')">Använd</button>' +
+                        '</div>' +
+                        (fieldsHtml ? '<div class="source-alt-fields">' + fieldsHtml + '</div>' : '') +
                         '</div>';
                 }).join('');
                 rows.push(
@@ -2799,7 +2869,17 @@
             if (!data) { pending--; if (pending === 0) _onAllDone(); return; }
 
             var candidate = data.candidate || {};
+            var before = data.before || {};
+            // Seed payload from current DB values so required fields (title) are always present
+            // and unselected fields are not cleared to null on save.
+            var _ALL_FIELDS = ['title','author','series','series_index','isbn','publisher','language','genres','published_date','description'];
             var payload = {};
+            _ALL_FIELDS.forEach(function(f) {
+                var v = (before[f] != null) ? String(before[f]) : '';
+                if (f === 'published_date') v = _cleanDate(v);
+                if (v) payload[f] = v;
+            });
+            // Override with user-reviewed values for selected fields only
             _brtCols.forEach(function(field) {
                 var val = (_brtCellValues[itemId] && _brtCellValues[itemId][field] != null)
                     ? _brtCellValues[itemId][field]
