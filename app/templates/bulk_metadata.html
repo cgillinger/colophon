@@ -1487,7 +1487,7 @@
             </button>
             <span class="chip" id="libraryChipTotal">{{ total_count }} böcker</span>
             {% if missing_count %}
-                <span class="chip stats-badge" id="libraryChipMissing" onclick="toggleBadgeFilter('missing_metadata', '1', event)">{{ missing_count }} saknar metadata</span>
+                <span class="chip stats-badge" id="libraryChipMissing" onclick="toggleBadgeFilter('missing_metadata', '1', event)">{{ missing_count }} ofullständiga</span>
             {% endif %}
             {% if format_counts %}
                 {% for ext, count in format_counts.items() %}
@@ -2331,7 +2331,7 @@
                 var filterType = parts[0];
                 var filterValue = parts[1];
                 if (filterType === 'format') {
-                    var rowExt = row.dataset.ext || '';
+                    var rowExt = (row.dataset.ext || '').replace(/^\./, '');
                     if (rowExt.toLowerCase() !== filterValue.toLowerCase()) show = false;
                 } else if (filterType === 'missing_cover') {
                     if ((row.dataset.hasCover || '') !== '0') show = false;
