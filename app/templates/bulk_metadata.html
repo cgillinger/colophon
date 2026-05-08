@@ -1361,18 +1361,33 @@
         }
         .synopsis-col-text {
             font-size: 13px;
-            line-height: 1.5;
+            line-height: 1.6;
             color: var(--text-primary);
-            max-height: 200px;
+            max-height: 300px;
             overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
         }
+        .synopsis-col-text.synopsis-col-fetched { color: var(--accent-green); }
         .synopsis-flag-new { color: var(--accent-green); font-weight: 500; }
         .synopsis-flag-longer { color: var(--accent-green); }
         .synopsis-flag-shorter { color: var(--accent-yellow); font-weight: 500; }
         .synopsis-flag-same { color: var(--text-tertiary); }
         .bsyn-row { cursor: pointer; }
         .bsyn-row:hover { background: var(--bg-secondary); }
-        .bsyn-expand-row td { padding: 0 10px 10px; border-bottom: 0.5px solid var(--border-light); }
+        /* Reset table cell defaults so the full synopsis text wraps and renders. */
+        .bsyn-expand-row td {
+            padding: 12px 16px;
+            border-bottom: 0.5px solid var(--border-light);
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+            max-width: none;
+            vertical-align: top;
+        }
+        @media (max-width: 600px) {
+            .synopsis-compare { grid-template-columns: 1fr !important; }
+        }
 
         /* Cover review */
         .cover-review-grid {
@@ -3148,6 +3163,22 @@
         { bg: '#EEEDFE', border: '#AFA9EC', text: '#3C3489' }
     ];
 
+    // Card-specific shorter labels — narrower than _applyFieldLabels for the
+    // 100px label column. Used only by the card renderer, not other views.
+    var _brcFieldLabels = {
+        title: 'Titel',
+        author: 'Författare',
+        series: 'Serie',
+        series_index: 'Del',
+        isbn: 'ISBN',
+        publisher: 'Förlag',
+        language: 'Språk',
+        genres: 'Genre',
+        published_date: 'Datum',
+        description: 'Synopsis'
+    };
+    function _brcLabel(f) { return _brcFieldLabels[f] || _applyFieldLabels[f] || f; }
+
     // Per-item, per-field user choices: { itemId: { field: { value, sourceIdx, sourceName } } }
     var _brcFieldChoices = {};
     // Per-item rendered source list (deduplicated, value-bearing) for save/cherry-pick lookup.
@@ -3205,7 +3236,7 @@
                 var v = _brcFieldValue(c, f);
                 if (!v) return '';
                 return '<div class="brc-sf" data-field="' + _esc(f) + '">' +
-                    '<span class="brc-sf-label">' + _esc(_applyFieldLabels[f] || f) + '</span>' +
+                    '<span class="brc-sf-label">' + _esc(_brcLabel(f)) + '</span>' +
                     '<span class="brc-sf-value">' + _esc(v) + '</span>' +
                     '</div>';
             }).filter(Boolean).join('');
@@ -3225,7 +3256,7 @@
     }
 
     function _brcRenderField(field, current, fetched, sourceName, sourceColor) {
-        var labelHtml = '<span class="brc-label">' + _esc(_applyFieldLabels[field] || field) + '</span>';
+        var labelHtml = '<span class="brc-label">' + _esc(_brcLabel(field)) + '</span>';
         if (!fetched && !current) {
             return '<div class="brc-field" data-field="' + _esc(field) + '">' +
                 '<div class="brc-marker brc-marker-none"></div>' + labelHtml +
@@ -3418,7 +3449,7 @@
         var current = _brcFieldValue(before, field);
 
         // Rebuild as a "changed" or "same" row depending on the new value.
-        var labelLabel = _applyFieldLabels[field] || field;
+        var labelLabel = _brcLabel(field);
         if (!newValue) {
             fieldEl.outerHTML = '<div class="brc-field" data-field="' + field + '">' +
                 '<div class="brc-marker brc-marker-none"></div>' +
@@ -3650,10 +3681,12 @@
                 '<tr class="bsyn-expand-row" data-item-id="' + itemId + '" style="display:none;">' +
                 '<td colspan="4">' +
                 '<div class="synopsis-compare">' +
-                '<div class="synopsis-col"><div class="synopsis-col-label">Nuvarande</div>' +
+                '<div class="synopsis-col">' +
+                '<div class="synopsis-col-label">Nuvarande (' + curLen + ' tecken)</div>' +
                 '<div class="synopsis-col-text">' + _esc(curDesc || '(ingen text)') + '</div></div>' +
-                '<div class="synopsis-col"><div class="synopsis-col-label">Hämtat</div>' +
-                '<div class="synopsis-col-text">' + _esc(fetchedDesc || '(ingen text)') + '</div></div>' +
+                '<div class="synopsis-col">' +
+                '<div class="synopsis-col-label">Hämtat (' + fetchedLen + ' tecken)</div>' +
+                '<div class="synopsis-col-text synopsis-col-fetched">' + _esc(fetchedDesc || '(ingen text)') + '</div></div>' +
                 '</div></td></tr>'
             );
         });
