@@ -1048,6 +1048,52 @@
         .bsyn-row:hover { background: var(--bg-secondary); }
         .bsyn-expand-row td { padding: 0 10px 10px; border-bottom: 0.5px solid var(--border-light); }
 
+        /* Cover review */
+        .cover-review-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            padding: 8px 0;
+        }
+        .cover-review-card {
+            background: var(--bg-secondary);
+            border: 0.5px solid var(--border-light);
+            border-radius: var(--border-radius-md, 8px);
+            padding: 12px;
+        }
+        .cover-pair {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 8px;
+        }
+        .cover-thumb { text-align: center; }
+        .cover-thumb img {
+            width: 80px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 0.5px solid var(--border-light);
+            display: block;
+        }
+        .cover-placeholder {
+            width: 80px;
+            height: 120px;
+            background: var(--bg-tertiary, var(--bg-secondary));
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: var(--text-tertiary);
+            border: 0.5px solid var(--border-light);
+        }
+        .cover-label { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+        .cover-arrow { color: var(--accent-green); font-size: 18px; }
+        .cover-meta { font-size: 13px; text-align: center; }
+        .cover-meta label { display: flex; align-items: center; gap: 6px; justify-content: center; cursor: pointer; }
+
         .modal-box {
             background: var(--bg-primary);
             border: 1px solid var(--border-light);
@@ -2405,8 +2451,10 @@
             _batchRenderTextFieldReview(container);
         } else if (currentReview === 'synopsis') {
             _batchRenderSynopsisReview(container);
+        } else if (currentReview === 'cover') {
+            _batchRenderCoverReview(container);
         } else {
-            container.innerHTML = '<p>Granskningsvy för: ' + _esc(currentReview) + ' (implementeras i uppdrag 5)</p>';
+            container.innerHTML = '<p>Granskningsvy för: ' + _esc(currentReview) + ' (ej implementerat)</p>';
         }
     }
 
@@ -2733,6 +2781,98 @@
                     if (remaining === 0) { pending--; if (pending === 0) _onAllDone(); }
                 });
             });
+        });
+    }
+
+    function _batchRenderCoverReview(container) {
+        var cards = [];
+        _batchWizard.selectedItemIds.forEach(function(itemId) {
+            var data = _batchWizard.searchCache[itemId];
+            if (!data) return;
+
+            var hasCoverBefore = data.has_cover_before || false;
+            var coverUrlFetched = data.cover_url_fetched || null;
+            var hasCoverFetched = data.has_cover_fetched || false;
+
+            var isChecked = false, isDisabled = false;
+            if (!hasCoverBefore && hasCoverFetched) {
+                isChecked = true;
+            } else if (!hasCoverFetched) {
+                isDisabled = true;
+            }
+            var checkAttrs = (isChecked ? ' checked' : '') + (isDisabled ? ' disabled' : '');
+
+            var currentHtml = hasCoverBefore
+                ? '<img src="/cover/' + itemId + '" alt="" onerror="this.outerHTML=\'<div class=&quot;cover-placeholder&quot;>📖</div>\'">'
+                : '<div class="cover-placeholder">📖</div>';
+
+            var fetchedHtml = (hasCoverFetched && coverUrlFetched)
+                ? '<img src="' + _esc(coverUrlFetched) + '" alt="" onerror="this.outerHTML=\'<div class=&quot;cover-placeholder&quot; style=&quot;font-size:13px&quot;>Fel</div>\'">'
+                : '<div class="cover-placeholder" style="font-size:13px;">Ej funnet</div>';
+
+            var title = data.title || String(itemId);
+            if (title.length > 35) title = title.substring(0, 35) + '…';
+
+            cards.push(
+                '<div class="cover-review-card">' +
+                '<div class="cover-pair">' +
+                '<div class="cover-thumb">' + currentHtml + '<div class="cover-label">Nuvarande</div></div>' +
+                '<div class="cover-arrow">→</div>' +
+                '<div class="cover-thumb">' + fetchedHtml + '<div class="cover-label">Hämtat</div></div>' +
+                '</div>' +
+                '<div class="cover-meta"><label>' +
+                '<input type="checkbox" class="cover-check" data-item-id="' + itemId + '"' + checkAttrs + '>' +
+                '<span>' + _esc(title) + '</span></label></div>' +
+                '</div>'
+            );
+        });
+
+        container.innerHTML =
+            '<div class="batch-review-header">Granskar: <strong>Omslag</strong>' +
+            ' <a href="#" class="batch-add-field" onclick="event.preventDefault()">[+ lägg till fält]</a></div>' +
+            '<div class="cover-review-grid">' + cards.join('') + '</div>' +
+            '<div style="margin-top:16px;display:flex;gap:8px;align-items:center;">' +
+            '<button type="button" class="btn primary" onclick="_batchSaveCover()">Spara valda &amp; fortsätt</button>' +
+            '<button type="button" class="btn ghost" onclick="_batchSkipReview()">Hoppa över</button>' +
+            '<button type="button" class="btn ghost" onclick="closeBatchModal()">Avbryt</button>' +
+            '</div>';
+    }
+
+    function _batchSaveCover() {
+        var container = document.getElementById('batchReviewContainer');
+        if (!container) { _batchAdvanceReview(); return; }
+        var checked = Array.from(container.querySelectorAll('.cover-check:checked'));
+        if (checked.length === 0) { _batchAdvanceReview(); return; }
+
+        var pending = checked.length;
+        var savedCount = 0;
+
+        function _onAllDone() {
+            _batchWizard.results.saved += savedCount;
+            _batchAdvanceReview();
+        }
+
+        checked.forEach(function(cb) {
+            var itemId = cb.dataset.itemId;
+            var data = _batchWizard.searchCache[itemId];
+            if (!data || !data.cover_url_fetched) {
+                pending--;
+                if (pending === 0) _onAllDone();
+                return;
+            }
+            var formData = new FormData();
+            formData.append('cover_url', data.cover_url_fetched);
+
+            fetch('/metadata/' + itemId + '/cover/apply', { method: 'POST', body: formData })
+                .then(function(r) {
+                    if (r.ok) savedCount++;
+                    pending--;
+                    if (pending === 0) _onAllDone();
+                })
+                .catch(function() {
+                    pending--;
+                    if (pending === 0) _onAllDone();
+                });
         });
     }
 
