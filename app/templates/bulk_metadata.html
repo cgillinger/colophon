@@ -1023,6 +1023,68 @@
         .brt-alt-option.selected { background: var(--bg-secondary); }
         .brt-alt-meta { font-size: 11px; color: var(--text-tertiary); white-space: nowrap; }
 
+        /* Step 3 — expandable source alternatives */
+        .batch-review-row.has-alts { cursor: pointer; }
+        .batch-review-row.has-alts:hover { background: var(--bg-secondary); }
+        .batch-review-expand td { padding: 0 !important; border-bottom: 0.5px solid var(--border-light); }
+        .batch-review-expand { background: var(--bg-secondary); }
+        .source-alternatives {
+            padding: 8px 12px 8px 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .source-alt-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 5px 10px;
+            border-radius: var(--border-radius-md, 6px);
+            border: 0.5px solid transparent;
+            transition: border-color 0.15s;
+        }
+        .source-alt-row:hover { border-color: var(--border-medium, var(--border-light)); }
+        .source-alt-row.selected {
+            border-color: var(--accent-green);
+            background: rgba(99, 153, 34, 0.06);
+        }
+        .source-alt-name {
+            font-weight: 500;
+            font-size: 12px;
+            min-width: 100px;
+            color: var(--text-secondary);
+        }
+        .source-alt-field {
+            font-size: 12px;
+            flex: 1;
+            color: var(--text-primary);
+        }
+        .source-alt-field-label {
+            color: var(--text-tertiary);
+            font-size: 11px;
+            margin-right: 2px;
+        }
+        .source-alt-use {
+            font-size: 11px;
+            padding: 3px 10px;
+            border: 0.5px solid var(--accent-green);
+            color: var(--accent-green);
+            background: transparent;
+            border-radius: var(--border-radius-md, 6px);
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .source-alt-use:hover { background: var(--accent-green); color: #fff; }
+        .expand-arrow {
+            display: inline-block;
+            font-size: 10px;
+            color: var(--text-tertiary);
+            margin-right: 5px;
+            transition: transform 0.15s;
+            user-select: none;
+        }
+        .batch-review-row.expanded .expand-arrow { transform: rotate(90deg); }
+
         /* Synopsis review */
         .synopsis-compare {
             display: grid;
@@ -2478,6 +2540,53 @@
     var _brtCellValues = {};
     var _brtCols = [];
     var _brtAltPanelData = {};
+    var _brtSourceCandidates = {};
+
+    function _brtCellHtml(itemId, field, current, fetchedVal) {
+        if (!fetchedVal) {
+            return '<span class="brt-no-match">—</span>';
+        } else if (fetchedVal === current) {
+            return '<span class="brt-same">' + _esc(fetchedVal) + ' ✓</span>';
+        } else {
+            return '<span class="brt-current">' + _esc(current || '(tomt)') + '</span>' +
+                '<span class="brt-arrow">→</span>' +
+                '<span class="brt-new-value" id="brt-cell-' + itemId + '-' + field + '">' + _esc(fetchedVal) + '</span>';
+        }
+    }
+
+    function _brtToggleExpandRow(tr) {
+        var expandTr = tr.nextElementSibling;
+        if (!expandTr || !expandTr.classList.contains('batch-review-expand')) return;
+        var isExpanded = expandTr.style.display !== 'none';
+        expandTr.style.display = isExpanded ? 'none' : '';
+        tr.classList.toggle('expanded', !isExpanded);
+    }
+
+    function batchUseSource(itemId, idx) {
+        var sources = _brtSourceCandidates[itemId];
+        if (!sources || !sources[idx]) return;
+        var c = sources[idx];
+        if (!_brtCellValues[itemId]) _brtCellValues[itemId] = {};
+        var before = (_batchWizard.searchCache[itemId] || {}).before || {};
+        _brtCols.forEach(function(f) {
+            var v = (c[f] != null) ? String(c[f]) : '';
+            if (f === 'published_date') v = _cleanDate(v);
+            if (!v) return;
+            _brtCellValues[itemId][f] = v;
+            var cur = (before[f] != null) ? String(before[f]) : '';
+            if (f === 'published_date') cur = _cleanDate(cur);
+            var td = document.querySelector('tr.batch-review-row[data-item-id="' + itemId + '"] td[data-field="' + f + '"]');
+            if (td) td.innerHTML = _brtCellHtml(itemId, f, cur, v);
+        });
+        var expandTr = document.querySelector('tr.batch-review-expand[data-item-id="' + itemId + '"]');
+        if (expandTr) {
+            expandTr.querySelectorAll('.source-alt-row').forEach(function(row, i) {
+                row.classList.toggle('selected', i === idx);
+            });
+        }
+        var cb = document.querySelector('.brt-row-check[data-item-id="' + itemId + '"]');
+        if (cb) cb.checked = true;
+    }
 
     function _batchRenderReview() {
         var container = document.getElementById('batchReviewContainer');
@@ -2509,6 +2618,7 @@
 
         _brtCellValues = {};
         _brtAltPanelData = {};
+        _brtSourceCandidates = {};
 
         var colLabels = _brtCols.map(function(f) {
             return '<th>' + _esc(_applyFieldLabels[f] || f) + '</th>';
@@ -2530,39 +2640,69 @@
                 var fetched = (candidate[field] != null) ? String(candidate[field]) : '';
                 if (field === 'published_date') { current = _cleanDate(current); fetched = _cleanDate(fetched); }
                 _brtCellValues[itemId][field] = fetched || current;
-
-                var cellHtml;
-                if (!fetched) {
-                    cellHtml = '<span class="brt-no-match">—</span>';
-                } else if (fetched === current) {
-                    cellHtml = '<span class="brt-same">' + _esc(fetched) + ' ✓</span>';
-                } else {
-                    hasChange = true;
-                    var altCount = 0;
-                    allCandidates.forEach(function(c) {
-                        var v = c[field];
-                        if (v != null && String(v) && String(v) !== fetched) altCount++;
-                    });
-                    var dropIcon = altCount > 0
-                        ? ' <span class="brt-dropdown-icon" onclick="event.stopPropagation();_brtToggleAltPanel(this,\'' + itemId + '\',\'' + field + '\')" title="Visa alternativ">▾</span>'
-                        : '';
-                    cellHtml = '<span class="brt-current">' + _esc(current || '(tomt)') + '</span>' +
-                        '<span class="brt-arrow">→</span>' +
-                        '<span class="brt-new-value" id="brt-cell-' + itemId + '-' + field + '">' + _esc(fetched) + '</span>' +
-                        dropIcon;
-                }
-                return '<td>' + cellHtml + '</td>';
+                if (fetched && fetched !== current) hasChange = true;
+                return '<td data-field="' + field + '">' + _brtCellHtml(itemId, field, current, fetched) + '</td>';
             }).join('');
+
+            // Build deduplicated source list (sources with ≥1 value for selected fields)
+            var seenSrc = {};
+            var srcList = [];
+            var bestSrc = data.source || '';
+            var bestHasVal = _brtCols.some(function(f) { return candidate[f] != null && String(candidate[f]); });
+            if (bestHasVal) {
+                seenSrc[bestSrc] = true;
+                srcList.push(Object.assign({}, candidate, { source: bestSrc, score: data.score || 0 }));
+            }
+            allCandidates.forEach(function(c) {
+                var src = c.source || '';
+                if (seenSrc[src]) return;
+                var hasVal = _brtCols.some(function(f) { return c[f] != null && String(c[f]); });
+                if (!hasVal) return;
+                seenSrc[src] = true;
+                srcList.push(c);
+            });
+            _brtSourceCandidates[itemId] = srcList;
+            var hasAlts = srcList.length > 1;
 
             var title = data.title || String(itemId);
             if (title.length > 35) title = title.substring(0, 35) + '…';
             var isChecked = hasChange ? ' checked' : '';
+            var expandArrow = hasAlts ? '<span class="expand-arrow">▶</span>' : '';
+            var rowCls = 'batch-review-row' + (hasAlts ? ' has-alts' : '');
+            var rowClick = hasAlts ? ' onclick="_brtToggleExpandRow(this)"' : '';
 
-            rows.push('<tr>' +
-                '<td><label style="display:flex;align-items:center;gap:6px;cursor:pointer;">' +
-                '<input type="checkbox" class="brt-row-check" data-item-id="' + itemId + '"' + isChecked + '>' +
+            rows.push(
+                '<tr class="' + rowCls + '" data-item-id="' + itemId + '"' + rowClick + '>' +
+                '<td><label style="display:flex;align-items:center;gap:4px;cursor:pointer;" onclick="event.stopPropagation();">' +
+                expandArrow +
+                '<input type="checkbox" class="brt-row-check" data-item-id="' + itemId + '"' + isChecked + ' onclick="event.stopPropagation();">' +
                 '<span>' + _esc(title) + '</span></label></td>' +
-                tds + '</tr>');
+                tds + '</tr>'
+            );
+
+            if (hasAlts) {
+                var altRowsHtml = srcList.map(function(c, idx) {
+                    var isFirst = (idx === 0);
+                    var fieldsHtml = _brtCols.map(function(f) {
+                        var v = (c[f] != null) ? String(c[f]) : '';
+                        if (f === 'published_date') v = _cleanDate(v);
+                        if (!v) return '';
+                        return '<span class="source-alt-field"><span class="source-alt-field-label">' +
+                            _esc(_applyFieldLabels[f] || f) + ':</span> ' + _esc(v) + '</span>';
+                    }).filter(Boolean).join('');
+                    return '<div class="source-alt-row' + (isFirst ? ' selected' : '') + '">' +
+                        '<span class="source-alt-name">' + _esc(c.source || 'Okänd') + '</span>' +
+                        fieldsHtml +
+                        '<button class="source-alt-use" onclick="event.stopPropagation();batchUseSource(\'' + itemId + '\',' + idx + ')">Använd</button>' +
+                        '</div>';
+                }).join('');
+                rows.push(
+                    '<tr class="batch-review-expand" data-item-id="' + itemId + '" style="display:none;">' +
+                    '<td colspan="' + (_brtCols.length + 1) + '">' +
+                    '<div class="source-alternatives">' + altRowsHtml + '</div>' +
+                    '</td></tr>'
+                );
+            }
         });
 
         var fieldSummary = _brtCols.map(function(f) {
