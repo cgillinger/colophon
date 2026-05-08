@@ -267,6 +267,34 @@
             gap: 6px;
         }
         .btn.primary { background: var(--accent-primary); color: #fff; border-color: var(--accent-primary); }
+
+        .setting-box { margin-bottom: 14px; }
+        .setting-box label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: var(--text-primary);
+        }
+        .setting-box input[type="text"] {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-medium);
+            border-radius: 6px;
+            color: var(--text-primary);
+            padding: 8px 12px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        .setting-box input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+        .hint {
+            font-size: 13px;
+            color: var(--text-tertiary);
+            margin-top: 5px;
+            line-height: 1.5;
+        }
+        .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
     </style>
 </head>
 <body>
@@ -332,6 +360,70 @@
         <form action="{{ url_for('settings.ai_test_connection') }}" method="post">
             <button class="btn primary" type="submit">&#128299; Testa anslutning</button>
         </form>
+    </div>
+
+    <div class="panel">
+        <h2>Huvudbibliotek</h2>
+
+        <p class="hint" style="margin-top:0;">
+            Colophon arbetar mot en lokal kopia av ditt bibliotek för att skydda
+            originalfilerna under metadatabearbetning. När du är nöjd med ändringarna
+            synkar du dem tillbaka till huvudbiblioteket.
+            Om du inte har ett separat huvudbibliotek kan du lämna detta tomt —
+            Colophon arbetar då direkt mot sin bokmapp.
+        </p>
+
+        {% if upstream_env_override %}
+            <div class="status-grid">
+                <span class="status-label">Sökväg</span>
+                <span class="status-value"><code>{{ upstream_dir }}</code></span>
+                <span class="status-label">Konfigurerad via</span>
+                <span class="status-value">Miljövariabel (<code>COLOPHON_UPSTREAM_DIR</code>)</span>
+                <span class="status-label">Status</span>
+                <span class="status-value">
+                    {% if upstream_ok %}
+                        <span class="badge-ok">&#10003; Ansluten — {{ upstream_file_count }} filer</span>
+                    {% else %}
+                        <span class="badge-err">&#10005; Sökvägen hittades inte</span>
+                    {% endif %}
+                </span>
+                {% if last_sync %}
+                    <span class="status-label">Senaste synk</span>
+                    <span class="status-value">{{ last_sync }}</span>
+                {% endif %}
+            </div>
+        {% else %}
+            <form method="post" action="{{ url_for('settings.save_upstream') }}">
+                <div class="setting-box">
+                    <label for="upstream_dir">Sökväg till huvudbiblioteket</label>
+                    <input type="text" id="upstream_dir" name="upstream_dir"
+                           value="{{ upstream_dir or '' }}"
+                           placeholder="/sökväg/till/bibliotek"
+                           style="width:100%; max-width:500px;">
+                    <div class="hint">
+                        Lämna tomt om du inte behöver synka mot ett externt bibliotek.
+                    </div>
+                </div>
+                {% if upstream_dir and not upstream_ok %}
+                    <div class="message error" style="margin-top:8px;">
+                        Sökvägen "{{ upstream_dir }}" kunde inte hittas eller är tom.
+                    </div>
+                {% elif upstream_dir and upstream_ok %}
+                    <div style="margin-top:8px;">
+                        <span class="badge-ok">&#10003; Ansluten — {{ upstream_file_count }} filer</span>
+                        {% if last_sync %}
+                            <br><span class="hint">Senaste synk: {{ last_sync }}</span>
+                        {% endif %}
+                    </div>
+                {% endif %}
+                <div class="actions" style="margin-top:12px;">
+                    <button class="btn primary" type="submit">Spara</button>
+                    {% if upstream_dir %}
+                        <button class="btn" type="submit" name="clear" value="1">Ta bort huvudbibliotek</button>
+                    {% endif %}
+                </div>
+            </form>
+        {% endif %}
     </div>
 
     <div class="panel">

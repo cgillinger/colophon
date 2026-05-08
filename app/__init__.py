@@ -15,7 +15,7 @@ from app.paths import LOG_DIR
 from app.routes.metadata import metadata_bp
 from app.routes.scan import scan_bp
 from app.routes.settings import settings_bp
-from app.services.database import ensure_database_columns, ensure_ai_usage_log_table
+from app.services.database import ensure_database_columns, ensure_ai_usage_log_table, ensure_app_settings_table
 
 
 def _configure_logging(app):
@@ -67,6 +67,7 @@ def create_app():
     with app.app_context():
         db.create_all()
         ensure_database_columns()
+        ensure_app_settings_table()
         ensure_ai_usage_log_table()
 
     app.register_blueprint(metadata_bp)
