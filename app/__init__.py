@@ -25,10 +25,16 @@ babel = Babel()
 
 
 def get_locale():
-    lang = request.cookies.get("colophon_lang")
-    if lang in SUPPORTED_LANGUAGES:
-        return lang
-    return request.accept_languages.best_match(SUPPORTED_LANGUAGES, default="en")
+    try:
+        from flask import has_request_context
+        if not has_request_context():
+            return "en"
+        lang = request.cookies.get("colophon_lang")
+        if lang in SUPPORTED_LANGUAGES:
+            return lang
+        return request.accept_languages.best_match(SUPPORTED_LANGUAGES, default="en")
+    except Exception:
+        return "en"
 
 
 def _configure_logging(app):
