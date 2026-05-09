@@ -6,6 +6,7 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup
 from ebooklib import epub, ITEM_IMAGE
+from flask_babel import gettext as _
 
 from app.models import LibraryItem, db
 from app.services.grouping import compute_group_key
@@ -151,8 +152,8 @@ def extract_local_metadata(file_path, cover_dir=None) -> dict:
         else:
             meta = {}
     except Exception as exc:
-        logger.warning("Kunde inte läsa metadata från %s: %s", file_path, exc)
-        warnings.append(f"Metadataläsning misslyckades: {exc}")
+        logger.warning("Could not read metadata from %s: %s", file_path, exc)
+        warnings.append(_("Metadata reading failed: %(exc)s", exc=exc))
         meta = {}
 
     base.update({k: v for k, v in meta.items() if v not in (None, "")})
@@ -160,7 +161,7 @@ def extract_local_metadata(file_path, cover_dir=None) -> dict:
     if not base["title"]:
         base["title"] = _clean_title_from_filename(file_path.stem)
         if base["source"] != "filename":
-            warnings.append("Titel saknas i filenens metadata – använder filnamn.")
+            warnings.append(_("Title is missing in the file's metadata — using filename."))
         base["source"] = "filename"
 
     # Strip series/marketing noise from the title and promote any captured
@@ -205,7 +206,7 @@ def _extract_epub_metadata(file_path, cover_dir, warnings: list) -> dict:
             raw_date = (dates[0][0] or "").strip()
             published_date = raw_date[:10] if len(raw_date) >= 10 else raw_date
     except Exception:
-        logger.debug("Kunde inte läsa dc:date", exc_info=True)
+        logger.debug("Could not read dc:date", exc_info=True)
 
     genres = ""
     try:
@@ -215,7 +216,7 @@ def _extract_epub_metadata(file_path, cover_dir, warnings: list) -> dict:
         ]
         genres = ", ".join(c for c in cleaned if c)
     except Exception:
-        logger.debug("Kunde inte läsa dc:subject", exc_info=True)
+        logger.debug("Could not read dc:subject", exc_info=True)
 
     cover_path = None
     if cover_dir:
@@ -250,11 +251,11 @@ def _extract_ebook_meta_metadata(file_path, warnings: list) -> dict:
         from app.services.metadata_calibre import read_all_ebook_meta_fields
         fields = read_all_ebook_meta_fields(file_path)
     except Exception as exc:
-        warnings.append(f"ebook-meta misslyckades: {exc}")
+        warnings.append(_("ebook-meta failed: %(exc)s", exc=exc))
         return {"source": "filename"}
 
     if not fields:
-        warnings.append("ebook-meta returnerade inga fält.")
+        warnings.append(_("ebook-meta returned no fields."))
         return {"source": "filename"}
 
     pub = (fields.get("published") or fields.get("publishing date") or "").strip()
@@ -430,7 +431,7 @@ def scan_directory(root_path, db_session=None, on_progress=None, cover_dir=None)
         try:
             meta = extract_local_metadata(file_path, cover_dir=cover_dir)
         except Exception:
-            logger.warning("Kunde inte läsa metadata från %s, använder filnamn", file_path)
+            logger.warning("Could not read metadata from %s, using filename", file_path)
             meta = {
                 "title": _clean_title_from_filename(file_path.stem),
                 "source": "filename", "quality": "minimal", "warnings": [],
@@ -459,7 +460,7 @@ def scan_directory(root_path, db_session=None, on_progress=None, cover_dir=None)
     # Flush so touched items get their IDs and group_keys before sync.
     session.flush()
 
-    # Gruppsynk: korsberika metadata inom varje formatgrupp som berördes.
+    # Group sync: cross-enrich metadata within each affected format group.
     if touched_items:
         from collections import defaultdict
         from app.services.metadata_writer import sync_group_metadata

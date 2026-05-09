@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="sv" data-theme="light">
+<html lang="{{ get_locale() }}" data-theme="light">
 <head>
     <meta charset="utf-8">
     <script>
@@ -13,7 +13,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabler-icons/tabler-icons.min.css') }}">
-    <title>AI-inställningar - Colophon</title>
+    <title>{{ _('AI settings') }} - Colophon</title>
     <style>
         :root, [data-theme="light"] {
             --bg-primary: #ffffff;
@@ -310,7 +310,7 @@
         </a>
         <form class="topbar-search" action="{{ url_for('metadata.bulk_metadata') }}" method="get">
             <i class="ti ti-search search-icon"></i>
-            <input type="text" name="q" placeholder="Sök titel, författare, ISBN, genre...">
+            <input type="text" name="q" placeholder="{{ _('Search title, author, ISBN, genre...') }}">
         </form>
         <div class="topbar-actions">
             <div class="lang-toggle">
@@ -328,7 +328,7 @@
 </header>
 
 <div class="container">
-    <h1>AI-inställningar</h1>
+    <h1>{{ _('AI settings') }}</h1>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -341,94 +341,90 @@
     {% endwith %}
 
     <div class="panel">
-        <h2>AI-metadata</h2>
+        <h2>{{ _('AI metadata') }}</h2>
 
         <div class="status-grid">
-            <span class="status-label">Status</span>
+            <span class="status-label">{{ _('Status') }}</span>
             <span class="status-value">
                 {% if configured %}
-                    <span class="badge-ok">&#10003; Konfigurerad</span>
+                    <span class="badge-ok">&#10003; {{ _('Configured') }}</span>
                 {% else %}
-                    <span class="badge-err">&#10005; Ej konfigurerad</span>
+                    <span class="badge-err">&#10005; {{ _('Not configured') }}</span>
                 {% endif %}
             </span>
-            <span class="status-label">Modell</span>
+            <span class="status-label">{{ _('Model') }}</span>
             <span class="status-value">{{ model }}</span>
         </div>
 
         {% if not configured %}
             <p style="color:var(--text-secondary); font-size:14px; margin:0 0 14px 0;">
-                Konfigurera AI-leverantör (URL, nyckel, modell) under
-                <a href="{{ url_for('settings.api_settings') }}" style="color:var(--accent-primary); text-decoration:underline;">API-inställningar</a>.
+                {{ _('Configure the AI provider (URL, key, model) under') }}
+                <a href="{{ url_for('settings.api_settings') }}" style="color:var(--accent-primary); text-decoration:underline;">{{ _('API settings') }}</a>.
             </p>
         {% endif %}
 
         <div class="actions">
-            <a class="btn" href="{{ url_for('settings.api_settings') }}">⚙ API-inställningar</a>
+            <a class="btn" href="{{ url_for('settings.api_settings') }}">⚙ {{ _('API settings') }}</a>
             <form action="{{ url_for('settings.ai_test_connection') }}" method="post" style="display:inline;">
-                <button class="btn primary" type="submit">&#128299; Testa anslutning</button>
+                <button class="btn primary" type="submit">&#128299; {{ _('Test connection') }}</button>
             </form>
         </div>
     </div>
 
     <div class="panel">
-        <h2>Huvudbibliotek</h2>
+        <h2>{{ _('Upstream library') }}</h2>
 
         <p class="hint" style="margin-top:0;">
-            Colophon arbetar mot en lokal kopia av ditt bibliotek för att skydda
-            originalfilerna under metadatabearbetning. När du är nöjd med ändringarna
-            synkar du dem tillbaka till huvudbiblioteket.
-            Om du inte har ett separat huvudbibliotek kan du lämna detta tomt —
-            Colophon arbetar då direkt mot sin bokmapp.
+            {{ _('Colophon works against a local copy of your library to protect the original files during metadata processing. When you are happy with the changes you sync them back to the upstream library. If you do not have a separate upstream library you can leave this empty — Colophon then works directly against its book folder.') }}
         </p>
 
         {% if upstream_env_override %}
             <div class="status-grid">
-                <span class="status-label">Sökväg</span>
+                <span class="status-label">{{ _('Path') }}</span>
                 <span class="status-value"><code>{{ upstream_dir }}</code></span>
-                <span class="status-label">Konfigurerad via</span>
-                <span class="status-value">Miljövariabel (<code>COLOPHON_UPSTREAM_DIR</code>)</span>
-                <span class="status-label">Status</span>
+                <span class="status-label">{{ _('Configured via') }}</span>
+                <span class="status-value">{{ _('Environment variable') }} (<code>COLOPHON_UPSTREAM_DIR</code>)</span>
+                <span class="status-label">{{ _('Status') }}</span>
                 <span class="status-value">
                     {% if upstream_ok %}
-                        <span class="badge-ok">&#10003; Ansluten — {{ upstream_file_count }} filer</span>
+                        <span class="badge-ok">&#10003; {{ _('Connected — %(count)d files', count=upstream_file_count) }}</span>
                     {% else %}
-                        <span class="badge-err">&#10005; Sökvägen hittades inte</span>
+                        <span class="badge-err">&#10005; {{ _('Path not found') }}</span>
                     {% endif %}
                 </span>
                 {% if last_sync %}
-                    <span class="status-label">Senaste synk</span>
+                    <span class="status-label">{{ _('Last sync') }}</span>
                     <span class="status-value">{{ last_sync }}</span>
                 {% endif %}
             </div>
         {% else %}
             <form method="post" action="{{ url_for('settings.save_upstream') }}">
                 <div class="setting-box">
-                    <label for="upstream_dir">Sökväg till huvudbiblioteket</label>
+                    <label for="upstream_dir">{{ _('Path to the upstream library') }}</label>
                     <input type="text" id="upstream_dir" name="upstream_dir"
                            value="{{ upstream_dir or '' }}"
-                           placeholder="/sökväg/till/bibliotek"
+                           placeholder="{{ _('/path/to/library') }}"
                            style="width:100%; max-width:500px;">
                     <div class="hint">
-                        Lämna tomt om du inte behöver synka mot ett externt bibliotek.
+                        {{ _('Leave empty if you do not need to sync against an external library.') }}
                     </div>
                 </div>
                 {% if upstream_dir and not upstream_ok %}
                     <div class="message error" style="margin-top:8px;">
-                        Sökvägen "{{ upstream_dir }}" kunde inte hittas eller är tom.
+                        {{ _('Path "%(path)s" could not be found or is empty.', path=upstream_dir) }}
                     </div>
                 {% elif upstream_dir and upstream_ok %}
                     <div style="margin-top:8px;">
-                        <span class="badge-ok">&#10003; Ansluten — {{ upstream_file_count }} filer</span>
+                        <span class="badge-ok">&#10003; {{ _('Connected — %(count)d files', count=upstream_file_count) }}</span>
                         {% if last_sync %}
-                            <br><span class="hint">Senaste synk: {{ last_sync }}</span>
+                            <br><span class="hint">{{ _('Last sync:') }} {{ last_sync }}</span>
                         {% endif %}
                     </div>
                 {% endif %}
                 <div class="actions" style="margin-top:12px;">
-                    <button class="btn primary" type="submit">Spara</button>
+                    <button class="btn primary" type="submit">{{ _('Save') }}</button>
                     {% if upstream_dir %}
-                        <button class="btn" type="submit" name="clear" value="1">Ta bort huvudbibliotek</button>
+                        <button class="btn" type="submit" name="clear" value="1">{{ _('Remove upstream library') }}</button>
                     {% endif %}
                 </div>
             </form>
@@ -436,27 +432,27 @@
     </div>
 
     <div class="panel">
-        <h2>Användning (lokal räkning)</h2>
+        <h2>{{ _('Usage (local count)') }}</h2>
 
         <div class="stats-grid">
             <div class="stat-box">
                 <div class="stat-number">{{ "{:,}".format(stats.month_tokens).replace(",", " ") }}</div>
-                <div class="stat-label">tokens denna månad ({{ stats.month_calls }} anrop)</div>
+                <div class="stat-label">{{ _('tokens this month (%(count)d calls)', count=stats.month_calls) }}</div>
             </div>
             <div class="stat-box">
                 <div class="stat-number">{{ "{:,}".format(stats.total_tokens).replace(",", " ") }}</div>
-                <div class="stat-label">tokens totalt ({{ stats.total_calls }} anrop)</div>
+                <div class="stat-label">{{ _('tokens total (%(count)d calls)', count=stats.total_calls) }}</div>
             </div>
         </div>
 
         {% if stats.recent %}
-            <h2 style="margin-top:6px;">Senaste anrop</h2>
+            <h2 style="margin-top:6px;">{{ _('Recent calls') }}</h2>
             <table class="recent-table">
                 <thead>
                     <tr>
-                        <th>Datum</th>
-                        <th>Bok</th>
-                        <th style="text-align:right;">Tokens</th>
+                        <th>{{ _('Date') }}</th>
+                        <th>{{ _('Book') }}</th>
+                        <th style="text-align:right;">{{ _('Tokens') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -470,11 +466,11 @@
                 </tbody>
             </table>
         {% else %}
-            <p style="color:var(--text-secondary); font-size:14px; margin:0;">Inga anrop loggade ännu.</p>
+            <p style="color:var(--text-secondary); font-size:14px; margin:0;">{{ _('No calls logged yet.') }}</p>
         {% endif %}
 
         <div class="notice">
-            Saldo och kvot hämtas inte via API:t — kontrollera dem i din leverantörs egen konsol.
+            {{ _('Balance and quota are not fetched via the API — check them in your provider\'s own console.') }}
         </div>
     </div>
 </div>

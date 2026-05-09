@@ -7,6 +7,8 @@ import os
 from difflib import SequenceMatcher
 from pathlib import Path
 
+from flask_babel import gettext as _
+
 logger = logging.getLogger(__name__)
 
 
@@ -85,7 +87,7 @@ def build_search_input(item, local_metadata=None):
     # Fallback: use the filename stem
     file_path = getattr(item, "file_path", "") or ""
     filename_stem = Path(file_path).stem if file_path else ""
-    warnings.append("Söker på filnamn – metadata saknas i databasen.")
+    warnings.append(_("Searching by filename — metadata is missing in the database."))
     return {
         "query_text": filename_stem,
         "title": filename_stem,
@@ -164,7 +166,7 @@ def run_metadata_enrichment(
     _emit(
         "read_file_metadata",
         status="reading",
-        message="Läser befintlig metadata från fil...",
+        message=_("Reading existing metadata from file..."),
         warnings=[],
     )
 
@@ -172,7 +174,7 @@ def run_metadata_enrichment(
         try:
             local_metadata = scan_file_local(item.file_path)
         except Exception as exc:
-            logger.debug("scan_file_local misslyckades för %s: %s", item.file_path, exc)
+            logger.debug("scan_file_local failed for %s: %s", item.file_path, exc)
             local_metadata = None
 
     search_input = build_search_input(item, local_metadata)
@@ -186,7 +188,7 @@ def run_metadata_enrichment(
             "google_books",
             source="google_books",
             status="searching",
-            message="Söker Google Books...",
+            message=_("Searching Google Books..."),
             candidates_found=0,
             warnings=[],
         )
@@ -226,7 +228,7 @@ def run_metadata_enrichment(
             "calibre",
             source="calibre",
             status="searching",
-            message="Söker Calibre-källor...",
+            message=_("Searching Calibre sources..."),
             candidates_found=0,
             warnings=[],
         )
@@ -281,7 +283,7 @@ def run_metadata_enrichment(
     _emit(
         "scoring",
         status="scoring",
-        message="Jämför kandidater...",
+        message=_("Comparing candidates..."),
         candidates_found=len(all_candidates),
         warnings=[],
     )
@@ -297,9 +299,9 @@ def run_metadata_enrichment(
         _emit(
             "preview_ready",
             status="ok",
-            message=(
-                f"Hittade {n_candidates} möjliga träff{'ar' if n_candidates != 1 else ''}. "
-                f"Bästa träff: {round(best_score)} poäng, {best_source}."
+            message=_(
+                "Found %(count)d possible matches. Best match: %(score)d points, %(source)s.",
+                count=n_candidates, score=round(best_score), source=best_source,
             ),
             candidates_found=n_candidates,
             warnings=scoring["warnings"],
@@ -308,7 +310,7 @@ def run_metadata_enrichment(
         _emit(
             "preview_ready",
             status="no_match",
-            message="Inga säkra träffar hittades.",
+            message=_("No secure matches found."),
             candidates_found=n_candidates,
             warnings=[],
         )
@@ -329,7 +331,7 @@ def run_metadata_enrichment(
             "validation_warning": None,
             "fetched_payload": {},
             "cover_path": None,
-            "error": "Inga säkra metadata-träffar hittades från Google Books eller Calibre.",
+            "error": _("No secure metadata matches were found from Google Books or Calibre."),
         }
 
     cover_path_for_preview = None

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="sv" data-theme="light">
+<html lang="{{ get_locale() }}" data-theme="light">
 <head>
     <meta charset="utf-8">
     <script>
@@ -13,7 +13,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabler-icons/tabler-icons.min.css') }}">
-    <title>API-inställningar - Colophon</title>
+    <title>{{ _('API settings') }} - Colophon</title>
     <style>
         :root, [data-theme="light"] {
             --bg-primary: #ffffff;
@@ -394,11 +394,11 @@
         </a>
         <form class="topbar-search" action="{{ url_for('metadata.bulk_metadata') }}" method="get">
             <i class="ti ti-search search-icon"></i>
-            <input type="text" name="q" placeholder="Sök titel, författare, ISBN, genre...">
+            <input type="text" name="q" placeholder="{{ _('Search title, author, ISBN, genre...') }}">
         </form>
         <div class="topbar-actions">
-            <a class="topbar-btn" href="{{ url_for('settings.ai_settings') }}" title="AI-statistik och huvudbibliotek">
-                <i class="ti ti-chart-bar"></i> Statistik
+            <a class="topbar-btn" href="{{ url_for('settings.ai_settings') }}" title="{{ _('AI stats and upstream library') }}">
+                <i class="ti ti-chart-bar"></i> {{ _('Stats') }}
             </a>
             <div class="lang-toggle">
                 <a href="{{ url_for('set_language', lang='en') }}" class="{{ 'active' if get_locale() == 'en' else '' }}" title="English">EN</a>
@@ -415,9 +415,9 @@
 </header>
 
 <div class="container">
-    <h1>⚙ API-inställningar</h1>
+    <h1>⚙ {{ _('API settings') }}</h1>
     <p class="lead">
-        Nycklar sparas lokalt i Colophons databas. Miljövariabler används som fallback om fältet lämnas tomt.
+        {{ _('Keys are stored locally in Colophon\'s database. Environment variables are used as a fallback if the field is left empty.') }}
     </p>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -437,23 +437,20 @@
             <div class="panel-title">
                 <span class="panel-title-left">
                     <i class="ti ti-sparkles" style="color:var(--accent-purple); font-size:20px;"></i>
-                    AI-metadata
+                    {{ _('AI metadata') }}
                 </span>
                 {% if ai_key_set %}
-                    <span class="badge ok">&#10003; Ansluten</span>
+                    <span class="badge ok">&#10003; {{ _('Connected') }}</span>
                 {% else %}
-                    <span class="badge warn">Ej konfigurerad</span>
+                    <span class="badge warn">{{ _('Not configured') }}</span>
                 {% endif %}
             </div>
             <p class="panel-desc">
-                Använder AI för att identifiera bokserier, serienummer och förbättra metadata
-                som titel, författare och synopsis. Särskilt användbart för böcker där
-                metadatakällor saknar serie-information. Knappen "Fråga AI" i bokmodalen
-                kräver denna konfiguration.
+                {{ _('Uses AI to identify book series, series numbers and improve metadata such as title, author and synopsis. Especially useful for books where metadata sources lack series information. The "Ask AI" button in the book modal requires this configuration.') }}
             </p>
 
             <div class="field">
-                <label for="AI_API_URL">API-URL (chat completions endpoint)</label>
+                <label for="AI_API_URL">{{ _('API URL (chat completions endpoint)') }}</label>
                 <input type="text" id="AI_API_URL" name="AI_API_URL"
                        value="{{ ai_url }}"
                        placeholder="{{ ai_url_default }}">
@@ -461,29 +458,29 @@
             </div>
 
             <div class="field">
-                <label for="AI_API_KEY">API-nyckel</label>
+                <label for="AI_API_KEY">{{ _('API key') }}</label>
                 <div class="key-row">
                     <input type="password" id="AI_API_KEY" name="AI_API_KEY"
                            value=""
                            placeholder="{% if ai_key_set %}{{ ai_key_masked }}{% else %}sk-...{% endif %}"
                            autocomplete="new-password">
-                    <button type="button" class="icon-btn" onclick="toggleVisibility('AI_API_KEY', this)" title="Visa/dölj">
+                    <button type="button" class="icon-btn" onclick="toggleVisibility('AI_API_KEY', this)" title="{{ _('Show/hide') }}">
                         <i class="ti ti-eye"></i>
                     </button>
                     {% if ai_key_set %}
                         <button type="submit" class="icon-btn" name="clear_AI_API_KEY" value="1"
-                                title="Ta bort nyckel"
-                                onclick="return confirm('Ta bort sparad AI-nyckel?');">
+                                title="{{ _('Remove key') }}"
+                                onclick="return confirm({{ _('Remove saved AI key?')|tojson }});">
                             <i class="ti ti-x"></i>
                         </button>
                     {% endif %}
                 </div>
                 <div class="env-hint">Env: COLOPHON_AI_API_KEY (legacy: COLOPHON_MISTRAL_API_KEY)</div>
-                <div class="help">Lämna tomt för att behålla befintligt värde. Ingen nyckel = ingen Authorization-header (för Ollama/lokala modeller).</div>
+                <div class="help">{{ _('Leave empty to keep the existing value. No key = no Authorization header (for Ollama/local models).') }}</div>
             </div>
 
             <div class="field">
-                <label for="AI_MODEL">Modell</label>
+                <label for="AI_MODEL">{{ _('Model') }}</label>
                 <input type="text" id="AI_MODEL" name="AI_MODEL"
                        value="{{ ai_model }}"
                        placeholder="{{ ai_model_default }}">
@@ -491,34 +488,34 @@
             </div>
 
             <details class="howto">
-                <summary>Populära leverantörer (URL + modellexempel)</summary>
+                <summary>{{ _('Popular providers (URL + model examples)') }}</summary>
                 <div class="howto-body">
-                    <p><strong>Mistral</strong> (rekommenderas — gratis ~1M tokens/månad)</p>
+                    <p><strong>Mistral</strong> {{ _('(recommended — free ~1M tokens/month)') }}</p>
                     <ul>
                         <li>URL: <code>https://api.mistral.ai/v1/chat/completions</code></li>
-                        <li>Modell: <code>mistral-small-latest</code></li>
-                        <li>Skaffa nyckel: <a href="https://console.mistral.ai" target="_blank" rel="noopener">console.mistral.ai</a></li>
+                        <li>{{ _('Model:') }} <code>mistral-small-latest</code></li>
+                        <li>{{ _('Get a key:') }} <a href="https://console.mistral.ai" target="_blank" rel="noopener">console.mistral.ai</a></li>
                     </ul>
                     <p><strong>OpenAI</strong></p>
                     <ul>
                         <li>URL: <code>https://api.openai.com/v1/chat/completions</code></li>
-                        <li>Modell: <code>gpt-4o-mini</code></li>
+                        <li>{{ _('Model:') }} <code>gpt-4o-mini</code></li>
                     </ul>
                     <p><strong>DeepSeek</strong></p>
                     <ul>
                         <li>URL: <code>https://api.deepseek.com/v1/chat/completions</code></li>
-                        <li>Modell: <code>deepseek-chat</code></li>
+                        <li>{{ _('Model:') }} <code>deepseek-chat</code></li>
                     </ul>
-                    <p><strong>Ollama</strong> (lokal, gratis, ingen nyckel behövs)</p>
+                    <p><strong>Ollama</strong> {{ _('(local, free, no key needed)') }}</p>
                     <ul>
                         <li>URL: <code>http://localhost:11434/v1/chat/completions</code></li>
-                        <li>Modell: t.ex. <code>llama3.1</code> eller <code>qwen2.5</code></li>
+                        <li>{{ _('Model: e.g.') }} <code>llama3.1</code> {{ _('or') }} <code>qwen2.5</code></li>
                     </ul>
                 </div>
             </details>
         </div>
 
-        <h2>Omslagssökning</h2>
+        <h2>{{ _('Cover search') }}</h2>
 
         <!-- ============ Open Library Covers ============ -->
         <div class="panel">
@@ -527,17 +524,15 @@
                     <i class="ti ti-book" style="color:var(--accent-primary); font-size:20px;"></i>
                     Open Library Covers
                 </span>
-                <span class="badge info">Ingen nyckel krävs</span>
+                <span class="badge info">{{ _('No key required') }}</span>
             </div>
             <p class="panel-desc">
-                Hämtar bokomslag direkt via ISBN från Internet Archives öppna bibliotek.
-                Fungerar bäst för böcker som redan har ISBN ifyllt. Helt gratis,
-                ingen konfiguration.
+                {{ _('Fetches book covers directly via ISBN from the Internet Archive\'s open library. Works best for books that already have an ISBN filled in. Completely free, no configuration.') }}
             </p>
             <div class="toggle-row">
                 <input type="checkbox" id="COVER_OPENLIBRARY_ENABLED" name="COVER_OPENLIBRARY_ENABLED"
                        {% if openlibrary_enabled %}checked{% endif %}>
-                <label for="COVER_OPENLIBRARY_ENABLED" style="margin:0; font-weight:500;">Aktiverad</label>
+                <label for="COVER_OPENLIBRARY_ENABLED" style="margin:0; font-weight:500;">{{ _('Enabled') }}</label>
             </div>
         </div>
 
@@ -546,19 +541,17 @@
             <div class="panel-title">
                 <span class="panel-title-left">
                     <i class="ti ti-zoom-in" style="color:var(--accent-primary); font-size:20px;"></i>
-                    Google Books — högupplöst omslag
+                    {{ _('Google Books — high-resolution cover') }}
                 </span>
-                <span class="badge info">Ingen nyckel krävs</span>
+                <span class="badge info">{{ _('No key required') }}</span>
             </div>
             <p class="panel-desc">
-                Uppgraderar automatiskt thumbnails från Google Books till fullstorlek.
-                Använder samma data som "Hämta metadata" men begär högre upplösning.
-                Noll extra API-anrop.
+                {{ _('Automatically upgrades thumbnails from Google Books to full size. Uses the same data as "Fetch metadata" but requests higher resolution. Zero extra API calls.') }}
             </p>
             <div class="toggle-row">
                 <input type="checkbox" id="COVER_GOOGLE_ZOOM_ENABLED" name="COVER_GOOGLE_ZOOM_ENABLED"
                        {% if google_zoom_enabled %}checked{% endif %}>
-                <label for="COVER_GOOGLE_ZOOM_ENABLED" style="margin:0; font-weight:500;">Aktiverad</label>
+                <label for="COVER_GOOGLE_ZOOM_ENABLED" style="margin:0; font-weight:500;">{{ _('Enabled') }}</label>
             </div>
         </div>
 
@@ -570,30 +563,29 @@
                     Hardcover
                 </span>
                 {% if hardcover_token_set %}
-                    <span class="badge ok">&#10003; Ansluten</span>
+                    <span class="badge ok">&#10003; {{ _('Connected') }}</span>
                 {% else %}
-                    <span class="badge info">Valfri token</span>
+                    <span class="badge info">{{ _('Optional token') }}</span>
                 {% endif %}
             </div>
             <p class="panel-desc">
-                Modern bokdatabas med bra täckning för nyare böcker och serier.
-                Fungerar utan nyckel men en API-token ger bättre rate limits.
+                {{ _('Modern book database with good coverage for newer books and series. Works without a key, but an API token gives better rate limits.') }}
             </p>
 
             <div class="field">
-                <label for="HARDCOVER_API_TOKEN">API-token (valfritt)</label>
+                <label for="HARDCOVER_API_TOKEN">{{ _('API token (optional)') }}</label>
                 <div class="key-row">
                     <input type="password" id="HARDCOVER_API_TOKEN" name="HARDCOVER_API_TOKEN"
                            value=""
-                           placeholder="{% if hardcover_token_set %}{{ hardcover_token_masked }}{% else %}Lämna tomt för anonym åtkomst{% endif %}"
+                           placeholder="{% if hardcover_token_set %}{{ hardcover_token_masked }}{% else %}{{ _('Leave empty for anonymous access') }}{% endif %}"
                            autocomplete="new-password">
-                    <button type="button" class="icon-btn" onclick="toggleVisibility('HARDCOVER_API_TOKEN', this)" title="Visa/dölj">
+                    <button type="button" class="icon-btn" onclick="toggleVisibility('HARDCOVER_API_TOKEN', this)" title="{{ _('Show/hide') }}">
                         <i class="ti ti-eye"></i>
                     </button>
                     {% if hardcover_token_set %}
                         <button type="submit" class="icon-btn" name="clear_HARDCOVER_API_TOKEN" value="1"
-                                title="Ta bort token"
-                                onclick="return confirm('Ta bort sparad Hardcover-token?');">
+                                title="{{ _('Remove token') }}"
+                                onclick="return confirm({{ _('Remove saved Hardcover token?')|tojson }});">
                             <i class="ti ti-x"></i>
                         </button>
                     {% endif %}
@@ -602,16 +594,16 @@
             </div>
 
             <details class="howto">
-                <summary>Hur skaffar jag en token?</summary>
+                <summary>{{ _('How do I get a token?') }}</summary>
                 <div class="howto-body">
                     <ol>
-                        <li>Gå till <a href="https://hardcover.app/account/api" target="_blank" rel="noopener">hardcover.app/account/api</a></li>
-                        <li>Skapa konto (gratis)</li>
-                        <li>Kopiera din API-token</li>
+                        <li>{{ _('Go to') }} <a href="https://hardcover.app/account/api" target="_blank" rel="noopener">hardcover.app/account/api</a></li>
+                        <li>{{ _('Create an account (free)') }}</li>
+                        <li>{{ _('Copy your API token') }}</li>
                     </ol>
-                    <p>Gratis beta — valfritt, fungerar utan token.</p>
+                    <p>{{ _('Free beta — optional, works without a token.') }}</p>
                     <p><span class="badge warn" style="margin-top:4px;">
-                        Beta-API — kan ändras utan förvarning. Token gäller 1 år.
+                        {{ _('Beta API — may change without notice. Token is valid for 1 year.') }}
                     </span></p>
                 </div>
             </details>
@@ -624,46 +616,43 @@
                     <i class="ti ti-world" style="color:var(--accent-green); font-size:20px;"></i>
                     Wikidata / Wikimedia Commons
                 </span>
-                <span class="badge info">Ingen nyckel krävs</span>
+                <span class="badge info">{{ _('No key required') }}</span>
             </div>
             <p class="panel-desc">
-                Söker bokomslag via Wikidata och Wikimedia Commons. Bäst för klassiker,
-                kända verk och public domain-böcker. Kräver ISBN.
+                {{ _('Searches book covers via Wikidata and Wikimedia Commons. Best for classics, well-known works and public domain books. Requires ISBN.') }}
             </p>
             <div class="toggle-row">
                 <input type="checkbox" id="COVER_WIKIDATA_ENABLED" name="COVER_WIKIDATA_ENABLED"
                        {% if wikidata_enabled %}checked{% endif %}>
-                <label for="COVER_WIKIDATA_ENABLED" style="margin:0; font-weight:500;">Aktiverad</label>
+                <label for="COVER_WIKIDATA_ENABLED" style="margin:0; font-weight:500;">{{ _('Enabled') }}</label>
             </div>
         </div>
 
-        <!-- ============ DuckDuckGo bildsökning ============ -->
+        <!-- ============ DuckDuckGo image search ============ -->
         <div class="panel">
             <div class="panel-title">
                 <span class="panel-title-left">
                     <i class="ti ti-search" style="color:var(--text-secondary); font-size:20px;"></i>
-                    DuckDuckGo bildsökning
+                    {{ _('DuckDuckGo image search') }}
                 </span>
-                <span class="badge info">Ingen nyckel krävs</span>
+                <span class="badge info">{{ _('No key required') }}</span>
             </div>
             <p class="panel-desc">
-                Sista fallback — söker bokomslag via DuckDuckGo. Inofficiellt API som
-                kan sluta fungera. Bra som sista utväg för böcker som inte hittas i
-                bokdatabaser. Respekterar rate limiting.
+                {{ _('Last fallback — searches for book covers via DuckDuckGo. Unofficial API that may stop working. Good as a last resort for books not found in book databases. Respects rate limiting.') }}
             </p>
             <div class="toggle-row">
                 <input type="checkbox" id="COVER_DDGS_ENABLED" name="COVER_DDGS_ENABLED"
                        {% if ddgs_enabled %}checked{% endif %}>
-                <label for="COVER_DDGS_ENABLED" style="margin:0; font-weight:500;">Aktiverad</label>
+                <label for="COVER_DDGS_ENABLED" style="margin:0; font-weight:500;">{{ _('Enabled') }}</label>
             </div>
         </div>
 
         <div class="actions">
             <button class="btn primary" type="submit">
-                <i class="ti ti-device-floppy"></i> Spara inställningar
+                <i class="ti ti-device-floppy"></i> {{ _('Save settings') }}
             </button>
             <button class="btn outline" type="button" onclick="testConnections()">
-                <i class="ti ti-plug-connected"></i> Testa anslutningar
+                <i class="ti ti-plug-connected"></i> {{ _('Test connections') }}
             </button>
         </div>
 
@@ -671,7 +660,7 @@
             <div class="panel-title">
                 <span class="panel-title-left">
                     <i class="ti ti-activity"></i>
-                    Anslutningstester
+                    {{ _('Connection tests') }}
                 </span>
             </div>
             <div id="test-results-body"></div>
@@ -679,12 +668,25 @@
     </form>
 
     <div class="footer-note">
-        Alla nycklar sparas i lokal databas på din server. Alternativt kan de sättas
-        som miljövariabler — UI-värden har prioritet.
+        {{ _('All keys are stored in a local database on your server. Alternatively they can be set as environment variables — UI values take precedence.') }}
     </div>
 </div>
 
 <script>
+    var _i18n = {
+        aiMetadata: {{ _('AI metadata')|tojson }},
+        testing: {{ _('Testing...')|tojson }},
+        nothingToTest: {{ _('Nothing to test — no services configured.')|tojson }},
+        testFailed: {{ _('Test failed')|tojson }},
+        works: {{ _('Works')|tojson }},
+        unknownError: {{ _('unknown error')|tojson }},
+        authFailed: {{ _('authentication failed')|tojson }},
+        timeout: {{ _('timeout')|tojson }},
+        rateLimit: {{ _('rate limit reached')|tojson }},
+        networkError: {{ _('network error')|tojson }},
+        noKey: {{ _('no key')|tojson }},
+        error: {{ _('error')|tojson }},
+    };
     function toggleTheme() {
         var current = document.documentElement.getAttribute('data-theme');
         var next = current === 'dark' ? 'light' : 'dark';
@@ -713,25 +715,25 @@
     }
 
     var SERVICE_LABELS = {
-        ai: 'AI-metadata',
+        ai: _i18n.aiMetadata,
         hardcover: 'Hardcover',
         openlibrary: 'Open Library Covers'
     };
 
     function errorText(err) {
-        if (!err) return 'okänt fel';
-        if (err === 'auth') return 'autentisering misslyckades';
-        if (err === 'timeout') return 'timeout';
-        if (err === 'rate_limit') return 'kvot uppnådd';
-        if (err === 'request_failed') return 'nätverksfel';
-        if (err === 'no_key') return 'ingen nyckel';
+        if (!err) return _i18n.unknownError;
+        if (err === 'auth') return _i18n.authFailed;
+        if (err === 'timeout') return _i18n.timeout;
+        if (err === 'rate_limit') return _i18n.rateLimit;
+        if (err === 'request_failed') return _i18n.networkError;
+        if (err === 'no_key') return _i18n.noKey;
         return err;
     }
 
     function testConnections() {
         var box = document.getElementById('test-results');
         var body = document.getElementById('test-results-body');
-        body.innerHTML = '<div class="test-row"><span class="label">Testar…</span><span class="status skip">⏳</span></div>';
+        body.innerHTML = '<div class="test-row"><span class="label">' + _i18n.testing + '</span><span class="status skip">⏳</span></div>';
         box.classList.add('show');
 
         fetch('{{ url_for("settings.test_api_connections") }}', {
@@ -742,7 +744,7 @@
         .then(function(data){
             var keys = Object.keys(data);
             if (!keys.length) {
-                body.innerHTML = '<div class="test-row"><span class="label">Inget att testa — inga tjänster konfigurerade.</span><span class="status skip">—</span></div>';
+                body.innerHTML = '<div class="test-row"><span class="label">' + _i18n.nothingToTest + '</span><span class="status skip">—</span></div>';
                 return;
             }
             var html = '';
@@ -751,7 +753,7 @@
                 var label = SERVICE_LABELS[k] || k;
                 var ok = data[k].ok;
                 var statusClass = ok ? 'ok' : 'fail';
-                var statusText = ok ? '✓ Fungerar' : '✕ ' + errorText(data[k].error);
+                var statusText = ok ? '✓ ' + _i18n.works : '✕ ' + errorText(data[k].error);
                 html += '<div class="test-row">'
                      +    '<span class="label">' + label + '</span>'
                      +    '<span class="status ' + statusClass + '">' + statusText + '</span>'
@@ -760,7 +762,7 @@
             body.innerHTML = html;
         })
         .catch(function(err){
-            body.innerHTML = '<div class="test-row"><span class="label">Test misslyckades</span><span class="status fail">' + (err.message || 'fel') + '</span></div>';
+            body.innerHTML = '<div class="test-row"><span class="label">' + _i18n.testFailed + '</span><span class="status fail">' + (err.message || _i18n.error) + '</span></div>';
         });
     }
 </script>

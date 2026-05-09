@@ -5,6 +5,8 @@ import subprocess
 import time
 import xml.etree.ElementTree as ET
 
+from flask_babel import gettext as _
+
 logger = logging.getLogger(__name__)
 
 _DC = "http://purl.org/dc/elements/1.1/"
@@ -123,7 +125,7 @@ def read_all_ebook_meta_fields(file_path) -> dict[str, str]:
         logger.debug("ebook-meta inte funnet i PATH")
         return {}
     except subprocess.TimeoutExpired:
-        logger.warning("ebook-meta timeout för %s", file_path)
+        logger.warning("ebook-meta timeout for %s", file_path)
         return {}
     fields: dict[str, str] = {}
     current_key: str | None = None
@@ -228,13 +230,13 @@ def fetch_calibre_metadata_with_status(
         }
 
     if not shutil.which("fetch-ebook-metadata"):
-        return _result(False, "not_installed", "fetch-ebook-metadata är inte installerat.")
+        return _result(False, "not_installed", _("fetch-ebook-metadata is not installed."))
 
     title = (title or "").strip()
     author = (author or "").strip()
 
     if not title and not author:
-        return _result(False, "no_result", "Ingen söktitel eller -författare angiven.")
+        return _result(False, "no_result", _("No search title or author provided."))
 
     cmd = ["fetch-ebook-metadata", "--opf", "--verbose"]
     if title:
@@ -244,14 +246,14 @@ def fetch_calibre_metadata_with_status(
     if sources and sources != "all":
         cmd += ["--allowed-plugin", sources]
 
-    logger.debug("Kör: %s", " ".join(cmd))
+    logger.debug("Running: %s", " ".join(cmd))
 
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     except subprocess.TimeoutExpired:
-        return _result(False, "timeout", "Calibre tog för lång tid (>120 sekunder).")
+        return _result(False, "timeout", _("Calibre took too long (>120 seconds)."))
     except Exception as exc:
-        return _result(False, "command_error", f"Calibre-kommandot misslyckades: {exc}")
+        return _result(False, "command_error", _("The Calibre command failed: %(exc)s", exc=exc))
 
     stderr = proc.stderr or ""
     opf_xml = (proc.stdout or "").strip()
@@ -259,14 +261,14 @@ def fetch_calibre_metadata_with_status(
     if proc.returncode != 0 and not opf_xml:
         return _result(
             False, "command_error",
-            f"fetch-ebook-metadata returnerade kod {proc.returncode}.",
+            _("fetch-ebook-metadata returned code %(code)d.", code=proc.returncode),
             returncode=proc.returncode, stderr=stderr,
         )
 
     if not opf_xml or not opf_xml.startswith("<"):
         return _result(
             False, "no_result",
-            "Calibre hittade inga matchande böcker.",
+            _("Calibre found no matching books."),
             returncode=proc.returncode, stderr=stderr,
         )
 
@@ -275,7 +277,7 @@ def fetch_calibre_metadata_with_status(
     except CalibreError as exc:
         return _result(
             False, "bad_xml",
-            f"Calibre returnerade ogiltig XML: {exc}",
+            _("Calibre returned invalid XML: %(exc)s", exc=exc),
             returncode=proc.returncode, stderr=stderr,
         )
 
@@ -319,7 +321,7 @@ def fetch_calibre_metadata_with_status(
 
     return _result(
         True, "ok",
-        f"Calibre: 1 träff ({source_label}).",
+        _("Calibre: 1 hit (%(source)s).", source=source_label),
         candidates=[candidate],
         returncode=proc.returncode, stderr=stderr,
     )
@@ -371,7 +373,7 @@ def fetch_calibre_metadata(
     if sources and sources != "all":
         cmd += ["--allowed-plugin", sources]
 
-    logger.debug("Kör: %s", " ".join(cmd))
+    logger.debug("Running: %s", " ".join(cmd))
     try:
         result = subprocess.run(
             cmd,

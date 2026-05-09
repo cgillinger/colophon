@@ -24,15 +24,16 @@ _TEXT_FIELDS = (
 
 _FILE_WRITABLE_EXTS = {".epub", ".mobi", ".azw3", ".kepub"}
 
-# Human-readable Swedish labels for file_write_error codes (used by routes)
+# Human-readable English labels for file_write_error codes (used by routes).
+# Routes wrap these with gettext when rendering.
 FILE_WRITE_ERROR_MESSAGES = {
-    "not_installed":      "ebook-meta saknas på servern",
-    "unsupported_format": "formatet stöder inte filskrivning",
-    "file_not_found":     "e-boksfilen hittades inte på disk",
-    "no_path":            "filsökväg saknas",
-    "command_failed":     "ebook-meta-kommandot misslyckades",
-    "timeout":            "ebook-meta tog för lång tid",
-    "no_fields":          "inga fält att skriva",
+    "not_installed":      "ebook-meta is missing on the server",
+    "unsupported_format": "the format does not support file writing",
+    "file_not_found":     "the ebook file was not found on disk",
+    "no_path":            "file path missing",
+    "command_failed":     "the ebook-meta command failed",
+    "timeout":            "ebook-meta took too long",
+    "no_fields":          "no fields to write",
 }
 
 
@@ -267,7 +268,7 @@ def write_metadata_to_file(item, written_text, cover_path):
             timeout=60,
         )
     except subprocess.TimeoutExpired:
-        logger.warning("ebook-meta timeout för %s", file_path)
+        logger.warning("ebook-meta timeout for %s", file_path)
         return {"ok": False, "error": "timeout"}
     except Exception as exc:
         logger.warning("ebook-meta misslyckades: %s", exc)

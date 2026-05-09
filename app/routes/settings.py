@@ -87,7 +87,7 @@ def ai_settings():
     try:
         stats = _get_ai_stats()
     except Exception as exc:
-        logger.warning("Kunde inte hämta AI-statistik: %s", exc)
+        logger.warning("Could not fetch AI stats: %s", exc)
         stats = {
             "month_tokens": 0,
             "month_calls": 0,
@@ -134,7 +134,7 @@ def ai_settings():
 @settings_bp.route("/settings/upstream", methods=["POST"])
 def save_upstream():
     if os.environ.get("COLOPHON_UPSTREAM_DIR", "").strip():
-        flash("Huvudbiblioteket konfigureras via miljövariabel.", "error")
+        flash(_("The upstream library is configured via an environment variable."), "error")
         return redirect(url_for("settings.ai_settings"))
 
     if request.form.get("clear"):
@@ -143,7 +143,7 @@ def save_upstream():
     else:
         path = request.form.get("upstream_dir", "").strip()
         if path and not os.path.isdir(path):
-            flash(f'Sökvägen "{path}" hittades inte.', "error")
+            flash(_('Path "%(path)s" was not found.', path=path), "error")
         else:
             set_setting("upstream_dir", path)
             if path:
@@ -160,17 +160,17 @@ def ai_test_connection():
 
     if result["ok"]:
         model = result.get("model") or "?"
-        flash(f"AI-anslutningen fungerar (modell: {model}).", "success")
+        flash(_("AI connection works (model: %(model)s).", model=model), "success")
     else:
         error = result["error"]
         if error == "auth":
-            flash("Ogiltig API-nyckel. Kontrollera AI_API_KEY.", "error")
+            flash(_("Invalid API key. Check AI_API_KEY."), "error")
         elif error == "timeout":
-            flash("AI-anslutningen tog för lång tid. Kontrollera nätverket.", "error")
+            flash(_("The AI connection took too long. Check the network."), "error")
         elif error == "rate_limit":
-            flash("Gränsen för AI-anrop verkar vara nådd. Försök igen senare.", "error")
+            flash(_("The AI rate limit appears to have been reached. Try again later."), "error")
         else:
-            flash(f"AI-anslutningstest misslyckades ({error}).", "error")
+            flash(_("AI connection test failed (%(error)s).", error=error), "error")
 
     return redirect(url_for("settings.ai_settings"))
 
