@@ -1,15 +1,68 @@
 # Colophon
 
-Colophon is a self-hosted e-book library manager. It scans a folder of book files, fetches metadata and cover art from Google Books and Calibre metadata sources, lets an AI (Mistral) suggest series membership and description improvements, and queues those suggestions for manual review before anything is saved. The web interface runs in a Docker container and is accessed through a browser.
+![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white) ![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask) ![Docker](https://img.shields.io/badge/docker-ready-blue?logo=docker) ![License](https://img.shields.io/badge/license-MIT-green) ![Version](https://img.shields.io/badge/version-1.0.0-brightgreen) ![i18n](https://img.shields.io/badge/i18n-EN%20%7C%20SV-yellow)
+
+Colophon is a self-hosted e-book metadata manager. It scans a folder of e-book files, fetches metadata from multiple sources, lets AI identify book series, and searches for cover art — all through a clean web interface running in Docker.
+
+Built for home use. Works with Komga, Kavita, Bookstation, and other e-book servers that read metadata from e-book files.
+
+---
+
+## Features
+
+### 📚 Library management
+
+- Automatic file scanning: EPUB, MOBI, AZW3, KEPUB, PDF, CBZ, CBR
+- Format grouping — multiple formats of the same book appear as one entry
+- Batch operations for bulk metadata management
+- Compact list view and gallery view
+- Search and filter by title, author, ISBN, genre, status
+
+### 🔍 Metadata enrichment
+
+- **Google Books API** — automatic metadata fetching
+- **Calibre metadata** — reads embedded metadata directly from e-book files
+- Smart scoring — picks the best match from multiple sources
+- Field-by-field review before changes are applied
+- Smart replacement rules — only overwrites when fetched data is better
+
+### 🤖 AI-assisted metadata
+
+- Series identification — AI recognises book series and volume numbers
+- Provider-agnostic — works with Mistral (free tier), OpenAI, DeepSeek, Ollama (local)
+- Transparent review — see what the AI suggests and why, accept fields individually
+- The reasoning behind each suggestion is shown
+
+### 🖼️ Cover search
+
+- Five sources: Open Library, Google Books, Hardcover, Wikidata/Wikimedia Commons, DuckDuckGo
+- Thumbnail grid — see all candidates, click to select
+- Independent from metadata enrichment — fast, doesn't interrupt the main workflow
+- Works without API keys (all free sources)
+
+### ⚙️ Settings
+
+- Web UI for all API keys — no `.env` editing required
+- Hybrid model: UI values take priority, environment variables as fallback
+- "Test connections" button with per-source status
+- Collapsible instructions for obtaining each API key
+
+### 🌐 Internationalisation
+
+- English (default) and Swedish
+- Language switcher in the top bar
+- Easy to add more languages (see [Adding a language](#adding-a-language))
 
 ---
 
 ## Quick start
 
 ```bash
+git clone https://github.com/cgillinger/colophon.git
+cd colophon
 cp .env.example .env
-# Edit .env and set at least COLOPHON_SECRET_KEY
-docker-compose up
+# Edit .env — set at least COLOPHON_SECRET_KEY
+docker compose up -d
 ```
 
 Open `http://localhost:5000` in your browser.
@@ -22,98 +75,115 @@ All variables are read from `.env` (loaded via `env_file` in `docker-compose.yml
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `COLOPHON_SECRET_KEY` | Yes | — | Secret key for Flask sessions and CSRF protection. Generate with: `python3 -c "import secrets; print(secrets.token_hex(32))"` |
-| `COLOPHON_LIBRARY_DIR` | No | `/books` | Path to the book folder inside the container |
-| `COLOPHON_DATA_DIR` | No | `/data` | Path to the data folder (database, covers) inside the container |
-| `COLOPHON_LIBRARY_HOST` | No | `./bibliotek` | Host path mounted as `COLOPHON_LIBRARY_DIR` (used by docker-compose) |
-| `COLOPHON_DATA_HOST` | No | `./data` | Host path mounted as `COLOPHON_DATA_DIR` (used by docker-compose) |
+| `COLOPHON_SECRET_KEY` | Yes | — | Secret key for Flask sessions |
+| `COLOPHON_LIBRARY_DIR` | No | `/books` | Book folder inside the container |
+| `COLOPHON_DATA_DIR` | No | `/data` | Data folder (database, covers) inside the container |
+| `COLOPHON_LIBRARY_HOST` | No | `./bibliotek` | Host path mounted as the book folder |
+| `COLOPHON_DATA_HOST` | No | `./data` | Host path mounted as the data folder |
 | `COLOPHON_LOG_LEVEL` | No | `INFO` | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
-| `COLOPHON_GOOGLE_BOOKS_KEY` | No | — | Google Books API key for metadata lookups |
-| `COLOPHON_MISTRAL_API_KEY` | No | — | Mistral AI API key for AI-assisted metadata suggestions |
-| `COLOPHON_MISTRAL_MODEL` | No | `mistral-small-latest` | Mistral model name |
-| `COLOPHON_UPSTREAM_DIR` | No | — | Path to the upstream library inside the container (e.g. `/upstream`). See [Upstream sync](#upstream-sync-optional). |
-| `COLOPHON_UPSTREAM_HOST` | No | — | Host path mounted as `COLOPHON_UPSTREAM_DIR` (used by docker-compose) |
+| `COLOPHON_GOOGLE_BOOKS_KEY` | No | — | Google Books API key |
+| `COLOPHON_AI_API_URL` | No | Mistral URL | AI chat completions endpoint |
+| `COLOPHON_AI_API_KEY` | No | — | AI provider API key |
+| `COLOPHON_AI_MODEL` | No | `mistral-small-latest` | AI model name |
+| `COLOPHON_UPSTREAM_DIR` | No | — | Upstream library path inside the container (for sync) |
+
+> **Note:** All API keys can also be configured through the web UI at **Settings → API settings**. UI values take priority over environment variables.
 
 ---
 
-### Google Books API key
+## Cover sources
 
-1. Go to <https://console.cloud.google.com/apis/library/books.googleapis.com>, select or create a project, then click **Enable**.
-2. Go to <https://console.cloud.google.com/apis/credentials>, click **Create Credentials → API key**, and copy the generated key.
-3. Add the key to `.env`:
+| Source | Key required | Searches by |
+|---|---|---|
+| Open Library | No | ISBN |
+| Google Books | No | ISBN, title, author |
+| Hardcover | Optional token | ISBN, title, author |
+| Wikidata/Commons | No | ISBN |
+| DuckDuckGo | No | Title, author |
+
+---
+
+## AI providers
+
+| Provider | URL | Free tier |
+|---|---|---|
+| Mistral (recommended) | `https://api.mistral.ai/v1/chat/completions` | ~1M tokens/month |
+| OpenAI | `https://api.openai.com/v1/chat/completions` | Pay-as-you-go |
+| DeepSeek | `https://api.deepseek.com/v1/chat/completions` | Very cheap |
+| Ollama (local) | `http://localhost:11434/v1/chat/completions` | Free, no key needed |
+
+---
+
+## Adding a language
+
+Colophon uses Flask-Babel with gettext for translations. Adding a new language requires no code changes — just a translation file.
+
+### Steps
+
+1. **Initialise the language:**
+   ```bash
+   # Inside the container or development environment:
+   pybabel init -i messages.pot -d app/translations -l <LANG_CODE>
    ```
-   COLOPHON_GOOGLE_BOOKS_KEY=your_key_here
+   Example for German: `pybabel init -i messages.pot -d app/translations -l de`
+
+2. **Translate the strings:**
+   Edit `app/translations/<LANG_CODE>/LC_MESSAGES/messages.po`
+
+   Each entry looks like:
+   ```po
+   msgid "Search covers"
+   msgstr ""  ← fill in your translation
    ```
 
-The API is free up to 1 000 requests/day. Colophon works without a key too, but Google Books will apply stricter rate limits to unauthenticated requests.
+3. **Compile:**
+   ```bash
+   pybabel compile -d app/translations
+   ```
+
+4. **Register the language:**
+   Add your language code to the `SUPPORTED_LANGUAGES` tuple in `app/__init__.py`.
+
+5. **Rebuild and test:**
+   ```bash
+   docker compose down && docker compose build --no-cache && docker compose up -d
+   ```
+
+### Contributing a translation
+
+If you'd like to contribute a translation, submit a PR with:
+- The `.po` file in `app/translations/<LANG_CODE>/LC_MESSAGES/`
+- Your language code added to the supported languages list
+
+No Python knowledge needed — just translate the strings in the `.po` file!
 
 ---
 
-## Pipeline
+## Works well with
 
-Colophon processes books in four stages:
+Colophon manages metadata for e-book files on disk. It pairs well with:
 
-1. **Scan** — The scanner walks `COLOPHON_LIBRARY_DIR` and registers every supported file (`.epub`, `.mobi`, `.azw3`, `.kepub`, `.pdf`, `.cbz`, `.cbr`) in the SQLite database. Files already in the database are skipped. Comic formats (`.cbz`, `.cbr`) are scanned by filename only — Google Books and Calibre metadata sources have limited coverage for them.
+- **[Komga](https://komga.org/)** — comic/e-book media server
+- **[Kavita](https://www.kavitareader.com/)** — self-hosted reading server
+- **Bookstation** — e-book server with reading support
 
-2. **Enrich** — For each book, Colophon queries Google Books (and optionally Calibre metadata plugins) to fetch title, author, series, ISBN, publisher, description, and cover art.
-
-3. **Polish** — If a Mistral API key is configured, the AI can suggest improvements to series, description, and subjects for a selected book. Suggestions are generated on demand from the book's metadata page.
-
-4. **Review** — Every AI suggestion is held in a review queue. Nothing is written to the database until you explicitly accept or reject each suggestion in the web interface.
+Colophon writes metadata back into e-book files, so any reader that parses embedded metadata will benefit.
 
 ---
 
-## Upstream sync — Huvudbibliotek (valfritt)
+## A note about this project
 
-Colophon arbetar mot en lokal kopia av ditt bibliotek. Metadata skrivs
-till filerna lokalt, och när du är nöjd synkar du ändringarna tillbaka
-till huvudbiblioteket. Det skyddar originalfilerna — om en skrivning
-misslyckas eller ger oönskat resultat påverkas inte originalet.
+Colophon is a personal project I built for managing my own e-book library. I'm sharing it because it might be useful to others in a similar situation, but please keep in mind:
 
-Om du inte har ett separat bibliotek (t.ex. Komga, NAS-mapp eller
-nätverksresurs) behöver du inte konfigurera detta. Colophon fungerar
-då direkt mot sin bokmapp precis som vanligt.
+- **This is a hobby project.** I work on it when I have time and energy, which means updates may be sporadic.
+- **Pull requests are welcome**, but I may not always be able to review them promptly. Please don't take slow responses personally — it's a matter of time, not interest.
+- **Issues and bug reports are appreciated!** They help me understand what matters to other users. Even if I can't fix everything right away, I read everything.
+- **Use at your own risk.** This software is provided as-is. Always keep backups of your e-book files.
 
-### Utan Docker
-
-Gå till **Inställningar** i Colophons webb-UI och ange sökvägen till
-huvudbiblioteket. Alternativt: sätt `COLOPHON_UPSTREAM_DIR` i `.env`.
-
-### Med Docker
-
-Docker-containrar kan bara se mappar som är monterade vid start.
-Lägg till en volym i `docker-compose.yml`:
-
-```yaml
-services:
-  colophon:
-    volumes:
-      - ${COLOPHON_LIBRARY_HOST:-./bibliotek}:/books:rw
-      - ${COLOPHON_DATA_HOST:-./data}:/data:rw
-      - /sökväg/till/ditt/bibliotek:/upstream:rw    # ← lägg till
-```
-
-Sätt sedan i `.env`:
-
-```
-COLOPHON_UPSTREAM_DIR=/upstream
-```
-
-Starta om med `docker compose up -d`.
-
-`/upstream` är sökvägen inuti containern. Host-sökvägen (t.ex. `/mnt/synology_komga` eller en NFS-mount) anges i docker-compose. Du kan också använda `COLOPHON_UPSTREAM_HOST` i `.env` och referera till den i docker-compose.
-
-### Användning
-
-1. **Hitta nya böcker** hämtar automatiskt nya filer från huvudbiblioteket innan den skannar.
-2. Arbeta med metadata som vanligt — berika, redigera, spara.
-3. En blå pill **"N osynkade"** visar hur många filer som ändrats lokalt men inte synkats.
-4. Klicka på pillen → se vilka filer som berörs → **Synka till bibliotek** skickar dem till huvudbiblioteket.
+If you find Colophon useful, that makes my day. If you improve it, even better. 🙂
 
 ---
 
-## Calibre plugins
+## License
 
-Calibre and the community metadata plugins (Goodreads, Fantastic Fiction, FictionDB) are bundled in the Docker image. No manual installation is required — `docker-compose up` is all you need.
-
-The plugins give access to richer series and genre data beyond what Google Books alone provides. They are installed automatically at image build time from the [kiwidude68/calibre_plugins](https://github.com/kiwidude68/calibre_plugins) GitHub releases.
+MIT License — see [LICENSE](LICENSE) for details.
