@@ -2083,6 +2083,30 @@ msgstr "ingen nyckel"
 msgid "error"
 msgstr "fel"
 
+msgid "Metadata sources"
+msgstr "Metadatakällor"
+
+msgid "Optional — works without key"
+msgstr "Valfri — fungerar utan nyckel"
+
+msgid "Google Books is the primary metadata source. Works without a key, but shares a global rate limit that often returns 429 errors. An own API key gives a dedicated quota (1000 requests/day free)."
+msgstr "Google Books är den primära metadatakällan. Fungerar utan nyckel men delar en global kvot som ofta ger 429-fel. En egen API-nyckel ger dedikerad kvot (1000 anrop/dag gratis)."
+
+msgid "Remove saved Google Books key?"
+msgstr "Ta bort sparad Google Books-nyckel?"
+
+msgid "Create a project (or use an existing one)"
+msgstr "Skapa ett projekt (eller använd ett befintligt)"
+
+msgid "Enable \"Books API\" under APIs & Services → Library"
+msgstr "Aktivera \"Books API\" under APIs & Services → Library"
+
+msgid "Create an API key under Credentials"
+msgstr "Skapa en API-nyckel under Credentials"
+
+msgid "Free tier: 1000 requests/day. No billing required."
+msgstr "Gratis: 1000 anrop/dag. Ingen fakturering krävs."
+
 #~ msgid "Settings saved."
 #~ msgstr "Inställningar sparade."
 

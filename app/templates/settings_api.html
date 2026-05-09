@@ -515,6 +515,59 @@
             </details>
         </div>
 
+        <!-- ============ Google Books API ============ -->
+        <h2>{{ _('Metadata sources') }}</h2>
+        <div class="panel">
+            <div class="panel-title">
+                <span class="panel-title-left">
+                    <i class="ti ti-brand-google" style="color:var(--accent-primary); font-size:20px;"></i>
+                    Google Books API
+                </span>
+                {% if google_books_key_set %}
+                    <span class="badge ok">&#10003; {{ _('Connected') }}</span>
+                {% else %}
+                    <span class="badge info">{{ _('Optional — works without key') }}</span>
+                {% endif %}
+            </div>
+            <p class="panel-desc">
+                {{ _('Google Books is the primary metadata source. Works without a key, but shares a global rate limit that often returns 429 errors. An own API key gives a dedicated quota (1000 requests/day free).') }}
+            </p>
+
+            <div class="field">
+                <label for="GOOGLE_BOOKS_KEY">{{ _('API key') }}</label>
+                <div class="key-row">
+                    <input type="password" id="GOOGLE_BOOKS_KEY" name="GOOGLE_BOOKS_KEY"
+                           value=""
+                           placeholder="{% if google_books_key_set %}{{ google_books_key_masked }}{% else %}AIza...{% endif %}"
+                           autocomplete="new-password">
+                    <button type="button" class="icon-btn" onclick="toggleVisibility('GOOGLE_BOOKS_KEY', this)" title="{{ _('Show/hide') }}">
+                        <i class="ti ti-eye"></i>
+                    </button>
+                    {% if google_books_key_set %}
+                        <button type="submit" class="icon-btn" name="clear_GOOGLE_BOOKS_KEY" value="1"
+                                title="{{ _('Remove key') }}"
+                                onclick="return confirm({{ _('Remove saved Google Books key?')|tojson }});">
+                            <i class="ti ti-x"></i>
+                        </button>
+                    {% endif %}
+                </div>
+                <div class="env-hint">Env: COLOPHON_GOOGLE_BOOKS_KEY</div>
+            </div>
+
+            <details class="howto">
+                <summary>{{ _('How do I get a key?') }}</summary>
+                <ol>
+                    <li>{{ _('Go to') }} <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Google Cloud Console</a></li>
+                    <li>{{ _('Create a project (or use an existing one)') }}</li>
+                    <li>{{ _('Enable "Books API" under APIs &amp; Services → Library') }}</li>
+                    <li>{{ _('Create an API key under Credentials') }}</li>
+                </ol>
+                <p style="font-size:12px; color:var(--text-secondary);">
+                    {{ _('Free tier: 1000 requests/day. No billing required.') }}
+                </p>
+            </details>
+        </div>
+
         <h2>{{ _('Cover search') }}</h2>
 
         <!-- ============ Open Library Covers ============ -->
@@ -716,6 +769,7 @@
 
     var SERVICE_LABELS = {
         ai: _i18n.aiMetadata,
+        google_books: 'Google Books API',
         hardcover: 'Hardcover',
         openlibrary: 'Open Library Covers'
     };
@@ -748,7 +802,7 @@
                 return;
             }
             var html = '';
-            ['ai','hardcover','openlibrary'].forEach(function(k){
+            ['ai','google_books','hardcover','openlibrary'].forEach(function(k){
                 if (!data[k]) return;
                 var label = SERVICE_LABELS[k] || k;
                 var ok = data[k].ok;
