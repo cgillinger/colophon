@@ -5743,6 +5743,12 @@
                     var detailEl = document.getElementById('mp-detail-' + itemId);
                     if (detailEl) _renderModalSourceDetail(detailEl, window._modalSourceDetails[itemId]);
                 }
+                // Progressive fill: as soon as Wikipedia + Google Books finish,
+                // populate the modal so users have something to look at while
+                // the slower Calibre lookup is still running.
+                if (d.stage === 'fast_preview' && d.payload) {
+                    _applyFetchedToModal(d.payload, selectedFields);
+                }
             }
 
             if (d.type === 'aborted') {
