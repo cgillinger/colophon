@@ -1862,6 +1862,10 @@
             vertical-align: middle;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
 
         /* Grouped view */
         .group-hidden { display: none !important; }
@@ -5573,6 +5577,20 @@
         };
     }
 
+    var AI_FIELD_ORDER = ['series', 'series_index', 'title', 'author', 'publisher', 'language', 'genres', 'published_date', 'description'];
+    var AI_FIELD_LABELS = {
+        series: 'Serie', series_index: 'Serienummer', title: 'Titel',
+        author: 'Författare', publisher: 'Förlag', language: 'Språk',
+        genres: 'Genre', published_date: 'Publiceringsdatum', description: 'Synopsis'
+    };
+    var AI_FIELD_EL_IDS = {
+        series: 'modalSeries', series_index: 'modalSeriesIndex',
+        title: 'modalTitle', author: 'modalAuthor',
+        publisher: 'modalPublisher', language: 'modalLanguage',
+        genres: 'modalGenres', published_date: 'modalPublishedDate',
+        description: 'modalDescription'
+    };
+
     function fetchAiMetadata() {
         var id = _modalItemId;
         var selectedFields = _getSelectedFields();
@@ -5581,8 +5599,14 @@
             return;
         }
         var smartReplace = _getModalSmartReplace();
-        setModalFeedback('info', 'Frågar AI…');
         _setModalBusy(true);
+
+        var progressEl = document.getElementById('modalProgress');
+        progressEl.style.display = 'block';
+        progressEl.innerHTML = '<div style="margin-bottom:4px;font-weight:500;">🤖 Frågar AI...</div>'
+            + '<div class="progress-bar" style="height:6px;border-radius:3px;overflow:hidden;background:var(--bg-tertiary);">'
+            + '<div style="width:100%;height:100%;background:var(--accent-purple);animation:pulse 1.5s ease-in-out infinite;"></div>'
+            + '</div>';
 
         var fieldsParam = encodeURIComponent(selectedFields.join(','));
         var smartParam = encodeURIComponent(smartReplace.join(','));
@@ -5590,6 +5614,7 @@
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 _setModalBusy(false);
+                progressEl.style.display = 'none';
                 if (!data.ok) {
                     var msgs = {
                         not_configured: 'AI är inte konfigurerat.',
@@ -5602,35 +5627,111 @@
                     setModalFeedback('error', msgs[data.error] || 'AI-fel: ' + data.error);
                     return;
                 }
-                var s = data.suggestions;
-                if (selectedFields.indexOf('title') !== -1 && s.title)
-                    document.getElementById('modalTitle').value = s.title;
-                if (selectedFields.indexOf('author') !== -1 && s.author)
-                    document.getElementById('modalAuthor').value = s.author;
-                if (selectedFields.indexOf('series') !== -1 && s.series)
-                    document.getElementById('modalSeries').value = s.series;
-                if (selectedFields.indexOf('series') !== -1 && s.series_index)
-                    document.getElementById('modalSeriesIndex').value = s.series_index;
-                if (selectedFields.indexOf('publisher') !== -1 && s.publisher)
-                    document.getElementById('modalPublisher').value = s.publisher;
-                if (selectedFields.indexOf('language') !== -1 && s.language)
-                    document.getElementById('modalLanguage').value = s.language;
-                if (selectedFields.indexOf('genres') !== -1 && s.genres) {
-                    var genreEl = document.getElementById('modalGenres');
-                    if (genreEl) genreEl.value = s.genres;
+
+                var suggestions = data.suggestions;
+                var rows = [];
+
+                AI_FIELD_ORDER.forEach(function(key) {
+                    var s = suggestions[key];
+                    if (!s) return;
+                    var elId = AI_FIELD_EL_IDS[key];
+                    var currentEl = elId ? document.getElementById(elId) : null;
+                    var currentVal = currentEl ? currentEl.value.trim() : '';
+                    var newVal = String(s.value || '').trim();
+                    if (!newVal || newVal === currentVal) return;
+
+                    rows.push({
+                        key: key,
+                        label: AI_FIELD_LABELS[key] || key,
+                        current: currentVal,
+                        value: newVal,
+                        confidence: s.confidence,
+                        reason: s.reason || '',
+                        defaultCheck: s.confidence === 'high'
+                    });
+                });
+
+                if (rows.length === 0) {
+                    setModalFeedback('info', 'AI hade inga nya förslag.');
+                    return;
                 }
-                if (selectedFields.indexOf('description') !== -1 && s.description)
-                    document.getElementById('modalDescription').value = s.description;
-                if (selectedFields.indexOf('published_date') !== -1 && s.published_date) {
-                    var pdEl2 = document.getElementById('modalPublishedDate');
-                    if (pdEl2) pdEl2.value = _cleanDate(String(s.published_date));
-                }
-                setModalFeedback('success', 'AI-förslag inlagda. Granska och spara.');
+
+                _showAiReviewModal(rows);
             })
             .catch(function() {
                 _setModalBusy(false);
+                progressEl.style.display = 'none';
                 setModalFeedback('error', 'AI-anropet misslyckades.');
             });
+    }
+
+    function _showAiReviewModal(rows) {
+        var modal = document.getElementById('bulkResultModal');
+        var head = document.getElementById('brmHead');
+        var body = document.getElementById('brmBody');
+        var titleEl = document.getElementById('brmTitle');
+
+        if (titleEl) titleEl.textContent = '🤖 AI-förslag — granska';
+
+        head.innerHTML = '<tr>'
+            + '<th style="width:18%;">Fält</th>'
+            + '<th style="width:36%;" class="brm-th-current">📋 Nuvarande</th>'
+            + '<th style="width:10%;" class="brm-th-pick">Välj</th>'
+            + '<th style="width:36%;" class="brm-th-fetched">🤖 AI</th>'
+            + '</tr>';
+
+        body.innerHTML = '';
+        rows.forEach(function(row) {
+            var tr = document.createElement('tr');
+            var checked = row.defaultCheck ? 'checked' : '';
+            var confBadge = row.confidence === 'high'
+                ? '<span style="color:var(--accent-green);font-size:11px;"> ●</span>'
+                : '<span style="color:var(--accent-yellow);font-size:11px;"> ●</span>';
+
+            tr.innerHTML = '<td><strong>' + _esc(row.label) + '</strong></td>'
+                + '<td class="brm-td-current" style="color:var(--accent-red);">' + _esc(row.current || '(tomt)') + '</td>'
+                + '<td class="brm-td-pick" style="text-align:center;">'
+                +   '<input type="checkbox" class="ai-review-check" data-key="' + row.key + '" ' + checked + '>'
+                + '</td>'
+                + '<td class="brm-td-fetched" style="color:var(--accent-green);">'
+                +   _esc(row.value) + confBadge
+                +   (row.reason ? '<br><small style="color:var(--text-secondary);">' + _esc(row.reason) + '</small>' : '')
+                + '</td>';
+            body.appendChild(tr);
+        });
+
+        var saveBtn = document.getElementById('brmSaveBtn');
+        saveBtn.textContent = 'Applicera valda';
+        saveBtn.onclick = function() { _applyAiReviewSelections(rows); };
+
+        modal.style.display = 'flex';
+    }
+
+    function _applyAiReviewSelections(rows) {
+        var checks = document.querySelectorAll('.ai-review-check');
+        var applied = 0;
+
+        checks.forEach(function(chk) {
+            if (!chk.checked) return;
+            var key = chk.dataset.key;
+            var row = rows.find(function(r) { return r.key === key; });
+            if (!row) return;
+
+            var elId = AI_FIELD_EL_IDS[key];
+            var el = elId ? document.getElementById(elId) : null;
+            if (el) {
+                el.value = key === 'published_date' ? _cleanDate(row.value) : row.value;
+                applied++;
+            }
+        });
+
+        document.getElementById('bulkResultModal').style.display = 'none';
+
+        var saveBtn = document.getElementById('brmSaveBtn');
+        saveBtn.textContent = 'Spara valda';
+        saveBtn.onclick = saveBulkResult;
+
+        setModalFeedback('success', applied + ' AI-fält applicerade. Granska och spara.');
     }
 
     function saveMetadata() {
