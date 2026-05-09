@@ -343,7 +343,7 @@
             <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="Byt tema">
                 <i id="themeIcon" class="ti ti-sun"></i>
             </button>
-            <a class="topbar-btn icon-only" href="{{ url_for('settings.ai_settings') }}" title="Inställningar">
+            <a class="topbar-btn icon-only" href="{{ url_for('settings.api_settings') }}" title="Inställningar">
                 <i class="ti ti-settings"></i>
             </a>
         </div>
@@ -478,7 +478,7 @@
     </form>
     {% endif %}
     <a class="btn ghost" href="{{ url_for('metadata.lookup_covers', item_id=item.id) }}">Hämta omslag</a>
-    <a class="btn ghost" href="{{ url_for('settings.ai_settings') }}">⚙ AI-inställningar</a>
+    <a class="btn ghost" href="{{ url_for('settings.api_settings') }}">⚙ API-inställningar</a>
 </div>
 
 <script>

@@ -7,7 +7,8 @@ import threading
 from datetime import datetime
 from pathlib import Path
 
-from app.services.ai_metadata import fetch_ai_suggestions
+from app.services.ai_metadata import ai_is_configured, fetch_ai_suggestions
+from app.services.app_settings import get_setting
 
 from flask import (
     Blueprint,
@@ -299,7 +300,7 @@ def metadata_item(item_id):
         pending=pending,
         languages=SUPPORTED_LANGUAGES,
         current_lang=current_lang,
-        ai_configured=bool(os.environ.get("COLOPHON_MISTRAL_API_KEY")),
+        ai_configured=ai_is_configured(),
     )
 
 
@@ -379,6 +380,57 @@ def apply_cover(item_id):
     return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
 
+@metadata_bp.route("/metadata/<int:item_id>/cover/apply-json", methods=["POST"])
+def cover_apply_json(item_id):
+    """JSON endpoint for AJAX cover apply (modal cover search)."""
+    item = get_item_or_404(item_id)
+
+    cover_url = request.get_json(silent=True, force=True) or {}
+    if isinstance(cover_url, dict):
+        cover_url_str = cover_url.get("cover_url", "").strip()
+        source = cover_url.get("source", "").strip()
+    else:
+        cover_url_str = ""
+        source = ""
+
+    if not cover_url_str:
+        return jsonify({"ok": False, "error": "no_url"}), 400
+
+    cover_path = download_cover_to_file(
+        cover_url=cover_url_str,
+        cover_dir=current_app.config["COVER_DIR"],
+        item_id=item.id,
+    )
+    if not cover_path:
+        return jsonify({"ok": False, "error": "download_failed"}), 400
+
+    item.cover_path = cover_path
+    item.cover_locked = True
+    item.manual_metadata = True
+
+    write_result = write_metadata_to_file(item, {}, cover_path)
+    if write_result["ok"]:
+        item.file_modified_by_colophon = datetime.utcnow()
+    db.session.commit()
+
+    return jsonify({"ok": True, "source": source})
+
+
+@metadata_bp.route("/metadata/<int:item_id>/covers/search-json", methods=["POST"])
+def search_covers_json(item_id):
+    """JSON endpoint: multi-source cover search for the book modal."""
+    item = get_item_or_404(item_id)
+
+    from app.services.cover_search import search_covers
+    candidates = search_covers(
+        title=item.title or "",
+        author=item.author or "",
+        isbn=item.isbn or "",
+    )
+
+    return jsonify({"ok": True, "candidates": candidates, "count": len(candidates)})
+
+
 @metadata_bp.route("/metadata/bulk", methods=["GET", "POST"])
 def bulk_metadata():
     items = (
@@ -421,9 +473,9 @@ def bulk_metadata():
         }
 
         if action == "ai":
-            if not os.environ.get("COLOPHON_MISTRAL_API_KEY"):
+            if not ai_is_configured():
                 flash(
-                    "Mistral är inte konfigurerat. Lägg till COLOPHON_MISTRAL_API_KEY i .env.",
+                    "AI är inte konfigurerat. Öppna API-inställningar och lägg till en API-nyckel.",
                     "error",
                 )
             else:
@@ -475,7 +527,7 @@ def bulk_metadata():
                     summary["updated"].append(
                         {
                             "title": item.title,
-                            "source": "Mistral AI",
+                            "source": "AI",
                             "score": len(high_fields),
                             "file_write_error": ai_apply.get("file_write_error"),
                         }
@@ -1381,9 +1433,9 @@ _AI_DISPLAY_ONLY: set = set()
 def run_ai_for_item(item_id):
     item = get_item_or_404(item_id)
 
-    if not os.environ.get("COLOPHON_MISTRAL_API_KEY"):
+    if not ai_is_configured():
         flash(
-            "Mistral är inte konfigurerat. Lägg till COLOPHON_MISTRAL_API_KEY i .env.",
+            "AI är inte konfigurerat. Öppna API-inställningar och lägg till en API-nyckel.",
             "error",
         )
         return redirect(url_for("metadata.metadata_item", item_id=item.id))
@@ -1393,15 +1445,15 @@ def run_ai_for_item(item_id):
     if not result["ok"]:
         error = result["error"]
         if error == "auth":
-            flash("Mistral nekade anropet. Kontrollera API-nyckeln.", "error")
+            flash("AI-tjänsten nekade anropet. Kontrollera API-nyckeln.", "error")
         elif error == "timeout":
-            flash("Mistral-anropet tog för lång tid. Försök igen.", "error")
+            flash("AI-anropet tog för lång tid. Försök igen.", "error")
         elif error == "rate_limit":
-            flash("Gränsen för Mistral-anrop verkar vara nådd. Försök igen senare.", "error")
+            flash("Gränsen för AI-anrop verkar vara nådd. Försök igen senare.", "error")
         elif error == "invalid_json":
-            flash("Mistral returnerade ett svar som inte kunde tolkas.", "error")
+            flash("AI-tjänsten returnerade ett svar som inte kunde tolkas.", "error")
         else:
-            flash(f"Mistral-anropet misslyckades ({error}).", "error")
+            flash(f"AI-anropet misslyckades ({error}).", "error")
         return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
     suggestions = result["suggestions"]
@@ -1512,7 +1564,7 @@ def metadata_json(item_id):
         "size_bytes": item.size_bytes,
         "cover_path": bool(item.cover_path),
         "manual_metadata": bool(item.manual_metadata),
-        "ai_configured": bool(os.environ.get("COLOPHON_MISTRAL_API_KEY")),
+        "ai_configured": ai_is_configured(),
     })
 
 
@@ -1723,7 +1775,7 @@ def fetch_metadata_json(item_id):
 def ai_metadata_json(item_id):
     item = get_item_or_404(item_id)
 
-    if not os.environ.get("COLOPHON_MISTRAL_API_KEY"):
+    if not ai_is_configured():
         return jsonify({"ok": False, "error": "not_configured"}), 400
 
     requested_fields = [

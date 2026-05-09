@@ -3,18 +3,42 @@ import os
 from datetime import date
 from pathlib import Path
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+import requests
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from sqlalchemy import text
 
 from app.models import db
-from app.services.ai_metadata import test_ai_connection
+from app.services.ai_metadata import ai_is_configured, test_ai_connection
 from app.services.app_settings import get_setting, get_upstream_dir, set_setting
 
 logger = logging.getLogger(__name__)
 
 settings_bp = Blueprint("settings", __name__)
 
+_DEFAULT_AI_API_URL = "https://api.mistral.ai/v1/chat/completions"
 _DEFAULT_MODEL = "mistral-small-latest"
+
+# Free-text settings managed by the API page. Empty submit deletes the row
+# (= falls back to env var or default).
+_API_TEXT_KEYS = [
+    "AI_API_URL",
+    "AI_MODEL",
+    "GOOGLE_CSE_ID",
+]
+
+# API-key fields. Empty submit *keeps* the existing value to avoid wiping a
+# stored key when the form re-renders with a masked placeholder. A separate
+# "clear_<KEY>" form field deletes the row explicitly.
+_API_KEY_KEYS = [
+    "AI_API_KEY",
+    "GOOGLE_CSE_API_KEY",
+    "BING_API_KEY",
+]
+
+_API_TOGGLE_KEYS = [
+    "COVER_OPENLIBRARY_ENABLED",
+    "COVER_GOOGLE_ZOOM_ENABLED",
+]
 
 
 def _get_ai_stats():
@@ -56,9 +80,8 @@ def _get_ai_stats():
 
 @settings_bp.route("/settings/ai")
 def ai_settings():
-    api_key = os.environ.get("COLOPHON_MISTRAL_API_KEY", "").strip()
-    model = os.environ.get("COLOPHON_MISTRAL_MODEL", "").strip() or _DEFAULT_MODEL
-    configured = bool(api_key)
+    configured = ai_is_configured()
+    model = (get_setting("AI_MODEL") or _DEFAULT_MODEL).strip()
 
     try:
         stats = _get_ai_stats()
@@ -135,19 +158,147 @@ def ai_test_connection():
     result = test_ai_connection()
 
     if result["ok"]:
-        model_count = len(result.get("models", []))
-        flash(f"Anslutningen fungerar. {model_count} modeller tillgängliga.", "success")
+        model = result.get("model") or "?"
+        flash(f"AI-anslutningen fungerar (modell: {model}).", "success")
     else:
         error = result["error"]
-        if error == "no_key":
-            flash("Ingen API-nyckel konfigurerad (COLOPHON_MISTRAL_API_KEY).", "error")
-        elif error == "auth":
-            flash("Ogiltig API-nyckel. Kontrollera COLOPHON_MISTRAL_API_KEY.", "error")
+        if error == "auth":
+            flash("Ogiltig API-nyckel. Kontrollera AI_API_KEY.", "error")
         elif error == "timeout":
-            flash("Anslutningen tog för lång tid. Kontrollera nätverket.", "error")
+            flash("AI-anslutningen tog för lång tid. Kontrollera nätverket.", "error")
         elif error == "rate_limit":
-            flash("Gränsen för Mistral-anrop verkar vara nådd. Försök igen senare.", "error")
+            flash("Gränsen för AI-anrop verkar vara nådd. Försök igen senare.", "error")
         else:
-            flash(f"Anslutningstest misslyckades ({error}).", "error")
+            flash(f"AI-anslutningstest misslyckades ({error}).", "error")
 
     return redirect(url_for("settings.ai_settings"))
+
+
+def _mask_secret(value: str) -> str:
+    if not value:
+        return ""
+    if len(value) <= 6:
+        return "•" * len(value)
+    return "•" * 6 + value[-6:]
+
+
+def _settings_view_context():
+    """Collect the current values used to render settings_api.html."""
+    ai_key = (get_setting("AI_API_KEY") or "").strip()
+    cse_key = (get_setting("GOOGLE_CSE_API_KEY") or "").strip()
+    bing_key = (get_setting("BING_API_KEY") or "").strip()
+
+    return {
+        "ai_url": (get_setting("AI_API_URL") or _DEFAULT_AI_API_URL).strip(),
+        "ai_url_default": _DEFAULT_AI_API_URL,
+        "ai_key_masked": _mask_secret(ai_key),
+        "ai_key_set": bool(ai_key),
+        "ai_model": (get_setting("AI_MODEL") or _DEFAULT_MODEL).strip(),
+        "ai_model_default": _DEFAULT_MODEL,
+        "google_cse_key_masked": _mask_secret(cse_key),
+        "google_cse_key_set": bool(cse_key),
+        "google_cse_id": (get_setting("GOOGLE_CSE_ID") or "").strip(),
+        "bing_key_masked": _mask_secret(bing_key),
+        "bing_key_set": bool(bing_key),
+        "openlibrary_enabled": (get_setting("COVER_OPENLIBRARY_ENABLED", "true") or "true").lower() == "true",
+        "google_zoom_enabled": (get_setting("COVER_GOOGLE_ZOOM_ENABLED", "true") or "true").lower() == "true",
+    }
+
+
+@settings_bp.route("/settings/api", methods=["GET", "POST"])
+def api_settings():
+    if request.method == "POST":
+        for key in _API_TEXT_KEYS:
+            val = request.form.get(key, "").strip()
+            set_setting(key, val)
+
+        for key in _API_KEY_KEYS:
+            if request.form.get(f"clear_{key}"):
+                set_setting(key, "")
+                continue
+            val = request.form.get(key, "").strip()
+            if val:
+                set_setting(key, val)
+            # Empty submit = keep existing value (don't overwrite with "")
+
+        for toggle in _API_TOGGLE_KEYS:
+            set_setting(toggle, "true" if request.form.get(toggle) else "false")
+
+        flash("API-inställningar sparade.", "success")
+        return redirect(url_for("settings.api_settings"))
+
+    return render_template("settings_api.html", **_settings_view_context())
+
+
+@settings_bp.route("/settings/api/test", methods=["POST"])
+def test_api_connections():
+    """Test every configured API and return per-service status as JSON."""
+    results = {}
+
+    if ai_is_configured() or (get_setting("AI_API_URL") or "").strip():
+        results["ai"] = test_ai_connection()
+
+    cse_key = (get_setting("GOOGLE_CSE_API_KEY") or "").strip()
+    cse_id = (get_setting("GOOGLE_CSE_ID") or "").strip()
+    if cse_key and cse_id:
+        try:
+            r = requests.get(
+                "https://www.googleapis.com/customsearch/v1",
+                params={
+                    "key": cse_key,
+                    "cx": cse_id,
+                    "q": "test",
+                    "num": 1,
+                    "searchType": "image",
+                },
+                timeout=10,
+            )
+            if r.ok:
+                results["google_cse"] = {"ok": True}
+            elif r.status_code in (401, 403):
+                results["google_cse"] = {"ok": False, "error": "auth"}
+            elif r.status_code == 429:
+                results["google_cse"] = {"ok": False, "error": "rate_limit"}
+            else:
+                results["google_cse"] = {"ok": False, "error": f"http_{r.status_code}"}
+        except requests.Timeout:
+            results["google_cse"] = {"ok": False, "error": "timeout"}
+        except requests.RequestException as exc:
+            logger.warning("Google CSE test error: %s", exc)
+            results["google_cse"] = {"ok": False, "error": "request_failed"}
+
+    bing_key = (get_setting("BING_API_KEY") or "").strip()
+    if bing_key:
+        try:
+            r = requests.get(
+                "https://api.bing.microsoft.com/v7.0/images/search",
+                headers={"Ocp-Apim-Subscription-Key": bing_key},
+                params={"q": "test book cover", "count": 1},
+                timeout=10,
+            )
+            if r.ok:
+                results["bing"] = {"ok": True}
+            elif r.status_code in (401, 403):
+                results["bing"] = {"ok": False, "error": "auth"}
+            elif r.status_code == 429:
+                results["bing"] = {"ok": False, "error": "rate_limit"}
+            else:
+                results["bing"] = {"ok": False, "error": f"http_{r.status_code}"}
+        except requests.Timeout:
+            results["bing"] = {"ok": False, "error": "timeout"}
+        except requests.RequestException as exc:
+            logger.warning("Bing test error: %s", exc)
+            results["bing"] = {"ok": False, "error": "request_failed"}
+
+    if (get_setting("COVER_OPENLIBRARY_ENABLED", "true") or "true").lower() == "true":
+        try:
+            r = requests.head(
+                "https://covers.openlibrary.org/b/isbn/0385472579-S.jpg",
+                timeout=5,
+                allow_redirects=True,
+            )
+            results["openlibrary"] = {"ok": r.ok}
+        except requests.RequestException:
+            results["openlibrary"] = {"ok": False, "error": "timeout"}
+
+    return jsonify(results)

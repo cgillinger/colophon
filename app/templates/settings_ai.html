@@ -313,7 +313,7 @@
             <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="Byt tema">
                 <i id="themeIcon" class="ti ti-sun"></i>
             </button>
-            <a class="topbar-btn icon-only" href="{{ url_for('settings.ai_settings') }}" title="Inställningar">
+            <a class="topbar-btn icon-only" href="{{ url_for('settings.api_settings') }}" title="Inställningar">
                 <i class="ti ti-settings"></i>
             </a>
         </div>
@@ -334,7 +334,7 @@
     {% endwith %}
 
     <div class="panel">
-        <h2>AI-metadata (Mistral)</h2>
+        <h2>AI-metadata</h2>
 
         <div class="status-grid">
             <span class="status-label">Status</span>
@@ -347,19 +347,21 @@
             </span>
             <span class="status-label">Modell</span>
             <span class="status-value">{{ model }}</span>
-            <span class="status-label">Konfiguration</span>
-            <span class="status-value">.env</span>
         </div>
 
         {% if not configured %}
             <p style="color:var(--text-secondary); font-size:14px; margin:0 0 14px 0;">
-                Lägg till <code>COLOPHON_MISTRAL_API_KEY=din-nyckel</code> i <code>.env</code> för att aktivera AI-metadata.
+                Konfigurera AI-leverantör (URL, nyckel, modell) under
+                <a href="{{ url_for('settings.api_settings') }}" style="color:var(--accent-primary); text-decoration:underline;">API-inställningar</a>.
             </p>
         {% endif %}
 
-        <form action="{{ url_for('settings.ai_test_connection') }}" method="post">
-            <button class="btn primary" type="submit">&#128299; Testa anslutning</button>
-        </form>
+        <div class="actions">
+            <a class="btn" href="{{ url_for('settings.api_settings') }}">⚙ API-inställningar</a>
+            <form action="{{ url_for('settings.ai_test_connection') }}" method="post" style="display:inline;">
+                <button class="btn primary" type="submit">&#128299; Testa anslutning</button>
+            </form>
+        </div>
     </div>
 
     <div class="panel">
@@ -465,9 +467,7 @@
         {% endif %}
 
         <div class="notice">
-            Saldo kan inte hämtas via Mistrals API.<br>
-            Kontrollera saldo och kvot i Mistrals konsol:
-            <a href="https://console.mistral.ai" target="_blank" rel="noopener">console.mistral.ai</a>
+            Saldo och kvot hämtas inte via API:t — kontrollera dem i din leverantörs egen konsol.
         </div>
     </div>
 </div>
