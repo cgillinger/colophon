@@ -35,6 +35,10 @@ ISBN: {isbn}
 Publisher: {publisher}
 Language: {language}
 Description: {description}
+File name: {file_name}
+
+The file name may contain series information (e.g. "SeriesName03 - Author - Title").
+Use this to infer series name and index if not available from other fields.
 
 For publication_date, return the original release year (or "YYYY-MM" / "YYYY-MM-DD" if you are confident).
 Do not guess — return null if you don't know.
@@ -187,6 +191,7 @@ def fetch_ai_suggestions(item: LibraryItem, fields=None, override_values=None) -
         publisher=ov.get("publisher") or item.publisher or "",
         language=ov.get("language") or item.language or "",
         description=description,
+        file_name=getattr(item, "file_name", "") or "",
     )
     if fields_instruction:
         prompt = prompt.replace(

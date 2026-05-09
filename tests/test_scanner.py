@@ -23,16 +23,41 @@ from app.services.scanner import (
 
 class TestCleanTitleFromFilename:
     def test_replaces_underscores(self):
-        assert _clean_title_from_filename("the_great_book") == "the great book"
+        assert _clean_title_from_filename("the_great_book")["title"] == "the great book"
 
     def test_replaces_hyphens(self):
-        assert _clean_title_from_filename("the-great-book") == "the great book"
+        assert _clean_title_from_filename("the-great-book")["title"] == "the great book"
 
     def test_collapses_whitespace(self):
-        assert _clean_title_from_filename("book  title") == "book title"
+        assert _clean_title_from_filename("book  title")["title"] == "book title"
 
     def test_empty_string(self):
-        assert _clean_title_from_filename("") == ""
+        result = _clean_title_from_filename("")
+        assert result["title"] == ""
+        assert result["series"] is None
+        assert result["series_index"] is None
+
+    def test_filename_series_pattern(self):
+        result = _clean_title_from_filename(
+            "The Disappearance03 - Birmingham, John - Angels of Vengeance"
+        )
+        assert result["title"] == "Angels of Vengeance"
+        assert result["series"] == "The Disappearance"
+        assert result["series_index"] == "03"
+
+    def test_filename_series_with_space(self):
+        result = _clean_title_from_filename(
+            "Revelation Space 01 - Reynolds, Alastair - Revelation Space"
+        )
+        assert result["title"] == "Revelation Space"
+        assert result["series"] == "Revelation Space"
+        assert result["series_index"] == "01"
+
+    def test_year_only_filename_does_not_match_series_pattern(self):
+        result = _clean_title_from_filename("1968")
+        assert result["title"] == "1968"
+        assert result["series"] is None
+        assert result["series_index"] is None
 
 
 # ---------------------------------------------------------------------------

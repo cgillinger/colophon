@@ -59,3 +59,33 @@ def test_none_input():
     r = clean_title(None)
     assert r["cleaned_title"] == ""
     assert r["was_modified"] is False
+
+
+def test_strip_author_prefix():
+    r = clean_title("Birmingham, John - Angels of Vengeance")
+    assert r["cleaned_title"] == "Angels of Vengeance"
+    assert r["was_modified"] is True
+
+
+def test_strip_author_prefix_swedish():
+    r = clean_title("Lindqvist, John Ajvide - Låt den rätte komma in")
+    assert r["cleaned_title"] == "Låt den rätte komma in"
+    assert r["was_modified"] is True
+
+
+def test_strip_author_prefix_with_initial():
+    r = clean_title("Tolkien, J. R. R. - The Hobbit")
+    assert r["cleaned_title"] == "The Hobbit"
+    assert r["was_modified"] is True
+
+
+def test_no_false_positive_on_commas():
+    r = clean_title("Dr. Jekyll and Mr. Hyde")
+    assert r["cleaned_title"] == "Dr. Jekyll and Mr. Hyde"
+    assert r["was_modified"] is False
+
+
+def test_no_false_positive_on_subtitle_dash():
+    r = clean_title("Neuromancer - 20th Anniversary Edition")
+    assert r["cleaned_title"] == "Neuromancer - 20th Anniversary Edition"
+    assert r["was_modified"] is False
