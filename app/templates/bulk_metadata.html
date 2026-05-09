@@ -2428,7 +2428,7 @@
             <button type="button" class="btn ai-ghost" id="modalAiBtn" onclick="fetchAiMetadata()" style="display:none;"><i class="ti ti-sparkles"></i> {{ _('Ask AI') }}</button>
             <div class="spacer"></div>
             <button type="button" class="btn outline" id="modalSaveBtn" onclick="saveMetadata()">{{ _('Save') }}</button>
-            <button type="button" class="btn ghost" onclick="closeBookModal()">{{ _('Close') }}</button>
+            <button type="button" class="btn ghost" id="modalCloseBtn" onclick="closeBookModal()">{{ _('Close') }}</button>
         </div>
     </div>
 </div>
@@ -5302,7 +5302,11 @@
         var details = document.getElementById('smartReplaceDetails');
         if (details) details.open = false;
         document.querySelectorAll('.modal-smart').forEach(function(cb) { cb.checked = false; });
-        setModalFeedback('info', 'Laddar...');
+        var closeBtn = document.getElementById('modalCloseBtn');
+        if (closeBtn) closeBtn.textContent = _mt('close');
+        var saveBtn = document.getElementById('modalSaveBtn');
+        if (saveBtn) saveBtn.textContent = _mt('save');
+        setModalFeedback('info', _mt('loading'));
 
         fetch('/metadata/' + itemId + '/json', { cache: 'no-store' })
             .then(function(r) { return r.json(); })
@@ -5550,7 +5554,38 @@
         }
     }
 
-    var _fetchBtnOrigHTML = '<i class="ti ti-search"></i> ' + {{ _('Fetch metadata')|tojson }};
+    var _modalI18n = {
+        sv: {
+            fetchBtn: '<i class="ti ti-search"></i> Hämta metadata',
+            abortBtn: '<i class="ti ti-x"></i> Avbryt',
+            close: 'Stäng',
+            save: 'Spara',
+            saved: 'Sparad!',
+            searchAborted: 'Sökning avbruten.',
+            loading: 'Laddar...',
+            titleRequired: 'Titel får inte vara tom.',
+            saving: 'Sparar…',
+            saveFailed: 'Sparning misslyckades.',
+            selectField: 'Välj minst ett fält.'
+        },
+        en: {
+            fetchBtn: '<i class="ti ti-search"></i> Fetch metadata',
+            abortBtn: '<i class="ti ti-x"></i> Cancel',
+            close: 'Close',
+            save: 'Save',
+            saved: 'Saved!',
+            searchAborted: 'Search cancelled.',
+            loading: 'Loading...',
+            titleRequired: 'Title is required.',
+            saving: 'Saving…',
+            saveFailed: 'Save failed.',
+            selectField: 'Select at least one field.'
+        }
+    };
+    function _mt(key) {
+        var lang = document.documentElement.lang === 'en' ? 'en' : 'sv';
+        return _modalI18n[lang][key] || _modalI18n['sv'][key] || key;
+    }
 
     function _setFetchingState(fetching) {
         var btn = document.getElementById('modalFetchBtn');
@@ -5560,14 +5595,14 @@
             btn.disabled = false;
             btn.classList.remove('primary');
             btn.classList.add('btn-danger-outline');
-            btn.innerHTML = '<i class="ti ti-x"></i> Avbryt';
+            btn.innerHTML = _mt('abortBtn');
             btn.onclick = abortMetadata;
         } else {
             delete btn.dataset.fetching;
             btn.disabled = false;
             btn.classList.remove('btn-danger-outline');
             btn.classList.add('primary');
-            btn.innerHTML = _fetchBtnOrigHTML;
+            btn.innerHTML = _mt('fetchBtn');
             btn.onclick = fetchMetadata;
         }
     }
@@ -5582,14 +5617,14 @@
         _setModalBusy(false);
         var progressEl = document.getElementById('modalProgress');
         if (progressEl) { progressEl.style.display = 'none'; }
-        setModalFeedback('info', 'Sökning avbruten.');
+        setModalFeedback('info', _mt('searchAborted'));
     }
 
     function fetchMetadata() {
         var id = _modalItemId;
         var selectedFields = _getSelectedFields();
         if (selectedFields.length === 0) {
-            setModalFeedback('error', _i18n.chooseAtLeastOneFieldShort);
+            setModalFeedback('error', _mt('selectField'));
             return;
         }
         var smartReplace = _getModalSmartReplace();
@@ -5949,7 +5984,7 @@
     function saveMetadata() {
         var id = _modalItemId;
         var title = document.getElementById('modalTitle').value.trim();
-        if (!title) { setModalFeedback('error', _i18n.titleRequired); return; }
+        if (!title) { setModalFeedback('error', _mt('titleRequired')); return; }
         var payload = {
             title:          title,
             author:         document.getElementById('modalAuthor').value.trim(),
@@ -5962,7 +5997,7 @@
             published_date: _cleanDate(document.getElementById('modalPublishedDate').value.trim()),
             description:    document.getElementById('modalDescription').value.trim()
         };
-        setModalFeedback('info', 'Sparar…');
+        setModalFeedback('info', _mt('saving'));
         _setModalBusy(true);
 
         fetch('/metadata/' + id + '/save-json', {
@@ -5976,12 +6011,12 @@
                 if (!data.ok) { setModalFeedback('error', _i18n.errorWithMsg.replace('{msg}', data.error || _i18n.unknownError)); return; }
                 _updateTableRow(id, payload);
                 _updateUnsyncedPill(1);
-                setModalFeedback('success', 'Sparad!');
+                setModalFeedback('success', _mt('saved'));
                 setTimeout(clearModalFeedback, 3000);
             })
             .catch(function() {
                 _setModalBusy(false);
-                setModalFeedback('error', 'Sparning misslyckades.');
+                setModalFeedback('error', _mt('saveFailed'));
             });
     }
 
@@ -6065,10 +6100,18 @@
     }
 
     function closeBookModal() {
+        if (_modalSSESource) {
+            try { _modalSSESource.close(); } catch(e) {}
+            _modalSSESource = null;
+            fetch('/metadata/abort', {method: 'POST'}).catch(function(){});
+        }
+        _setFetchingState(false);
+        _setModalBusy(false);
         document.getElementById('bookModal').style.display = 'none';
         _modalItemId = null;
         var progressEl = document.getElementById('modalProgress');
         if (progressEl) { progressEl.style.display = 'none'; progressEl.innerHTML = ''; }
+        clearModalFeedback();
         // Hide cover search results
         var cr = document.getElementById('modalCoverResults');
         if (cr) cr.style.display = 'none';
