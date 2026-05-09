@@ -1,224 +1,327 @@
 """
-Cover search service — multiple sources, deduplicated by URL.
-Sources are tried in order; each returns a list of candidate dicts.
+Cover search service — cascading search across multiple cover sources.
+All sources are optional; unconfigured sources are silently skipped.
 """
 
 import logging
 
 import requests
 
-from app.services.app_settings import get_setting
-
 logger = logging.getLogger(__name__)
+
+_TIMEOUT = 5  # seconds per external request
 
 
 def search_covers(title="", author="", isbn=""):
-    """Search all configured cover sources.
-
-    Returns list of:
-      {"source": str, "cover_url": str, "thumbnail_url": str,
-       "note": str, "width": int|None, "height": int|None}
+    """Search all available cover sources. Returns list of dicts:
+    [{"source": str, "cover_url": str, "thumbnail_url": str, "note": str,
+      "width": int|None, "height": int|None}]
     """
+    from app.services.app_settings import get_setting
+
     candidates = []
 
-    if (get_setting("COVER_OPENLIBRARY_ENABLED", "true") or "true").lower() == "true":
+    # 1. Open Library (ISBN required, no key)
+    if _is_enabled(get_setting, "COVER_OPENLIBRARY_ENABLED"):
         candidates.extend(_search_openlibrary(isbn))
 
-    if (get_setting("COVER_GOOGLE_ZOOM_ENABLED", "true") or "true").lower() == "true":
+    # 2. Google Books zoom trick (no key required)
+    if _is_enabled(get_setting, "COVER_GOOGLE_ZOOM_ENABLED"):
         candidates.extend(_search_google_books_zoom(title, author, isbn))
 
-    cse_key = (get_setting("GOOGLE_CSE_API_KEY") or "").strip()
-    cse_id = (get_setting("GOOGLE_CSE_ID") or "").strip()
-    if cse_key and cse_id:
-        candidates.extend(_search_google_cse(title, author, isbn, cse_key, cse_id))
+    # 3. Hardcover API (optional token)
+    candidates.extend(_search_hardcover(title, author, isbn, get_setting))
 
-    bing_key = (get_setting("BING_API_KEY") or "").strip()
-    if bing_key:
-        candidates.extend(_search_bing(title, author, isbn, bing_key))
+    # 4. LibraryThing (optional dev key)
+    candidates.extend(_search_librarything(isbn, get_setting))
+
+    # 5. Wikidata / Wikimedia Commons (no key)
+    if _is_enabled(get_setting, "COVER_WIKIDATA_ENABLED"):
+        candidates.extend(_search_wikidata(title, author, isbn))
+
+    # 6. DuckDuckGo image search (no key, last fallback)
+    if _is_enabled(get_setting, "COVER_DDGS_ENABLED"):
+        candidates.extend(_search_ddgs(title, author, isbn))
 
     return _deduplicate(candidates)
 
 
-# ---------------------------------------------------------------------------
-# Source implementations
-# ---------------------------------------------------------------------------
+def _is_enabled(get_setting, key):
+    return (get_setting(key, "true") or "true").lower() == "true"
 
+
+# ---------------------------------------------------------------------------
+# 1. Open Library Covers
+# ---------------------------------------------------------------------------
 def _search_openlibrary(isbn):
-    """Direct URL-based lookup via ISBN. HEAD-checks that the image is real."""
     if not isbn:
         return []
-
-    clean_isbn = isbn.replace("-", "").strip()
-    if not clean_isbn:
+    clean = isbn.replace("-", "").strip()
+    if not clean:
         return []
-
+    candidates = []
     for size, label in [("L", "Stor"), ("M", "Medium")]:
-        url = f"https://covers.openlibrary.org/b/isbn/{clean_isbn}-{size}.jpg"
+        url = f"https://covers.openlibrary.org/b/isbn/{clean}-{size}.jpg"
         try:
-            resp = requests.head(url, timeout=5, allow_redirects=True)
-            if not resp.ok:
-                continue
-            content_length = int(resp.headers.get("Content-Length", 0))
-            if content_length < 1000:
-                continue
-            return [{
-                "source": "Open Library",
-                "cover_url": url,
-                "thumbnail_url": f"https://covers.openlibrary.org/b/isbn/{clean_isbn}-S.jpg",
-                "note": f"Open Library ({label})",
-                "width": None,
-                "height": None,
-            }]
+            resp = requests.head(url, timeout=_TIMEOUT, allow_redirects=True)
+            if resp.ok:
+                cl = int(resp.headers.get("Content-Length", 0))
+                if cl > 1000:
+                    candidates.append({
+                        "source": "Open Library",
+                        "cover_url": url,
+                        "thumbnail_url": f"https://covers.openlibrary.org/b/isbn/{clean}-S.jpg",
+                        "note": f"Open Library ({label})",
+                        "width": None, "height": None,
+                    })
+                    break  # Take largest available
         except requests.RequestException:
             continue
+    return candidates
 
-    return []
 
-
+# ---------------------------------------------------------------------------
+# 2. Google Books zoom trick
+# ---------------------------------------------------------------------------
 def _search_google_books_zoom(title, author, isbn):
-    """Google Books search with full-size URL upgrade."""
     from app.services.metadata_sources import google_books_search
-
-    parts = []
-    if isbn:
-        parts.append(isbn)
-    if title:
-        parts.append(title)
-    if author:
-        parts.append(author)
-    query_text = " ".join(parts).strip()
+    query_parts = [p for p in [isbn, title, author] if p]
+    query_text = " ".join(query_parts).strip()
     if not query_text:
         return []
-
     try:
         results = google_books_search(
             query_text=query_text,
-            title=title,
-            author=author,
-            isbn=isbn or "",
+            title=title or "", author=author or "", isbn=isbn or "",
         )
     except Exception as exc:
-        logger.warning("Google Books search error: %s", exc)
+        logger.warning("Google Books zoom search error: %s", exc)
         return []
-
     candidates = []
     for result in results:
         cover_url = result.get("cover_url", "")
         if not cover_url:
             continue
-
-        # Zoom trick: zoom=1/5 → zoom=0 for the highest resolution
         full_url = cover_url.replace("&zoom=1", "&zoom=0").replace("&zoom=5", "&zoom=0")
         full_url = full_url.replace("http://", "https://")
-        thumbnail_url = cover_url.replace("http://", "https://")
-
+        thumb = cover_url.replace("http://", "https://")
         candidates.append({
             "source": "Google Books",
             "cover_url": full_url,
-            "thumbnail_url": thumbnail_url,
+            "thumbnail_url": thumb,
             "note": f"Google Books — {result.get('title', '')}",
-            "width": None,
-            "height": None,
+            "width": None, "height": None,
         })
-
     return candidates[:5]
 
 
-def _search_google_cse(title, author, isbn, api_key, cse_id):
-    """Image search via Google Custom Search API."""
-    parts = []
-    if title:
-        parts.append(title)
-    if author:
-        parts.append(author)
-    parts.append("book cover")
-    query = " ".join(parts).strip()
+# ---------------------------------------------------------------------------
+# 3. Hardcover API (GraphQL)
+# ---------------------------------------------------------------------------
+def _search_hardcover(title, author, isbn, get_setting):
+    """Query Hardcover's public GraphQL API for cover images."""
+    token = (get_setting("HARDCOVER_API_TOKEN") or "").strip()
+
+    if isbn:
+        query_str = isbn.replace("-", "")
+    elif title:
+        query_str = f"{title} {author}".strip()
+    else:
+        return []
+
+    graphql_query = """
+    query SearchBooks($query: String!) {
+      search(query: $query, query_type: "books", per_page: 3) {
+        results {
+          ... on Book {
+            title
+            image { url }
+            contributions { author { name } }
+          }
+        }
+      }
+    }
+    """
+
+    headers = {"Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
 
     try:
-        resp = requests.get(
-            "https://www.googleapis.com/customsearch/v1",
-            params={
-                "key": api_key,
-                "cx": cse_id,
-                "q": query,
-                "searchType": "image",
-                "num": 5,
-                "imgSize": "large",
-                "safe": "active",
-            },
-            timeout=10,
+        resp = requests.post(
+            "https://api.hardcover.app/v1/graphql",
+            json={"query": graphql_query, "variables": {"query": query_str}},
+            headers=headers,
+            timeout=_TIMEOUT,
         )
         if not resp.ok:
-            logger.warning("Google CSE HTTP %s", resp.status_code)
+            logger.warning("Hardcover HTTP %s", resp.status_code)
             return []
-        items = resp.json().get("items", [])
+        data = resp.json()
     except requests.RequestException as exc:
-        logger.warning("Google CSE error: %s", exc)
+        logger.warning("Hardcover error: %s", exc)
+        return []
+    except (ValueError, KeyError):
         return []
 
     candidates = []
-    for item in items:
-        image = item.get("image", {})
-        url = item.get("link", "")
-        if not url:
-            continue
-        candidates.append({
-            "source": "Google bildsökning",
-            "cover_url": url,
-            "thumbnail_url": image.get("thumbnailLink", "") or url,
-            "note": (item.get("title") or "")[:100],
-            "width": image.get("width"),
-            "height": image.get("height"),
-        })
-    return candidates
+    try:
+        results = data.get("data", {}).get("search", {}).get("results", [])
+        for book in results:
+            if not isinstance(book, dict):
+                continue
+            image = book.get("image") or {}
+            url = image.get("url", "")
+            if not url:
+                continue
+            book_title = book.get("title", "")
+            candidates.append({
+                "source": "Hardcover",
+                "cover_url": url,
+                "thumbnail_url": url,
+                "note": f"Hardcover — {book_title}",
+                "width": None, "height": None,
+            })
+    except Exception as exc:
+        logger.warning("Hardcover parse error: %s", exc)
+
+    return candidates[:3]
 
 
-def _search_bing(title, author, isbn, api_key):
-    """Image search via Bing Image Search API v7."""
-    parts = []
-    if title:
-        parts.append(title)
-    if author:
-        parts.append(author)
-    parts.append("book cover")
-    query = " ".join(parts).strip()
+# ---------------------------------------------------------------------------
+# 4. LibraryThing Covers
+# ---------------------------------------------------------------------------
+def _search_librarything(isbn, get_setting):
+    """LibraryThing cover lookup. Requires dev key and ISBN."""
+    key = (get_setting("LIBRARYTHING_DEV_KEY") or "").strip()
+    if not key or not isbn:
+        return []
+    clean = isbn.replace("-", "").strip()
+    if not clean:
+        return []
+
+    url = f"https://covers.librarything.com/devkey/{key}/large/isbn/{clean}"
+    try:
+        resp = requests.head(url, timeout=_TIMEOUT, allow_redirects=True)
+        if resp.ok:
+            cl = int(resp.headers.get("Content-Length", 0))
+            if cl > 1000:  # Skip 1x1 placeholder GIFs
+                return [{
+                    "source": "LibraryThing",
+                    "cover_url": url,
+                    "thumbnail_url": f"https://covers.librarything.com/devkey/{key}/small/isbn/{clean}",
+                    "note": "LibraryThing",
+                    "width": None, "height": None,
+                }]
+    except requests.RequestException:
+        pass
+    return []
+
+
+# ---------------------------------------------------------------------------
+# 5. Wikidata / Wikimedia Commons
+# ---------------------------------------------------------------------------
+def _search_wikidata(title, author, isbn):
+    """Search Wikidata for books with cover images on Wikimedia Commons."""
+    if not isbn and not title:
+        return []
+
+    if isbn:
+        clean = isbn.replace("-", "").strip()
+        filter_clause = f'?item wdt:P212 "{clean}".'
+    else:
+        # Title-based search is unreliable via SPARQL; skip
+        return []
+
+    sparql = f"""
+    SELECT ?item ?itemLabel ?image WHERE {{
+      {filter_clause}
+      ?item wdt:P18 ?image.
+      SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en,sv". }}
+    }} LIMIT 1
+    """
 
     try:
         resp = requests.get(
-            "https://api.bing.microsoft.com/v7.0/images/search",
-            headers={"Ocp-Apim-Subscription-Key": api_key},
-            params={
-                "q": query,
-                "count": 5,
-                "imageType": "Photo",
-                "safeSearch": "Moderate",
-            },
-            timeout=10,
+            "https://query.wikidata.org/sparql",
+            params={"query": sparql, "format": "json"},
+            headers={"User-Agent": "Colophon/1.0 (book metadata manager)"},
+            timeout=_TIMEOUT,
         )
         if not resp.ok:
-            logger.warning("Bing Image Search HTTP %s", resp.status_code)
             return []
-        values = resp.json().get("value", [])
-    except requests.RequestException as exc:
-        logger.warning("Bing error: %s", exc)
+        data = resp.json()
+    except (requests.RequestException, ValueError):
         return []
 
     candidates = []
-    for item in values:
-        url = item.get("contentUrl", "")
-        if not url:
+    for binding in data.get("results", {}).get("bindings", []):
+        image_url = binding.get("image", {}).get("value", "")
+        label = binding.get("itemLabel", {}).get("value", "")
+        if not image_url:
+            continue
+        thumb_url = image_url
+        if "Special:FilePath" in image_url:
+            thumb_url = image_url + "?width=300"
+        candidates.append({
+            "source": "Wikimedia Commons",
+            "cover_url": image_url,
+            "thumbnail_url": thumb_url,
+            "note": f"Wikidata — {label}",
+            "width": None, "height": None,
+        })
+
+    return candidates[:2]
+
+
+# ---------------------------------------------------------------------------
+# 6. DuckDuckGo image search (no-key fallback)
+# ---------------------------------------------------------------------------
+def _search_ddgs(title, author, isbn):
+    """Last-resort image search via DuckDuckGo. No API key needed."""
+    query_parts = []
+    if title:
+        query_parts.append(title)
+    if author:
+        query_parts.append(author)
+    query_parts.append("book cover")
+    query = " ".join(query_parts).strip()
+    if not query or query == "book cover":
+        return []
+
+    try:
+        from ddgs import DDGS
+        with DDGS() as ddgs:
+            results = list(ddgs.images(query, max_results=5))
+    except ImportError:
+        logger.info("ddgs package not installed — skipping DuckDuckGo fallback")
+        return []
+    except Exception as exc:
+        logger.warning("DuckDuckGo image search error: %s", exc)
+        return []
+
+    candidates = []
+    for r in results:
+        image_url = r.get("image", "")
+        thumb_url = r.get("thumbnail", "") or image_url
+        img_title = r.get("title", "")
+        if not image_url:
             continue
         candidates.append({
-            "source": "Bing bildsökning",
-            "cover_url": url,
-            "thumbnail_url": item.get("thumbnailUrl", "") or url,
-            "note": (item.get("name") or "")[:100],
-            "width": item.get("width"),
-            "height": item.get("height"),
+            "source": "DuckDuckGo",
+            "cover_url": image_url,
+            "thumbnail_url": thumb_url,
+            "note": f"DuckDuckGo — {img_title[:80]}",
+            "width": r.get("width"),
+            "height": r.get("height"),
         })
+
     return candidates
 
 
+# ---------------------------------------------------------------------------
+# Deduplication
+# ---------------------------------------------------------------------------
 def _deduplicate(candidates):
     seen = set()
     unique = []
