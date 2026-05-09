@@ -1737,10 +1737,10 @@ def ai_metadata_json(item_id):
     if not result["ok"]:
         return jsonify({"ok": False, "error": result["error"]}), 500
 
-    flat = {
-        k: v["value"]
+    filtered = {
+        k: {"value": v["value"], "confidence": v.get("confidence", "medium"), "reason": v.get("reason", "")}
         for k, v in result["suggestions"].items()
         if k not in _AI_DISPLAY_ONLY and v.get("confidence") != "low" and v.get("value")
     }
 
-    return jsonify({"ok": True, "suggestions": flat})
+    return jsonify({"ok": True, "suggestions": filtered})
