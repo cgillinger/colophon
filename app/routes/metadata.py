@@ -422,13 +422,18 @@ def search_covers_json(item_id):
     item = get_item_or_404(item_id)
 
     from app.services.cover_search import search_covers
-    candidates = search_covers(
+    result = search_covers(
         title=item.title or "",
         author=item.author or "",
         isbn=item.isbn or "",
     )
 
-    return jsonify({"ok": True, "candidates": candidates, "count": len(candidates)})
+    return jsonify({
+        "ok": True,
+        "candidates": result["candidates"],
+        "sources": result["sources"],
+        "count": len(result["candidates"]),
+    })
 
 
 @metadata_bp.route("/metadata/bulk", methods=["GET", "POST"])

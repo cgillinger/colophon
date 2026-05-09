@@ -565,7 +565,7 @@
                 {% if hardcover_token_set %}
                     <span class="badge ok">&#10003; Ansluten</span>
                 {% else %}
-                    <span class="badge info">Ingen nyckel krävs</span>
+                    <span class="badge info">Valfri token</span>
                 {% endif %}
             </div>
             <p class="panel-desc">
@@ -603,58 +603,9 @@
                         <li>Kopiera din API-token</li>
                     </ol>
                     <p>Gratis beta — valfritt, fungerar utan token.</p>
-                </div>
-            </details>
-        </div>
-
-        <!-- ============ LibraryThing Covers ============ -->
-        <div class="panel">
-            <div class="panel-title">
-                <span class="panel-title-left">
-                    <i class="ti ti-books" style="color:var(--accent-yellow); font-size:20px;"></i>
-                    LibraryThing Covers
-                </span>
-                {% if librarything_key_set %}
-                    <span class="badge ok">&#10003; Ansluten</span>
-                {% else %}
-                    <span class="badge warn">Valfri nyckel</span>
-                {% endif %}
-            </div>
-            <p class="panel-desc">
-                Stort community-bibliotek med bra omslagstäckning. Kräver en gratis developer key
-                och ISBN. Returnerar omslag direkt som bild-URL.
-            </p>
-
-            <div class="field">
-                <label for="LIBRARYTHING_DEV_KEY">Developer key</label>
-                <div class="key-row">
-                    <input type="password" id="LIBRARYTHING_DEV_KEY" name="LIBRARYTHING_DEV_KEY"
-                           value=""
-                           placeholder="{% if librarything_key_set %}{{ librarything_key_masked }}{% else %}developer key{% endif %}"
-                           autocomplete="new-password">
-                    <button type="button" class="icon-btn" onclick="toggleVisibility('LIBRARYTHING_DEV_KEY', this)" title="Visa/dölj">
-                        <i class="ti ti-eye"></i>
-                    </button>
-                    {% if librarything_key_set %}
-                        <button type="submit" class="icon-btn" name="clear_LIBRARYTHING_DEV_KEY" value="1"
-                                title="Ta bort nyckel"
-                                onclick="return confirm('Ta bort sparad LibraryThing-nyckel?');">
-                            <i class="ti ti-x"></i>
-                        </button>
-                    {% endif %}
-                </div>
-                <div class="env-hint">Env: COLOPHON_LIBRARYTHING_DEV_KEY</div>
-            </div>
-
-            <details class="howto">
-                <summary>Hur skaffar jag en developer key?</summary>
-                <div class="howto-body">
-                    <ol>
-                        <li>Gå till <a href="https://www.librarything.com/services/keys.php" target="_blank" rel="noopener">librarything.com/services/keys.php</a></li>
-                        <li>Logga in eller skapa konto (gratis)</li>
-                        <li>Ansök om developer key</li>
-                    </ol>
-                    <p>Gratis för personligt bruk.</p>
+                    <p><span class="badge warn" style="margin-top:4px;">
+                        Beta-API — kan ändras utan förvarning. Token gäller 1 år.
+                    </span></p>
                 </div>
             </details>
         </div>
@@ -757,7 +708,6 @@
     var SERVICE_LABELS = {
         ai: 'AI-metadata',
         hardcover: 'Hardcover',
-        librarything: 'LibraryThing Covers',
         openlibrary: 'Open Library Covers'
     };
 
@@ -789,7 +739,7 @@
                 return;
             }
             var html = '';
-            ['ai','hardcover','librarything','openlibrary'].forEach(function(k){
+            ['ai','hardcover','openlibrary'].forEach(function(k){
                 if (!data[k]) return;
                 var label = SERVICE_LABELS[k] || k;
                 var ok = data[k].ok;

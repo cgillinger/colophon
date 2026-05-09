@@ -13,37 +13,48 @@ _TIMEOUT = 5  # seconds per external request
 
 
 def search_covers(title="", author="", isbn=""):
-    """Search all available cover sources. Returns list of dicts:
-    [{"source": str, "cover_url": str, "thumbnail_url": str, "note": str,
-      "width": int|None, "height": int|None}]
+    """Search all available cover sources.
+
+    Returns:
+        {
+          "candidates": [{"source": str, "cover_url": str, "thumbnail_url": str,
+                          "note": str, "width": int|None, "height": int|None}, ...],
+          "sources": [str, ...]  # human-readable list of sources actually queried
+        }
     """
     from app.services.app_settings import get_setting
 
     candidates = []
+    sources_checked = []
 
     # 1. Open Library (ISBN required, no key)
     if _is_enabled(get_setting, "COVER_OPENLIBRARY_ENABLED"):
+        sources_checked.append("Open Library")
         candidates.extend(_search_openlibrary(isbn))
 
     # 2. Google Books zoom trick (no key required)
     if _is_enabled(get_setting, "COVER_GOOGLE_ZOOM_ENABLED"):
+        sources_checked.append("Google Books")
         candidates.extend(_search_google_books_zoom(title, author, isbn))
 
-    # 3. Hardcover API (optional token)
+    # 3. Hardcover API (always available; token optional)
+    sources_checked.append("Hardcover")
     candidates.extend(_search_hardcover(title, author, isbn, get_setting))
 
-    # 4. LibraryThing (optional dev key)
-    candidates.extend(_search_librarything(isbn, get_setting))
-
-    # 5. Wikidata / Wikimedia Commons (no key)
+    # 4. Wikidata / Wikimedia Commons (no key)
     if _is_enabled(get_setting, "COVER_WIKIDATA_ENABLED"):
+        sources_checked.append("Wikidata")
         candidates.extend(_search_wikidata(title, author, isbn))
 
-    # 6. DuckDuckGo image search (no key, last fallback)
+    # 5. DuckDuckGo image search (no key, last fallback)
     if _is_enabled(get_setting, "COVER_DDGS_ENABLED"):
+        sources_checked.append("DuckDuckGo")
         candidates.extend(_search_ddgs(title, author, isbn))
 
-    return _deduplicate(candidates)
+    return {
+        "candidates": _deduplicate(candidates),
+        "sources": sources_checked,
+    }
 
 
 def _is_enabled(get_setting, key):
@@ -119,7 +130,7 @@ def _search_google_books_zoom(title, author, isbn):
 # 3. Hardcover API (GraphQL)
 # ---------------------------------------------------------------------------
 def _search_hardcover(title, author, isbn, get_setting):
-    """Query Hardcover's public GraphQL API for cover images."""
+    """Query Hardcover's GraphQL API. results is jsonb (Typesense format)."""
     token = (get_setting("HARDCOVER_API_TOKEN") or "").strip()
 
     if isbn:
@@ -132,13 +143,7 @@ def _search_hardcover(title, author, isbn, get_setting):
     graphql_query = """
     query SearchBooks($query: String!) {
       search(query: $query, query_type: "books", per_page: 3) {
-        results {
-          ... on Book {
-            title
-            image { url }
-            contributions { author { name } }
-          }
-        }
+        results
       }
     }
     """
@@ -166,21 +171,22 @@ def _search_hardcover(title, author, isbn, get_setting):
 
     candidates = []
     try:
-        results = data.get("data", {}).get("search", {}).get("results", [])
-        for book in results:
-            if not isinstance(book, dict):
-                continue
-            image = book.get("image") or {}
+        results_data = data.get("data", {}).get("search", {}).get("results", {})
+        hits = results_data.get("hits", []) if isinstance(results_data, dict) else []
+        for hit in hits:
+            doc = hit.get("document", {}) if isinstance(hit, dict) else {}
+            image = doc.get("image") or {}
             url = image.get("url", "")
             if not url:
                 continue
-            book_title = book.get("title", "")
+            book_title = doc.get("title", "")
             candidates.append({
                 "source": "Hardcover",
                 "cover_url": url,
                 "thumbnail_url": url,
                 "note": f"Hardcover — {book_title}",
-                "width": None, "height": None,
+                "width": image.get("width"),
+                "height": image.get("height"),
             })
     except Exception as exc:
         logger.warning("Hardcover parse error: %s", exc)
@@ -189,37 +195,7 @@ def _search_hardcover(title, author, isbn, get_setting):
 
 
 # ---------------------------------------------------------------------------
-# 4. LibraryThing Covers
-# ---------------------------------------------------------------------------
-def _search_librarything(isbn, get_setting):
-    """LibraryThing cover lookup. Requires dev key and ISBN."""
-    key = (get_setting("LIBRARYTHING_DEV_KEY") or "").strip()
-    if not key or not isbn:
-        return []
-    clean = isbn.replace("-", "").strip()
-    if not clean:
-        return []
-
-    url = f"https://covers.librarything.com/devkey/{key}/large/isbn/{clean}"
-    try:
-        resp = requests.head(url, timeout=_TIMEOUT, allow_redirects=True)
-        if resp.ok:
-            cl = int(resp.headers.get("Content-Length", 0))
-            if cl > 1000:  # Skip 1x1 placeholder GIFs
-                return [{
-                    "source": "LibraryThing",
-                    "cover_url": url,
-                    "thumbnail_url": f"https://covers.librarything.com/devkey/{key}/small/isbn/{clean}",
-                    "note": "LibraryThing",
-                    "width": None, "height": None,
-                }]
-    except requests.RequestException:
-        pass
-    return []
-
-
-# ---------------------------------------------------------------------------
-# 5. Wikidata / Wikimedia Commons
+# 4. Wikidata / Wikimedia Commons
 # ---------------------------------------------------------------------------
 def _search_wikidata(title, author, isbn):
     """Search Wikidata for books with cover images on Wikimedia Commons."""
@@ -275,7 +251,7 @@ def _search_wikidata(title, author, isbn):
 
 
 # ---------------------------------------------------------------------------
-# 6. DuckDuckGo image search (no-key fallback)
+# 5. DuckDuckGo image search (no-key fallback)
 # ---------------------------------------------------------------------------
 def _search_ddgs(title, author, isbn):
     """Last-resort image search via DuckDuckGo. No API key needed."""
