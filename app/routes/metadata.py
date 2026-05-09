@@ -730,9 +730,12 @@ def sync_push():
     app = current_app._get_current_object()
 
     def generate():
-        with app.app_context():
-            for ev in push_to_upstream():
-                yield f"data: {json.dumps(ev)}\n\n"
+        try:
+            with app.app_context():
+                for ev in push_to_upstream():
+                    yield f"data: {json.dumps(ev)}\n\n"
+        except (GeneratorExit, BrokenPipeError):
+            pass
 
     return Response(
         generate(),
@@ -1098,11 +1101,14 @@ def bulk_stream():
     threading.Thread(target=_run, daemon=True).start()
 
     def generate():
-        while True:
-            ev = ev_queue.get()
-            if ev is None:
-                break
-            yield f"data: {json.dumps(ev)}\n\n"
+        try:
+            while True:
+                ev = ev_queue.get()
+                if ev is None:
+                    break
+                yield f"data: {json.dumps(ev)}\n\n"
+        except (GeneratorExit, BrokenPipeError):
+            _abort_event.set()
 
     return Response(
         generate(),
@@ -1201,11 +1207,14 @@ def enrich_stream(item_id):
     threading.Thread(target=_run, daemon=True).start()
 
     def generate():
-        while True:
-            ev = ev_queue.get()
-            if ev is None:
-                break
-            yield f"data: {json.dumps(ev)}\n\n"
+        try:
+            while True:
+                ev = ev_queue.get()
+                if ev is None:
+                    break
+                yield f"data: {json.dumps(ev)}\n\n"
+        except (GeneratorExit, BrokenPipeError):
+            _abort_event.set()
 
     return Response(
         generate(),
