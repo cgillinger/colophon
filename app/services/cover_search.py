@@ -1,3 +1,4 @@
+# Colophon – e-book metadata manager
 """
 Cover search service — cascading search across multiple cover sources.
 All sources are optional; unconfigured sources are silently skipped.

@@ -1,3 +1,4 @@
+# Colophon – e-book metadata manager
 """Shared metadata pipeline for single-book and batch enrichment flows.
 
 Orchestration lives here; routes stay thin (receive → call → render/redirect).

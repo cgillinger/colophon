@@ -1,3 +1,4 @@
+# Colophon – e-book metadata manager
 """Tests for app.services.metadata_calibre — all unit tests, no Calibre required."""
 from unittest.mock import MagicMock, patch
 

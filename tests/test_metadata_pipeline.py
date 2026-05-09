@@ -1,3 +1,4 @@
+# Colophon – e-book metadata manager
 """Unit tests for app.services.metadata_pipeline — no network, no DB required."""
 from unittest.mock import MagicMock, patch
 

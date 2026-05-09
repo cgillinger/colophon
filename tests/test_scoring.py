@@ -1,3 +1,4 @@
+# Colophon – e-book metadata manager
 """Tests for Phase 6 scoring explanation and batch classification.
 
 No network, no DB required.

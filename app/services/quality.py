@@ -1,3 +1,4 @@
+# Colophon – e-book metadata manager
 """Field-level quality heuristics for metadata comparison.
 
 Each heuristic returns (is_better, reason). The reason is a translated

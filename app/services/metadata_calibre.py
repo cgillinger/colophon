@@ -1,3 +1,4 @@
+# Colophon – e-book metadata manager
 import logging
 import re
 import shutil

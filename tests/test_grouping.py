@@ -1,3 +1,4 @@
+# Colophon – e-book metadata manager
 """Tests for compute_group_key.
 
 No DB or network required.

@@ -1,3 +1,4 @@
+# Colophon – e-book metadata manager
 import json
 import logging
 from datetime import datetime

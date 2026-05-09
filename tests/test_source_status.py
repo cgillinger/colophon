@@ -1,3 +1,4 @@
+# Colophon – e-book metadata manager
 """Tests for structured source result functions (Phase 5).
 
 No network, no Calibre install required.

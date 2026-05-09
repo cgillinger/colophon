@@ -1,3 +1,4 @@
+# Colophon – e-book metadata manager
 """Tests for clean_title.
 
 No DB or network required.
