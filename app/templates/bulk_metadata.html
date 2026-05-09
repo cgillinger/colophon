@@ -1509,6 +1509,35 @@
         .modal-feedback-success { border-left: 4px solid var(--accent-green); }
         .modal-feedback-error   { border-left: 4px solid var(--accent-red); }
 
+        @keyframes save-pulse {
+            0%   { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+            50%  { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+        @keyframes save-pulse-error {
+            0%   { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.5); }
+            50%  { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+        .btn-save-success {
+            background: var(--accent-green) !important;
+            color: #fff !important;
+            border-color: var(--accent-green) !important;
+            animation: save-pulse 0.6s ease-out 2;
+            transition: background 0.3s, color 0.3s;
+        }
+        .btn-save-error {
+            background: var(--accent-red) !important;
+            color: #fff !important;
+            border-color: var(--accent-red) !important;
+            animation: save-pulse-error 0.6s ease-out 1;
+            transition: background 0.3s, color 0.3s;
+        }
+        .btn-save-saving {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
         .modal-grid {
             display: grid;
             grid-template-columns: 200px 1fr;
@@ -5566,7 +5595,10 @@
             titleRequired: 'Titel får inte vara tom.',
             saving: 'Sparar…',
             saveFailed: 'Sparning misslyckades.',
-            selectField: 'Välj minst ett fält.'
+            selectField: 'Välj minst ett fält.',
+            saveBtnSaving: 'Sparar...',
+            saveBtnSuccess: '✓ Sparat!',
+            saveBtnError: '✗ Misslyckades'
         },
         en: {
             fetchBtn: '<i class="ti ti-search"></i> Fetch metadata',
@@ -5579,7 +5611,10 @@
             titleRequired: 'Title is required.',
             saving: 'Saving…',
             saveFailed: 'Save failed.',
-            selectField: 'Select at least one field.'
+            selectField: 'Select at least one field.',
+            saveBtnSaving: 'Saving...',
+            saveBtnSuccess: '✓ Saved!',
+            saveBtnError: '✗ Failed'
         }
     };
     function _mt(key) {
@@ -5987,6 +6022,23 @@
         setModalFeedback('success', _i18n.aiFieldsApplied.replace('{count}', applied));
     }
 
+    function _saveButtonFeedback(success) {
+        var btn = document.getElementById('modalSaveBtn');
+        if (!btn) return;
+        btn.disabled = false;
+        btn.classList.remove('btn-save-saving');
+        var cls = success ? 'btn-save-success' : 'btn-save-error';
+        var text = success ? _mt('saveBtnSuccess') : _mt('saveBtnError');
+        var duration = success ? 2000 : 3000;
+        var original = btn._savedOriginalHTML || btn.innerHTML;
+        btn.innerHTML = text;
+        btn.classList.add(cls);
+        setTimeout(function() {
+            btn.classList.remove(cls);
+            btn.innerHTML = original;
+        }, duration);
+    }
+
     function saveMetadata() {
         var id = _modalItemId;
         var title = document.getElementById('modalTitle').value.trim();
@@ -6003,6 +6055,13 @@
             published_date: _cleanDate(document.getElementById('modalPublishedDate').value.trim()),
             description:    document.getElementById('modalDescription').value.trim()
         };
+
+        var btn = document.getElementById('modalSaveBtn');
+        if (btn) {
+            btn._savedOriginalHTML = btn.innerHTML;
+            btn.innerHTML = _mt('saveBtnSaving');
+            btn.classList.add('btn-save-saving');
+        }
         setModalFeedback('info', _mt('saving'));
         _setModalBusy(true);
 
@@ -6014,15 +6073,21 @@
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 _setModalBusy(false);
-                if (!data.ok) { setModalFeedback('error', _i18n.errorWithMsg.replace('{msg}', data.error || _i18n.unknownError)); return; }
+                if (!data.ok) {
+                    setModalFeedback('error', _i18n.errorWithMsg.replace('{msg}', data.error || _i18n.unknownError));
+                    _saveButtonFeedback(false);
+                    return;
+                }
                 _updateTableRow(id, payload);
                 _updateUnsyncedPill(1);
                 setModalFeedback('success', _mt('saved'));
                 setTimeout(clearModalFeedback, 3000);
+                _saveButtonFeedback(true);
             })
             .catch(function() {
                 _setModalBusy(false);
                 setModalFeedback('error', _mt('saveFailed'));
+                _saveButtonFeedback(false);
             });
     }
 
@@ -6036,11 +6101,38 @@
         if (titleEl && data.title) {
             titleEl.textContent = data.title;
             row.dataset.title = data.title.toLowerCase();
+
+            // Update the series/publisher meta line that sits beneath the title.
+            var titleTd = titleEl.parentElement;
+            if (titleTd) {
+                var metaEl = titleTd.querySelector('.meta');
+                var seriesText = '';
+                if (data.series) {
+                    seriesText = data.series;
+                    if (data.series_index) seriesText += ' · ' + data.series_index;
+                    if (data.publisher) seriesText += ' · ' + data.publisher;
+                } else if (data.publisher) {
+                    seriesText = data.publisher;
+                }
+                if (metaEl) {
+                    if (seriesText) {
+                        metaEl.textContent = seriesText;
+                    } else {
+                        metaEl.remove();
+                    }
+                } else if (seriesText) {
+                    var newMeta = document.createElement('div');
+                    newMeta.className = 'meta';
+                    newMeta.textContent = seriesText;
+                    titleTd.appendChild(newMeta);
+                }
+            }
         }
         var authorEl = row.querySelector('.author-cell');
         if (authorEl) {
             authorEl.textContent = data.author || _i18n.unknownAuthor;
             row.dataset.author = (data.author || '').toLowerCase();
+            row.dataset.hasAuthor = data.author ? '1' : '0';
         }
         var genresEl = row.querySelector('.genres-cell');
         if (genresEl) {
@@ -6064,21 +6156,22 @@
             row.dataset.published = pd;
             row.dataset.hasPublished = pd ? '1' : '0';
         }
-        // Status column is td:nth-child(7) now (Cover, Title, Author, Genre, Published, Status)
+        // Status column — td:nth-child(7): Checkbox, Cover, Title, Author, Genre, Published, Status
         var statusCell = row.querySelector('td:nth-child(7)');
         if (statusCell) {
-            var alreadySaved = false;
-            statusCell.querySelectorAll('.badge').forEach(function(b) {
-                if (b.textContent.trim() === 'Sparad') alreadySaved = true;
-            });
+            var alreadySaved = !!statusCell.querySelector('.badge[data-saved-badge]');
             if (!alreadySaved) {
                 var badge = document.createElement('span');
                 badge.className = 'badge good';
-                badge.textContent = 'Sparad';
+                badge.dataset.savedBadge = '1';
+                badge.textContent = {{ _('Saved')|tojson }};
                 statusCell.appendChild(document.createTextNode(' '));
                 statusCell.appendChild(badge);
             }
         }
+        row.dataset.manual = '1';
+        row.dataset.hasSeries = data.series ? '1' : '0';
+        row.dataset.hasPublisher = data.publisher ? '1' : '0';
         row.dataset.unsynced = '1';
     }
 
