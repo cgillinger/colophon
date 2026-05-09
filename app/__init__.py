@@ -80,6 +80,11 @@ def create_app():
     def inject_locale():
         return {"get_locale": get_locale}
 
+    @app.context_processor
+    def inject_version():
+        from app.version import __version__
+        return {"app_version": __version__}
+
     @app.route("/set-language/<lang>")
     def set_language(lang):
         if lang not in SUPPORTED_LANGUAGES:
