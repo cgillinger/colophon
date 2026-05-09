@@ -401,8 +401,8 @@
                 <i class="ti ti-chart-bar"></i> {{ _('Stats') }}
             </a>
             <div class="lang-toggle">
-                <a href="{{ url_for('set_language', lang='en') }}" class="{{ 'active' if get_locale() == 'en' else '' }}" title="English">EN</a>
-                <a href="{{ url_for('set_language', lang='sv') }}" class="{{ 'active' if get_locale() == 'sv' else '' }}" title="Svenska">SV</a>
+                <a href="#" onclick="setLanguage('en'); return false;" class="{{ 'active' if get_locale() == 'en' else '' }}" title="English">EN</a>
+                <a href="#" onclick="setLanguage('sv'); return false;" class="{{ 'active' if get_locale() == 'sv' else '' }}" title="Svenska">SV</a>
             </div>
             <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="{{ _('Toggle theme') }}">
                 <i id="themeIcon" class="ti ti-sun"></i>
@@ -764,6 +764,10 @@
         .catch(function(err){
             body.innerHTML = '<div class="test-row"><span class="label">' + _i18n.testFailed + '</span><span class="status fail">' + (err.message || _i18n.error) + '</span></div>';
         });
+    }
+    function setLanguage(lang) {
+        document.cookie = 'colophon_lang=' + lang + ';path=/;max-age=31536000;SameSite=Lax';
+        location.reload();
     }
 </script>
 <div style="text-align:center; padding:16px 0 8px; color:var(--text-tertiary);">

@@ -250,8 +250,8 @@
         </form>
         <div class="topbar-actions">
             <div class="lang-toggle">
-                <a href="{{ url_for('set_language', lang='en') }}" class="{{ 'active' if get_locale() == 'en' else '' }}" title="English">EN</a>
-                <a href="{{ url_for('set_language', lang='sv') }}" class="{{ 'active' if get_locale() == 'sv' else '' }}" title="Svenska">SV</a>
+                <a href="#" onclick="setLanguage('en'); return false;" class="{{ 'active' if get_locale() == 'en' else '' }}" title="English">EN</a>
+                <a href="#" onclick="setLanguage('sv'); return false;" class="{{ 'active' if get_locale() == 'sv' else '' }}" title="Svenska">SV</a>
             </div>
             <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="{{ _('Toggle theme') }}">
                 <i id="themeIcon" class="ti ti-sun"></i>
@@ -322,6 +322,10 @@
         var icon = document.getElementById('themeIcon');
         if (icon) icon.className = t === 'dark' ? 'ti ti-moon' : 'ti ti-sun';
     })();
+    function setLanguage(lang) {
+        document.cookie = 'colophon_lang=' + lang + ';path=/;max-age=31536000;SameSite=Lax';
+        location.reload();
+    }
 </script>
 </body>
 </html>
