@@ -17,6 +17,15 @@ _TITLE_NOISE_PATTERNS = [
 ]
 _COMPILED_PATTERNS = [re.compile(p) for p in _TITLE_NOISE_PATTERNS]
 
+# "Lastname, Firstname - " or "Lastname, Firstname Middlename - " or
+# "Lastname, F. - ". Strips an author prefix some publishers/scanners
+# prepend to the title field.
+_AUTHOR_PREFIX_PATTERN = re.compile(
+    r"^[A-ZÅÄÖ][a-zåäöéèêë]+,\s+"
+    r"[A-ZÅÄÖ][a-zåäöéèêë.]+(?:\s+[A-ZÅÄÖ][a-zåäöéèêë.]*\.?)*"
+    r"\s*[-–—]\s*"
+)
+
 
 def clean_title(title):
     """Strip series info and marketing text from a title.
@@ -51,6 +60,10 @@ def clean_title(title):
         if groups.get("index") and not extracted_series_index:
             extracted_series_index = groups["index"].strip()
         title = pattern.sub("", title)
+
+    author_match = _AUTHOR_PREFIX_PATTERN.match(title)
+    if author_match:
+        title = title[author_match.end():]
 
     title = title.strip()
 

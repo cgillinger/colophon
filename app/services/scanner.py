@@ -2,6 +2,7 @@
 import hashlib
 import logging
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -27,9 +28,33 @@ EBOOK_EXTENSIONS = {".epub", ".mobi", ".azw3", ".kepub", ".pdf", ".cbz", ".cbr"}
 # Internal text helpers
 # ---------------------------------------------------------------------------
 
-def _clean_title_from_filename(stem: str) -> str:
+# "SeriesName## - Author - Title" / "SeriesName ## - Author - Title".
+# Series must end with a non-digit so we don't grab partial years (e.g. "1968").
+_FILENAME_SERIES_PATTERN = re.compile(
+    r"^(?P<series>.+?\D)\s*(?P<index>\d{1,3})\s*-\s*[^-]+?\s*-\s*(?P<title>.+)$"
+)
+
+
+def _clean_title_from_filename(stem: str) -> dict:
+    """Derive title (and possibly series + index) from a filename stem.
+
+    Returns:
+        {"title": str, "series": str | None, "series_index": str | None}
+    """
+    if not stem:
+        return {"title": "", "series": None, "series_index": None}
+
+    match = _FILENAME_SERIES_PATTERN.match(stem)
+    if match:
+        return {
+            "title": match.group("title").strip(),
+            "series": match.group("series").strip(),
+            "series_index": match.group("index"),
+        }
+
     title = stem.replace("_", " ").replace(".", " ").replace("-", " ")
-    return " ".join(title.split()).strip()
+    title = " ".join(title.split()).strip()
+    return {"title": title, "series": None, "series_index": None}
 
 
 def _clean_metadata_text(value):
@@ -159,14 +184,25 @@ def extract_local_metadata(file_path, cover_dir=None) -> dict:
 
     base.update({k: v for k, v in meta.items() if v not in (None, "")})
 
+    # Always check the filename — the file's own title may be missing or
+    # malformed (e.g. "Author, First - Title"), and the filename often carries
+    # series info that the epub metadata lacks.
+    fn_meta = _clean_title_from_filename(file_path.stem)
+
     if not base["title"]:
-        base["title"] = _clean_title_from_filename(file_path.stem)
+        base["title"] = fn_meta["title"]
         if base["source"] != "filename":
             warnings.append(_("Title is missing in the file's metadata — using filename."))
         base["source"] = "filename"
 
-    # Strip series/marketing noise from the title and promote any captured
-    # series info into the dedicated fields when they're empty.
+    if fn_meta.get("series") and not base.get("series"):
+        base["series"] = fn_meta["series"]
+    if fn_meta.get("series_index") and not base.get("series_index"):
+        base["series_index"] = fn_meta["series_index"]
+
+    # Strip series/marketing noise and any "Lastname, First - " author prefix
+    # from the title, and promote any captured series info into the dedicated
+    # fields when they're empty.
     if base["title"]:
         info = clean_title(base["title"])
         base["title"] = info["cleaned_title"]
@@ -226,7 +262,6 @@ def _extract_epub_metadata(file_path, cover_dir, warnings: list) -> dict:
     # Normalize ISBN — strip non-digits (ebooklib often returns "urn:isbn:…")
     isbn = ""
     if isbn_raw:
-        import re
         digits = re.sub(r"[^0-9Xx]", "", isbn_raw)
         if len(digits) in (10, 13):
             isbn = digits
@@ -338,7 +373,7 @@ def upsert_library_item(file_path, metadata: dict, existing=None, db_session=Non
 
         return existing
 
-    item_title = metadata.get("title") or _clean_title_from_filename(file_path.stem)
+    item_title = metadata.get("title") or _clean_title_from_filename(file_path.stem)["title"]
     item_author = metadata.get("author") or None
 
     item = LibraryItem(
@@ -434,7 +469,7 @@ def scan_directory(root_path, db_session=None, on_progress=None, cover_dir=None)
         except Exception:
             logger.warning("Could not read metadata from %s, using filename", file_path)
             meta = {
-                "title": _clean_title_from_filename(file_path.stem),
+                "title": _clean_title_from_filename(file_path.stem)["title"],
                 "source": "filename", "quality": "minimal", "warnings": [],
             }
 
