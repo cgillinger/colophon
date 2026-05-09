@@ -50,7 +50,8 @@ def normalize_compare(value):
 
 
 def get_google_books_key():
-    return os.environ.get("COLOPHON_GOOGLE_BOOKS_KEY", "").strip()
+    from app.services.app_settings import get_setting
+    return (get_setting("GOOGLE_BOOKS_KEY") or "").strip()
 
 
 def safe_get_json(url, params=None):

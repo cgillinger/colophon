@@ -32,6 +32,7 @@ _API_TEXT_KEYS = [
 # "clear_<KEY>" form field deletes the row explicitly.
 _API_KEY_KEYS = [
     "AI_API_KEY",
+    "GOOGLE_BOOKS_KEY",
     "HARDCOVER_API_TOKEN",
 ]
 
@@ -187,6 +188,7 @@ def _mask_secret(value: str) -> str:
 def _settings_view_context():
     """Collect the current values used to render settings_api.html."""
     ai_key = (get_setting("AI_API_KEY") or "").strip()
+    google_books_key = (get_setting("GOOGLE_BOOKS_KEY") or "").strip()
     hardcover_token = (get_setting("HARDCOVER_API_TOKEN") or "").strip()
 
     return {
@@ -196,6 +198,8 @@ def _settings_view_context():
         "ai_key_set": bool(ai_key),
         "ai_model": (get_setting("AI_MODEL") or _DEFAULT_MODEL).strip(),
         "ai_model_default": _DEFAULT_MODEL,
+        "google_books_key_masked": _mask_secret(google_books_key),
+        "google_books_key_set": bool(google_books_key),
         "hardcover_token_masked": _mask_secret(hardcover_token),
         "hardcover_token_set": bool(hardcover_token),
         "openlibrary_enabled": (get_setting("COVER_OPENLIBRARY_ENABLED", "true") or "true").lower() == "true",
@@ -255,6 +259,27 @@ def test_api_connections():
     except requests.RequestException as exc:
         logger.warning("Hardcover test error: %s", exc)
         results["hardcover"] = {"ok": False, "error": "request_failed"}
+
+    google_key = (get_setting("GOOGLE_BOOKS_KEY") or "").strip()
+    if google_key:
+        try:
+            resp = requests.get(
+                "https://www.googleapis.com/books/v1/volumes",
+                params={"q": "test", "maxResults": 1, "key": google_key},
+                timeout=10,
+            )
+            if resp.status_code == 200:
+                results["google_books"] = {"ok": True}
+            elif resp.status_code in (401, 403):
+                results["google_books"] = {"ok": False, "error": "auth"}
+            elif resp.status_code == 429:
+                results["google_books"] = {"ok": False, "error": "rate_limit"}
+            else:
+                results["google_books"] = {"ok": False, "error": f"http_{resp.status_code}"}
+        except requests.Timeout:
+            results["google_books"] = {"ok": False, "error": "timeout"}
+        except requests.RequestException:
+            results["google_books"] = {"ok": False, "error": "network"}
 
     if (get_setting("COVER_OPENLIBRARY_ENABLED", "true") or "true").lower() == "true":
         try:
