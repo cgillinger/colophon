@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="sv" data-theme="light">
+<html lang="{{ get_locale() }}" data-theme="light">
 <head>
     <meta charset="utf-8">
     <script>
@@ -13,7 +13,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabler-icons/tabler-icons.min.css') }}">
-    <title>Hämtad metadata - {{ item.title }} - Colophon</title>
+    <title>{{ _('Fetched metadata') }} - {{ item.title }} - Colophon</title>
     <style>
         :root, [data-theme="light"] {
             --bg-primary: #ffffff;
@@ -257,7 +257,7 @@
         </a>
         <form class="topbar-search" action="{{ url_for('metadata.bulk_metadata') }}" method="get">
             <i class="ti ti-search search-icon"></i>
-            <input type="text" name="q" placeholder="Sök titel, författare, ISBN, genre...">
+            <input type="text" name="q" placeholder="{{ _('Search title, author, ISBN, genre...') }}">
         </form>
         <div class="topbar-actions">
             <div class="lang-toggle">
@@ -275,7 +275,7 @@
 </header>
 
 <div class="container">
-    <h1>Hämtad metadata för &ldquo;{{ item.title }}&rdquo;</h1>
+    <h1>{{ _('Fetched metadata for') }} &ldquo;{{ item.title }}&rdquo;</h1>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -293,15 +293,15 @@
 
     <form method="post" action="{{ url_for('metadata.enrichment_apply', item_id=item.id) }}">
         <div class="panel">
-            <div class="legend">☑ = uppdatera vid sparning. Förbockat när nuvarande fält är tomt och ett värde hittades.</div>
+            <div class="legend">{{ _('☑ = update on save. Pre-checked when the current field is empty and a value was found.') }}</div>
 
             <table class="diff">
                 <thead>
                     <tr>
                         <th>✓</th>
-                        <th>Fält</th>
-                        <th>Nuvarande</th>
-                        <th>Hämtat</th>
+                        <th>{{ _('Field') }}</th>
+                        <th>{{ _('Current') }}</th>
+                        <th>{{ _('Fetched') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -313,8 +313,8 @@
                                        {% if row.disabled %}disabled{% endif %}>
                             </td>
                             <td class="label">{{ row.label }}</td>
-                            <td class="value{% if not row.current %} empty{% endif %}">{{ row.current or '(saknas)' }}</td>
-                            <td class="value {{ row.status if row.status in ('new', 'changed') else '' }}{% if not row.fetched %} empty{% endif %}">{{ row.fetched or '(inget hittat)' }}</td>
+                            <td class="value{% if not row.current %} empty{% endif %}">{{ row.current or _('(missing)') }}</td>
+                            <td class="value {{ row.status if row.status in ('new', 'changed') else '' }}{% if not row.fetched %} empty{% endif %}">{{ row.fetched or _('(nothing found)') }}</td>
                         </tr>
                     {% endfor %}
 
@@ -324,31 +324,31 @@
                                    {% if cover_default_check %}checked{% endif %}
                                    {% if not has_fetched_cover or cover_status == 'same' %}disabled{% endif %}>
                         </td>
-                        <td class="label">Omslag</td>
+                        <td class="label">{{ _('Cover') }}</td>
                         <td class="value{% if not item.cover_path %} empty{% endif %}">
                             {% if item.cover_path %}
-                                <div class="cover-thumb"><img src="{{ url_for('metadata.cover_item', item_id=item.id) }}" alt="Nuvarande omslag"></div>
-                            {% else %}(saknas){% endif %}
+                                <div class="cover-thumb"><img src="{{ url_for('metadata.cover_item', item_id=item.id) }}" alt="{{ _('Current cover') }}"></div>
+                            {% else %}{{ _('(missing)') }}{% endif %}
                         </td>
                         <td class="value {{ cover_status if cover_status in ('new', 'changed') else '' }}{% if not has_fetched_cover %} empty{% endif %}">
                             {% if has_fetched_cover %}
-                                <div class="cover-thumb"><img src="{{ url_for('metadata.enrichment_preview_cover', item_id=item.id) }}" alt="Hämtat omslag"></div>
+                                <div class="cover-thumb"><img src="{{ url_for('metadata.enrichment_preview_cover', item_id=item.id) }}" alt="{{ _('Fetched cover') }}"></div>
                                 {% if item.cover_locked %}
-                                    <div class="legend" style="margin-top:6px;">Omslag är låst — bocka ur låsning för att byta.</div>
+                                    <div class="legend" style="margin-top:6px;">{{ _('Cover is locked — uncheck the lock to replace it.') }}</div>
                                 {% endif %}
-                            {% else %}(inget hittat){% endif %}
+                            {% else %}{{ _('(nothing found)') }}{% endif %}
                         </td>
                     </tr>
                 </tbody>
             </table>
 
             {% if sources_used %}
-                <div class="sources">Källor: {{ sources_used | join(', ') }}</div>
+                <div class="sources">{{ _('Sources:') }} {{ sources_used | join(', ') }}</div>
             {% endif %}
 
             <div class="actions">
-                <button class="btn green" type="submit">💾 Spara valda</button>
-                <button class="btn ghost" type="submit" formaction="{{ url_for('metadata.enrichment_cancel', item_id=item.id) }}" formnovalidate>↩ Avbryt</button>
+                <button class="btn green" type="submit">💾 {{ _('Save selected') }}</button>
+                <button class="btn ghost" type="submit" formaction="{{ url_for('metadata.enrichment_cancel', item_id=item.id) }}" formnovalidate>↩ {{ _('Cancel') }}</button>
             </div>
         </div>
     </form>

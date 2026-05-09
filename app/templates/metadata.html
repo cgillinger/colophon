@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="sv" data-theme="light">
+<html lang="{{ get_locale() }}" data-theme="light">
 <head>
     <meta charset="utf-8">
     <script>
@@ -13,7 +13,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabler-icons/tabler-icons.min.css') }}">
-    <title>Metadata - {{ item.title }} - Colophon</title>
+    <title>{{ _('Metadata') }} - {{ item.title }} - Colophon</title>
     <style>
         :root, [data-theme="light"] {
             --bg-primary: #ffffff;
@@ -340,7 +340,7 @@
         </a>
         <form class="topbar-search" action="{{ url_for('metadata.bulk_metadata') }}" method="get">
             <i class="ti ti-search search-icon"></i>
-            <input type="text" name="q" placeholder="Sök titel, författare, ISBN, genre...">
+            <input type="text" name="q" placeholder="{{ _('Search title, author, ISBN, genre...') }}">
         </form>
         <div class="topbar-actions">
             <div class="lang-toggle">
@@ -373,11 +373,11 @@
     {% if pending %}
         <div class="pending-banner">
             <div style="flex:1; min-width:240px;">
-                <strong>Metadata hämtad — granska och spara.</strong>
-                Värdena nedan är förhandsgranskade och har <em>inte</em> sparats ännu.
+                <strong>{{ _('Metadata fetched — review and save.') }}</strong>
+                {{ _('The values below are previewed and have <em>not</em> been saved yet.')|safe }}
             </div>
             <form action="{{ url_for('metadata.cancel_preview', item_id=item.id) }}" method="post" style="margin:0;">
-                <button class="btn ghost" type="submit">↩ Avbryt</button>
+                <button class="btn ghost" type="submit">↩ {{ _('Cancel') }}</button>
             </form>
         </div>
     {% endif %}
@@ -394,12 +394,12 @@
                         📖
                     {% endif %}
                 </div>
-                <div class="small">Fil:<br><code>{{ item.file_name }}</code></div>
-                <div class="small">Typ: {{ item.extension|upper|replace(".", "") }} · {{ item.size_text() }}</div>
+                <div class="small">{{ _('File:') }}<br><code>{{ item.file_name }}</code></div>
+                <div class="small">{{ _('Type:') }} {{ item.extension|upper|replace(".", "") }} · {{ item.size_text() }}</div>
                 {% if item.manual_metadata %}
-                    <div class="small">Status: sparad metadata skyddas från att skrivas över vid skanning.</div>
+                    <div class="small">{{ _('Status: saved metadata is protected from being overwritten on scan.') }}</div>
                 {% else %}
-                    <div class="small">Status: metadata från skanning/filnamn.</div>
+                    <div class="small">{{ _('Status: metadata from scan/filename.') }}</div>
                 {% endif %}
             </div>
         </aside>
@@ -407,30 +407,30 @@
         <section class="panel">
             {% set p = pending or {} %}
             <form method="post" enctype="multipart/form-data">
-                <label for="title">Titel</label>
+                <label for="title">{{ _('Title') }}</label>
                 <input id="title" name="title" value="{{ p.title if pending else (item.title or '') }}" required>
 
-                <label for="author">Författare</label>
+                <label for="author">{{ _('Author') }}</label>
                 <input id="author" name="author" value="{{ p.author if pending else (item.author or '') }}">
 
                 <div class="form-row">
                     <div>
-                        <label for="series">Serie</label>
+                        <label for="series">{{ _('Series') }}</label>
                         <input id="series" name="series" value="{{ p.series if pending else (item.series or '') }}">
                     </div>
                     <div>
-                        <label for="series_index">Del</label>
+                        <label for="series_index">{{ _('Part') }}</label>
                         <input id="series_index" name="series_index" value="{{ p.series_index if pending else (item.series_index or '') }}">
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div>
-                        <label for="isbn">ISBN</label>
+                        <label for="isbn">{{ _('ISBN') }}</label>
                         <input id="isbn" name="isbn" value="{{ p.isbn if pending else (item.isbn or '') }}">
                     </div>
                     <div>
-                        <label for="language">Språk</label>
+                        <label for="language">{{ _('Language') }}</label>
                         {% set selected_lang = (p.language if pending else (item.language or current_lang)) or current_lang %}
                         <select id="language" name="language">
                             {% for code, label in languages %}
@@ -440,26 +440,26 @@
                     </div>
                 </div>
 
-                <label for="publisher">Förlag</label>
+                <label for="publisher">{{ _('Publisher') }}</label>
                 <input id="publisher" name="publisher" value="{{ p.publisher if pending else (item.publisher or '') }}">
 
-                <label for="genres">Genre <span style="color:var(--text-tertiary); font-weight:normal;">(kommaseparerat)</span></label>
-                <input id="genres" name="genres" value="{{ p.genres if pending else (item.genres or '') }}" placeholder="t.ex. Fantasy, Äventyr">
+                <label for="genres">{{ _('Genre') }} <span style="color:var(--text-tertiary); font-weight:normal;">{{ _('(comma-separated)') }}</span></label>
+                <input id="genres" name="genres" value="{{ p.genres if pending else (item.genres or '') }}" placeholder="{{ _('e.g. Fantasy, Adventure') }}">
 
-                <label for="published_date">Publiceringsdatum <span style="color:var(--text-tertiary); font-weight:normal;">(YYYY, YYYY-MM eller YYYY-MM-DD)</span></label>
-                <input id="published_date" name="published_date" maxlength="20" value="{{ p.published_date if pending else (item.published_date or '') }}" placeholder="t.ex. 2010 eller 2010-05-15">
+                <label for="published_date">{{ _('Publication date') }} <span style="color:var(--text-tertiary); font-weight:normal;">{{ _('(YYYY, YYYY-MM or YYYY-MM-DD)') }}</span></label>
+                <input id="published_date" name="published_date" maxlength="20" value="{{ p.published_date if pending else (item.published_date or '') }}" placeholder="{{ _('e.g. 2010 or 2010-05-15') }}">
 
-                <label for="description">Synopsis</label>
+                <label for="description">{{ _('Synopsis') }}</label>
                 <textarea id="description" name="description">{{ p.description if pending else (item.description or '') }}</textarea>
 
-                <label for="cover">Byt omslag manuellt</label>
+                <label for="cover">{{ _('Replace cover manually') }}</label>
                 <input id="cover" name="cover" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
 
                 <div class="actions">
-                    <button class="btn primary" type="submit">💾 Spara{% if pending %} (granska först){% endif %}</button>
+                    <button class="btn primary" type="submit">💾 {% if pending %}{{ _('Save (review first)') }}{% else %}{{ _('Save') }}{% endif %}</button>
                     {% if pending %}
                         <a class="btn ghost" href="{{ url_for('metadata.cancel_preview', item_id=item.id) }}"
-                           onclick="event.preventDefault(); document.getElementById('cancelPreviewForm').submit();">↩ Avbryt</a>
+                           onclick="event.preventDefault(); document.getElementById('cancelPreviewForm').submit();">↩ {{ _('Cancel') }}</a>
                     {% endif %}
                 </div>
             </form>
@@ -472,23 +472,31 @@
 </div>
 
 <div class="fetch-panel">
-    <strong>Automatisk metadata</strong>
+    <strong>{{ _('Automatic metadata') }}</strong>
     <div id="enrich-progress" style="display:none; margin: 4px 0; padding: 8px; background: var(--bg-info); color: var(--text-info); border-radius: 4px; font-size: 13px;">
-        <span id="enrich-status-text">Söker...</span>
+        <span id="enrich-status-text">{{ _('Searching...') }}</span>
     </div>
     <form id="enrichForm" action="{{ url_for('metadata.enrich_item_metadata', item_id=item.id) }}" method="post">
-        <button id="enrichBtn" class="btn primary" type="submit">🔍 Hämta metadata</button>
+        <button id="enrichBtn" class="btn primary" type="submit">🔍 {{ _('Fetch metadata') }}</button>
     </form>
     {% if ai_configured %}
     <form action="{{ url_for('metadata.run_ai_for_item', item_id=item.id) }}" method="post">
-        <button class="btn ghost" type="submit">🤖 Fråga AI om metadata</button>
+        <button class="btn ghost" type="submit">🤖 {{ _('Ask AI about metadata') }}</button>
     </form>
     {% endif %}
-    <a class="btn ghost" href="{{ url_for('metadata.lookup_covers', item_id=item.id) }}">Hämta omslag</a>
-    <a class="btn ghost" href="{{ url_for('settings.api_settings') }}">⚙ API-inställningar</a>
+    <a class="btn ghost" href="{{ url_for('metadata.lookup_covers', item_id=item.id) }}">{{ _('Fetch cover') }}</a>
+    <a class="btn ghost" href="{{ url_for('settings.api_settings') }}">⚙ {{ _('API settings') }}</a>
 </div>
 
 <script>
+    var _i18n = {
+        searching: {{ _('Searching...')|tojson }},
+        searchingExternalSources: {{ _('Searching external sources...')|tojson }},
+        fetchMetadata: {{ _('Fetch metadata')|tojson }},
+        done: {{ _('Done! Opening preview...')|tojson }},
+        noMatchesFound: {{ _('No matches found.')|tojson }},
+        somethingWentWrong: {{ _('Something went wrong.')|tojson }},
+    };
     function toggleTheme() {
         var current = document.documentElement.getAttribute('data-theme');
         var next = current === 'dark' ? 'light' : 'dark';
@@ -516,9 +524,9 @@
         form.addEventListener('submit', function (e) {
             e.preventDefault();
             btn.disabled = true;
-            btn.textContent = '⏳ Söker...';
+            btn.textContent = '⏳ ' + _i18n.searching;
             progressDiv.style.display = 'block';
-            statusText.textContent = 'Söker externa källor...';
+            statusText.textContent = _i18n.searchingExternalSources;
 
             var es = new EventSource(streamUrl);
             es.onmessage = function (event) {
@@ -529,27 +537,27 @@
                 } else if (data.type === 'done') {
                     es.close();
                     if (data.ok) {
-                        statusText.textContent = 'Klar! Öppnar förhandsgranskning...';
+                        statusText.textContent = _i18n.done;
                         window.location.href = previewUrl;
                     } else {
-                        _showError(data.message || 'Inga träffar hittades.');
+                        _showError(data.message || _i18n.noMatchesFound);
                     }
                 } else if (data.type === 'error') {
                     es.close();
-                    _showError(data.message || 'Något gick fel.');
+                    _showError(data.message || _i18n.somethingWentWrong);
                 }
             };
             es.onerror = function () {
                 es.close();
                 progressDiv.style.display = 'none';
                 btn.disabled = false;
-                btn.textContent = '🔍 Hämta metadata';
+                btn.textContent = '🔍 ' + _i18n.fetchMetadata;
                 form.submit();
             };
             function _showError(msg) {
                 progressDiv.style.display = 'none';
                 btn.disabled = false;
-                btn.textContent = '🔍 Hämta metadata';
+                btn.textContent = '🔍 ' + _i18n.fetchMetadata;
                 var errDiv = document.createElement('div');
                 errDiv.className = 'message error';
                 errDiv.textContent = msg;

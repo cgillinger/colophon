@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="sv" data-theme="light">
+<html lang="{{ get_locale() }}" data-theme="light">
 <head>
     <meta charset="utf-8">
     <script>
@@ -13,7 +13,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabler-icons/tabler-icons.min.css') }}">
-    <title>AI-förslag - {{ item.title }} - Colophon</title>
+    <title>{{ _('AI suggestions') }} - {{ item.title }} - Colophon</title>
     <style>
         :root, [data-theme="light"] {
             --bg-primary: #ffffff;
@@ -260,7 +260,7 @@
         </a>
         <form class="topbar-search" action="{{ url_for('metadata.bulk_metadata') }}" method="get">
             <i class="ti ti-search search-icon"></i>
-            <input type="text" name="q" placeholder="Sök titel, författare, ISBN, genre...">
+            <input type="text" name="q" placeholder="{{ _('Search title, author, ISBN, genre...') }}">
         </form>
         <div class="topbar-actions">
             <div class="lang-toggle">
@@ -278,7 +278,7 @@
 </header>
 
 <div class="container">
-    <h1>AI-förslag för &ldquo;{{ item.title }}&rdquo;</h1>
+    <h1>{{ _('AI suggestions for') }} &ldquo;{{ item.title }}&rdquo;</h1>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -292,15 +292,15 @@
 
     <form method="post" action="{{ url_for('metadata.ai_apply', item_id=item.id) }}">
         <div class="panel">
-            <div class="legend">☑ = uppdatera vid sparning. Hög säkerhet förbockas automatiskt, medel-säkerhet bockas ej.</div>
+            <div class="legend">{{ _('☑ = update on save. High confidence is pre-checked automatically, medium confidence is not.') }}</div>
 
             <table class="diff">
                 <thead>
                     <tr>
                         <th>✓</th>
-                        <th>Fält</th>
-                        <th>Nuvarande</th>
-                        <th>AI-förslag</th>
+                        <th>{{ _('Field') }}</th>
+                        <th>{{ _('Current') }}</th>
+                        <th>{{ _('AI suggestion') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -311,10 +311,10 @@
                                        {% if row.default_check %}checked{% endif %}>
                             </td>
                             <td class="label">{{ row.label }}</td>
-                            <td class="current">{{ row.current or '(saknas)' }}</td>
+                            <td class="current">{{ row.current or _('(missing)') }}</td>
                             <td class="suggested">
                                 <span class="badge {{ row.confidence }}">
-                                    {% if row.confidence == "high" %}Hög{% else %}Medel{% endif %}
+                                    {% if row.confidence == "high" %}{{ _('High') }}{% else %}{{ _('Medium') }}{% endif %}
                                 </span><br>
                                 {{ row.value }}
                                 <span class="reason">{{ row.reason }}</span>
@@ -325,7 +325,7 @@
                     {% if not rows %}
                         <tr>
                             <td colspan="4" style="color:var(--text-tertiary); font-style:italic; text-align:center; padding:20px;">
-                                Inga tillämpbara förslag med tillräcklig säkerhet.
+                                {{ _('No applicable suggestions with sufficient confidence.') }}
                             </td>
                         </tr>
                     {% endif %}
@@ -334,9 +334,9 @@
 
             {% if subjects_display %}
                 <div class="subjects-info">
-                    <strong>Ämnen (info):</strong>
+                    <strong>{{ _('Subjects (info):') }}</strong>
                     <span class="badge {{ subjects_display.confidence }}" style="margin-left:6px;">
-                        {% if subjects_display.confidence == "high" %}Hög{% else %}Medel{% endif %}
+                        {% if subjects_display.confidence == "high" %}{{ _('High') }}{% else %}{{ _('Medium') }}{% endif %}
                     </span>
                     {{ subjects_display.value }}<br>
                     <span style="font-style:italic; margin-top:4px; display:block;">{{ subjects_display.reason }}</span>
@@ -344,13 +344,13 @@
             {% endif %}
 
             <div class="actions">
-                <button class="btn green" type="submit">💾 Spara valda</button>
+                <button class="btn green" type="submit">💾 {{ _('Save selected') }}</button>
                 <a class="btn ghost"
                    href="{{ url_for('metadata.run_ai_for_item', item_id=item.id) }}"
-                   onclick="event.preventDefault(); document.getElementById('aiAgainForm').submit();">🤖 Fråga AI igen</a>
+                   onclick="event.preventDefault(); document.getElementById('aiAgainForm').submit();">🤖 {{ _('Ask AI again') }}</a>
                 <button class="btn ghost" type="submit"
                         formaction="{{ url_for('metadata.ai_cancel', item_id=item.id) }}"
-                        formnovalidate>↩ Avbryt</button>
+                        formnovalidate>↩ {{ _('Cancel') }}</button>
             </div>
         </div>
     </form>

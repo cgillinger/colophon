@@ -23,6 +23,7 @@ from flask import (
     session,
     url_for,
 )
+from flask_babel import gettext as _
 
 logger = logging.getLogger(__name__)
 
@@ -87,15 +88,15 @@ def _pick_search_representative(group_items):
 def _format_label(item):
     """Return a normalized format label like 'EPUB' for an item."""
     ext = (item.extension or '').lstrip('.').upper()
-    return ext or 'OKÄNT'
+    return ext or 'UNKNOWN'
 
 
 def _file_write_warning(error_code):
-    """Return a Swedish warning string for a file-write error code, or None."""
+    """Return a translated warning for a file-write error code, or None."""
     if not error_code:
         return None
-    label = FILE_WRITE_ERROR_MESSAGES.get(error_code, error_code)
-    return f"Metadata sparades i biblioteket, men kunde inte skrivas till e-boksfilen ({label})."
+    label = _(FILE_WRITE_ERROR_MESSAGES.get(error_code, error_code))
+    return _("Metadata was saved in the library, but could not be written to the ebook file (%(label)s).", label=label)
 
 
 @metadata_bp.route("/")
@@ -109,7 +110,7 @@ def cover_item(item_id):
     if item.cover_path and os.path.exists(item.cover_path):
         return send_file(item.cover_path)
     # Group fallback: gruppmedlemmar delar omslag men cover-filen kan saknas
-    # på enskilda format. Återanvänd en siblings cover-fil om den finns.
+    # for individual formats. Reuse a sibling's cover file if it exists.
     if item.group_key:
         siblings = (
             LibraryItem.query
@@ -148,16 +149,16 @@ def _ai_preview_key(item_id):
 
 
 _ENRICHMENT_FIELDS = [
-    ("title", "Titel"),
-    ("author", "Författare"),
+    ("title", "Title"),
+    ("author", "Author"),
     ("description", "Synopsis"),
-    ("publisher", "Förlag"),
+    ("publisher", "Publisher"),
     ("isbn", "ISBN"),
-    ("language", "Språk"),
-    ("series", "Serie"),
-    ("series_index", "Del"),
+    ("language", "Language"),
+    ("series", "Series"),
+    ("series_index", "Part"),
     ("genres", "Genre"),
-    ("published_date", "Publiceringsdatum"),
+    ("published_date", "Publication date"),
 ]
 
 
@@ -173,7 +174,7 @@ def _build_enrichment_diff(item, fetched):
             status = "missing"
             default_check = False
         elif key == "language":
-            # Språk är aldrig auto-förbockat – användaren måste välja aktivt.
+            # Language is never auto-checked — the user must opt in explicitly.
             status = "changed" if current and current != fetched_val else "new"
             default_check = False
         elif not current:
@@ -188,7 +189,7 @@ def _build_enrichment_diff(item, fetched):
 
         rows.append({
             "key": key,
-            "label": label,
+            "label": _(label),
             "current": current,
             "fetched": fetched_val,
             "status": status,
@@ -215,7 +216,7 @@ def metadata_item(item_id):
         published_date = request.form.get("published_date", "").strip()[:10]
 
         if not title:
-            flash("Titel får inte vara tom.", "error")
+            flash(_("Title cannot be empty."), "error")
             return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
         item.title = title
@@ -234,7 +235,7 @@ def metadata_item(item_id):
         new_cover_path = save_uploaded_cover(item, uploaded_cover)
 
         if uploaded_cover and uploaded_cover.filename and not new_cover_path:
-            flash("Omslaget sparades inte. Använd JPG, PNG eller WEBP.", "error")
+            flash(_("Cover was not saved. Use JPG, PNG or WEBP."), "error")
         elif new_cover_path:
             item.cover_path = new_cover_path
             item.cover_locked = True
@@ -313,7 +314,7 @@ def cancel_preview(item_id):
             os.unlink(pending["cover_path"])
         except OSError:
             pass
-    flash("Förhandsgranskning avbruten. Inget sparades.", "success")
+    flash(_("Preview cancelled. Nothing was saved."), "success")
     return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
 
@@ -370,9 +371,9 @@ def apply_cover(item_id):
     db.session.commit()
 
     if source:
-        flash(f"Omslag hämtat från {source}.", "success")
+        flash(_("Cover fetched from %(source)s.", source=source), "success")
     else:
-        flash("Omslag hämtat och sparat.", "success")
+        flash(_("Cover fetched and saved."), "success")
     warning = _file_write_warning(write_result.get("error") if not write_result["ok"] else None)
     if warning:
         flash(warning, "warning")
@@ -480,7 +481,7 @@ def bulk_metadata():
         if action == "ai":
             if not ai_is_configured():
                 flash(
-                    "AI är inte konfigurerat. Öppna API-inställningar och lägg till en API-nyckel.",
+                    _("AI is not configured. Open API settings and add an API key."),
                     "error",
                 )
             else:
@@ -495,7 +496,7 @@ def bulk_metadata():
                         summary["skipped"].append(
                             {
                                 "title": item.title,
-                                "reason": "Har redan författare, synopsis och omslag.",
+                                "reason": _("Already has author, synopsis and cover."),
                             }
                         )
                         continue
@@ -539,14 +540,14 @@ def bulk_metadata():
                     )
 
                 db.session.commit()
-                ai_parts = [f"Uppdaterade: {len(summary['updated'])}"]
+                ai_parts = [_("Updated: %(count)d", count=len(summary["updated"]))]
                 if summary["file_write_failed"]:
-                    ai_parts.append(f"filskrivning misslyckades: {summary['file_write_failed']}")
+                    ai_parts.append(_("file write failed: %(count)d", count=summary["file_write_failed"]))
                 ai_parts += [
-                    f"inga högsäkra förslag: {len(summary['no_match'])}",
-                    f"hoppade över: {len(summary['skipped'])}",
+                    _("no high-confidence suggestions: %(count)d", count=len(summary["no_match"])),
+                    _("skipped: %(count)d", count=len(summary["skipped"])),
                 ]
-                flash("AI-körning klar. " + ", ".join(ai_parts) + ".", "success")
+                flash(_("AI run complete.") + " " + ", ".join(ai_parts) + ".", "success")
         else:
             from collections import OrderedDict
             sync_groups = OrderedDict()
@@ -610,7 +611,7 @@ def bulk_metadata():
                     summary["review_needed"].append(
                         {
                             "title": title_label,
-                            "source": best.get("source", "Okänd källa"),
+                            "source": best.get("source", _("Unknown source")),
                             "score": scoring["score"],
                         }
                     )
@@ -635,25 +636,25 @@ def bulk_metadata():
                 summary["updated"].append(
                     {
                         "title": title_label,
-                        "source": best.get("source", "Okänd källa"),
+                        "source": best.get("source", _("Unknown source")),
                         "score": scoring["score"],
                         "file_write_error": file_write_error,
                     }
                 )
 
             db.session.commit()
-            parts = [f"Sparade: {len(summary['updated'])}"]
+            parts = [_("Saved: %(count)d", count=len(summary["updated"]))]
             if summary["review_needed"]:
-                parts.append(f"granskning rekommenderas: {len(summary['review_needed'])}")
+                parts.append(_("review recommended: %(count)d", count=len(summary["review_needed"])))
             if summary["no_match"]:
-                parts.append(f"ingen säker träff: {len(summary['no_match'])}")
+                parts.append(_("no secure match: %(count)d", count=len(summary["no_match"])))
             if summary["source_errors"]:
-                parts.append(f"källfel: {summary['source_errors']}")
+                parts.append(_("source errors: %(count)d", count=summary["source_errors"]))
             if summary["file_write_failed"]:
-                parts.append(f"filskrivning misslyckades: {summary['file_write_failed']}")
+                parts.append(_("file write failed: %(count)d", count=summary["file_write_failed"]))
             if summary["skipped"]:
-                parts.append(f"hoppade över: {len(summary['skipped'])}")
-            flash("Massuppdatering klar. " + ", ".join(parts) + ".", "success")
+                parts.append(_("skipped: %(count)d", count=len(summary["skipped"])))
+            flash(_("Bulk update complete.") + " " + ", ".join(parts) + ".", "success")
 
         items = (
             LibraryItem.query
@@ -692,7 +693,7 @@ def bulk_metadata():
     for ext, count in raw_counts:
         if not ext:
             continue
-        label = ext.lstrip(".").upper() or "OKÄNT"
+        label = ext.lstrip(".").upper() or "UNKNOWN"
         format_counts[label] = format_counts.get(label, 0) + count
     format_counts = dict(sorted(format_counts.items()))
 
@@ -774,7 +775,7 @@ def bulk_stream():
                         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
     if not selected_items:
-        return _error_stream("Inga giltiga böcker valda.")
+        return _error_stream(_("No valid books selected."))
 
     app = current_app._get_current_object()
     cover_dir = app.config["COVER_DIR"]
@@ -832,7 +833,7 @@ def bulk_stream():
                 formats = [_format_label(it) for it in group_items]
                 item_ids = [it.id for it in group_items]
 
-                # --- Gruppsynk: korsberika inom gruppen innan extern sökning ---
+                # --- Group sync: cross-enrich within the group before external search ---
                 if len(group_items) > 1:
                     sync_result = _sync_group(group_items, cover_dir=cover_dir)
                     if sync_result["fields_synced"] > 0:
@@ -1022,7 +1023,7 @@ def bulk_stream():
                     field_confidence["author"] = "low"
                 if not signals.get("isbn_exact_match"):
                     field_confidence["isbn"] = "low"
-                if any("språk" in (w or "").lower() for w in warnings):
+                if any(("språk" in (w or "").lower() or "language" in (w or "").lower()) for w in warnings):
                     field_confidence["language"] = "low"
 
                 # Per-source field values for the source-picker in the
@@ -1134,9 +1135,9 @@ def enrich_stream(item_id):
                         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
     if not item.file_path or not Path(item.file_path).exists():
-        return _error_stream("Bokfilen hittades inte på disk.")
+        return _error_stream(_("The book file was not found on disk."))
     if Path(item.file_path).suffix.lower() not in {".epub", ".mobi", ".azw3", ".kepub"}:
-        return _error_stream("Metadatahämtning stöder bara EPUB, MOBI, AZW3 och KEPUB.")
+        return _error_stream(_("Metadata fetch only supports EPUB, MOBI, AZW3 and KEPUB."))
 
     app = current_app._get_current_object()
     ev_queue = queue.SimpleQueue()
@@ -1153,7 +1154,7 @@ def enrich_stream(item_id):
                 ev_queue.put(None)
                 return
 
-            # --- Gruppsynk: korsberika inom gruppen innan extern sökning ---
+            # --- Group sync: cross-enrich within the group before external search ---
             if fresh_item.group_key:
                 siblings = (
                     LibraryItem.query
@@ -1219,17 +1220,17 @@ def enrich_item_metadata(item_id):
     source_path = Path(item.file_path)
 
     if not source_path.exists():
-        flash("Bokfilen hittades inte på disk.", "error")
+        flash(_("The book file was not found on disk."), "error")
         return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
     if source_path.suffix.lower() not in {".epub", ".mobi", ".azw3", ".kepub"}:
-        flash("Metadatahämtning stöder bara EPUB, MOBI, AZW3 och KEPUB.", "error")
+        flash(_("Metadata fetch only supports EPUB, MOBI, AZW3 and KEPUB."), "error")
         return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
     lock_path = Path("/tmp") / f"colophon_enrichment_{item.id}.lock"
 
     if lock_path.exists():
-        flash("Metadatahämtning körs redan på denna bok. Vänta tills den är klar.", "error")
+        flash(_("Metadata fetch is already running for this book. Wait until it finishes."), "error")
         return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
     try:
@@ -1263,7 +1264,7 @@ def enrich_item_metadata(item_id):
 
     except Exception as error:
         db.session.rollback()
-        flash(f"Kunde inte hämta metadata: {error}", "error")
+        flash(_("Could not fetch metadata: %(error)s", error=error), "error")
         return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
     finally:
@@ -1285,7 +1286,7 @@ def enrichment_preview(item_id):
         session[_enrichment_preview_key(item.id)] = preview
 
     if not preview:
-        flash("Ingen hämtad metadata att granska. Kör hämtningen först.", "error")
+        flash(_("No fetched metadata to review. Run the fetch first."), "error")
         return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
     fetched = preview.get("fetched") or {}
@@ -1330,7 +1331,7 @@ def enrichment_apply(item_id):
     item = get_item_or_404(item_id)
     preview = session.get(_enrichment_preview_key(item.id))
     if not preview:
-        flash("Förhandsgranskningen har gått ut. Kör hämtningen igen.", "error")
+        flash(_("The preview has expired. Run the fetch again."), "error")
         return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
     fetched = preview.get("fetched") or {}
@@ -1361,17 +1362,17 @@ def enrichment_apply(item_id):
 
     total = db_updated + (1 if cover_saved else 0)
     if total:
-        parts = [f"{db_updated} fält uppdaterade"]
+        parts = [_("%(count)d fields updated", count=db_updated)]
         if cover_saved:
-            parts.append("omslag bytt")
+            parts.append(_("cover replaced"))
         if file_updated:
-            parts.append("filen uppdaterad")
-        flash("Metadata sparad (" + ", ".join(parts) + ").", "success")
+            parts.append(_("file updated"))
+        flash(_("Metadata saved (%(parts)s).", parts=", ".join(parts)), "success")
         warning = _file_write_warning(file_write_error)
         if warning:
             flash(warning, "warning")
     else:
-        flash("Inga fält valdes — inget sparades.", "success")
+        flash(_("No fields selected — nothing was saved."), "success")
     return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
 
@@ -1385,7 +1386,7 @@ def enrichment_cancel(item_id):
             os.unlink(cover_src)
         except OSError:
             pass
-    flash("Förhandsgranskning avbruten. Inget sparades.", "success")
+    flash(_("Preview cancelled. Nothing was saved."), "success")
     return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
 
@@ -1420,15 +1421,15 @@ def bookf_cancel(item_id):
 
 # Fields shown in the AI preview table (display order)
 _AI_PREVIEW_FIELDS = [
-    ("series", "Serie"),
-    ("series_index", "Del"),
-    ("title", "Titel"),
-    ("author", "Författare"),
-    ("language", "Språk"),
-    ("publisher", "Förlag"),
+    ("series", "Series"),
+    ("series_index", "Part"),
+    ("title", "Title"),
+    ("author", "Author"),
+    ("language", "Language"),
+    ("publisher", "Publisher"),
     ("genres", "Genre"),
     ("description", "Synopsis"),
-    ("published_date", "Publiceringsdatum"),
+    ("published_date", "Publication date"),
 ]
 
 _AI_DISPLAY_ONLY: set = set()
@@ -1440,7 +1441,7 @@ def run_ai_for_item(item_id):
 
     if not ai_is_configured():
         flash(
-            "AI är inte konfigurerat. Öppna API-inställningar och lägg till en API-nyckel.",
+            _("AI is not configured. Open API settings and add an API key."),
             "error",
         )
         return redirect(url_for("metadata.metadata_item", item_id=item.id))
@@ -1450,13 +1451,13 @@ def run_ai_for_item(item_id):
     if not result["ok"]:
         error = result["error"]
         if error == "auth":
-            flash("AI-tjänsten nekade anropet. Kontrollera API-nyckeln.", "error")
+            flash(_("The AI service rejected the request. Check the API key."), "error")
         elif error == "timeout":
-            flash("AI-anropet tog för lång tid. Försök igen.", "error")
+            flash(_("The AI request took too long. Try again."), "error")
         elif error == "rate_limit":
-            flash("Gränsen för AI-anrop verkar vara nådd. Försök igen senare.", "error")
+            flash(_("The AI rate limit appears to have been reached. Try again later."), "error")
         elif error == "invalid_json":
-            flash("AI-tjänsten returnerade ett svar som inte kunde tolkas.", "error")
+            flash(_("The AI service returned a response that could not be parsed."), "error")
         else:
             flash(f"AI-anropet misslyckades ({error}).", "error")
         return redirect(url_for("metadata.metadata_item", item_id=item.id))
@@ -1464,7 +1465,7 @@ def run_ai_for_item(item_id):
     suggestions = result["suggestions"]
     applicable = {k: v for k, v in suggestions.items() if k not in _AI_DISPLAY_ONLY}
     if not applicable:
-        flash("AI:n hittade inga förbättringar att föreslå.", "error")
+        flash(_("The AI found no improvements to suggest."), "error")
         return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
     session[_ai_preview_key(item.id)] = {"suggestions": suggestions}
@@ -1476,7 +1477,7 @@ def ai_preview(item_id):
     item = get_item_or_404(item_id)
     preview = session.get(_ai_preview_key(item.id))
     if not preview:
-        flash("Inga AI-förslag att granska. Kör hämtningen först.", "error")
+        flash(_("No AI suggestions to review. Run the fetch first."), "error")
         return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
     suggestions = preview.get("suggestions", {})
@@ -1492,7 +1493,7 @@ def ai_preview(item_id):
         current = (str(current_raw).strip() if current_raw not in (None, "") else "")
         rows.append({
             "key": key,
-            "label": label,
+            "label": _(label),
             "current": current,
             "value": suggestion["value"],
             "confidence": confidence,
@@ -1513,7 +1514,7 @@ def ai_apply(item_id):
     item = get_item_or_404(item_id)
     preview = session.get(_ai_preview_key(item.id))
     if not preview:
-        flash("Förhandsgranskningen har gått ut. Kör hämtningen igen.", "error")
+        flash(_("The preview has expired. Run the fetch again."), "error")
         return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
     suggestions = preview.get("suggestions", {})
@@ -1535,9 +1536,9 @@ def ai_apply(item_id):
 
     db_updated = apply_result.get("db_updated", 0)
     if db_updated:
-        flash(f"Metadata sparad ({db_updated} fält uppdaterade).", "success")
+        flash(_("Metadata saved (%(count)d fields updated).", count=db_updated), "success")
     else:
-        flash("Inga fält valdes — inget sparades.", "success")
+        flash(_("No fields selected — nothing was saved."), "success")
     return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
 
@@ -1545,7 +1546,7 @@ def ai_apply(item_id):
 def ai_cancel(item_id):
     item = get_item_or_404(item_id)
     session.pop(_ai_preview_key(item.id), None)
-    flash("Förhandsgranskning avbruten. Inget sparades.", "success")
+    flash(_("Preview cancelled. Nothing was saved."), "success")
     return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
 
@@ -1663,7 +1664,7 @@ def bulk_delete():
     delete_files = bool(data.get("delete_files"))
 
     if not item_ids:
-        return jsonify({"ok": False, "error": "Inga böcker valda."}), 400
+        return jsonify({"ok": False, "error": _("No books selected.")}), 400
 
     deleted = 0
     file_errors = 0

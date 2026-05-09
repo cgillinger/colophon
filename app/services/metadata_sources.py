@@ -9,6 +9,7 @@ from urllib.parse import urlparse, parse_qs
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
+from flask_babel import gettext as _
 import logging
 
 logger = logging.getLogger(__name__)
@@ -516,13 +517,13 @@ def score_metadata_result_explained(item, result) -> dict:
     item_lang = (getattr(item, "language", None) or "").strip().lower()
     result_lang = (result.get("language") or "").strip().lower()
     if item_lang and result_lang and item_lang != result_lang:
-        warnings.append("Språk skiljer sig från nuvarande metadata")
+        warnings.append(_("Language differs from current metadata"))
     if isbn_exact_match and title_sim < 0.7:
-        warnings.append("ISBN matchar men titeln avviker")
+        warnings.append(_("ISBN matches but the title differs"))
     if not result.get("author"):
-        warnings.append("Författare saknas i träffen")
+        warnings.append(_("Author missing in the match"))
     if not result.get("isbn"):
-        warnings.append("ISBN saknas i träffen")
+        warnings.append(_("ISBN missing in the match"))
 
     return {
         "score": round(score, 1),
@@ -664,7 +665,7 @@ def search_cover_candidates(item):
                 "source": result.get("source", "Google Books API"),
                 "title": result.get("title", item.title or ""),
                 "cover_url": cover_url,
-                "note": "Omslag från Google Books API",
+                "note": _("Cover from Google Books API"),
             }
         )
 
@@ -759,18 +760,18 @@ def google_books_search_with_status(
     except Exception as exc:
         return _result(
             False, "network_or_plugin_error",
-            f"Google Books: nätverksfel ({exc}).",
+            _("Google Books: network error (%(exc)s).", exc=exc),
         )
 
     if candidates:
         n = len(candidates)
         return _result(
             True, "ok",
-            f"Google Books: {n} träff{'ar' if n != 1 else ''}.",
+            _("Google Books: %(count)d hits.", count=n),
             candidates=candidates,
         )
 
-    return _result(False, "no_result", "Google Books: inga träffar.")
+    return _result(False, "no_result", _("Google Books: no hits."))
 
 
 def search_all_sources_with_status(

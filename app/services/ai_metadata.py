@@ -116,7 +116,7 @@ def _log_usage(provider, model, usage, book_id=None, book_title=None):
         })
         db.session.commit()
     except Exception as exc:
-        logger.warning("Kunde inte spara AI-användning: %s", exc)
+        logger.warning("Could not save AI usage: %s", exc)
 
 
 def test_ai_connection() -> dict:

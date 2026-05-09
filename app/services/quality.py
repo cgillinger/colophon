@@ -1,10 +1,12 @@
 """Field-level quality heuristics for metadata comparison.
 
-Each heuristic returns (is_better, reason). The reason is a Swedish string
-shown to the user in the bulk comparison modal so they can see *why* the
-fetched value was preferred.
+Each heuristic returns (is_better, reason). The reason is a translated
+string shown to the user in the bulk comparison modal so they can see
+*why* the fetched value was preferred.
 """
 import re
+
+from flask_babel import gettext as _
 
 
 def is_better_synopsis(existing, fetched):
@@ -12,9 +14,9 @@ def is_better_synopsis(existing, fetched):
     if not fetched:
         return False, ""
     if not existing:
-        return True, "Befintlig var tom"
+        return True, _("Existing was empty")
     if len(fetched) > len(existing) * 1.5:
-        return True, f"Längre ({len(fetched)} vs {len(existing)} tecken)"
+        return True, _("Longer (%(new)d vs %(old)d chars)", new=len(fetched), old=len(existing))
     return False, ""
 
 
@@ -30,8 +32,8 @@ def is_better_isbn(existing, fetched):
 
     if fetched_is_isbn13 and not existing_is_isbn13:
         if len(existing_clean) == 10:
-            return True, "ISBN-13 ersätter ISBN-10"
-        return True, "ISBN-13 ersätter ogiltigt"
+            return True, _("ISBN-13 replaces ISBN-10")
+        return True, _("ISBN-13 replaces invalid")
     return False, ""
 
 
@@ -40,11 +42,11 @@ def is_better_genre(existing, fetched):
     if not fetched:
         return False, ""
     if not existing:
-        return True, "Befintlig var tom"
+        return True, _("Existing was empty")
     existing_count = len([g for g in existing.split(",") if g.strip()])
     fetched_count = len([g for g in fetched.split(",") if g.strip()])
     if fetched_count > existing_count:
-        return True, f"Mer specifik ({fetched_count} vs {existing_count} genrer)"
+        return True, _("More specific (%(new)d vs %(old)d genres)", new=fetched_count, old=existing_count)
     return False, ""
 
 
@@ -53,9 +55,9 @@ def is_better_author(existing, fetched):
     if not fetched:
         return False, ""
     if not existing:
-        return True, "Befintlig var tom"
+        return True, _("Existing was empty")
     if "[" in existing and "[" not in fetched:
-        return True, "Renare format (inga hakparenteser)"
+        return True, _("Cleaner format (no brackets)")
     return False, ""
 
 
@@ -64,9 +66,9 @@ def is_better_publisher(existing, fetched, author=""):
     if not fetched:
         return False, ""
     if not existing:
-        return True, "Befintlig var tom"
+        return True, _("Existing was empty")
     if author and existing.strip().lower() in author.strip().lower():
-        return True, "Befintlig var samma som författarnamn"
+        return True, _("Existing was the same as the author name")
     return False, ""
 
 
@@ -75,9 +77,9 @@ def is_better_published_date(existing, fetched):
     if not fetched:
         return False, ""
     if not existing:
-        return True, "Befintlig var tom"
+        return True, _("Existing was empty")
     if len(fetched) > len(existing):
-        return True, f"Mer precist ({fetched} vs {existing})"
+        return True, _("More precise (%(new)s vs %(old)s)", new=fetched, old=existing)
     return False, ""
 
 
@@ -86,13 +88,13 @@ def is_better_title(existing, fetched):
     if not fetched:
         return False, ""
     if not existing:
-        return True, "Befintlig var tom"
+        return True, _("Existing was empty")
     from app.services.text_utils import clean_title
 
     existing_info = clean_title(existing)
     fetched_info = clean_title(fetched)
     if existing_info["was_modified"] and not fetched_info["was_modified"]:
-        return True, "Renare titel (serie/marknadsföring borttaget)"
+        return True, _("Cleaner title (series/marketing removed)")
     return False, ""
 
 

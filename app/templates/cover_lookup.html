@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="sv" data-theme="light">
+<html lang="{{ get_locale() }}" data-theme="light">
 <head>
     <meta charset="utf-8">
     <script>
@@ -13,7 +13,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabler-icons/tabler-icons.min.css') }}">
-    <title>Hämta omslag - {{ item.title }} - Colophon</title>
+    <title>{{ _('Fetch cover') }} - {{ item.title }} - Colophon</title>
     <style>
         :root, [data-theme="light"] {
             --bg-primary: #ffffff;
@@ -246,7 +246,7 @@
         </a>
         <form class="topbar-search" action="{{ url_for('metadata.bulk_metadata') }}" method="get">
             <i class="ti ti-search search-icon"></i>
-            <input type="text" name="q" placeholder="Sök titel, författare, ISBN, genre...">
+            <input type="text" name="q" placeholder="{{ _('Search title, author, ISBN, genre...') }}">
         </form>
         <div class="topbar-actions">
             <div class="lang-toggle">
@@ -274,9 +274,9 @@
                 {% else %}📖{% endif %}
             </div>
             <div>
-                <strong>Omslagssökning</strong>
-                <p>Colophon söker omslag från Google Books API. Välj det omslag som ser bäst ut.</p>
-                <p>För bästa träff: fyll gärna i titel, författare eller ISBN på metadata-sidan först.</p>
+                <strong>{{ _('Cover search') }}</strong>
+                <p>{{ _('Colophon searches for covers from multiple sources. Pick the cover that looks best.') }}</p>
+                <p>{{ _('For best results: fill in title, author or ISBN on the metadata page first.') }}</p>
             </div>
         </div>
     </section>
@@ -294,16 +294,16 @@
                     <form class="actions" method="post" action="{{ url_for('metadata.apply_cover', item_id=item.id) }}">
                         <input type="hidden" name="source" value="{{ candidate.source }}">
                         <input type="hidden" name="cover_url" value="{{ candidate.cover_url }}">
-                        <button class="btn primary" type="submit">Använd omslag</button>
-                        <a class="btn" href="{{ candidate.cover_url }}" target="_blank">Öppna</a>
+                        <button class="btn primary" type="submit">{{ _('Use cover') }}</button>
+                        <a class="btn" href="{{ candidate.cover_url }}" target="_blank">{{ _('Open') }}</a>
                     </form>
                 </article>
             {% endfor %}
         </section>
     {% else %}
         <section class="panel">
-            <h2>Inga omslag hittades</h2>
-            <p>Testa att gå tillbaka till metadata-sidan och fyll i mer exakt titel, författare eller ISBN. ISBN ger ofta bäst omslagsträff.</p>
+            <h2>{{ _('No covers found') }}</h2>
+            <p>{{ _('Try going back to the metadata page and entering a more accurate title, author or ISBN. ISBN usually gives the best cover match.') }}</p>
         </section>
     {% endif %}
 </div>
