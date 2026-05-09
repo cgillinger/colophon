@@ -1482,7 +1482,22 @@
             overflow-y: auto;
             padding: 24px;
             color: var(--text-primary);
+            position: relative;
         }
+        .modal-close-x {
+            position: absolute;
+            top: 12px;
+            right: 14px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            padding: 4px 8px;
+            line-height: 1;
+            z-index: 2;
+        }
+        .modal-close-x:hover { color: var(--text-primary); }
         .modal-feedback {
             padding: 10px 14px;
             border-radius: 5px;
@@ -2304,6 +2319,7 @@
 <!-- Book modal -->
 <div id="bookModal" style="display:none;">
     <div class="modal-box">
+        <button type="button" class="modal-close-x" onclick="closeBookModal()" title="{{ _('Close') }}">&times;</button>
         <div id="modalFeedback" class="modal-feedback" style="display:none;"></div>
         <div class="modal-grid">
             <div>
@@ -2412,7 +2428,7 @@
             <button type="button" class="btn ai-ghost" id="modalAiBtn" onclick="fetchAiMetadata()" style="display:none;"><i class="ti ti-sparkles"></i> {{ _('Ask AI') }}</button>
             <div class="spacer"></div>
             <button type="button" class="btn outline" id="modalSaveBtn" onclick="saveMetadata()">{{ _('Save') }}</button>
-            <button type="button" class="btn ghost" onclick="closeBookModal()">{{ _('Cancel') }}</button>
+            <button type="button" class="btn ghost" onclick="closeBookModal()">{{ _('Close') }}</button>
         </div>
     </div>
 </div>
@@ -5273,6 +5289,7 @@
     var _modalItemId = null;
     var _modalAllCandidates = [];
     var _coverUrlBase = '{{ url_for("metadata.cover_item", item_id=0) }}'.replace(/\/0$/, '');
+    var _modalSSESource = null;
 
     function openBookModal(itemId) {
         _modalItemId = itemId;
@@ -5287,7 +5304,7 @@
         document.querySelectorAll('.modal-smart').forEach(function(cb) { cb.checked = false; });
         setModalFeedback('info', 'Laddar...');
 
-        fetch('/metadata/' + itemId + '/json')
+        fetch('/metadata/' + itemId + '/json', { cache: 'no-store' })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 _populateModal(itemId, data);
@@ -5556,12 +5573,16 @@
     }
 
     function abortMetadata() {
-        var btn = document.getElementById('modalFetchBtn');
-        fetch('/metadata/abort', {method: 'POST'}).catch(function(){});
-        if (btn) {
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spin"></span> Avbryter…';
+        if (_modalSSESource) {
+            try { _modalSSESource.close(); } catch(e) {}
+            _modalSSESource = null;
         }
+        fetch('/metadata/abort', {method: 'POST'}).catch(function(){});
+        _setFetchingState(false);
+        _setModalBusy(false);
+        var progressEl = document.getElementById('modalProgress');
+        if (progressEl) { progressEl.style.display = 'none'; }
+        setModalFeedback('info', 'Sökning avbruten.');
     }
 
     function fetchMetadata() {
@@ -5629,6 +5650,7 @@
         var url = '/metadata/bulk/stream?item_ids=' + id + '&max_items=1'
             + '&smart_replace=' + encodeURIComponent(smartReplace.join(','));
         var sseSource = new EventSource(url);
+        _modalSSESource = sseSource;
 
         sseSource.onmessage = function(e) {
             var d;
@@ -5689,7 +5711,7 @@
             }
 
             if (d.type === 'aborted') {
-                sseSource.close();
+                sseSource.close(); _modalSSESource = null;
                 _setFetchingState(false);
                 _setModalBusy(false);
                 progressEl.style.display = 'none';
@@ -5698,7 +5720,7 @@
             }
 
             if (d.type === 'book_done') {
-                sseSource.close();
+                sseSource.close(); _modalSSESource = null;
                 _setFetchingState(false);
                 _setModalBusy(false);
                 var itemId = d.item_id;
@@ -5735,10 +5757,10 @@
                 setModalFeedback('success', _i18n.metadataFetched + src + score + '. ' + _i18n.reviewAndSave);
             }
 
-            if (d.type === 'done') { sseSource.close(); }
+            if (d.type === 'done') { sseSource.close(); _modalSSESource = null; }
         };
         sseSource.onerror = function() {
-            sseSource.close();
+            sseSource.close(); _modalSSESource = null;
             _setFetchingState(false);
             _setModalBusy(false);
             progressEl.style.display = 'none';
@@ -5779,7 +5801,23 @@
 
         var fieldsParam = encodeURIComponent(selectedFields.join(','));
         var smartParam = encodeURIComponent(smartReplace.join(','));
-        fetch('/metadata/' + id + '/ai-json?fields=' + fieldsParam + '&smart_replace=' + smartParam, { method: 'POST' })
+        var currentValues = {
+            title:          document.getElementById('modalTitle').value.trim(),
+            author:         document.getElementById('modalAuthor').value.trim(),
+            series:         document.getElementById('modalSeries').value.trim(),
+            series_index:   document.getElementById('modalSeriesIndex').value.trim(),
+            isbn:           document.getElementById('modalIsbn').value.trim(),
+            publisher:      document.getElementById('modalPublisher').value.trim(),
+            language:       document.getElementById('modalLanguage').value.trim(),
+            genres:         document.getElementById('modalGenres').value.trim(),
+            published_date: document.getElementById('modalPublishedDate').value.trim(),
+            description:    document.getElementById('modalDescription').value.trim()
+        };
+        fetch('/metadata/' + id + '/ai-json?fields=' + fieldsParam + '&smart_replace=' + smartParam, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ current_values: currentValues })
+        })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 _setModalBusy(false);
@@ -5938,7 +5976,8 @@
                 if (!data.ok) { setModalFeedback('error', _i18n.errorWithMsg.replace('{msg}', data.error || _i18n.unknownError)); return; }
                 _updateTableRow(id, payload);
                 _updateUnsyncedPill(1);
-                closeBookModal();
+                setModalFeedback('success', 'Sparad!');
+                setTimeout(clearModalFeedback, 3000);
             })
             .catch(function() {
                 _setModalBusy(false);
