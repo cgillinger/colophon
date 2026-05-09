@@ -492,6 +492,9 @@
     var _i18n = {
         searching: {{ _('Searching...')|tojson }},
         searchingExternalSources: {{ _('Searching external sources...')|tojson }},
+        searchingFastSources: {{ _('Searching Wikipedia + Google Books...')|tojson }},
+        fastPreviewReady: {{ _('Initial data found. Enriching with Calibre...')|tojson }},
+        searchingCalibre: {{ _('Searching Calibre sources...')|tojson }},
         fetchMetadata: {{ _('Fetch metadata')|tojson }},
         done: {{ _('Done! Opening preview...')|tojson }},
         noMatchesFound: {{ _('No matches found.')|tojson }},
@@ -532,8 +535,17 @@
             es.onmessage = function (event) {
                 var data;
                 try { data = JSON.parse(event.data); } catch (_) { return; }
-                if (data.type === 'progress' && data.message) {
-                    statusText.textContent = data.message;
+                if (data.type === 'progress') {
+                    // Override stage messages with friendlier progressive text.
+                    if (data.stage === 'fast_sources') {
+                        statusText.textContent = _i18n.searchingFastSources;
+                    } else if (data.stage === 'fast_preview') {
+                        statusText.textContent = _i18n.fastPreviewReady;
+                    } else if (data.stage === 'calibre' && data.status === 'searching') {
+                        statusText.textContent = _i18n.searchingCalibre;
+                    } else if (data.message) {
+                        statusText.textContent = data.message;
+                    }
                 } else if (data.type === 'done') {
                     es.close();
                     if (data.ok) {

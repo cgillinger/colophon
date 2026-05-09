@@ -33,6 +33,7 @@ def ensure_database_columns():
         "published_date": "ALTER TABLE library_items ADD COLUMN published_date VARCHAR(20)",
         "file_modified_by_colophon": "ALTER TABLE library_items ADD COLUMN file_modified_by_colophon DATETIME",
         "upstream_synced_at": "ALTER TABLE library_items ADD COLUMN upstream_synced_at DATETIME",
+        "completeness_score": "ALTER TABLE library_items ADD COLUMN completeness_score INTEGER",
     }
 
     changed = False

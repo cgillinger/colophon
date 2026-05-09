@@ -6,6 +6,7 @@ import pytest
 
 from app.services.metadata_pipeline import (
     build_search_input,
+    completeness_score,
     run_metadata_enrichment,
     apply_enrichment_result,
     _build_validation_warning,
@@ -134,7 +135,7 @@ class TestRunMetadataEnrichment:
                 "query_text": "Book Author", "title": "Book", "author": "Author",
                 "isbn": "", "source": "db_title_author", "warnings": [],
             }
-            result = run_metadata_enrichment(item, include_calibre=False)
+            result = run_metadata_enrichment(item, include_calibre=False, include_wikipedia=False)
         assert result["ok"] is False
         assert result["error"]
         assert "source_results" in result
@@ -157,7 +158,7 @@ class TestRunMetadataEnrichment:
                 "query_text": "Book Author", "title": "Book", "author": "Author",
                 "isbn": "", "source": "db_title_author", "warnings": [],
             }
-            result = run_metadata_enrichment(item, include_calibre=False)
+            result = run_metadata_enrichment(item, include_calibre=False, include_wikipedia=False)
         assert result["ok"] is True
         assert result["score"] == 85
         assert result["fetched_payload"]["title"] == "Book"
@@ -181,7 +182,7 @@ class TestRunMetadataEnrichment:
                    return_value=self._google_outcome([best_candidate])), \
              patch("app.services.metadata_sources.choose_best_metadata_explained",
                    return_value=self._scoring(best_candidate, 80)):
-            result = run_metadata_enrichment(item, include_calibre=False)
+            result = run_metadata_enrichment(item, include_calibre=False, include_wikipedia=False)
         assert "search_input" in result
         assert "local_metadata" in result
         assert result["local_metadata"] is file_meta
@@ -212,7 +213,7 @@ class TestRunMetadataEnrichment:
                    return_value=self._google_outcome([best_candidate])), \
              patch("app.services.metadata_sources.choose_best_metadata_explained",
                    return_value=self._scoring(best_candidate, 91)):
-            run_metadata_enrichment(item, include_calibre=False)
+            run_metadata_enrichment(item, include_calibre=False, include_wikipedia=False)
 
         assert captured["local_metadata"] is file_meta
 
@@ -231,7 +232,7 @@ class TestRunMetadataEnrichment:
                    return_value=self._google_outcome([best_candidate])) as mock_google, \
              patch("app.services.metadata_sources.choose_best_metadata_explained",
                    return_value=self._scoring(best_candidate, 80)):
-            run_metadata_enrichment(item, include_calibre=False)
+            run_metadata_enrichment(item, include_calibre=False, include_wikipedia=False)
 
         call_kwargs = mock_google.call_args.kwargs
         assert call_kwargs.get("isbn") == "9789876543210"
@@ -251,7 +252,7 @@ class TestRunMetadataEnrichment:
                    return_value=self._google_outcome([best_candidate])) as mock_google, \
              patch("app.services.metadata_sources.choose_best_metadata_explained",
                    return_value=self._scoring(best_candidate, 70)):
-            result = run_metadata_enrichment(item, include_calibre=False)
+            result = run_metadata_enrichment(item, include_calibre=False, include_wikipedia=False)
 
         assert result["ok"] is True
         assert result["local_metadata"] is None
@@ -273,7 +274,7 @@ class TestRunMetadataEnrichment:
                    return_value=self._google_outcome([best_candidate])), \
              patch("app.services.metadata_sources.choose_best_metadata_explained",
                    return_value=self._scoring(best_candidate, 70)):
-            run_metadata_enrichment(item, local_metadata=explicit_meta, include_calibre=False)
+            run_metadata_enrichment(item, local_metadata=explicit_meta, include_calibre=False, include_wikipedia=False)
 
         mock_scan.assert_not_called()
 
@@ -301,3 +302,234 @@ class TestApplyEnrichmentResult:
         call_kwargs = mock_apply.call_args.kwargs
         assert call_kwargs["selected_fields"] == {"title"}
         assert call_kwargs["write_to_file"] is True
+
+
+# ---------------------------------------------------------------------------
+# Progressive enrichment: fast_preview / final_preview / parallel sources
+# ---------------------------------------------------------------------------
+
+def _wiki_outcome(candidates):
+    return {
+        "source": "wikipedia",
+        "ok": bool(candidates),
+        "status": "ok" if candidates else "no_result",
+        "duration_ms": 5,
+        "message": "",
+        "candidates": list(candidates),
+        "raw_debug": {"returncode": None, "stderr_excerpt": ""},
+    }
+
+
+class TestProgressiveEnrichmentFlow:
+    def _google_outcome(self, candidates):
+        return {
+            "source": "google_books",
+            "ok": bool(candidates),
+            "status": "ok" if candidates else "no_result",
+            "duration_ms": 10, "message": "", "candidates": list(candidates),
+            "raw_debug": {"returncode": None, "stderr_excerpt": ""},
+        }
+
+    def _scoring(self, best, score):
+        return {
+            "best": best, "score": score,
+            "signals": {"isbn_exact_match": False, "title_similarity": 0.9,
+                        "author_similarity": 0.9, "has_description": True, "has_cover": False},
+            "warnings": [], "classification": "review_needed",
+            "all_scored": [{"candidate": best, "score": score, "signals": {},
+                            "warnings": [], "classification": "review_needed"}] if best else [],
+        }
+
+    def test_emits_fast_preview_then_final_preview(self):
+        item = _item(title="Book", author="Author")
+        candidate = {
+            "source": "Google Books API", "title": "Book", "author": "Author",
+            "description": "A book", "isbn": "9781234567890", "publisher": "Publisher",
+            "language": "en", "series": "", "series_index": "", "cover_url": "",
+        }
+        events = []
+
+        with patch("app.services.metadata_pipeline.build_search_input") as mock_si, \
+             patch("app.services.metadata_sources.google_books_search_with_status",
+                   return_value=self._google_outcome([candidate])), \
+             patch("app.services.metadata_wikipedia.search_wikipedia_with_status",
+                   return_value=_wiki_outcome([])), \
+             patch("app.services.metadata_sources.choose_best_metadata_explained",
+                   return_value=self._scoring(candidate, 85)):
+            mock_si.return_value = {
+                "query_text": "Book Author", "title": "Book", "author": "Author",
+                "isbn": "", "source": "db_title_author", "warnings": [],
+            }
+            run_metadata_enrichment(
+                item, include_calibre=False, on_progress=events.append,
+            )
+
+        stages = [e["stage"] for e in events if e.get("type") == "progress"]
+        assert "fast_sources" in stages
+        assert "fast_preview" in stages
+        assert "final_preview" in stages
+        # Order: fast_sources comes before fast_preview, fast_preview before final_preview.
+        assert stages.index("fast_sources") < stages.index("fast_preview")
+        assert stages.index("fast_preview") < stages.index("final_preview")
+
+        fast = next(e for e in events if e.get("stage") == "fast_preview")
+        assert fast["payload"]["title"] == "Book"
+        final = next(e for e in events if e.get("stage") == "final_preview")
+        assert final["payload"]["title"] == "Book"
+
+    def test_runs_wikipedia_and_google_in_parallel(self):
+        """Both fast sources are kicked off; results merge into all_candidates."""
+        item = _item(title="Book", author="Author")
+        google_cand = {
+            "source": "Google Books API", "title": "Book", "author": "Author",
+            "description": "From Google", "isbn": "", "publisher": "",
+            "language": "en", "series": "", "series_index": "", "cover_url": "",
+        }
+        wiki_cand = {
+            "source": "Wikipedia", "title": "Book", "author": "",
+            "description": "From Wikipedia", "isbn": "", "publisher": "",
+            "language": "en", "series": "", "series_index": "", "cover_url": "",
+        }
+
+        with patch("app.services.metadata_pipeline.build_search_input") as mock_si, \
+             patch("app.services.metadata_sources.google_books_search_with_status",
+                   return_value=self._google_outcome([google_cand])), \
+             patch("app.services.metadata_wikipedia.search_wikipedia_with_status",
+                   return_value=_wiki_outcome([wiki_cand])) as mock_wiki, \
+             patch("app.services.metadata_sources.choose_best_metadata_explained",
+                   return_value=self._scoring(google_cand, 85)):
+            mock_si.return_value = {
+                "query_text": "Book Author", "title": "Book", "author": "Author",
+                "isbn": "", "source": "db_title_author", "warnings": [],
+            }
+            result = run_metadata_enrichment(item, include_calibre=False)
+
+        # Wikipedia was actually called.
+        assert mock_wiki.called
+        # Both sources are recorded in source_results.
+        sources = {sr["source"] for sr in result["source_results"]}
+        assert "google_books" in sources
+        assert "wikipedia" in sources
+
+    def test_include_wikipedia_false_skips_wikipedia(self):
+        item = _item(title="Book", author="Author")
+        candidate = {
+            "source": "Google Books API", "title": "Book", "author": "Author",
+            "description": "", "isbn": "", "publisher": "",
+            "language": "en", "series": "", "series_index": "", "cover_url": "",
+        }
+
+        with patch("app.services.metadata_pipeline.build_search_input") as mock_si, \
+             patch("app.services.metadata_sources.google_books_search_with_status",
+                   return_value=self._google_outcome([candidate])), \
+             patch("app.services.metadata_wikipedia.search_wikipedia_with_status") as mock_wiki, \
+             patch("app.services.metadata_sources.choose_best_metadata_explained",
+                   return_value=self._scoring(candidate, 80)):
+            mock_si.return_value = {
+                "query_text": "Book Author", "title": "Book", "author": "Author",
+                "isbn": "", "source": "db_title_author", "warnings": [],
+            }
+            run_metadata_enrichment(
+                item, include_calibre=False, include_wikipedia=False,
+            )
+
+        assert not mock_wiki.called
+
+    def test_wikipedia_failure_does_not_block_pipeline(self):
+        """If Wikipedia raises an exception, Google Books results still flow through."""
+        item = _item(title="Book", author="Author")
+        candidate = {
+            "source": "Google Books API", "title": "Book", "author": "Author",
+            "description": "", "isbn": "", "publisher": "",
+            "language": "en", "series": "", "series_index": "", "cover_url": "",
+        }
+
+        with patch("app.services.metadata_pipeline.build_search_input") as mock_si, \
+             patch("app.services.metadata_sources.google_books_search_with_status",
+                   return_value=self._google_outcome([candidate])), \
+             patch("app.services.metadata_wikipedia.search_wikipedia_with_status",
+                   side_effect=RuntimeError("wikipedia is down")), \
+             patch("app.services.metadata_sources.choose_best_metadata_explained",
+                   return_value=self._scoring(candidate, 80)):
+            mock_si.return_value = {
+                "query_text": "Book Author", "title": "Book", "author": "Author",
+                "isbn": "", "source": "db_title_author", "warnings": [],
+            }
+            result = run_metadata_enrichment(item, include_calibre=False)
+
+        assert result["ok"] is True
+        # The synthesised Wikipedia error result is in source_results.
+        wiki_sr = next(
+            (sr for sr in result["source_results"] if sr["source"] == "wikipedia"),
+            None,
+        )
+        assert wiki_sr is not None
+        assert wiki_sr["ok"] is False
+        assert wiki_sr["status"] == "network_or_plugin_error"
+
+
+# ---------------------------------------------------------------------------
+# completeness_score
+# ---------------------------------------------------------------------------
+
+class TestCompletenessScore:
+    def _bare(self, **kwargs):
+        item = MagicMock()
+        # Give explicit attributes so MagicMock auto-generation can't fool us.
+        for field in ("description", "genres", "published_date", "publisher", "cover_path"):
+            setattr(item, field, kwargs.get(field, ""))
+        return item
+
+    def test_complete_item_scores_zero(self, tmp_path):
+        # Create a real file >= 5KB so the cover heuristic passes.
+        cover = tmp_path / "cover.jpg"
+        cover.write_bytes(b"\x00" * 6000)
+        item = self._bare(
+            description="A" * 100,
+            genres="Science Fiction",
+            published_date="2020-01-01",
+            publisher="Macmillan",
+            cover_path=str(cover),
+        )
+        assert completeness_score(item) == 0
+
+    def test_empty_item_scores_max(self):
+        item = self._bare()
+        # cover (3) + description (3) + genres (1) + published_date (1) + publisher (1) = 9
+        assert completeness_score(item) == 9
+
+    def test_short_description_counts_as_missing(self, tmp_path):
+        cover = tmp_path / "c.jpg"
+        cover.write_bytes(b"\x00" * 6000)
+        item = self._bare(
+            description="Short.",
+            genres="Science Fiction",
+            published_date="2020-01-01",
+            publisher="Pub",
+            cover_path=str(cover),
+        )
+        assert completeness_score(item) == 3  # only description weight
+
+    def test_placeholder_genre_counts_as_missing(self, tmp_path):
+        cover = tmp_path / "c.jpg"
+        cover.write_bytes(b"\x00" * 6000)
+        item = self._bare(
+            description="A" * 100,
+            genres="Fiction",
+            published_date="2020",
+            publisher="Pub",
+            cover_path=str(cover),
+        )
+        assert completeness_score(item) == 1  # only genres weight
+
+    def test_tiny_cover_counts_as_missing(self, tmp_path):
+        cover = tmp_path / "tiny.jpg"
+        cover.write_bytes(b"\x00" * 100)  # well under 5KB
+        item = self._bare(
+            description="A" * 100,
+            genres="Science Fiction",
+            published_date="2020",
+            publisher="Pub",
+            cover_path=str(cover),
+        )
+        assert completeness_score(item) == 3  # cover weight only
