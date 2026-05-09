@@ -27,6 +27,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+RUN pybabel compile -d app/translations
+
 RUN mkdir -p /books /data
 
 EXPOSE 5000

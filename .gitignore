@@ -33,6 +33,9 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Compiled translations (built in Dockerfile)
+*.mo
+
 # Övrigt
 struktur.txt
 backup_platform_drm_*/
