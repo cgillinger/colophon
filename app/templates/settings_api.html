@@ -1,0 +1,781 @@
+<!doctype html>
+<html lang="sv" data-theme="light">
+<head>
+    <meta charset="utf-8">
+    <script>
+        (function(){
+            var t = localStorage.getItem('colophon-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+    <link rel="icon" href="{{ url_for('static', filename='icons/favicon.ico') }}" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabler-icons/tabler-icons.min.css') }}">
+    <title>API-inställningar - Colophon</title>
+    <style>
+        :root, [data-theme="light"] {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #ebedf0;
+            --bg-info: #ecfdf5;
+            --text-primary: #1a1a1a;
+            --text-secondary: #555555;
+            --text-tertiary: #888888;
+            --text-info: #065f46;
+            --border-light: rgba(0, 0, 0, 0.08);
+            --border-medium: rgba(0, 0, 0, 0.15);
+            --accent-primary: #059669;
+            --accent-primary-hover: #047857;
+            --accent-purple: #6c5ce7;
+            --accent-green: #059669;
+            --accent-red: #dc3545;
+            --accent-yellow: #e6a817;
+            --badge-ok-bg: #d1fae5;
+            --badge-ok-text: #065f46;
+            --badge-warn-bg: #fef3cd;
+            --badge-warn-text: #856404;
+            --badge-info-bg: #dbeafe;
+            --badge-info-text: #1e40af;
+            --modal-overlay: rgba(0, 0, 0, 0.4);
+        }
+        [data-theme="dark"] {
+            --bg-primary: #1e2227;
+            --bg-secondary: #252a30;
+            --bg-tertiary: #30363b;
+            --bg-info: #064e3b;
+            --text-primary: #e8ecef;
+            --text-secondary: #aeb7bd;
+            --text-tertiary: #6c757d;
+            --text-info: #a7f3d0;
+            --border-light: rgba(255, 255, 255, 0.06);
+            --border-medium: rgba(255, 255, 255, 0.12);
+            --accent-primary: #10b981;
+            --accent-primary-hover: #34d399;
+            --accent-purple: #7c6ff0;
+            --accent-green: #10b981;
+            --accent-red: #ff6b6b;
+            --accent-yellow: #ffd166;
+            --badge-ok-bg: #065f46;
+            --badge-ok-text: #a7f3d0;
+            --badge-warn-bg: #3a3020;
+            --badge-warn-text: #ffd166;
+            --badge-info-bg: #1e3a5f;
+            --badge-info-text: #93c5fd;
+            --modal-overlay: rgba(0, 0, 0, 0.7);
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 14px;
+        }
+        a { color: inherit; text-decoration: none; }
+        button, input, select { font-family: inherit; color: inherit; }
+
+        .topbar {
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .topbar-inner {
+            width: 100%;
+            max-width: 1300px;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .topbar-brand { display: flex; align-items: center; gap: 12px; font-size: 20px; font-weight: 500; color: var(--text-primary); }
+        .topbar-brand img { width: 96px; height: 96px; border-radius: 14px; display: block; object-fit: contain; }
+        .topbar-brand span { font-size: 28px; font-weight: 500; }
+        .topbar-actions { display: flex; align-items: center; gap: 8px; }
+        .topbar-btn {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid transparent;
+            border-radius: 6px;
+            padding: 7px 12px;
+            font-size: 14px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            line-height: 1;
+        }
+        .topbar-btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .topbar-btn i { font-size: 22px; }
+        .topbar-btn.icon-only { padding: 8px; }
+        .topbar-search {
+            flex: 1;
+            position: relative;
+            margin: 0;
+        }
+        .topbar-search i.search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-tertiary);
+            font-size: 18px;
+            pointer-events: none;
+        }
+        .topbar-search input {
+            width: 100%;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            color: var(--text-primary);
+            border-radius: 8px;
+            padding: 0 14px 0 42px;
+            font-size: 14px;
+            height: 42px;
+        }
+
+        .container { max-width: 860px; margin: 0 auto; padding: 18px 20px 40px; }
+        h1 { margin: 0 0 6px; font-size: 22px; font-weight: 600; }
+        .lead {
+            margin: 0 0 22px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.55;
+        }
+        h2 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin: 28px 0 12px 0;
+        }
+        h2:first-child { margin-top: 0; }
+
+        .panel {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            padding: 22px 24px;
+            margin-bottom: 18px;
+        }
+        .panel-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin: 0 0 8px 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .panel-title-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .panel-desc {
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.55;
+            margin: 0 0 14px 0;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 9px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .badge.ok { background: var(--badge-ok-bg); color: var(--badge-ok-text); }
+        .badge.warn { background: var(--badge-warn-bg); color: var(--badge-warn-text); }
+        .badge.info { background: var(--badge-info-bg); color: var(--badge-info-text); }
+
+        .messages { margin-bottom: 18px; }
+        .message {
+            padding: 12px 14px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-light);
+        }
+        .message.success { border-left: 4px solid var(--accent-green); }
+        .message.error { border-left: 4px solid var(--accent-red); }
+
+        .field { margin-bottom: 12px; }
+        .field label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: var(--text-primary);
+        }
+        .field input[type="text"],
+        .field input[type="password"] {
+            width: 100%;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-medium);
+            border-radius: 6px;
+            color: var(--text-primary);
+            padding: 8px 12px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        .field input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+        .key-row {
+            display: flex;
+            gap: 6px;
+            align-items: stretch;
+        }
+        .key-row input { flex: 1; }
+        .icon-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-medium);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            padding: 0 10px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        .icon-btn:hover { color: var(--text-primary); background: var(--bg-tertiary); }
+        .env-hint {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-top: 4px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        }
+        .field .help {
+            font-size: 13px;
+            color: var(--text-tertiary);
+            margin-top: 4px;
+            line-height: 1.5;
+        }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 6px;
+        }
+        .toggle-row input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent-primary);
+        }
+
+        details.howto {
+            margin-top: 12px;
+            border-top: 1px solid var(--border-light);
+            padding-top: 10px;
+        }
+        details.howto > summary {
+            cursor: pointer;
+            color: var(--accent-primary);
+            font-size: 13px;
+            font-weight: 500;
+            list-style: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        details.howto > summary::-webkit-details-marker { display: none; }
+        details.howto > summary::before {
+            content: "▸";
+            display: inline-block;
+            transition: transform 0.15s ease;
+        }
+        details.howto[open] > summary::before {
+            transform: rotate(90deg);
+        }
+        details.howto .howto-body {
+            margin-top: 10px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        details.howto .howto-body p { margin: 0 0 8px; }
+        details.howto .howto-body ul { margin: 0 0 8px 18px; padding: 0; }
+        details.howto .howto-body code {
+            background: var(--bg-secondary);
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 12.5px;
+        }
+        details.howto .howto-body a { color: var(--accent-primary); text-decoration: underline; }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: 8px;
+        }
+        .btn {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            padding: 9px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn:hover { background: var(--bg-secondary); }
+        .btn.primary {
+            background: var(--accent-primary);
+            color: #fff;
+            border-color: var(--accent-primary);
+        }
+        .btn.primary:hover { background: var(--accent-primary-hover); }
+        .btn.outline {
+            background: transparent;
+            border-color: var(--border-medium);
+        }
+
+        .footer-note {
+            margin-top: 22px;
+            padding: 12px 14px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.55;
+        }
+
+        .test-results {
+            margin-top: 12px;
+            display: none;
+        }
+        .test-results.show { display: block; }
+        .test-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+        .test-row .label { color: var(--text-primary); font-weight: 500; }
+        .test-row .status.ok { color: var(--accent-green); font-weight: 600; }
+        .test-row .status.fail { color: var(--accent-red); font-weight: 600; }
+        .test-row .status.skip { color: var(--text-tertiary); }
+    </style>
+</head>
+<body>
+
+<header class="topbar">
+    <div class="topbar-inner">
+        <a class="topbar-brand" href="{{ url_for('metadata.bulk_metadata') }}">
+            <img src="{{ url_for('static', filename='icons/colophon-transparent.png') }}" alt="Colophon">
+            <span>Colophon</span>
+        </a>
+        <form class="topbar-search" action="{{ url_for('metadata.bulk_metadata') }}" method="get">
+            <i class="ti ti-search search-icon"></i>
+            <input type="text" name="q" placeholder="Sök titel, författare, ISBN, genre...">
+        </form>
+        <div class="topbar-actions">
+            <a class="topbar-btn" href="{{ url_for('settings.ai_settings') }}" title="AI-statistik och huvudbibliotek">
+                <i class="ti ti-chart-bar"></i> Statistik
+            </a>
+            <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="Byt tema">
+                <i id="themeIcon" class="ti ti-sun"></i>
+            </button>
+            <a class="topbar-btn icon-only" href="{{ url_for('settings.api_settings') }}" title="Inställningar">
+                <i class="ti ti-settings"></i>
+            </a>
+        </div>
+    </div>
+</header>
+
+<div class="container">
+    <h1>⚙ API-inställningar</h1>
+    <p class="lead">
+        Nycklar sparas lokalt i Colophons databas. Miljövariabler används som fallback om fältet lämnas tomt.
+    </p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="messages">
+                {% for category, message in messages %}
+                    <div class="message {{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <form method="post" action="{{ url_for('settings.api_settings') }}" autocomplete="off">
+
+        <!-- ============ AI-metadata ============ -->
+        <div class="panel">
+            <div class="panel-title">
+                <span class="panel-title-left">
+                    <i class="ti ti-sparkles" style="color:var(--accent-purple); font-size:20px;"></i>
+                    AI-metadata
+                </span>
+                {% if ai_key_set %}
+                    <span class="badge ok">&#10003; Ansluten</span>
+                {% else %}
+                    <span class="badge warn">Ej konfigurerad</span>
+                {% endif %}
+            </div>
+            <p class="panel-desc">
+                Använder AI för att identifiera bokserier, serienummer och förbättra metadata
+                som titel, författare och synopsis. Särskilt användbart för böcker där
+                metadatakällor saknar serie-information. Knappen "Fråga AI" i bokmodalen
+                kräver denna konfiguration.
+            </p>
+
+            <div class="field">
+                <label for="AI_API_URL">API-URL (chat completions endpoint)</label>
+                <input type="text" id="AI_API_URL" name="AI_API_URL"
+                       value="{{ ai_url }}"
+                       placeholder="{{ ai_url_default }}">
+                <div class="env-hint">Env: COLOPHON_AI_API_URL</div>
+            </div>
+
+            <div class="field">
+                <label for="AI_API_KEY">API-nyckel</label>
+                <div class="key-row">
+                    <input type="password" id="AI_API_KEY" name="AI_API_KEY"
+                           value=""
+                           placeholder="{% if ai_key_set %}{{ ai_key_masked }}{% else %}sk-...{% endif %}"
+                           autocomplete="new-password">
+                    <button type="button" class="icon-btn" onclick="toggleVisibility('AI_API_KEY', this)" title="Visa/dölj">
+                        <i class="ti ti-eye"></i>
+                    </button>
+                    {% if ai_key_set %}
+                        <button type="submit" class="icon-btn" name="clear_AI_API_KEY" value="1"
+                                title="Ta bort nyckel"
+                                onclick="return confirm('Ta bort sparad AI-nyckel?');">
+                            <i class="ti ti-x"></i>
+                        </button>
+                    {% endif %}
+                </div>
+                <div class="env-hint">Env: COLOPHON_AI_API_KEY (legacy: COLOPHON_MISTRAL_API_KEY)</div>
+                <div class="help">Lämna tomt för att behålla befintligt värde. Ingen nyckel = ingen Authorization-header (för Ollama/lokala modeller).</div>
+            </div>
+
+            <div class="field">
+                <label for="AI_MODEL">Modell</label>
+                <input type="text" id="AI_MODEL" name="AI_MODEL"
+                       value="{{ ai_model }}"
+                       placeholder="{{ ai_model_default }}">
+                <div class="env-hint">Env: COLOPHON_AI_MODEL (legacy: COLOPHON_MISTRAL_MODEL)</div>
+            </div>
+
+            <details class="howto">
+                <summary>Populära leverantörer (URL + modellexempel)</summary>
+                <div class="howto-body">
+                    <p><strong>Mistral</strong> (rekommenderas — gratis ~1M tokens/månad)</p>
+                    <ul>
+                        <li>URL: <code>https://api.mistral.ai/v1/chat/completions</code></li>
+                        <li>Modell: <code>mistral-small-latest</code></li>
+                        <li>Skaffa nyckel: <a href="https://console.mistral.ai" target="_blank" rel="noopener">console.mistral.ai</a></li>
+                    </ul>
+                    <p><strong>OpenAI</strong></p>
+                    <ul>
+                        <li>URL: <code>https://api.openai.com/v1/chat/completions</code></li>
+                        <li>Modell: <code>gpt-4o-mini</code></li>
+                    </ul>
+                    <p><strong>DeepSeek</strong></p>
+                    <ul>
+                        <li>URL: <code>https://api.deepseek.com/v1/chat/completions</code></li>
+                        <li>Modell: <code>deepseek-chat</code></li>
+                    </ul>
+                    <p><strong>Ollama</strong> (lokal, gratis, ingen nyckel behövs)</p>
+                    <ul>
+                        <li>URL: <code>http://localhost:11434/v1/chat/completions</code></li>
+                        <li>Modell: t.ex. <code>llama3.1</code> eller <code>qwen2.5</code></li>
+                    </ul>
+                </div>
+            </details>
+        </div>
+
+        <h2>Omslagssökning</h2>
+
+        <!-- ============ Open Library Covers ============ -->
+        <div class="panel">
+            <div class="panel-title">
+                <span class="panel-title-left">
+                    <i class="ti ti-book" style="color:var(--accent-primary); font-size:20px;"></i>
+                    Open Library Covers
+                </span>
+                <span class="badge info">Ingen nyckel krävs</span>
+            </div>
+            <p class="panel-desc">
+                Hämtar bokomslag direkt via ISBN från Internet Archives öppna bibliotek.
+                Fungerar bäst för böcker som redan har ISBN ifyllt. Helt gratis,
+                ingen konfiguration.
+            </p>
+            <div class="toggle-row">
+                <input type="checkbox" id="COVER_OPENLIBRARY_ENABLED" name="COVER_OPENLIBRARY_ENABLED"
+                       {% if openlibrary_enabled %}checked{% endif %}>
+                <label for="COVER_OPENLIBRARY_ENABLED" style="margin:0; font-weight:500;">Aktiverad</label>
+            </div>
+        </div>
+
+        <!-- ============ Google Books zoom ============ -->
+        <div class="panel">
+            <div class="panel-title">
+                <span class="panel-title-left">
+                    <i class="ti ti-zoom-in" style="color:var(--accent-primary); font-size:20px;"></i>
+                    Google Books — högupplöst omslag
+                </span>
+                <span class="badge info">Ingen nyckel krävs</span>
+            </div>
+            <p class="panel-desc">
+                Uppgraderar automatiskt thumbnails från Google Books till fullstorlek.
+                Använder samma data som "Hämta metadata" men begär högre upplösning.
+                Noll extra API-anrop.
+            </p>
+            <div class="toggle-row">
+                <input type="checkbox" id="COVER_GOOGLE_ZOOM_ENABLED" name="COVER_GOOGLE_ZOOM_ENABLED"
+                       {% if google_zoom_enabled %}checked{% endif %}>
+                <label for="COVER_GOOGLE_ZOOM_ENABLED" style="margin:0; font-weight:500;">Aktiverad</label>
+            </div>
+        </div>
+
+        <!-- ============ Google bildsökning ============ -->
+        <div class="panel">
+            <div class="panel-title">
+                <span class="panel-title-left">
+                    <i class="ti ti-brand-google" style="color:var(--accent-primary); font-size:20px;"></i>
+                    Google bildsökning
+                </span>
+                {% if google_cse_key_set and google_cse_id %}
+                    <span class="badge ok">&#10003; Ansluten</span>
+                {% else %}
+                    <span class="badge warn">Ej konfigurerad</span>
+                {% endif %}
+            </div>
+            <p class="panel-desc">
+                Söker omslag via Googles bildsökning med boktitel och författare. Hittar
+                omslag även för böcker utan ISBN, ovanliga utgåvor och böcker som saknas
+                i bokdatabaser.
+            </p>
+
+            <div class="field">
+                <label for="GOOGLE_CSE_API_KEY">API-nyckel</label>
+                <div class="key-row">
+                    <input type="password" id="GOOGLE_CSE_API_KEY" name="GOOGLE_CSE_API_KEY"
+                           value=""
+                           placeholder="{% if google_cse_key_set %}{{ google_cse_key_masked }}{% else %}AIza...{% endif %}"
+                           autocomplete="new-password">
+                    <button type="button" class="icon-btn" onclick="toggleVisibility('GOOGLE_CSE_API_KEY', this)" title="Visa/dölj">
+                        <i class="ti ti-eye"></i>
+                    </button>
+                    {% if google_cse_key_set %}
+                        <button type="submit" class="icon-btn" name="clear_GOOGLE_CSE_API_KEY" value="1"
+                                title="Ta bort nyckel"
+                                onclick="return confirm('Ta bort sparad Google CSE-nyckel?');">
+                            <i class="ti ti-x"></i>
+                        </button>
+                    {% endif %}
+                </div>
+                <div class="env-hint">Env: COLOPHON_GOOGLE_CSE_API_KEY</div>
+            </div>
+
+            <div class="field">
+                <label for="GOOGLE_CSE_ID">Search Engine ID (cx)</label>
+                <input type="text" id="GOOGLE_CSE_ID" name="GOOGLE_CSE_ID"
+                       value="{{ google_cse_id }}"
+                       placeholder="017576662512468239146:omuauf_lfve">
+                <div class="env-hint">Env: COLOPHON_GOOGLE_CSE_ID</div>
+            </div>
+
+            <details class="howto">
+                <summary>Så skaffar du nyckel + Search Engine ID</summary>
+                <div class="howto-body">
+                    <ol>
+                        <li>Gå till <a href="https://console.cloud.google.com" target="_blank" rel="noopener">console.cloud.google.com</a> och aktivera <strong>Custom Search API</strong>.</li>
+                        <li>Skapa en API-nyckel under "Credentials" — klistra in den ovan.</li>
+                        <li>Skapa en sökmotor på <a href="https://programmablesearchengine.google.com" target="_blank" rel="noopener">programmablesearchengine.google.com</a>.</li>
+                        <li>Aktivera "Bildsökning" och "Sök på hela webben". Kopiera Search Engine ID (cx).</li>
+                    </ol>
+                    <p>Gratis kvot: 100 sökningar/dag.</p>
+                </div>
+            </details>
+        </div>
+
+        <!-- ============ Bing bildsökning ============ -->
+        <div class="panel">
+            <div class="panel-title">
+                <span class="panel-title-left">
+                    <i class="ti ti-brand-bing" style="color:var(--accent-primary); font-size:20px;"></i>
+                    Bing bildsökning
+                </span>
+                {% if bing_key_set %}
+                    <span class="badge ok">&#10003; Ansluten</span>
+                {% else %}
+                    <span class="badge warn">Ej konfigurerad</span>
+                {% endif %}
+            </div>
+            <p class="panel-desc">
+                Alternativ bildsökning via Microsoft Bing. Bra komplement om Google-kvoten
+                tar slut, eller som extra källa för fler omslagsvarianter.
+            </p>
+
+            <div class="field">
+                <label for="BING_API_KEY">API-nyckel</label>
+                <div class="key-row">
+                    <input type="password" id="BING_API_KEY" name="BING_API_KEY"
+                           value=""
+                           placeholder="{% if bing_key_set %}{{ bing_key_masked }}{% else %}32 tecken hex{% endif %}"
+                           autocomplete="new-password">
+                    <button type="button" class="icon-btn" onclick="toggleVisibility('BING_API_KEY', this)" title="Visa/dölj">
+                        <i class="ti ti-eye"></i>
+                    </button>
+                    {% if bing_key_set %}
+                        <button type="submit" class="icon-btn" name="clear_BING_API_KEY" value="1"
+                                title="Ta bort nyckel"
+                                onclick="return confirm('Ta bort sparad Bing-nyckel?');">
+                            <i class="ti ti-x"></i>
+                        </button>
+                    {% endif %}
+                </div>
+                <div class="env-hint">Env: COLOPHON_BING_API_KEY</div>
+            </div>
+
+            <details class="howto">
+                <summary>Så skaffar du Bing Image Search-nyckel</summary>
+                <div class="howto-body">
+                    <ol>
+                        <li>Logga in på <a href="https://portal.azure.com" target="_blank" rel="noopener">portal.azure.com</a>.</li>
+                        <li>Skapa en resurs av typen <strong>Bing Search v7</strong>.</li>
+                        <li>Välj prisklass <strong>Free F1</strong>.</li>
+                        <li>Kopiera "Key 1" från resursens "Keys and Endpoint"-flik.</li>
+                    </ol>
+                    <p>Gratis kvot: 1000 sökningar/månad.</p>
+                </div>
+            </details>
+        </div>
+
+        <div class="actions">
+            <button class="btn primary" type="submit">
+                <i class="ti ti-device-floppy"></i> Spara inställningar
+            </button>
+            <button class="btn outline" type="button" onclick="testConnections()">
+                <i class="ti ti-plug-connected"></i> Testa anslutningar
+            </button>
+        </div>
+
+        <div id="test-results" class="test-results panel" style="margin-top:18px;">
+            <div class="panel-title">
+                <span class="panel-title-left">
+                    <i class="ti ti-activity"></i>
+                    Anslutningstester
+                </span>
+            </div>
+            <div id="test-results-body"></div>
+        </div>
+    </form>
+
+    <div class="footer-note">
+        Alla nycklar sparas i lokal databas på din server. Alternativt kan de sättas
+        som miljövariabler — UI-värden har prioritet.
+    </div>
+</div>
+
+<script>
+    function toggleTheme() {
+        var current = document.documentElement.getAttribute('data-theme');
+        var next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('colophon-theme', next);
+        var icon = document.getElementById('themeIcon');
+        if (icon) icon.className = next === 'dark' ? 'ti ti-moon' : 'ti ti-sun';
+    }
+    (function() {
+        var t = document.documentElement.getAttribute('data-theme');
+        var icon = document.getElementById('themeIcon');
+        if (icon) icon.className = t === 'dark' ? 'ti ti-moon' : 'ti ti-sun';
+    })();
+
+    function toggleVisibility(inputId, btn) {
+        var input = document.getElementById(inputId);
+        if (!input) return;
+        var icon = btn.querySelector('i');
+        if (input.type === 'password') {
+            input.type = 'text';
+            if (icon) icon.className = 'ti ti-eye-off';
+        } else {
+            input.type = 'password';
+            if (icon) icon.className = 'ti ti-eye';
+        }
+    }
+
+    var SERVICE_LABELS = {
+        ai: 'AI-metadata',
+        google_cse: 'Google bildsökning',
+        bing: 'Bing bildsökning',
+        openlibrary: 'Open Library Covers'
+    };
+
+    function errorText(err) {
+        if (!err) return 'okänt fel';
+        if (err === 'auth') return 'autentisering misslyckades';
+        if (err === 'timeout') return 'timeout';
+        if (err === 'rate_limit') return 'kvot uppnådd';
+        if (err === 'request_failed') return 'nätverksfel';
+        if (err === 'no_key') return 'ingen nyckel';
+        return err;
+    }
+
+    function testConnections() {
+        var box = document.getElementById('test-results');
+        var body = document.getElementById('test-results-body');
+        body.innerHTML = '<div class="test-row"><span class="label">Testar…</span><span class="status skip">⏳</span></div>';
+        box.classList.add('show');
+
+        fetch('{{ url_for("settings.test_api_connections") }}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+            var keys = Object.keys(data);
+            if (!keys.length) {
+                body.innerHTML = '<div class="test-row"><span class="label">Inget att testa — inga tjänster konfigurerade.</span><span class="status skip">—</span></div>';
+                return;
+            }
+            var html = '';
+            ['ai','google_cse','bing','openlibrary'].forEach(function(k){
+                if (!data[k]) return;
+                var label = SERVICE_LABELS[k] || k;
+                var ok = data[k].ok;
+                var statusClass = ok ? 'ok' : 'fail';
+                var statusText = ok ? '✓ Fungerar' : '✕ ' + errorText(data[k].error);
+                html += '<div class="test-row">'
+                     +    '<span class="label">' + label + '</span>'
+                     +    '<span class="status ' + statusClass + '">' + statusText + '</span>'
+                     +  '</div>';
+            });
+            body.innerHTML = html;
+        })
+        .catch(function(err){
+            body.innerHTML = '<div class="test-row"><span class="label">Test misslyckades</span><span class="status fail">' + (err.message || 'fel') + '</span></div>';
+        });
+    }
+</script>
+</body>
+</html>

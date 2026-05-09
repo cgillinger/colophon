@@ -7,7 +7,8 @@ import threading
 from datetime import datetime
 from pathlib import Path
 
-from app.services.ai_metadata import fetch_ai_suggestions
+from app.services.ai_metadata import ai_is_configured, fetch_ai_suggestions
+from app.services.app_settings import get_setting
 
 from flask import (
     Blueprint,
@@ -299,7 +300,7 @@ def metadata_item(item_id):
         pending=pending,
         languages=SUPPORTED_LANGUAGES,
         current_lang=current_lang,
-        ai_configured=bool(os.environ.get("COLOPHON_MISTRAL_API_KEY")),
+        ai_configured=ai_is_configured(),
     )
 
 
@@ -421,9 +422,9 @@ def bulk_metadata():
         }
 
         if action == "ai":
-            if not os.environ.get("COLOPHON_MISTRAL_API_KEY"):
+            if not ai_is_configured():
                 flash(
-                    "Mistral är inte konfigurerat. Lägg till COLOPHON_MISTRAL_API_KEY i .env.",
+                    "AI är inte konfigurerat. Öppna API-inställningar och lägg till en API-nyckel.",
                     "error",
                 )
             else:
@@ -475,7 +476,7 @@ def bulk_metadata():
                     summary["updated"].append(
                         {
                             "title": item.title,
-                            "source": "Mistral AI",
+                            "source": "AI",
                             "score": len(high_fields),
                             "file_write_error": ai_apply.get("file_write_error"),
                         }
@@ -1381,9 +1382,9 @@ _AI_DISPLAY_ONLY: set = set()
 def run_ai_for_item(item_id):
     item = get_item_or_404(item_id)
 
-    if not os.environ.get("COLOPHON_MISTRAL_API_KEY"):
+    if not ai_is_configured():
         flash(
-            "Mistral är inte konfigurerat. Lägg till COLOPHON_MISTRAL_API_KEY i .env.",
+            "AI är inte konfigurerat. Öppna API-inställningar och lägg till en API-nyckel.",
             "error",
         )
         return redirect(url_for("metadata.metadata_item", item_id=item.id))
@@ -1393,15 +1394,15 @@ def run_ai_for_item(item_id):
     if not result["ok"]:
         error = result["error"]
         if error == "auth":
-            flash("Mistral nekade anropet. Kontrollera API-nyckeln.", "error")
+            flash("AI-tjänsten nekade anropet. Kontrollera API-nyckeln.", "error")
         elif error == "timeout":
-            flash("Mistral-anropet tog för lång tid. Försök igen.", "error")
+            flash("AI-anropet tog för lång tid. Försök igen.", "error")
         elif error == "rate_limit":
-            flash("Gränsen för Mistral-anrop verkar vara nådd. Försök igen senare.", "error")
+            flash("Gränsen för AI-anrop verkar vara nådd. Försök igen senare.", "error")
         elif error == "invalid_json":
-            flash("Mistral returnerade ett svar som inte kunde tolkas.", "error")
+            flash("AI-tjänsten returnerade ett svar som inte kunde tolkas.", "error")
         else:
-            flash(f"Mistral-anropet misslyckades ({error}).", "error")
+            flash(f"AI-anropet misslyckades ({error}).", "error")
         return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
     suggestions = result["suggestions"]
@@ -1512,7 +1513,7 @@ def metadata_json(item_id):
         "size_bytes": item.size_bytes,
         "cover_path": bool(item.cover_path),
         "manual_metadata": bool(item.manual_metadata),
-        "ai_configured": bool(os.environ.get("COLOPHON_MISTRAL_API_KEY")),
+        "ai_configured": ai_is_configured(),
     })
 
 
@@ -1723,7 +1724,7 @@ def fetch_metadata_json(item_id):
 def ai_metadata_json(item_id):
     item = get_item_or_404(item_id)
 
-    if not os.environ.get("COLOPHON_MISTRAL_API_KEY"):
+    if not ai_is_configured():
         return jsonify({"ok": False, "error": "not_configured"}), 400
 
     requested_fields = [

@@ -1966,7 +1966,7 @@
             <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="Byt tema">
                 <i id="themeIcon" class="ti ti-sun"></i>
             </button>
-            <a class="topbar-btn icon-only" href="{{ url_for('settings.ai_settings') }}" title="Inställningar">
+            <a class="topbar-btn icon-only" href="{{ url_for('settings.api_settings') }}" title="Inställningar">
                 <i class="ti ti-settings"></i>
             </a>
         </div>
@@ -5618,10 +5618,10 @@
                 if (!data.ok) {
                     var msgs = {
                         not_configured: 'AI är inte konfigurerat.',
-                        auth:           'Mistral nekade anropet. Kontrollera API-nyckeln.',
-                        timeout:        'Mistral-anropet tog för lång tid.',
+                        auth:           'AI-tjänsten nekade anropet. Kontrollera API-nyckeln.',
+                        timeout:        'AI-anropet tog för lång tid.',
                         rate_limit:     'API-gränsen är nådd. Försök igen.',
-                        invalid_json:   'Mistral returnerade ett ogiltigt svar.',
+                        invalid_json:   'AI-tjänsten returnerade ett ogiltigt svar.',
                         no_valid_fields: 'Inga giltiga AI-fält valda.'
                     };
                     setModalFeedback('error', msgs[data.error] || 'AI-fel: ' + data.error);

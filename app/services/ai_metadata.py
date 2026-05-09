@@ -1,16 +1,15 @@
 import json
 import logging
-import os
 from datetime import datetime
 
 import requests
 
 from app.models import LibraryItem
+from app.services.app_settings import get_setting
 
 logger = logging.getLogger(__name__)
 
-MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions"
-MISTRAL_MODELS_URL = "https://api.mistral.ai/v1/models"
+_DEFAULT_API_URL = "https://api.mistral.ai/v1/chat/completions"
 _DEFAULT_MODEL = "mistral-small-latest"
 
 _PROMPT = """\
@@ -74,6 +73,28 @@ _FIELD_MAP = {
 }
 
 
+def _detect_provider(url: str) -> str:
+    url = (url or "").lower()
+    if "mistral" in url:
+        return "mistral"
+    if "openai" in url:
+        return "openai"
+    if "deepseek" in url:
+        return "deepseek"
+    if "anthropic" in url:
+        return "anthropic"
+    if "localhost" in url or "127.0.0.1" in url or "ollama" in url:
+        return "local"
+    return "custom"
+
+
+def _build_headers(api_key: str) -> dict:
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    return headers
+
+
 def _log_usage(provider, model, usage, book_id=None, book_title=None):
     try:
         from sqlalchemy import text
@@ -99,39 +120,38 @@ def _log_usage(provider, model, usage, book_id=None, book_title=None):
 
 
 def test_ai_connection() -> dict:
-    """GET /v1/models med API-nyckeln.
-    Returns {"ok": True, "models": [...]} or {"ok": False, "error": "..."}
-    """
-    api_key = os.environ.get("COLOPHON_MISTRAL_API_KEY", "").strip()
-    if not api_key:
-        return {"ok": False, "error": "no_key"}
+    """Test the configured AI provider via a minimal chat completion call.
 
-    headers = {"Authorization": f"Bearer {api_key}"}
+    Returns {"ok": True, "model": "..."} or {"ok": False, "error": "..."}.
+    Works with any OpenAI-compatible chat completions endpoint.
+    """
+    api_url = (get_setting("AI_API_URL") or _DEFAULT_API_URL).strip()
+    api_key = (get_setting("AI_API_KEY") or "").strip()
+    model = (get_setting("AI_MODEL") or _DEFAULT_MODEL).strip()
+
+    headers = _build_headers(api_key)
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": "Reply with exactly: OK"}],
+        "max_tokens": 5,
+    }
 
     try:
-        resp = requests.get(MISTRAL_MODELS_URL, headers=headers, timeout=10)
+        resp = requests.post(api_url, json=payload, headers=headers, timeout=15)
     except requests.Timeout:
         return {"ok": False, "error": "timeout"}
     except requests.RequestException as exc:
-        logger.warning("Mistral models request error: %s", exc)
+        logger.warning("AI test request error: %s", exc)
         return {"ok": False, "error": "request_failed"}
 
     if resp.status_code in (401, 403):
         return {"ok": False, "error": "auth"}
-
     if resp.status_code == 429:
         return {"ok": False, "error": "rate_limit"}
-
     if not resp.ok:
-        return {"ok": False, "error": "api_error"}
+        return {"ok": False, "error": f"http_{resp.status_code}"}
 
-    try:
-        data = resp.json()
-        models = [m.get("id", "") for m in data.get("data", []) if m.get("id")]
-    except (ValueError, KeyError):
-        return {"ok": False, "error": "invalid_json"}
-
-    return {"ok": True, "models": models}
+    return {"ok": True, "model": model}
 
 
 def fetch_ai_suggestions(item: LibraryItem, fields=None) -> dict:
@@ -140,11 +160,10 @@ def fetch_ai_suggestions(item: LibraryItem, fields=None) -> dict:
     If `fields` is provided (list of UI field names), the prompt is narrowed
     to ask only for those fields and other suggestions are dropped.
     """
-    api_key = os.environ.get("COLOPHON_MISTRAL_API_KEY", "").strip()
-    if not api_key:
-        return {"ok": False, "error": "no_key"}
+    api_url = (get_setting("AI_API_URL") or _DEFAULT_API_URL).strip()
+    api_key = (get_setting("AI_API_KEY") or "").strip()
+    model = (get_setting("AI_MODEL") or _DEFAULT_MODEL).strip()
 
-    model = os.environ.get("COLOPHON_MISTRAL_MODEL", "").strip() or _DEFAULT_MODEL
     description = (item.description or "")[:2000]
 
     if fields:
@@ -173,10 +192,7 @@ def fetch_ai_suggestions(item: LibraryItem, fields=None) -> dict:
             fields_instruction + "\n\nBook metadata:",
         )
 
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
+    headers = _build_headers(api_key)
     payload = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
@@ -184,11 +200,11 @@ def fetch_ai_suggestions(item: LibraryItem, fields=None) -> dict:
     }
 
     try:
-        resp = requests.post(MISTRAL_API_URL, json=payload, headers=headers, timeout=30)
+        resp = requests.post(api_url, json=payload, headers=headers, timeout=30)
     except requests.Timeout:
         return {"ok": False, "error": "timeout"}
     except requests.RequestException as exc:
-        logger.warning("Mistral request error: %s", exc)
+        logger.warning("AI request error: %s", exc)
         return {"ok": False, "error": "request_failed"}
 
     if resp.status_code in (401, 403):
@@ -198,7 +214,7 @@ def fetch_ai_suggestions(item: LibraryItem, fields=None) -> dict:
         return {"ok": False, "error": "rate_limit"}
 
     if not resp.ok:
-        logger.warning("Mistral HTTP %s: %s", resp.status_code, resp.text[:300])
+        logger.warning("AI HTTP %s: %s", resp.status_code, resp.text[:300])
         return {"ok": False, "error": "api_error"}
 
     try:
@@ -211,7 +227,7 @@ def fetch_ai_suggestions(item: LibraryItem, fields=None) -> dict:
     usage = body.get("usage", {})
     if usage:
         _log_usage(
-            provider="mistral",
+            provider=_detect_provider(api_url),
             model=model,
             usage=usage,
             book_id=item.id,
@@ -271,3 +287,13 @@ def fetch_ai_suggestions(item: LibraryItem, fields=None) -> dict:
             }
 
     return {"ok": True, "suggestions": suggestions}
+
+
+def ai_is_configured() -> bool:
+    """True if there is enough config to attempt an AI call."""
+    return bool((get_setting("AI_API_KEY") or "").strip()) or _is_local_endpoint()
+
+
+def _is_local_endpoint() -> bool:
+    url = (get_setting("AI_API_URL") or "").lower()
+    return "localhost" in url or "127.0.0.1" in url
