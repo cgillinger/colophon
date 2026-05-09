@@ -5932,13 +5932,19 @@
                 btn.disabled = false;
                 btn.innerHTML = '<i class="ti ti-photo-search"></i> Sök omslag';
 
+                var sourceLine = '';
+                if (data.sources && data.sources.length > 0) {
+                    sourceLine = '<div style="font-size:11px; color:var(--text-tertiary); margin-bottom:6px;">'
+                        + 'Sökte: ' + data.sources.map(_esc).join(' · ') + '</div>';
+                }
+
                 if (!data.ok || !data.count) {
-                    grid.innerHTML = '<div style="font-size:11px;color:var(--text-secondary);padding:6px 0;">Inga omslag hittades.</div>';
+                    grid.innerHTML = sourceLine + '<div style="font-size:11px;color:var(--text-secondary);padding:6px 0;">Inga omslag hittades.</div>';
                     container.style.display = 'block';
                     return;
                 }
 
-                grid.innerHTML = '';
+                grid.innerHTML = sourceLine;
                 data.candidates.forEach(function(c) {
                     var card = document.createElement('div');
                     card.className = 'cover-search-card';

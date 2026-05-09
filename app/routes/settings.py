@@ -31,7 +31,6 @@ _API_TEXT_KEYS = [
 _API_KEY_KEYS = [
     "AI_API_KEY",
     "HARDCOVER_API_TOKEN",
-    "LIBRARYTHING_DEV_KEY",
 ]
 
 _API_TOGGLE_KEYS = [
@@ -187,7 +186,6 @@ def _settings_view_context():
     """Collect the current values used to render settings_api.html."""
     ai_key = (get_setting("AI_API_KEY") or "").strip()
     hardcover_token = (get_setting("HARDCOVER_API_TOKEN") or "").strip()
-    lt_key = (get_setting("LIBRARYTHING_DEV_KEY") or "").strip()
 
     return {
         "ai_url": (get_setting("AI_API_URL") or _DEFAULT_AI_API_URL).strip(),
@@ -198,8 +196,6 @@ def _settings_view_context():
         "ai_model_default": _DEFAULT_MODEL,
         "hardcover_token_masked": _mask_secret(hardcover_token),
         "hardcover_token_set": bool(hardcover_token),
-        "librarything_key_masked": _mask_secret(lt_key),
-        "librarything_key_set": bool(lt_key),
         "openlibrary_enabled": (get_setting("COVER_OPENLIBRARY_ENABLED", "true") or "true").lower() == "true",
         "google_zoom_enabled": (get_setting("COVER_GOOGLE_ZOOM_ENABLED", "true") or "true").lower() == "true",
         "wikidata_enabled": (get_setting("COVER_WIKIDATA_ENABLED", "true") or "true").lower() == "true",
@@ -257,18 +253,6 @@ def test_api_connections():
     except requests.RequestException as exc:
         logger.warning("Hardcover test error: %s", exc)
         results["hardcover"] = {"ok": False, "error": "request_failed"}
-
-    lt_key = (get_setting("LIBRARYTHING_DEV_KEY") or "").strip()
-    if lt_key:
-        try:
-            r = requests.head(
-                f"https://covers.librarything.com/devkey/{lt_key}/large/isbn/9780385472579",
-                timeout=5,
-                allow_redirects=True,
-            )
-            results["librarything"] = {"ok": r.ok}
-        except requests.RequestException:
-            results["librarything"] = {"ok": False, "error": "timeout"}
 
     if (get_setting("COVER_OPENLIBRARY_ENABLED", "true") or "true").lower() == "true":
         try:
