@@ -1521,6 +1521,43 @@
             word-break: break-all;
             line-height: 1.6;
         }
+        .modal-cover-search-btn {
+            margin-top: 8px;
+            width: 200px;
+            justify-content: center;
+        }
+        .cover-search-results {
+            margin-top: 8px;
+            width: 200px;
+        }
+        .cover-search-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+        }
+        .cover-search-card {
+            cursor: pointer;
+            border: 2px solid transparent;
+            border-radius: 4px;
+            overflow: hidden;
+            background: var(--bg-secondary);
+        }
+        .cover-search-card:hover { border-color: var(--border-medium); }
+        .cover-search-card.selected { border-color: var(--accent-green); }
+        .cover-search-card img {
+            width: 100%;
+            height: 90px;
+            object-fit: cover;
+            display: block;
+        }
+        .cover-search-label {
+            font-size: 10px;
+            color: var(--text-secondary);
+            padding: 2px 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
         .modal-fields {
             display: flex;
             flex-direction: column;
@@ -2264,6 +2301,13 @@
             <div>
                 <div id="modalCover" class="modal-cover">📖</div>
                 <div id="modalFileInfo" class="modal-fileinfo"></div>
+                <button type="button" class="btn btn-sm ghost modal-cover-search-btn"
+                        id="modalCoverSearchBtn" onclick="searchCovers()">
+                    <i class="ti ti-photo-search"></i> Sök omslag
+                </button>
+                <div id="modalCoverResults" class="cover-search-results" style="display:none;">
+                    <div id="modalCoverGrid" class="cover-search-grid"></div>
+                </div>
             </div>
             <div class="modal-fields">
                 <div class="modal-field">
@@ -5861,6 +5905,97 @@
         _modalItemId = null;
         var progressEl = document.getElementById('modalProgress');
         if (progressEl) { progressEl.style.display = 'none'; progressEl.innerHTML = ''; }
+        // Hide cover search results
+        var cr = document.getElementById('modalCoverResults');
+        if (cr) cr.style.display = 'none';
+        var cg = document.getElementById('modalCoverGrid');
+        if (cg) cg.innerHTML = '';
+    }
+
+    /* -------------------------------------------------------------------- */
+    /* Cover search                                                          */
+    /* -------------------------------------------------------------------- */
+    function searchCovers() {
+        var id = _modalItemId;
+        if (!id) return;
+
+        var btn = document.getElementById('modalCoverSearchBtn');
+        var grid = document.getElementById('modalCoverGrid');
+        var container = document.getElementById('modalCoverResults');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite;"></i> Söker…';
+
+        fetch('/metadata/' + id + '/covers/search-json', { method: 'POST' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ti ti-photo-search"></i> Sök omslag';
+
+                if (!data.ok || !data.count) {
+                    grid.innerHTML = '<div style="font-size:11px;color:var(--text-secondary);padding:6px 0;">Inga omslag hittades.</div>';
+                    container.style.display = 'block';
+                    return;
+                }
+
+                grid.innerHTML = '';
+                data.candidates.forEach(function(c) {
+                    var card = document.createElement('div');
+                    card.className = 'cover-search-card';
+                    card.title = _esc(c.note || '') + ' (' + _esc(c.source || '') + ')';
+
+                    var thumb = c.thumbnail_url || c.cover_url || '';
+                    card.innerHTML =
+                        '<img src="' + _esc(thumb) + '" alt="" '
+                        + 'onerror="this.closest(\'.cover-search-card\').style.display=\'none\'">'
+                        + '<div class="cover-search-label">' + _esc(c.source || '') + '</div>';
+
+                    card.onclick = function() {
+                        grid.querySelectorAll('.cover-search-card').forEach(function(d) {
+                            d.classList.remove('selected');
+                        });
+                        card.classList.add('selected');
+                        applyCoverFromSearch(id, c.cover_url, c.source);
+                    };
+
+                    grid.appendChild(card);
+                });
+
+                container.style.display = 'block';
+            })
+            .catch(function() {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ti ti-photo-search"></i> Sök omslag';
+                setModalFeedback('error', 'Omslagssökning misslyckades.');
+            });
+    }
+
+    function applyCoverFromSearch(itemId, coverUrl, source) {
+        setModalFeedback('info', 'Laddar ner omslag…');
+
+        fetch('/metadata/' + itemId + '/cover/apply-json', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cover_url: coverUrl, source: source || '' })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.ok) {
+                setModalFeedback('error', 'Omslaget kunde inte sparas.');
+                return;
+            }
+            // Refresh cover thumbnail in modal
+            var coverEl = document.getElementById('modalCover');
+            coverEl.innerHTML = '<img src="' + _coverUrlBase + '/' + itemId + '?t=' + Date.now() + '" alt="" onerror="this.parentNode.innerHTML=\'📖\';">';
+            // Refresh thumbnail in the book list row
+            var listImg = document.querySelector('tr[data-item-id="' + itemId + '"] .cover img');
+            if (listImg) listImg.src = _coverUrlBase + '/' + itemId + '?t=' + Date.now();
+            setModalFeedback('success', 'Omslag sparat' + (data.source ? ' (' + data.source + ')' : '') + '.');
+            document.getElementById('modalCoverResults').style.display = 'none';
+        })
+        .catch(function() {
+            setModalFeedback('error', 'Omslaget kunde inte sparas.');
+        });
     }
 
     function _modalEsc(s) {

@@ -380,6 +380,57 @@ def apply_cover(item_id):
     return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
 
+@metadata_bp.route("/metadata/<int:item_id>/cover/apply-json", methods=["POST"])
+def cover_apply_json(item_id):
+    """JSON endpoint for AJAX cover apply (modal cover search)."""
+    item = get_item_or_404(item_id)
+
+    cover_url = request.get_json(silent=True, force=True) or {}
+    if isinstance(cover_url, dict):
+        cover_url_str = cover_url.get("cover_url", "").strip()
+        source = cover_url.get("source", "").strip()
+    else:
+        cover_url_str = ""
+        source = ""
+
+    if not cover_url_str:
+        return jsonify({"ok": False, "error": "no_url"}), 400
+
+    cover_path = download_cover_to_file(
+        cover_url=cover_url_str,
+        cover_dir=current_app.config["COVER_DIR"],
+        item_id=item.id,
+    )
+    if not cover_path:
+        return jsonify({"ok": False, "error": "download_failed"}), 400
+
+    item.cover_path = cover_path
+    item.cover_locked = True
+    item.manual_metadata = True
+
+    write_result = write_metadata_to_file(item, {}, cover_path)
+    if write_result["ok"]:
+        item.file_modified_by_colophon = datetime.utcnow()
+    db.session.commit()
+
+    return jsonify({"ok": True, "source": source})
+
+
+@metadata_bp.route("/metadata/<int:item_id>/covers/search-json", methods=["POST"])
+def search_covers_json(item_id):
+    """JSON endpoint: multi-source cover search for the book modal."""
+    item = get_item_or_404(item_id)
+
+    from app.services.cover_search import search_covers
+    candidates = search_covers(
+        title=item.title or "",
+        author=item.author or "",
+        isbn=item.isbn or "",
+    )
+
+    return jsonify({"ok": True, "candidates": candidates, "count": len(candidates)})
+
+
 @metadata_bp.route("/metadata/bulk", methods=["GET", "POST"])
 def bulk_metadata():
     items = (
