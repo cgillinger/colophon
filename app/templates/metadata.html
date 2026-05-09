@@ -97,6 +97,9 @@
         .topbar-brand img { width: 96px; height: 96px; border-radius: 14px; display: block; object-fit: contain; }
         .topbar-brand span { font-size: 28px; font-weight: 500; }
         .topbar-actions { display: flex; align-items: center; gap: 8px; }
+        .lang-toggle { display: flex; gap: 4px; font-size: 12px; margin-right: 4px; }
+        .lang-toggle a { color: var(--text-tertiary); text-decoration: none; padding: 2px 6px; border-radius: 4px; }
+        .lang-toggle a.active { color: var(--text-primary); font-weight: 600; background: var(--bg-tertiary); }
         .topbar-btn {
             background: transparent;
             color: var(--text-secondary);
@@ -340,10 +343,14 @@
             <input type="text" name="q" placeholder="Sök titel, författare, ISBN, genre...">
         </form>
         <div class="topbar-actions">
-            <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="Byt tema">
+            <div class="lang-toggle">
+                <a href="{{ url_for('set_language', lang='en') }}" class="{{ 'active' if get_locale() == 'en' else '' }}" title="English">EN</a>
+                <a href="{{ url_for('set_language', lang='sv') }}" class="{{ 'active' if get_locale() == 'sv' else '' }}" title="Svenska">SV</a>
+            </div>
+            <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="{{ _('Toggle theme') }}">
                 <i id="themeIcon" class="ti ti-sun"></i>
             </button>
-            <a class="topbar-btn icon-only" href="{{ url_for('settings.api_settings') }}" title="Inställningar">
+            <a class="topbar-btn icon-only" href="{{ url_for('settings.api_settings') }}" title="{{ _('Settings') }}">
                 <i class="ti ti-settings"></i>
             </a>
         </div>

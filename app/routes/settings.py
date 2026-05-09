@@ -5,6 +5,7 @@ from pathlib import Path
 
 import requests
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
+from flask_babel import gettext as _
 from sqlalchemy import text
 
 from app.models import db
@@ -138,7 +139,7 @@ def save_upstream():
 
     if request.form.get("clear"):
         set_setting("upstream_dir", "")
-        flash("Huvudbibliotek borttaget.", "success")
+        flash(_("Upstream library removed."), "success")
     else:
         path = request.form.get("upstream_dir", "").strip()
         if path and not os.path.isdir(path):
@@ -146,9 +147,9 @@ def save_upstream():
         else:
             set_setting("upstream_dir", path)
             if path:
-                flash("Huvudbibliotek sparat.", "success")
+                flash(_("Upstream library saved."), "success")
             else:
-                flash("Huvudbibliotek borttaget.", "success")
+                flash(_("Upstream library removed."), "success")
 
     return redirect(url_for("settings.ai_settings"))
 
@@ -222,7 +223,7 @@ def api_settings():
         for toggle in _API_TOGGLE_KEYS:
             set_setting(toggle, "true" if request.form.get(toggle) else "false")
 
-        flash("API-inställningar sparade.", "success")
+        flash(_("API settings saved."), "success")
         return redirect(url_for("settings.api_settings"))
 
     return render_template("settings_api.html", **_settings_view_context())

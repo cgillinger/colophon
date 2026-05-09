@@ -6,7 +6,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from flask import Flask
+from flask import Flask, redirect, request, url_for
+from flask_babel import Babel
 from flask_session import Session
 
 from app.config import Config
@@ -16,6 +17,17 @@ from app.routes.metadata import metadata_bp
 from app.routes.scan import scan_bp
 from app.routes.settings import settings_bp
 from app.services.database import ensure_database_columns, ensure_ai_usage_log_table, ensure_app_settings_table
+
+SUPPORTED_LANGUAGES = ("en", "sv")
+
+babel = Babel()
+
+
+def get_locale():
+    lang = request.cookies.get("colophon_lang")
+    if lang in SUPPORTED_LANGUAGES:
+        return lang
+    return request.accept_languages.best_match(SUPPORTED_LANGUAGES, default="en")
 
 
 def _configure_logging(app):
@@ -58,7 +70,24 @@ def create_app():
     os.makedirs(app.config["LIBRARY_DIR"], exist_ok=True)
     os.makedirs(app.config["SESSION_FILE_DIR"], exist_ok=True)
 
+    app.config.setdefault("BABEL_DEFAULT_LOCALE", "en")
+    app.config.setdefault("BABEL_TRANSLATION_DIRECTORIES", "translations")
+
     Session(app)
+    babel.init_app(app, locale_selector=get_locale)
+
+    @app.context_processor
+    def inject_locale():
+        return {"get_locale": get_locale}
+
+    @app.route("/set-language/<lang>")
+    def set_language(lang):
+        if lang not in SUPPORTED_LANGUAGES:
+            lang = "en"
+        target = request.referrer or url_for("metadata.bulk_metadata")
+        response = redirect(target)
+        response.set_cookie("colophon_lang", lang, max_age=365 * 24 * 60 * 60)
+        return response
 
     _configure_logging(app)
 
