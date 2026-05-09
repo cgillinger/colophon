@@ -1,3 +1,4 @@
+# Colophon – e-book metadata manager
 """Language detection using langdetect on extracted book text."""
 import logging
 

@@ -1,3 +1,4 @@
+# Colophon – e-book metadata manager
 """Text-cleaning utilities shared across scanner and metadata pipeline."""
 import re
 

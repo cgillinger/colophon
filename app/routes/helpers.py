@@ -1,3 +1,4 @@
+# Colophon – e-book metadata manager
 from pathlib import Path
 
 from flask import current_app, request

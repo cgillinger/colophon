@@ -1,3 +1,4 @@
+# Colophon – e-book metadata manager
 import hashlib
 import logging
 import os

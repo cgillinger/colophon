@@ -1,3 +1,4 @@
+# Colophon – e-book metadata manager
 import os
 
 from app.paths import VAR_DIR as _VAR_DIR

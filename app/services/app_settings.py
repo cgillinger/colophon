@@ -1,3 +1,4 @@
+# Colophon – e-book metadata manager
 import os
 
 from sqlalchemy import text

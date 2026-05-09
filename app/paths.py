@@ -1,3 +1,4 @@
+# Colophon – e-book metadata manager
 """Centrala sökvägar för hela Colophon-projektet."""
 from pathlib import Path
 

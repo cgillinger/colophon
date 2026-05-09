@@ -1,3 +1,4 @@
+# Colophon – e-book metadata manager
 """Unit tests for app.services.scanner — no filesystem or DB required."""
 import os
 import time

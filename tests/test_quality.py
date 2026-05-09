@@ -1,3 +1,4 @@
+# Colophon – e-book metadata manager
 """Tests for field-level quality heuristics.
 
 No DB or network required.

@@ -1,3 +1,4 @@
+# Colophon – e-book metadata manager
 """Tests for language detection.
 
 No DB or network required. Uses the deterministic seed configured in
