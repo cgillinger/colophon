@@ -1791,7 +1791,10 @@ def ai_metadata_json(item_id):
         if f.strip()
     ]
 
-    result = fetch_ai_suggestions(item, fields=requested_fields or None)
+    body = request.get_json(silent=True) or {}
+    cv = body.get("current_values") or {}
+
+    result = fetch_ai_suggestions(item, fields=requested_fields or None, override_values=cv if cv else None)
 
     if not result["ok"]:
         return jsonify({"ok": False, "error": result["error"]}), 500

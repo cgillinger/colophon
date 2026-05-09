@@ -155,7 +155,7 @@ def test_ai_connection() -> dict:
     return {"ok": True, "model": model}
 
 
-def fetch_ai_suggestions(item: LibraryItem, fields=None) -> dict:
+def fetch_ai_suggestions(item: LibraryItem, fields=None, override_values=None) -> dict:
     """Returns {"ok": True, "suggestions": {...}} or {"ok": False, "error": "..."}
 
     If `fields` is provided (list of UI field names), the prompt is narrowed
@@ -165,7 +165,8 @@ def fetch_ai_suggestions(item: LibraryItem, fields=None) -> dict:
     api_key = (get_setting("AI_API_KEY") or "").strip()
     model = (get_setting("AI_MODEL") or _DEFAULT_MODEL).strip()
 
-    description = (item.description or "")[:2000]
+    ov = override_values or {}
+    description = (ov.get("description") or item.description or "")[:2000]
 
     if fields:
         ai_fields = [_FIELD_MAP[f] for f in fields if f in _FIELD_MAP and _FIELD_MAP[f]]
@@ -180,11 +181,11 @@ def fetch_ai_suggestions(item: LibraryItem, fields=None) -> dict:
         fields_instruction = ""
 
     prompt = _PROMPT.format(
-        title=item.title or "",
-        authors=item.author or "",
-        isbn=item.isbn or "",
-        publisher=item.publisher or "",
-        language=item.language or "",
+        title=ov.get("title") or item.title or "",
+        authors=ov.get("author") or item.author or "",
+        isbn=ov.get("isbn") or item.isbn or "",
+        publisher=ov.get("publisher") or item.publisher or "",
+        language=ov.get("language") or item.language or "",
         description=description,
     )
     if fields_instruction:
