@@ -23,7 +23,6 @@ _DEFAULT_MODEL = "mistral-small-latest"
 _API_TEXT_KEYS = [
     "AI_API_URL",
     "AI_MODEL",
-    "GOOGLE_CSE_ID",
 ]
 
 # API-key fields. Empty submit *keeps* the existing value to avoid wiping a
@@ -31,13 +30,15 @@ _API_TEXT_KEYS = [
 # "clear_<KEY>" form field deletes the row explicitly.
 _API_KEY_KEYS = [
     "AI_API_KEY",
-    "GOOGLE_CSE_API_KEY",
-    "BING_API_KEY",
+    "HARDCOVER_API_TOKEN",
+    "LIBRARYTHING_DEV_KEY",
 ]
 
 _API_TOGGLE_KEYS = [
     "COVER_OPENLIBRARY_ENABLED",
     "COVER_GOOGLE_ZOOM_ENABLED",
+    "COVER_WIKIDATA_ENABLED",
+    "COVER_DDGS_ENABLED",
 ]
 
 
@@ -185,8 +186,8 @@ def _mask_secret(value: str) -> str:
 def _settings_view_context():
     """Collect the current values used to render settings_api.html."""
     ai_key = (get_setting("AI_API_KEY") or "").strip()
-    cse_key = (get_setting("GOOGLE_CSE_API_KEY") or "").strip()
-    bing_key = (get_setting("BING_API_KEY") or "").strip()
+    hardcover_token = (get_setting("HARDCOVER_API_TOKEN") or "").strip()
+    lt_key = (get_setting("LIBRARYTHING_DEV_KEY") or "").strip()
 
     return {
         "ai_url": (get_setting("AI_API_URL") or _DEFAULT_AI_API_URL).strip(),
@@ -195,13 +196,14 @@ def _settings_view_context():
         "ai_key_set": bool(ai_key),
         "ai_model": (get_setting("AI_MODEL") or _DEFAULT_MODEL).strip(),
         "ai_model_default": _DEFAULT_MODEL,
-        "google_cse_key_masked": _mask_secret(cse_key),
-        "google_cse_key_set": bool(cse_key),
-        "google_cse_id": (get_setting("GOOGLE_CSE_ID") or "").strip(),
-        "bing_key_masked": _mask_secret(bing_key),
-        "bing_key_set": bool(bing_key),
+        "hardcover_token_masked": _mask_secret(hardcover_token),
+        "hardcover_token_set": bool(hardcover_token),
+        "librarything_key_masked": _mask_secret(lt_key),
+        "librarything_key_set": bool(lt_key),
         "openlibrary_enabled": (get_setting("COVER_OPENLIBRARY_ENABLED", "true") or "true").lower() == "true",
         "google_zoom_enabled": (get_setting("COVER_GOOGLE_ZOOM_ENABLED", "true") or "true").lower() == "true",
+        "wikidata_enabled": (get_setting("COVER_WIKIDATA_ENABLED", "true") or "true").lower() == "true",
+        "ddgs_enabled": (get_setting("COVER_DDGS_ENABLED", "true") or "true").lower() == "true",
     }
 
 
@@ -238,57 +240,35 @@ def test_api_connections():
     if ai_is_configured() or (get_setting("AI_API_URL") or "").strip():
         results["ai"] = test_ai_connection()
 
-    cse_key = (get_setting("GOOGLE_CSE_API_KEY") or "").strip()
-    cse_id = (get_setting("GOOGLE_CSE_ID") or "").strip()
-    if cse_key and cse_id:
-        try:
-            r = requests.get(
-                "https://www.googleapis.com/customsearch/v1",
-                params={
-                    "key": cse_key,
-                    "cx": cse_id,
-                    "q": "test",
-                    "num": 1,
-                    "searchType": "image",
-                },
-                timeout=10,
-            )
-            if r.ok:
-                results["google_cse"] = {"ok": True}
-            elif r.status_code in (401, 403):
-                results["google_cse"] = {"ok": False, "error": "auth"}
-            elif r.status_code == 429:
-                results["google_cse"] = {"ok": False, "error": "rate_limit"}
-            else:
-                results["google_cse"] = {"ok": False, "error": f"http_{r.status_code}"}
-        except requests.Timeout:
-            results["google_cse"] = {"ok": False, "error": "timeout"}
-        except requests.RequestException as exc:
-            logger.warning("Google CSE test error: %s", exc)
-            results["google_cse"] = {"ok": False, "error": "request_failed"}
+    hardcover_token = (get_setting("HARDCOVER_API_TOKEN") or "").strip()
+    try:
+        headers = {"Content-Type": "application/json"}
+        if hardcover_token:
+            headers["Authorization"] = f"Bearer {hardcover_token}"
+        r = requests.post(
+            "https://api.hardcover.app/v1/graphql",
+            json={"query": "{ me { username } }"},
+            headers=headers,
+            timeout=5,
+        )
+        results["hardcover"] = {"ok": r.ok or r.status_code == 401}
+    except requests.Timeout:
+        results["hardcover"] = {"ok": False, "error": "timeout"}
+    except requests.RequestException as exc:
+        logger.warning("Hardcover test error: %s", exc)
+        results["hardcover"] = {"ok": False, "error": "request_failed"}
 
-    bing_key = (get_setting("BING_API_KEY") or "").strip()
-    if bing_key:
+    lt_key = (get_setting("LIBRARYTHING_DEV_KEY") or "").strip()
+    if lt_key:
         try:
-            r = requests.get(
-                "https://api.bing.microsoft.com/v7.0/images/search",
-                headers={"Ocp-Apim-Subscription-Key": bing_key},
-                params={"q": "test book cover", "count": 1},
-                timeout=10,
+            r = requests.head(
+                f"https://covers.librarything.com/devkey/{lt_key}/large/isbn/9780385472579",
+                timeout=5,
+                allow_redirects=True,
             )
-            if r.ok:
-                results["bing"] = {"ok": True}
-            elif r.status_code in (401, 403):
-                results["bing"] = {"ok": False, "error": "auth"}
-            elif r.status_code == 429:
-                results["bing"] = {"ok": False, "error": "rate_limit"}
-            else:
-                results["bing"] = {"ok": False, "error": f"http_{r.status_code}"}
-        except requests.Timeout:
-            results["bing"] = {"ok": False, "error": "timeout"}
-        except requests.RequestException as exc:
-            logger.warning("Bing test error: %s", exc)
-            results["bing"] = {"ok": False, "error": "request_failed"}
+            results["librarything"] = {"ok": r.ok}
+        except requests.RequestException:
+            results["librarything"] = {"ok": False, "error": "timeout"}
 
     if (get_setting("COVER_OPENLIBRARY_ENABLED", "true") or "true").lower() == "true":
         try:
