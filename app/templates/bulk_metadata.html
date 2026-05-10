@@ -1251,6 +1251,26 @@
         .brc-same { color: var(--text-secondary); font-size: 12px; word-break: break-word; }
         .brc-nomatch { color: var(--text-tertiary); font-size: 12px; }
         .brc-invalid { color: var(--accent-warn, #b58900); }
+        .brc-field:has(.brc-marker-changed) {
+            cursor: pointer;
+        }
+        .brc-field:has(.brc-marker-changed):hover {
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+        }
+        .brc-field-rejected {
+            cursor: pointer;
+        }
+        .brc-field-rejected:hover {
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+        }
+        .brc-rejected-hint {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            text-decoration: line-through;
+            margin-left: 4px;
+        }
         .brc-src-toggle {
             padding: 8px 16px;
             font-size: 12px;
@@ -3634,6 +3654,14 @@
             return;
         }
 
+        // Toggle field in card body (reject or restore)
+        var fieldEl = e.target.closest('.brc-field');
+        if (fieldEl && (fieldEl.querySelector('.brc-marker-changed') || fieldEl.dataset.rejected === '1')) {
+            var cardEl = fieldEl.closest('.brc');
+            if (cardEl) _brcToggleField(cardEl, fieldEl);
+            return;
+        }
+
         // Card header click — expand/collapse no-change cards
         var top = e.target.closest('.brc-top');
         if (top && !e.target.closest('.brc-check')) {
@@ -3741,6 +3769,7 @@
 
         _brcUpdateCardField(cardEl, field, value, sourceName, color);
         _brcMarkPicked(cardEl, srcEl, sfEl, color);
+        _brcUpdateBadge(cardEl);
     }
 
     function _brcApplyAllFromSource(cardEl, srcEl) {
@@ -3763,6 +3792,102 @@
             _brcUpdateCardField(cardEl, field, value, sourceName, color);
             _brcMarkPicked(cardEl, srcEl, sfEl, color);
         });
+        _brcUpdateBadge(cardEl);
+    }
+
+    function _brcToggleField(cardEl, fieldEl) {
+        var itemId = cardEl.dataset.itemId;
+        var field = fieldEl.dataset.field;
+        if (!itemId || !field) return;
+
+        var data = _batchWizard.searchCache[itemId];
+        if (!data) return;
+        var before = data.before || {};
+        var candidate = data.candidate || {};
+        var current = _brcFieldValue(before, field);
+
+        if (!_brcFieldChoices[itemId]) _brcFieldChoices[itemId] = {};
+        var existing = _brcFieldChoices[itemId][field];
+
+        if (existing && existing.rejected) {
+            // RESTORE: remove rejection, re-apply the previously stored fetched value
+            var restoreValue = existing.originalFetched;
+            var restoreSource = existing.originalSourceName || '';
+            var restoreColor = existing.originalColor || _BRC_SOURCE_COLORS[0];
+            delete _brcFieldChoices[itemId][field];
+            _brcUpdateCardField(cardEl, field, restoreValue, restoreSource, restoreColor);
+        } else {
+            // REJECT: store rejection with original fetched value for later restore
+            var fetchedValue;
+            var sourceName = '';
+            var color = _BRC_SOURCE_COLORS[0];
+            if (existing && existing.value) {
+                // Cherry-picked value
+                fetchedValue = existing.value;
+                sourceName = existing.sourceName || '';
+                var srcIdx = existing.sourceIdx;
+                var srcEl2 = cardEl.querySelector('.brc-source[data-source-idx="' + srcIdx + '"]');
+                if (srcEl2) color = _brcGetColor(srcEl2);
+            } else {
+                // Default candidate value
+                fetchedValue = _brcFieldValue(candidate, field);
+                sourceName = data.source || '';
+                var firstSrc = cardEl.querySelector('.brc-source[data-source-idx="0"]');
+                if (firstSrc) color = _brcGetColor(firstSrc);
+            }
+
+            _brcFieldChoices[itemId][field] = {
+                value: current,
+                rejected: true,
+                originalFetched: fetchedValue,
+                originalSourceName: sourceName,
+                originalColor: color
+            };
+
+            _brcRenderRejectedField(cardEl, field, current, fetchedValue);
+        }
+
+        _brcUpdateBadge(cardEl);
+    }
+
+    function _brcRenderRejectedField(cardEl, field, current, rejectedFetched) {
+        var fieldEl = cardEl.querySelector('.brc-body .brc-field[data-field="' + field + '"]');
+        if (!fieldEl) return;
+        var label = _brcFieldLabels[field] || field;
+        fieldEl.outerHTML =
+            '<div class="brc-field brc-field-rejected" data-field="' + field + '" data-rejected="1" title="Klicka för att återställa hämtat värde">' +
+                '<div class="brc-marker brc-marker-none"></div>' +
+                '<span class="brc-label">' + _esc(label) + '</span>' +
+                '<span class="brc-same">' + _esc(current || '(tomt)') + ' ✓</span>' +
+                '<span class="brc-rejected-hint">(' + _esc(rejectedFetched) + ')</span>' +
+            '</div>';
+    }
+
+    function _brcUpdateBadge(cardEl) {
+        var itemId = cardEl.dataset.itemId;
+        var data = _batchWizard.searchCache[itemId];
+        if (!data) return;
+        var before = data.before || {};
+        var candidate = data.candidate || {};
+        var choices = _brcFieldChoices[itemId] || {};
+
+        var count = 0;
+        _brcCols.forEach(function(f) {
+            var choice = choices[f];
+            if (choice && choice.rejected) return;
+            var current = _brcFieldValue(before, f);
+            var fetched = (choice && choice.value) ? choice.value : _brcFieldValue(candidate, f);
+            if (fetched && fetched !== current) {
+                var invalid = (f === 'language' && !_isValidLanguageCode(fetched));
+                if (!invalid) count++;
+            }
+        });
+
+        var badge = cardEl.querySelector('.brc-badge');
+        if (badge) {
+            badge.textContent = count === 0 ? _i18n.noChanges : (count === 1 ? _i18n.oneChange : _i18n.nChanges.replace('{count}', count));
+            badge.className = count === 0 ? 'brc-badge brc-badge-ok' : 'brc-badge brc-badge-change';
+        }
     }
 
     function _batchSaveTextFields() {
@@ -3799,9 +3924,11 @@
             var changedFields = [];
             var choices = _brcFieldChoices[itemId] || {};
             _brcCols.forEach(function(field) {
+                var choice = choices[field];
+                if (choice && choice.rejected) return; // skip — user rejected this field
                 var val;
-                if (choices[field] && choices[field].value != null) {
-                    val = choices[field].value;
+                if (choice && choice.value != null) {
+                    val = choice.value;
                 } else if (candidate[field] != null) {
                     val = String(candidate[field]);
                 } else {
