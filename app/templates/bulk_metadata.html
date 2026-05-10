@@ -4963,6 +4963,40 @@
         if (btn) btn.style.display = 'none';
     }
 
+    function _showBatchTerminalButtons() {
+        _hideBatchAbortBtn();
+        var container = document.getElementById('batchStep2');
+
+        if (Object.keys(_batchWizard.searchCache).length > 0) {
+            var continueBtn = document.getElementById('batchContinueBtn');
+            if (!continueBtn) {
+                continueBtn = document.createElement('button');
+                continueBtn.id = 'batchContinueBtn';
+                continueBtn.type = 'button';
+                continueBtn.className = 'btn primary';
+                continueBtn.style.marginTop = '16px';
+                continueBtn.textContent = _i18n.continueToReview;
+                continueBtn.onclick = function() { _batchSetStep(3); _batchRenderReview(); };
+                container.appendChild(continueBtn);
+            }
+            continueBtn.style.display = '';
+        }
+
+        var closeBtn = document.getElementById('batchCloseBtn');
+        if (!closeBtn) {
+            closeBtn = document.createElement('button');
+            closeBtn.id = 'batchCloseBtn';
+            closeBtn.type = 'button';
+            closeBtn.className = 'btn ghost';
+            closeBtn.style.marginTop = '16px';
+            closeBtn.style.marginLeft = '8px';
+            closeBtn.textContent = _i18n.close;
+            closeBtn.onclick = function() { closeBatchModal(); };
+            container.appendChild(closeBtn);
+        }
+        closeBtn.style.display = '';
+    }
+
     function startBatchSearch() {
         if (!window.EventSource) { alert(_i18n.sseNotSupported); return; }
 
@@ -4985,6 +5019,8 @@
         _resetBatchAbortBtn();
         var existingContinueBtn = document.getElementById('batchContinueBtn');
         if (existingContinueBtn) existingContinueBtn.style.display = 'none';
+        var existingCloseBtn = document.getElementById('batchCloseBtn');
+        if (existingCloseBtn) existingCloseBtn.style.display = 'none';
 
         var counts = { saved: 0, review: 0, done: 0 };
         var source = new EventSource(url);
@@ -5192,7 +5228,6 @@
             } else if (d.type === 'aborted') {
                 source.close();
                 _batchSSESource = null;
-                _hideBatchAbortBtn();
                 var processed = d.processed || 0;
                 titleEl.textContent = _i18n.searchAbortedWith + ' '
                     + processed + ' bok' + (processed !== 1 ? 'er' : '') + ' bearbetade';
@@ -5203,34 +5238,21 @@
                 if (s.no_match) parts.push(_i18n.sNoMatch.replace('{count}', s.no_match));
                 if (s.source_errors) parts.push(_i18n.sSourceError.replace('{count}', s.source_errors));
                 summaryEl.textContent = 'Avbruten. ' + (parts.join(' · ') || 'Inget hann bearbetas.');
-                if (Object.keys(_batchWizard.searchCache).length > 0) {
-                    var continueBtnA = document.getElementById('batchContinueBtn');
-                    if (!continueBtnA) {
-                        continueBtnA = document.createElement('button');
-                        continueBtnA.id = 'batchContinueBtn';
-                        continueBtnA.type = 'button';
-                        continueBtnA.className = 'btn primary';
-                        continueBtnA.style.marginTop = '16px';
-                        continueBtnA.textContent = _i18n.continueToReview;
-                        continueBtnA.onclick = function() { _batchSetStep(3); _batchRenderReview(); };
-                        document.getElementById('batchStep2').appendChild(continueBtnA);
-                    }
-                    continueBtnA.style.display = '';
-                }
+                _showBatchTerminalButtons();
 
             } else if (d.type === 'error') {
                 source.close();
                 _batchSSESource = null;
-                _hideBatchAbortBtn();
                 titleEl.textContent = _i18n.scanError + ' ' + (d.message || _i18n.unknownError);
+                _showBatchTerminalButtons();
             }
         };
 
         source.onerror = function() {
             source.close();
             _batchSSESource = null;
-            _hideBatchAbortBtn();
             titleEl.textContent = _i18n.connectionLost;
+            _showBatchTerminalButtons();
         };
     }
 
