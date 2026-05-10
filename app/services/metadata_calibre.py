@@ -18,6 +18,14 @@ class CalibreError(Exception):
     pass
 
 
+def _is_valid_language(code: str) -> bool:
+    """Return True for plausible ISO 639 language codes (2-3 lowercase letters)."""
+    if not code:
+        return False
+    c = code.strip().lower()
+    return 2 <= len(c) <= 3 and c.isalpha()
+
+
 def _parse_opf(xml_string: str) -> dict:
     """Parse OPF XML from fetch-ebook-metadata --opf output."""
     try:
@@ -307,6 +315,9 @@ def fetch_calibre_metadata_with_status(
         "published_date": pubdate,
     }
 
+    if not _is_valid_language(candidate.get("language", "")):
+        candidate["language"] = ""
+
     fields_found = []
     if parsed.get("title"): fields_found.append("title")
     if parsed.get("author"): fields_found.append("author")
@@ -418,20 +429,23 @@ def fetch_calibre_metadata(
     if genres: fields_found.append("genres")
     if parsed.get("cover_url"): fields_found.append("cover")
 
-    return [
-        {
-            "source": source_label,
-            "title": parsed.get("title") or title or "",
-            "author": parsed.get("author") or author or "",
-            "description": parsed.get("description") or "",
-            "isbn": parsed.get("isbn") or "",
-            "publisher": parsed.get("publisher") or "",
-            "language": parsed.get("language") or "",
-            "series": parsed.get("series") or "",
-            "series_index": series_index_str,
-            "cover_url": parsed.get("cover_url") or "",
-            "genres": genres,
-            "fields_found": fields_found,
-            "plugins_used": list(sources_used),
-        }
-    ]
+    candidate = {
+        "source": source_label,
+        "title": parsed.get("title") or title or "",
+        "author": parsed.get("author") or author or "",
+        "description": parsed.get("description") or "",
+        "isbn": parsed.get("isbn") or "",
+        "publisher": parsed.get("publisher") or "",
+        "language": parsed.get("language") or "",
+        "series": parsed.get("series") or "",
+        "series_index": series_index_str,
+        "cover_url": parsed.get("cover_url") or "",
+        "genres": genres,
+        "fields_found": fields_found,
+        "plugins_used": list(sources_used),
+    }
+
+    if not _is_valid_language(candidate.get("language", "")):
+        candidate["language"] = ""
+
+    return [candidate]

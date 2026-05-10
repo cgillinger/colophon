@@ -3638,8 +3638,16 @@
         var top = e.target.closest('.brc-top');
         if (top && !e.target.closest('.brc-check')) {
             var crd2 = top.closest('.brc');
-            if (crd2 && crd2.classList.contains('brc-no-changes')) {
-                crd2.classList.toggle('brc-expanded');
+            if (crd2) {
+                if (crd2.classList.contains('brc-no-changes')) {
+                    crd2.classList.toggle('brc-expanded');
+                } else {
+                    var cb = crd2.querySelector('.brc-check');
+                    if (cb) {
+                        cb.checked = !cb.checked;
+                        crd2.classList.toggle('brc-checked', cb.checked);
+                    }
+                }
             }
         }
     }
