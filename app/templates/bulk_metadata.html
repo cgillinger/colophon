@@ -6304,6 +6304,29 @@
             if (listImg) listImg.src = _coverUrlBase + '/' + itemId + '?t=' + Date.now();
             setModalFeedback('success', 'Omslag sparat' + (data.source ? ' (' + data.source + ')' : '') + '.');
             document.getElementById('modalCoverResults').style.display = 'none';
+
+            // Update row data so filters reflect the new cover
+            var row = document.querySelector('tr[data-item-id="' + itemId + '"]');
+            if (row) {
+                row.dataset.hasCover = '1';
+            }
+
+            // Decrement missing cover chip
+            var mcPill = document.getElementById('libraryChipMissingCover');
+            if (mcPill) {
+                var mcText = mcPill.textContent.trim();
+                var mcCount = parseInt(mcText) || 0;
+                mcCount--;
+                if (mcCount <= 0) {
+                    mcPill.style.display = 'none';
+                } else {
+                    mcPill.textContent = mcCount + ' missing cover';
+                    // Handle Swedish translation
+                    if (mcText.indexOf('saknar') !== -1) {
+                        mcPill.textContent = mcCount + ' saknar omslag';
+                    }
+                }
+            }
         })
         .catch(function() {
             setModalFeedback('error', 'Omslaget kunde inte sparas.');
