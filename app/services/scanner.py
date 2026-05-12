@@ -16,7 +16,7 @@ from app.services.language_detect import (
     detect_language_from_text,
     extract_text_sample_from_epub,
 )
-from app.services.text_utils import clean_title
+from app.services.text_utils import clean_title, normalize_series_index
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +72,52 @@ def _first_metadata_value(book, namespace, key):
     if not values:
         return None
     return _clean_metadata_text(values[0][0])
+
+
+_ROLE_ATTR_KEYS = (
+    "{http://www.idpf.org/2007/opf}role",
+    "opf:role",
+    "role",
+)
+_logged_creator_role_keys: set = set()
+
+
+def _creator_role(attrs):
+    if not attrs:
+        return ""
+    for key in _ROLE_ATTR_KEYS:
+        if key in attrs:
+            if key not in _logged_creator_role_keys:
+                _logged_creator_role_keys.add(key)
+                logger.debug("EPUB creator role attribute key: %s", key)
+            return (attrs.get(key) or "").strip()
+    return ""
+
+
+def _collect_authors(book):
+    """Return all DC:creator entries that are authors (or have no role).
+
+    EPUB allows opf:role on creators: "aut" (author), "edt" (editor),
+    "trl" (translator), "ill" (illustrator), etc. If any creator declares
+    role="aut", use only those. Otherwise (no roles set), use all creators
+    — this is the dominant case in older EPUBs.
+    """
+    creators = book.get_metadata("DC", "creator") or []
+    if not creators:
+        return ""
+
+    explicit_authors = []
+    all_creators = []
+    for value, attrs in creators:
+        text = _clean_metadata_text(value)
+        if not text:
+            continue
+        all_creators.append(text)
+        if _creator_role(attrs) == "aut":
+            explicit_authors.append(text)
+
+    chosen = explicit_authors if explicit_authors else all_creators
+    return ", ".join(chosen)
 
 
 def _save_epub_cover(book, file_path, cover_dir):
@@ -230,11 +276,39 @@ def extract_local_metadata(file_path, cover_dir=None) -> dict:
 def _extract_epub_metadata(file_path, cover_dir, warnings: list) -> dict:
     book = epub.read_epub(str(file_path))
     title = _first_metadata_value(book, "DC", "title")
-    author = _first_metadata_value(book, "DC", "creator")
+    author = _collect_authors(book)
     description = _first_metadata_value(book, "DC", "description")
     isbn_raw = _first_metadata_value(book, "DC", "identifier")
     publisher = _first_metadata_value(book, "DC", "publisher")
     language = _first_metadata_value(book, "DC", "language")
+
+    series = ""
+    series_index = ""
+    try:
+        opf_metas = book.get_metadata("OPF", "meta") or []
+        for value, attrs in opf_metas:
+            attrs = attrs or {}
+            name = attrs.get("name", "")
+            content = attrs.get("content", "")
+            if name == "calibre:series" and not series:
+                series = (content or "").strip()
+            elif name == "calibre:series_index" and not series_index:
+                series_index = (content or "").strip()
+    except Exception:
+        logger.debug("Could not read calibre series meta", exc_info=True)
+
+    if not series:
+        try:
+            for value, attrs in (book.get_metadata("OPF", "meta") or []):
+                attrs = attrs or {}
+                if attrs.get("property") == "belongs-to-collection":
+                    series = (value or "").strip()
+                    if series:
+                        break
+        except Exception:
+            logger.debug("Could not read belongs-to-collection", exc_info=True)
+
+    series_index = normalize_series_index(series_index)
 
     published_date = ""
     try:
@@ -273,8 +347,8 @@ def _extract_epub_metadata(file_path, cover_dir, warnings: list) -> dict:
         "isbn": isbn,
         "publisher": publisher or "",
         "language": language or "",
-        "series": "",
-        "series_index": "",
+        "series": series,
+        "series_index": series_index,
         "genres": genres,
         "published_date": published_date,
         "cover_path": cover_path,

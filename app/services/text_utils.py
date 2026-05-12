@@ -73,3 +73,29 @@ def clean_title(title):
         "extracted_series_index": extracted_series_index,
         "was_modified": title != original,
     }
+
+
+def normalize_series_index(value):
+    """Normalize a series_index value to a clean string.
+
+    Strips trailing ".0" but preserves real decimals:
+        "1.0"   -> "1"
+        "3.0"   -> "3"
+        "1.5"   -> "1.5"
+        "  2  " -> "2"
+        ""      -> ""
+        None    -> ""
+        "II"    -> "II"   (non-numeric passes through, trimmed)
+    """
+    if value is None:
+        return ""
+    s = str(value).strip()
+    if not s:
+        return ""
+    try:
+        f = float(s)
+        if f == int(f):
+            return str(int(f))
+        return ("%f" % f).rstrip("0").rstrip(".")
+    except (ValueError, TypeError):
+        return s
