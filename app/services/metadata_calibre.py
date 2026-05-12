@@ -8,6 +8,8 @@ import xml.etree.ElementTree as ET
 
 from flask_babel import gettext as _
 
+from app.services.text_utils import normalize_series_index
+
 logger = logging.getLogger(__name__)
 
 _DC = "http://purl.org/dc/elements/1.1/"
@@ -98,7 +100,7 @@ def _parse_opf(xml_string: str) -> dict:
         "date": _dc("date"),
         "isbn": isbn,
         "series": _meta_attr("calibre:series"),
-        "series_index": _meta_attr("calibre:series_index"),
+        "series_index": normalize_series_index(_meta_attr("calibre:series_index")) or None,
         "tags": tags,
         "cover_url": cover_url,
     }

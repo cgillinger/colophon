@@ -61,6 +61,7 @@ def ensure_database_columns():
     backfill_group_keys(force=group_key_added)
     sanitize_html_descriptions()
     backfill_language_detection()
+    normalize_series_index_values()
 
 
 def sanitize_html_descriptions():
@@ -151,6 +152,21 @@ def backfill_language_detection():
     if updated:
         db.session.commit()
         logger.info("Backfilled language for %d items", updated)
+
+
+def normalize_series_index_values():
+    """One-time cleanup: strip trailing ".0" from series_index values like "1.0" → "1"."""
+    result = db.session.execute(text(
+        "UPDATE library_items "
+        "SET series_index = CAST(CAST(series_index AS REAL) AS INTEGER) "
+        "WHERE series_index LIKE '%.0' "
+        "AND CAST(CAST(series_index AS REAL) AS INTEGER) = CAST(series_index AS REAL)"
+    ))
+    if result.rowcount:
+        db.session.commit()
+        logger.info("Normalized series_index for %d rows", result.rowcount)
+    else:
+        db.session.rollback()
 
 
 def ensure_app_settings_table():
