@@ -369,6 +369,19 @@ def _extract_ebook_meta_metadata(file_path, warnings: list) -> dict:
         return {"source": "filename"}
 
     pub = (fields.get("published") or fields.get("publishing date") or "").strip()
+
+    # ebook-meta prints series as "Series : Name #N" (or just "Series : Name").
+    series_raw = (fields.get("series") or "").strip()
+    series = ""
+    series_index = ""
+    if series_raw:
+        m = re.match(r"^(.+?)\s*#\s*(\d+(?:\.\d+)?)\s*$", series_raw)
+        if m:
+            series = m.group(1).strip()
+            series_index = m.group(2)
+        else:
+            series = series_raw
+
     return {
         "title": fields.get("title") or "",
         "author": fields.get("author(s)") or "",
@@ -376,8 +389,8 @@ def _extract_ebook_meta_metadata(file_path, warnings: list) -> dict:
         "isbn": "",
         "publisher": fields.get("publisher") or "",
         "language": fields.get("languages") or "",
-        "series": "",
-        "series_index": "",
+        "series": series,
+        "series_index": series_index,
         "genres": fields.get("tags") or "",
         "published_date": pub[:10] if len(pub) >= 10 else pub,
         "cover_path": None,

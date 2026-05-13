@@ -184,6 +184,14 @@ def apply_metadata_to_item(
     file_updated = False
     file_write_error = None
     if write_to_file:
+        logger.info(
+            "apply_metadata_to_item: item_id=%s written_text_keys=%s "
+            "write_to_file=True is_explicit=%s overwrite=%s",
+            getattr(item, "id", None),
+            sorted(written_text.keys()),
+            is_explicit,
+            overwrite,
+        )
         write_result = write_metadata_to_file(
             item=item,
             written_text=written_text,
@@ -195,6 +203,17 @@ def apply_metadata_to_item(
             item.file_modified_by_colophon = datetime.utcnow()
         if not file_updated:
             file_write_error = write_result["error"]
+            logger.info(
+                "apply_metadata_to_item: file write failed item_id=%s error=%s",
+                getattr(item, "id", None), file_write_error,
+            )
+    else:
+        logger.info(
+            "apply_metadata_to_item: item_id=%s written_text_keys=%s "
+            "write_to_file=False",
+            getattr(item, "id", None),
+            sorted(written_text.keys()),
+        )
 
     # Refresh the completeness score so the DB reflects the post-write state.
     try:
@@ -256,10 +275,22 @@ def write_metadata_to_file(item, written_text, cover_path):
         args += ["--identifier", f"isbn:{written_text['isbn']}"]
     if "language" in written_text:
         args += ["--language", written_text["language"]]
-    if "series" in written_text:
-        args += ["--series", written_text["series"]]
-    if "series_index" in written_text:
-        args += ["--index", written_text["series_index"]]
+    # ebook-meta crashes on `--series ""` / `--index ""` (the latter raises
+    # "could not convert string to float"). Drop empty values, and only pass
+    # --index when numeric.
+    series_val = (written_text.get("series") or "").strip()
+    if series_val:
+        args += ["--series", series_val]
+    index_val = (written_text.get("series_index") or "").strip()
+    if index_val:
+        try:
+            float(index_val)
+            args += ["--index", index_val]
+        except ValueError:
+            logger.info(
+                "Skipping --index for %s: non-numeric value %r",
+                file_path, index_val,
+            )
     if "published_date" in written_text:
         args += ["--date", written_text["published_date"]]
     if cover_path and os.path.exists(cover_path):
@@ -267,6 +298,12 @@ def write_metadata_to_file(item, written_text, cover_path):
 
     if len(args) <= 2:
         return {"ok": False, "error": "no_fields"}
+
+    written_fields = sorted(written_text.keys())
+    logger.info(
+        "write_metadata_to_file: path=%s fields=%s has_cover=%s",
+        file_path, written_fields, bool(cover_path and os.path.exists(cover_path)),
+    )
 
     try:
         run_result = subprocess.run(
@@ -284,12 +321,17 @@ def write_metadata_to_file(item, written_text, cover_path):
 
     if run_result.returncode != 0:
         logger.warning(
-            "ebook-meta returnerade kod %s: %s",
+            "ebook-meta returnerade kod %s for %s: stderr=%s",
             run_result.returncode,
+            file_path,
             (run_result.stderr or run_result.stdout or "").strip(),
         )
         return {"ok": False, "error": "command_failed"}
 
+    logger.info(
+        "write_metadata_to_file: ok path=%s wrote=%s",
+        file_path, written_fields,
+    )
     return {"ok": True, "error": None}
 
 
