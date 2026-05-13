@@ -21,6 +21,28 @@ from app.services.text_utils import clean_title, normalize_series_index
 logger = logging.getLogger(__name__)
 
 
+def _opf_meta_by_name(book, name):
+    """Hitta <meta name="X" content="Y"/> i OPF-metadata."""
+    try:
+        for val, attrs in (book.get_metadata("OPF", "meta") or []):
+            if (attrs or {}).get("name") == name:
+                return (attrs.get("content") or "").strip() or None
+    except Exception:
+        pass
+    return None
+
+
+def _opf_meta_by_property(book, prop):
+    """Hitta <meta property="X">Y</meta> i OPF-metadata (EPUB3)."""
+    try:
+        for val, attrs in (book.get_metadata("OPF", "meta") or []):
+            if (attrs or {}).get("property") == prop:
+                return (val or "").strip() or None
+    except Exception:
+        pass
+    return None
+
+
 EBOOK_EXTENSIONS = {".epub", ".mobi", ".azw3", ".kepub", ".pdf", ".cbz", ".cbr"}
 
 
@@ -123,11 +145,9 @@ def _collect_authors(book):
 def _save_epub_cover(book, file_path, cover_dir):
     cover_item = None
     try:
-        cover_meta = book.get_metadata("OPF", "cover")
-        if cover_meta:
-            cover_id = cover_meta[0][1].get("content")
-            if cover_id:
-                cover_item = book.get_item_with_id(cover_id)
+        cover_id = _opf_meta_by_name(book, "cover")
+        if cover_id:
+            cover_item = book.get_item_with_id(cover_id)
     except Exception:
         pass
     if not cover_item:
@@ -282,31 +302,15 @@ def _extract_epub_metadata(file_path, cover_dir, warnings: list) -> dict:
     publisher = _first_metadata_value(book, "DC", "publisher")
     language = _first_metadata_value(book, "DC", "language")
 
-    series = ""
-    series_index = ""
-    try:
-        opf_metas = book.get_metadata("OPF", "meta") or []
-        for value, attrs in opf_metas:
-            attrs = attrs or {}
-            name = attrs.get("name", "")
-            content = attrs.get("content", "")
-            if name == "calibre:series" and not series:
-                series = (content or "").strip()
-            elif name == "calibre:series_index" and not series_index:
-                series_index = (content or "").strip()
-    except Exception:
-        logger.debug("Could not read calibre series meta", exc_info=True)
+    # Calibre-serie (vanligast)
+    series = _opf_meta_by_name(book, "calibre:series") or ""
+    series_index = _opf_meta_by_name(book, "calibre:series_index") or ""
 
+    # EPUB3-fallback: belongs-to-collection
     if not series:
-        try:
-            for value, attrs in (book.get_metadata("OPF", "meta") or []):
-                attrs = attrs or {}
-                if attrs.get("property") == "belongs-to-collection":
-                    series = (value or "").strip()
-                    if series:
-                        break
-        except Exception:
-            logger.debug("Could not read belongs-to-collection", exc_info=True)
+        series = _opf_meta_by_property(book, "belongs-to-collection") or ""
+        if series:
+            series_index = _opf_meta_by_property(book, "group-position") or ""
 
     series_index = normalize_series_index(series_index)
 
