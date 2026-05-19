@@ -1,5 +1,9 @@
 # Colophon — View Architecture
 
+> **OBS:** Skriptorium-implementationen använder distribuerad ram (per-bok border),
+> inte wrapper-baserade ramar som tidigare versioner av detta dokument beskrev.
+> Se shelf-view.js för den faktiska implementationen.
+
 Design document governing how the bulk metadata page (`/metadata/bulk`) organises its display modes, scroll behaviour, and view-specific features. This is the authoritative reference for all future development on the library views.
 
 ---
@@ -71,6 +75,8 @@ CSS Grid of `.grid-card` elements inside `#gridView`. Each card carries `data-se
 
 **Infinite scroll (lazy-load).** Initial render: ~60 books. `IntersectionObserver` on a sentinel element at the bottom loads the next batch (~40) from the already-filtered row list in memory. No new backend requests.
 
+**Series integrity:** when a batch is rendered, it is extended forward to include every other visible member of any series whose cards appear in the batch. No series is ever split across a "not-yet-rendered" boundary. This guarantees Skriptorium can group correctly without having to fetch more data later.
+
 Pagination controls are hidden in this paradigm.
 
 ### Container width
@@ -99,50 +105,69 @@ Each `.grid-card` needs:
 
 Empty or missing `data-series` → standalone book (never grouped).
 
-### 5.2 Algorithm
+### 5.2 Algorithm — distributed borders (no wrapper elements)
 
-1. **Collect:** Walk grid cards in DOM order. For each unique `data-series`, collect all cards into a group. Group is placed at the position of its first member in current sort order.
+Each book remains its own grid item. No wrapper/frame element is used. The visual grouping border is drawn by giving each series book CSS borders on its *exposed* sides only — sides not adjacent to another book in the same series. This supports L-shaped, T-shaped, and irregular contours.
+
+**Phase 1 — DOM reordering:**
+
+1. **Collect:** For each unique `data-series`, collect all cards into a group.
 2. **Sort within group:** By `data-series-index` (float, ascending). Items without index sort last, alphabetically by title.
-3. **Singleton rule:** A series with only one visible card → treated as standalone, no frame.
-4. **Span:** The wrapper element spans `K = min(books_in_series, visible_grid_columns)` columns.
-5. **Wrapping:** If books > columns, `flex-wrap: wrap` inside the frame. Books flow to a second row, left-aligned. No horizontal scroll — all books always visible.
-6. **Dense flow:** Parent grid uses `grid-auto-flow: dense` so standalone books fill gaps.
+3. **Singleton rule:** A series with only one visible card → treated as standalone, no border.
+4. **Reorder DOM:** Move each group's cards to be consecutive, placed at the position of the group's first card in the current sort order.
+5. **Dense flow:** Grid uses `grid-auto-flow: dense` so standalone books fill all gaps, including any "hole" in an irregular series shape.
+
+**Phase 2 — calculate grid positions:**
+
+After DOM reorder and layout, determine each card's `(row, col)` position using `offsetLeft` / `offsetTop` (forces a sync layout, but accuracy beats the simpler index-arithmetic approach when `grid-auto-flow: dense` is active).
+
+**Phase 3 — apply borders:**
+
+For each series, build a set of occupied cells. For each book, check 4 neighbours:
+
+- No neighbour above → `border-top`
+- No neighbour below → `border-bottom`
+- No neighbour left → `border-left`
+- No neighbour right → `border-right`
+- Exposed corner → `border-radius` on that corner
+
+This produces a seamless contour around any shape the series occupies in the grid.
+
+**Phase 4 — series name tag:**
+
+An absolutely positioned element (child of `#gridView`, which is `position: relative`) centred above the first row of the series. Position calculated from actual rendered book offsets.
 
 ### 5.3 Idempotent rebuild
 
 Every `applySkriptorium()` call starts with `removeSkriptorium()`:
 
-- All wrapper elements are removed
-- All cards are returned to the grid as flat children
+- All `se-*` border/corner/background classes removed from cards
+- All `.series-tag` overlay elements removed
+- `.in-series` / `.standalone` classes cleared
+- Original DOM order restored (cards are re-appended in render-sequence order)
 - Then grouping is re-applied
 
 This makes the function safe to call after any state change (filter, sort, page, resize, toggle).
 
 ### 5.4 Resize handling
 
-A `ResizeObserver` on the grid element recomputes column count. When it changes, full rebuild is triggered. Column count formula:
-
-```
-cols = floor((gridWidth + gapX) / (colWidth + gapX))
-```
+A `ResizeObserver` on the grid element recomputes column count. When it changes, full rebuild is triggered (borders recalculate because grid positions change).
 
 ### 5.5 Visual design
 
-**Frame:** `box-shadow: 0 0 0 2.5px rgba(76, 175, 80, 0.55)` (green, Colophon's accent). No `border` — box-shadow doesn't affect layout. Background: `rgba(76, 175, 80, 0.03)`.
+**Distributed border:** Each exposed side gets `2.5px solid rgba(76, 175, 80, 0.55)`. Exposed corners get `border-radius: 6px`. Each series book gets a subtle background tint.
 
-**Series name tag:** Positioned on top of the frame border, centred. Gold text in Cormorant Garamond italic. Flanked by SVG flourish ornaments.
+**Series name tag:** Absolutely positioned above the first row of the series, centred. Gold text in Cormorant Garamond italic. Flanked by green SVG flourish ornaments.
 
 | Element | Colour | Notes |
 |---|---|---|
-| Frame border | `rgba(76, 175, 80, 0.55)` | Green — Colophon accent, via box-shadow |
-| Frame background | `rgba(76, 175, 80, 0.03)` | Barely-there green tint |
+| Border (per book, exposed sides) | `rgba(76, 175, 80, 0.55)` | Green — Colophon accent |
+| Series book background | `rgba(76, 175, 80, 0.03)` | Barely-there green tint |
 | Series name text | `rgba(196, 164, 90, 0.88)` | Antique gold — **only element in gold** |
-| Flourish ornaments | `rgba(76, 175, 80, 0.55)` | Green — matches frame, not gold |
+| Flourish ornaments | `rgba(76, 175, 80, 0.55)` | Green — matches border, not gold |
 | Series index badge | `rgba(0, 0, 0, 0.72)` bg, `#fff` text | Top-left corner of each cover |
 
-**Standalone alignment:** When grouping is active, standalone cards get `padding-top` equal to the frame's overhead (tag height + frame padding) so covers align vertically with framed covers.
-
-**Popup suppression:** Hover popups on items inside frames are hidden (`display: none !important`) — frame overflow clipping makes them render incorrectly.
+**Popup suppression:** Hover popups on items inside series are hidden (`display: none !important`).
 
 ### 5.6 Font
 
@@ -159,11 +184,9 @@ app/
   static/
     js/
       shelf-view.js         ← Hyllvy: grid rendering, infinite scroll, Skriptorium
-    css/
-      skriptorium.css       ← Skriptorium-specific styles (or inline in template)
 ```
 
-Tabellvy logic remains in the existing `<script>` block in `bulk_metadata.html` (it's already there and working). Hyllvy logic is extracted into `shelf-view.js` to keep the paradigms separate.
+Tabellvy logic remains in the existing `<script>` block in `bulk_metadata.html` (it's already there and working). Hyllvy logic is extracted into `shelf-view.js` to keep the paradigms separate. Skriptorium CSS lives in a `<style>` block in the template (small enough to not warrant a separate file).
 
 ### 6.1 Interface contract
 
@@ -210,4 +233,4 @@ A one-time migration in JS reads the old localStorage key (`colophon-view-mode`)
 - **Drag-and-drop manual ordering** → `shelf-view.js`
 - **New filter types** → shared layer, both paradigms react
 - **Reading status overlay** → per-card, both paradigms can show it
-- **Optimal rectangle spanning** (Skriptorium) → isolated change in span calculation function
+- **Smarter contour selection** (Skriptorium) → tweak DOM-reorder to prefer rectangular shapes when possible
