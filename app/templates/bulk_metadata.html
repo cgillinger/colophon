@@ -2030,6 +2030,7 @@
 
         #gridView {
             --cover-width: 160px;
+            position: relative;
             grid-template-columns: repeat(auto-fill, var(--cover-width));
             gap: 20px;
             padding: 16px 0;
@@ -2084,47 +2085,42 @@
         body.shelf-active .density-toggle { display: none; }
         body:not(.shelf-active) .skriptorium-toggle { display: none; }
 
-        /* === Skriptorium (series grouping) === */
+        /* === Skriptorium (distributed-border series grouping) === */
         #gridView.series-grouping-active {
             grid-auto-flow: dense;
         }
-        #gridView.series-grouping-active > .grid-card {
-            padding-top: 18px;
-        }
 
-        .series-frame {
-            position: relative;
-            border: none;
-            box-shadow: 0 0 0 2.5px rgba(76, 175, 80, 0.55);
-            border-radius: 6px;
-            background: rgba(76, 175, 80, 0.03);
-            padding: 18px 6px 10px;
+        /* Per-side borders on exposed faces of a series book */
+        .se-top    { border-top:    2.5px solid rgba(76, 175, 80, 0.55) !important; }
+        .se-right  { border-right:  2.5px solid rgba(76, 175, 80, 0.55) !important; }
+        .se-bottom { border-bottom: 2.5px solid rgba(76, 175, 80, 0.55) !important; }
+        .se-left   { border-left:   2.5px solid rgba(76, 175, 80, 0.55) !important; }
+
+        .se-r-tl { border-top-left-radius:     6px; }
+        .se-r-tr { border-top-right-radius:    6px; }
+        .se-r-bl { border-bottom-left-radius:  6px; }
+        .se-r-br { border-bottom-right-radius: 6px; }
+
+        .se-bg { background: rgba(76, 175, 80, 0.03); }
+
+        /* Suppress hover lift on series members so the contour stays intact */
+        .in-series:hover {
+            transform: none;
+            box-shadow: none;
         }
-        .series-frame .series-inner {
-            display: flex;
-            gap: 32px;
-            flex-wrap: wrap;
-            padding: 4px 3px 6px;
-        }
-        .series-frame .series-inner .grid-card {
-            width: var(--cover-width, 160px);
-            flex: 0 0 var(--cover-width, 160px);
-        }
-        .series-frame .synopsis-popup { display: none !important; }
+        .in-series .synopsis-popup { display: none !important; }
 
         .series-tag {
             position: absolute;
-            top: -10px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--bg-primary);
-            padding: 0 10px;
-            white-space: nowrap;
             z-index: 4;
             line-height: 1;
             display: flex;
             align-items: center;
             gap: 4px;
+            pointer-events: none;
+            background: var(--bg-primary);
+            padding: 2px 10px;
+            border-radius: 3px;
         }
         .series-name {
             font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
