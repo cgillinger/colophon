@@ -210,7 +210,20 @@
         _ro.observe(grid);
     }
 
-    /* -------------------- Skriptorium (wrapper + subgrid) -------------------- */
+    /* Smallest row count that lets the series fit in <= `cols` columns —
+     * gives a balanced rectangle instead of one wide row + a short remainder.
+     *   n=10, cols=8 → span 5 (rows 2, 5+5)
+     *   n=12, cols=8 → span 6 (rows 2, 6+6)
+     *   n= 9, cols=8 → span 5 (rows 2, 5+4)
+     */
+    function _calcSeriesSpan(n, cols) {
+        if (n <= cols) return n;
+        for (var rows = 2; rows <= n; rows++) {
+            var span = Math.ceil(n / rows);
+            if (span <= cols) return span;
+        }
+        return cols;
+    }
 
     function removeSkriptorium() {
         var grid = _grid();
@@ -297,12 +310,14 @@
             wrappedSeries[gnm] = true;
 
             var members = groups[gnm];
-            var span    = Math.min(members.length, cols);
+            var span    = _calcSeriesSpan(members.length, cols);
+            var rowSpan = Math.ceil(members.length / span);
 
             var frame = document.createElement('div');
             frame.className        = 'series-frame';
             frame.dataset.series   = gnm;
             frame.style.gridColumn = 'span ' + span;
+            if (rowSpan > 1) frame.style.gridRow = 'span ' + rowSpan;
 
             var inner = document.createElement('div');
             inner.className = 'series-inner';
