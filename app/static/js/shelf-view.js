@@ -22,8 +22,8 @@
 
     var FLOURISH_SVG =
         '<svg viewBox="0 0 22 10" width="22" height="10" xmlns="http://www.w3.org/2000/svg">' +
-            '<path d="M21 5c-3 0-4-3.6-7-3.6S10 5 7 5 4 1.4 1 1.4" fill="none" stroke="rgba(76,175,80,0.55)" stroke-width="0.7" stroke-linecap="round"/>' +
-            '<path d="M21 5c-3 0-4 3.6-7 3.6S10 5 7 5 4 8.6 1 8.6" fill="none" stroke="rgba(76,175,80,0.55)" stroke-width="0.7" stroke-linecap="round"/>' +
+            '<path d="M21 5c-3 0-4-3.6-7-3.6S10 5 7 5 4 1.4 1 1.4" fill="none" stroke="rgba(76,175,80,0.7)" stroke-width="0.7" stroke-linecap="round"/>' +
+            '<path d="M21 5c-3 0-4 3.6-7 3.6S10 5 7 5 4 8.6 1 8.6" fill="none" stroke="rgba(76,175,80,0.7)" stroke-width="0.7" stroke-linecap="round"/>' +
         '</svg>';
 
     var _renderedCount = 0;
