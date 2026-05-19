@@ -2100,11 +2100,14 @@
             box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.5);
             border-radius: 6px;
             background: rgba(76, 175, 80, 0.07);
-            padding-top: 20px;
+            padding-top: 0;
             padding-bottom: 6px;
             padding-left: 0 !important;
             padding-right: 0 !important;
-            margin: 0 !important;
+            margin-top: 14px;
+            margin-bottom: 0 !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
             column-gap: 20px;
         }
         .series-inner {
@@ -2116,6 +2119,10 @@
             padding: 0 !important;
             margin: 0 !important;
             border: 0 !important;
+        }
+        /* Match standalone cards' top to the frame's top so covers align */
+        #gridView.series-grouping-active > .grid-card {
+            margin-top: 14px;
         }
         .series-frame .synopsis-popup { display: none !important; }
 
