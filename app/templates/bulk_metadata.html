@@ -13,6 +13,9 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabler-icons/tabler-icons.min.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,400;1,500&display=swap" rel="stylesheet">
     <title>{{ _('Metadata') }} - Colophon</title>
     <style>
         :root, [data-theme="light"] {
@@ -2017,11 +2020,140 @@
         [data-view="compact"] #gridView,
         [data-view="gallery"] #gridView { display: none; }
         [data-view="grid"] #groupToggle { display: none; }
+        [data-view="grid"] #paginationBar { display: none !important; }
+
+        /* Wider container in Hyllvy (shelf paradigm) */
+        body.shelf-active .container {
+            max-width: 95vw;
+            max-width: min(95vw, 1600px);
+        }
 
         #gridView {
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            --cover-width: 160px;
+            grid-template-columns: repeat(auto-fill, var(--cover-width));
             gap: 20px;
             padding: 16px 0;
+        }
+
+        /* Paradigm + density + Skriptorium toolbar controls */
+        .paradigm-toggle {
+            display: inline-flex;
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .paradigm-btn {
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border: none;
+            padding: 7px 12px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            line-height: 1;
+        }
+        .paradigm-btn + .paradigm-btn { border-left: 1px solid var(--border-light); }
+        .paradigm-btn:hover { background: var(--bg-tertiary); }
+        .paradigm-btn.active {
+            background: var(--accent-primary);
+            color: #fff;
+        }
+        .density-toggle, .skriptorium-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .density-toggle label, .skriptorium-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .density-toggle input[type="radio"], .skriptorium-toggle input[type="checkbox"] {
+            accent-color: var(--accent-primary);
+            margin: 0;
+        }
+
+        /* Hide density-toggle in shelf, hide Skriptorium-toggle in table */
+        body.shelf-active .density-toggle { display: none; }
+        body:not(.shelf-active) .skriptorium-toggle { display: none; }
+
+        /* === Skriptorium (series grouping) === */
+        #gridView.series-grouping-active {
+            grid-auto-flow: dense;
+        }
+        #gridView.series-grouping-active > .grid-card {
+            padding-top: 18px;
+        }
+
+        .series-frame {
+            position: relative;
+            border: none;
+            box-shadow: 0 0 0 2.5px rgba(76, 175, 80, 0.55);
+            border-radius: 6px;
+            background: rgba(76, 175, 80, 0.03);
+            padding: 18px 6px 10px;
+        }
+        .series-frame .series-inner {
+            display: flex;
+            gap: 32px;
+            flex-wrap: wrap;
+            padding: 4px 3px 6px;
+        }
+        .series-frame .series-inner .grid-card {
+            width: var(--cover-width, 160px);
+            flex: 0 0 var(--cover-width, 160px);
+        }
+        .series-frame .synopsis-popup { display: none !important; }
+
+        .series-tag {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-primary);
+            padding: 0 10px;
+            white-space: nowrap;
+            z-index: 4;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .series-name {
+            font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+            font-size: 16px;
+            font-weight: 500;
+            font-style: italic;
+            color: rgba(196, 164, 90, 0.88);
+            letter-spacing: 0.4px;
+            padding: 0 3px;
+        }
+        .series-flourish {
+            display: inline-block;
+            width: 22px;
+            height: 10px;
+            line-height: 0;
+        }
+        .series-index-badge {
+            position: absolute;
+            left: 5px;
+            top: 5px;
+            background: rgba(0, 0, 0, 0.72);
+            color: #fff;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+            z-index: 5;
+            pointer-events: none;
         }
 
         .grid-card {
@@ -2328,9 +2460,22 @@
             <button id="groupToggle" class="filter-btn icon-toggle" type="button" onclick="toggleGroupView()" title="{{ _('Group formats') }}">
                 <i class="ti ti-stack-2" style="font-size:20px;"></i><span id="groupCountLabel" style="display:none; margin-left:6px; font-size:12px;"></span>
             </button>
-            <button id="viewToggle" class="filter-btn icon-toggle" type="button" onclick="toggleViewMode()" title="{{ _('Switch view') }}">
-                <i class="ti ti-list"></i>
-            </button>
+            <div class="paradigm-toggle" role="group" aria-label="{{ _('View') }}">
+                <button id="paradigmTable" class="paradigm-btn" type="button" onclick="switchView('table')" title="{{ _('Table view') }}">
+                    <i class="ti ti-list"></i> {{ _('Table') }}
+                </button>
+                <button id="paradigmShelf" class="paradigm-btn" type="button" onclick="switchView('shelf')" title="{{ _('Shelf view') }}">
+                    <i class="ti ti-books"></i> {{ _('Shelf') }}
+                </button>
+            </div>
+            <div class="density-toggle" id="densityToggle">
+                <label><input type="radio" name="tableDensity" value="compact" onchange="setTableDensity('compact')"> {{ _('Compact') }}</label>
+                <label><input type="radio" name="tableDensity" value="gallery" onchange="setTableDensity('gallery')"> {{ _('Airy') }}</label>
+            </div>
+            <label class="skriptorium-toggle" id="skriptoriumToggleWrap">
+                <input type="checkbox" id="skriptoriumToggle" onchange="setSkriptorium(this.checked)">
+                {{ _('Group series') }}
+            </label>
 
             <div class="filter-sep"></div>
 
@@ -2414,7 +2559,9 @@
                             data-missing="{{ '1' if is_missing else '0' }}"
                             data-unsynced="{{ '1' if item.file_modified_by_colophon and (not item.upstream_synced_at or item.file_modified_by_colophon > item.upstream_synced_at) else '0' }}"
                             data-item-id="{{ item.id }}"
-                            data-group-key="{{ item.group_key or '' }}">
+                            data-group-key="{{ item.group_key or '' }}"
+                            data-series="{{ item.series or '' }}"
+                            data-series-index="{{ item.series_index or '' }}">
                             <td>
                                 <input type="checkbox" name="item_ids" value="{{ item.id }}" class="book-checkbox">
                             </td>
@@ -2895,30 +3042,88 @@
     })();
 
     /* -------------------------------------------------------------------- */
-    /* View mode (Compact / Gallery)                                         */
+    /* View paradigm: Tabellvy / Hyllvy + density + Skriptorium             */
     /* -------------------------------------------------------------------- */
-    var _viewMode = localStorage.getItem('colophon-viewMode') || 'compact';
-    function _viewModeIconClass(mode) {
-        if (mode === 'gallery') return 'ti ti-layout-list';
-        if (mode === 'grid') return 'ti ti-grid-dots';
-        return 'ti ti-list';
-    }
-    function toggleViewMode() {
-        var next = { 'compact': 'gallery', 'gallery': 'grid', 'grid': 'compact' };
-        _viewMode = next[_viewMode] || 'compact';
-        localStorage.setItem('colophon-viewMode', _viewMode);
-        document.body.setAttribute('data-view', _viewMode);
-        var icon = document.querySelector('#viewToggle i');
-        if (icon) icon.className = _viewModeIconClass(_viewMode);
-        if (_viewMode === 'grid' && typeof renderGridView === 'function') {
-            renderGridView();
+    var _paradigm = 'table';                  /* 'table' | 'shelf' */
+    var _tableDensity = 'compact';            /* 'compact' | 'gallery' */
+    var _skriptorium = false;                 /* boolean */
+
+    /* One-time migration from the old `colophon-viewMode` key */
+    (function _migrateViewMode() {
+        var legacy = localStorage.getItem('colophon-viewMode');
+        if (legacy != null) {
+            if (legacy === 'gallery') {
+                localStorage.setItem('colophon-view-mode', 'table');
+                localStorage.setItem('colophon-table-density', 'gallery');
+            } else if (legacy === 'grid') {
+                localStorage.setItem('colophon-view-mode', 'shelf');
+            } else {
+                localStorage.setItem('colophon-view-mode', 'table');
+                localStorage.setItem('colophon-table-density', 'compact');
+            }
+            localStorage.removeItem('colophon-viewMode');
         }
-    }
-    (function() {
-        document.body.setAttribute('data-view', _viewMode);
-        var icon = document.querySelector('#viewToggle i');
-        if (icon) icon.className = _viewModeIconClass(_viewMode);
     })();
+
+    (function _loadViewState() {
+        var p = localStorage.getItem('colophon-view-mode');
+        if (p === 'shelf' || p === 'table') _paradigm = p;
+        var d = localStorage.getItem('colophon-table-density');
+        if (d === 'compact' || d === 'gallery') _tableDensity = d;
+        var s = localStorage.getItem('colophon-skriptorium');
+        _skriptorium = (s === '1');
+    })();
+
+    function _computeDataView() {
+        if (_paradigm === 'shelf') return 'grid';
+        return _tableDensity === 'gallery' ? 'gallery' : 'compact';
+    }
+
+    function _syncViewUI() {
+        document.body.setAttribute('data-view', _computeDataView());
+        document.body.classList.toggle('shelf-active', _paradigm === 'shelf');
+
+        var btnT = document.getElementById('paradigmTable');
+        var btnS = document.getElementById('paradigmShelf');
+        if (btnT) btnT.classList.toggle('active', _paradigm === 'table');
+        if (btnS) btnS.classList.toggle('active', _paradigm === 'shelf');
+
+        document.querySelectorAll('input[name="tableDensity"]').forEach(function(r) {
+            r.checked = (r.value === _tableDensity);
+        });
+        var sk = document.getElementById('skriptoriumToggle');
+        if (sk) sk.checked = _skriptorium;
+    }
+
+    function switchView(paradigm) {
+        if (paradigm !== 'table' && paradigm !== 'shelf') return;
+        if (paradigm === _paradigm) return;
+        var prev = _paradigm;
+        _paradigm = paradigm;
+        localStorage.setItem('colophon-view-mode', _paradigm);
+        _syncViewUI();
+        if (prev === 'shelf' && typeof destroyShelfView === 'function') destroyShelfView();
+        if (paradigm === 'shelf' && typeof initShelfView === 'function') initShelfView();
+    }
+
+    function setTableDensity(d) {
+        if (d !== 'compact' && d !== 'gallery') return;
+        _tableDensity = d;
+        localStorage.setItem('colophon-table-density', d);
+        _syncViewUI();
+    }
+
+    function setSkriptorium(on) {
+        _skriptorium = !!on;
+        localStorage.setItem('colophon-skriptorium', _skriptorium ? '1' : '0');
+        if (_paradigm !== 'shelf') return;
+        if (_skriptorium && typeof applySkriptorium === 'function') applySkriptorium();
+        else if (!_skriptorium && typeof removeSkriptorium === 'function') removeSkriptorium();
+    }
+
+    function isSkriptoriumOn() { return _skriptorium; }
+
+    (function _initialViewSync() { _syncViewUI(); })();
 
     /* -------------------------------------------------------------------- */
     /* Scan SSE                                                              */
@@ -5049,67 +5254,8 @@
     });
 
     /* -------------------------------------------------------------------- */
-    /* Grid view rendering                                                   */
+    /* Grid card selection mirroring (used by Hyllvy in shelf-view.js)       */
     /* -------------------------------------------------------------------- */
-    function _gridEsc(s) {
-        return String(s == null ? '' : s)
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    }
-
-    function renderGridView() {
-        var container = document.getElementById('gridView');
-        if (!container) return;
-
-        var rows = getFilteredRows();
-        var total = rows.length;
-        var start = _pageSize === 0 ? 0 : (_currentPage - 1) * _pageSize;
-        var end = _pageSize === 0 ? total : Math.min(start + _pageSize, total);
-        var pageRows = rows.slice(start, end);
-
-        var html = '';
-        pageRows.forEach(function(row) {
-            var itemId = row.dataset.itemId || '';
-            var titleEl = row.querySelector('.book-title');
-            var title = titleEl ? (titleEl.textContent || '').trim() : (row.dataset.title || '');
-            var authorEl = row.querySelector('.author-cell');
-            var author = authorEl ? (authorEl.textContent || '').trim() : '';
-            var coverImg = row.querySelector('.cover img');
-            var coverSrc = coverImg ? coverImg.getAttribute('src') : '';
-            var cb = row.querySelector('.book-checkbox');
-            var checked = cb && cb.checked ? ' checked' : '';
-            var value = cb ? cb.value : itemId;
-
-            var imgStyle = coverSrc ? '' : 'display:none;';
-            var phStyle = coverSrc ? 'display:none;' : 'display:flex;';
-
-            html += '<div class="grid-card" data-item-id="' + _gridEsc(itemId) + '">'
-                +   '<div class="grid-card-cover" onclick="openBookModal(' + _gridEsc(itemId) + ')">'
-                +     '<img src="' + _gridEsc(coverSrc) + '" alt="" loading="lazy" style="' + imgStyle + '"'
-                +       ' onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';">'
-                +     '<div class="grid-card-placeholder" style="' + phStyle + '">'
-                +       '<i class="ti ti-book"></i>'
-                +       '<span class="grid-card-placeholder-title">' + _gridEsc(title) + '</span>'
-                +       '<span class="grid-card-placeholder-author">' + _gridEsc(author) + '</span>'
-                +     '</div>'
-                +     '<input type="checkbox" class="grid-card-checkbox" value="' + _gridEsc(value) + '"' + checked + '>'
-                +   '</div>'
-                +   '<div class="grid-card-info" onclick="openBookModal(' + _gridEsc(itemId) + ')">'
-                +     '<div class="grid-card-title">' + _gridEsc(title) + '</div>'
-                +     '<div class="grid-card-author">' + _gridEsc(author) + '</div>'
-                +   '</div>'
-                + '</div>';
-        });
-        container.innerHTML = html;
-        _updateGridSelectionState();
-    }
-
-    function _updateGridSelectionState() {
-        var grid = document.getElementById('gridView');
-        if (!grid) return;
-        var anyChecked = document.querySelectorAll('.book-checkbox:checked').length > 0;
-        grid.classList.toggle('has-selection', anyChecked);
-    }
 
     /* Grid checkbox change → mirror to table checkbox */
     document.addEventListener('change', function(e) {
@@ -5126,7 +5272,7 @@
                 cb.dispatchEvent(new Event('change', { bubbles: true }));
             }
         }
-        _updateGridSelectionState();
+        if (typeof updateGridSelectionState === 'function') updateGridSelectionState();
     });
 
     /* When table checkboxes change, mirror back to grid + update has-selection */
@@ -5139,24 +5285,24 @@
             var gridCb = document.querySelector('#gridView .grid-card[data-item-id="' + itemId + '"] .grid-card-checkbox');
             if (gridCb && gridCb.checked !== t.checked) gridCb.checked = t.checked;
         }
-        _updateGridSelectionState();
+        if (typeof updateGridSelectionState === 'function') updateGridSelectionState();
     });
 
-    /* Wrap renderPagination, applyFilters, sortTable, renderGroupedView to also refresh grid */
+    /* Wrap shared mutators so Hyllvy refreshes whenever filter/sort/group state changes */
     var _origRenderPagination = renderPagination;
     renderPagination = function() {
         _origRenderPagination.apply(this, arguments);
-        if (_viewMode === 'grid') renderGridView();
+        if (_paradigm === 'shelf' && typeof refreshShelfView === 'function') refreshShelfView();
     };
     var _origApplyFilters = applyFilters;
     applyFilters = function() {
         _origApplyFilters.apply(this, arguments);
-        if (_viewMode === 'grid') renderGridView();
+        if (_paradigm === 'shelf' && typeof refreshShelfView === 'function') refreshShelfView();
     };
     var _origSortTable2 = sortTable;
     sortTable = function(key) {
         _origSortTable2.apply(this, arguments);
-        if (_viewMode === 'grid') renderGridView();
+        if (_paradigm === 'shelf' && typeof refreshShelfView === 'function') refreshShelfView();
     };
     /* Re-bind sort handlers to the latest sortTable */
     document.querySelectorAll('#bookTable th[data-sort]').forEach(function(th) {
@@ -5167,14 +5313,14 @@
     var _origRenderGroupedView = renderGroupedView;
     renderGroupedView = function() {
         _origRenderGroupedView.apply(this, arguments);
-        if (_viewMode === 'grid') renderGridView();
+        if (_paradigm === 'shelf' && typeof refreshShelfView === 'function') refreshShelfView();
     };
 
     updateGroupToggleButton();
     renderGroupedView();
     updateSelectedCount();
     updateBatchBar();
-    if (_viewMode === 'grid') renderGridView();
+    if (_paradigm === 'shelf' && typeof initShelfView === 'function') initShelfView();
 
     /* -------------------------------------------------------------------- */
     /* Bulk delete                                                           */
@@ -7460,6 +7606,17 @@
         document.cookie = 'colophon_lang=' + lang + ';path=/;max-age=31536000;SameSite=Lax';
         location.reload();
     }
+</script>
+<script src="{{ url_for('static', filename='js/shelf-view.js') }}"></script>
+<script>
+    /* Bootstrap Hyllvy if it's the active paradigm at load time.
+       The inline script ran initShelfView() defensively, but at that point
+       shelf-view.js wasn't loaded yet. Run it now. */
+    (function() {
+        if (typeof _paradigm !== 'undefined' && _paradigm === 'shelf' && typeof initShelfView === 'function') {
+            initShelfView();
+        }
+    })();
 </script>
 
 </body>
