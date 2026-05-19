@@ -26,12 +26,6 @@
             '<path d="M21 5c-3 0-4 3.6-7 3.6S10 5 7 5 4 8.6 1 8.6" fill="none" stroke="rgba(76,175,80,0.55)" stroke-width="0.7" stroke-linecap="round"/>' +
         '</svg>';
 
-    var SE_CLASSES = [
-        'in-series', 'standalone',
-        'se-bg', 'se-top', 'se-bottom', 'se-left', 'se-right',
-        'se-r-tl', 'se-r-tr', 'se-r-bl', 'se-r-br'
-    ];
-
     var _renderedCount = 0;
     var _renderSeq     = 0;
     var _io            = null;
@@ -216,61 +210,33 @@
         _ro.observe(grid);
     }
 
-    /* -------------------- Skriptorium -------------------- */
-
-    function _clearSkriptoriumClasses(card) {
-        for (var i = 0; i < SE_CLASSES.length; i++) {
-            card.classList.remove(SE_CLASSES[i]);
-        }
-        if (card.dataset.seriesGroup) delete card.dataset.seriesGroup;
-    }
+    /* -------------------- Skriptorium (wrapper + subgrid) -------------------- */
 
     function removeSkriptorium() {
         var grid = _grid();
         if (!grid) return;
 
-        var tags = grid.querySelectorAll('.series-tag');
-        for (var i = 0; i < tags.length; i++) tags[i].parentNode.removeChild(tags[i]);
+        /* Move cards out of any wrapper, then restore original render order. */
+        var frames = grid.querySelectorAll('.series-frame');
+        for (var i = 0; i < frames.length; i++) {
+            var f     = frames[i];
+            var cards = f.querySelectorAll('.grid-card');
+            for (var j = 0; j < cards.length; j++) grid.appendChild(cards[j]);
+            f.parentNode.removeChild(f);
+        }
 
-        var cards = Array.from(grid.querySelectorAll('.grid-card'));
-        for (var j = 0; j < cards.length; j++) _clearSkriptoriumClasses(cards[j]);
-
-        /* Restore original render order. */
-        cards.sort(function (a, b) {
+        var all = Array.from(grid.querySelectorAll('.grid-card'));
+        all.sort(function (a, b) {
             return (parseInt(a.dataset.renderSeq, 10) || 0) - (parseInt(b.dataset.renderSeq, 10) || 0);
         });
         var sentinel = document.getElementById('shelfSentinel');
         if (sentinel && sentinel.parentNode) sentinel.parentNode.removeChild(sentinel);
-        for (var k = 0; k < cards.length; k++) grid.appendChild(cards[k]);
+        for (var k = 0; k < all.length; k++) grid.appendChild(all[k]);
         if (sentinel) grid.appendChild(sentinel);
 
         grid.classList.remove('series-grouping-active');
     }
     window.removeSkriptorium = removeSkriptorium;
-
-    function _computePositions(cards) {
-        var positions = new Map();
-        if (cards.length === 0) return positions;
-
-        var topsSet  = Object.create(null);
-        var leftsSet = Object.create(null);
-        for (var i = 0; i < cards.length; i++) {
-            topsSet[cards[i].offsetTop]   = true;
-            leftsSet[cards[i].offsetLeft] = true;
-        }
-        var tops  = Object.keys(topsSet ).map(Number).sort(function (a, b) { return a - b; });
-        var lefts = Object.keys(leftsSet).map(Number).sort(function (a, b) { return a - b; });
-        var topIdx = {};  for (var t = 0; t < tops.length;  t++) topIdx [tops [t]] = t;
-        var leftIdx = {}; for (var l = 0; l < lefts.length; l++) leftIdx[lefts[l]] = l;
-
-        for (var c = 0; c < cards.length; c++) {
-            positions.set(cards[c], {
-                row: topIdx [cards[c].offsetTop],
-                col: leftIdx[cards[c].offsetLeft]
-            });
-        }
-        return positions;
-    }
 
     function applySkriptorium() {
         var grid = _grid();
@@ -278,7 +244,7 @@
 
         removeSkriptorium();
 
-        /* Phase 1: collect & sort groups, mark cards, reorder DOM. */
+        /* Collect groups in DOM order. */
         var allCards = Array.from(grid.querySelectorAll('.grid-card'));
         var groups   = Object.create(null);
         var order    = [];
@@ -290,23 +256,22 @@
             groups[name].push(card);
         }
 
+        /* Drop singletons. */
         var validGroups = [];
         for (var g = 0; g < order.length; g++) {
             if (groups[order[g]].length >= 2) validGroups.push(order[g]);
         }
 
-        /* Always switch to dense flow so standalone cards can backfill gaps. */
         grid.classList.add('series-grouping-active');
+        if (validGroups.length === 0) return;
 
-        if (validGroups.length === 0) {
-            for (var s0 = 0; s0 < allCards.length; s0++) allCards[s0].classList.add('standalone');
-            return;
-        }
+        var cols = _computeCols();
+        _prevCols = cols;
 
-        /* Sort within each group. */
+        /* Sort each group by series_index (numeric, ascending). Index-less last,
+         * alphabetically by title. */
         for (var sg = 0; sg < validGroups.length; sg++) {
-            var members = groups[validGroups[sg]];
-            members.sort(function (a, b) {
+            groups[validGroups[sg]].sort(function (a, b) {
                 var ai = parseFloat(a.dataset.seriesIndex);
                 var bi = parseFloat(b.dataset.seriesIndex);
                 var aHas = !isNaN(ai), bHas = !isNaN(bi);
@@ -317,107 +282,45 @@
                 var bt = (b.querySelector('.grid-card-title') || {}).textContent || '';
                 return at.localeCompare(bt);
             });
-            for (var m = 0; m < members.length; m++) {
-                members[m].classList.add('in-series');
-                members[m].dataset.seriesGroup = validGroups[sg];
-            }
-        }
-        for (var st = 0; st < allCards.length; st++) {
-            if (!allCards[st].classList.contains('in-series')) {
-                allCards[st].classList.add('standalone');
-            }
         }
 
-        /* Build new DOM order: walk original cards; emit the whole group when
-         * its first member is encountered. */
-        var emitted  = new Set();
-        var newOrder = [];
+        /* Build a wrapper for each valid group; insert at the position of its
+         * first-encountered member in the current DOM order. */
+        var wrappedSeries = Object.create(null);
+
         for (var oi = 0; oi < allCards.length; oi++) {
             var ca = allCards[oi];
-            if (emitted.has(ca)) continue;
-            var gname = ca.dataset.seriesGroup;
-            if (gname && groups[gname] && groups[gname].length >= 2) {
-                for (var k2 = 0; k2 < groups[gname].length; k2++) {
-                    newOrder.push(groups[gname][k2]);
-                    emitted.add(groups[gname][k2]);
-                }
-            } else {
-                newOrder.push(ca);
-                emitted.add(ca);
-            }
-        }
+            if (ca.parentNode !== grid) continue; /* already moved by earlier group */
+            var gnm = (ca.dataset.series || '').trim();
+            if (!gnm || !groups[gnm] || groups[gnm].length < 2) continue;
+            if (wrappedSeries[gnm]) continue;
+            wrappedSeries[gnm] = true;
 
-        var sentinel = document.getElementById('shelfSentinel');
-        if (sentinel && sentinel.parentNode) sentinel.parentNode.removeChild(sentinel);
-        for (var n = 0; n < newOrder.length; n++) grid.appendChild(newOrder[n]);
-        if (sentinel) grid.appendChild(sentinel);
+            var members = groups[gnm];
+            var span    = Math.min(members.length, cols);
 
-        /* Phase 2: read positions after layout. */
-        var positions = _computePositions(newOrder);
+            var frame = document.createElement('div');
+            frame.className        = 'series-frame';
+            frame.dataset.series   = gnm;
+            frame.style.gridColumn = 'span ' + span;
 
-        /* Phase 3: per-side borders + exposed-corner radii. */
-        for (var vg = 0; vg < validGroups.length; vg++) {
-            var gn       = validGroups[vg];
-            var mem      = groups[gn];
-            var occupied = Object.create(null);
-            for (var p = 0; p < mem.length; p++) {
-                var pp = positions.get(mem[p]);
-                if (pp) occupied[pp.row + ',' + pp.col] = true;
-            }
-            for (var q = 0; q < mem.length; q++) {
-                var card2 = mem[q];
-                var pos = positions.get(card2);
-                if (!pos) continue;
-                var r = pos.row, c = pos.col;
-                var up    = !!occupied[(r - 1) + ',' + c];
-                var down  = !!occupied[(r + 1) + ',' + c];
-                var left  = !!occupied[r + ',' + (c - 1)];
-                var right = !!occupied[r + ',' + (c + 1)];
-                card2.classList.add('se-bg');
-                if (!up)    card2.classList.add('se-top');
-                if (!down)  card2.classList.add('se-bottom');
-                if (!left)  card2.classList.add('se-left');
-                if (!right) card2.classList.add('se-right');
-                if (!up   && !left)  card2.classList.add('se-r-tl');
-                if (!up   && !right) card2.classList.add('se-r-tr');
-                if (!down && !left)  card2.classList.add('se-r-bl');
-                if (!down && !right) card2.classList.add('se-r-br');
-            }
-        }
-
-        /* Phase 4: series-name tags centred above the first row of each series. */
-        for (var ti = 0; ti < validGroups.length; ti++) {
-            var gn2 = validGroups[ti];
-            var mem2 = groups[gn2];
-            var firstRow = null;
-            for (var fr = 0; fr < mem2.length; fr++) {
-                var fp = positions.get(mem2[fr]);
-                if (fp && (firstRow === null || fp.row < firstRow)) firstRow = fp.row;
-            }
-            if (firstRow === null) continue;
-
-            var onFirstRow = mem2.filter(function (cc) {
-                var pp2 = positions.get(cc);
-                return pp2 && pp2.row === firstRow;
-            }).sort(function (a, b) { return a.offsetLeft - b.offsetLeft; });
-            if (onFirstRow.length === 0) continue;
-
-            var firstCard = onFirstRow[0];
-            var lastCard  = onFirstRow[onFirstRow.length - 1];
-            var centerX   = (firstCard.offsetLeft + lastCard.offsetLeft + lastCard.offsetWidth) / 2;
-            var topY      = firstCard.offsetTop - 9;
+            var inner = document.createElement('div');
+            inner.className = 'series-inner';
 
             var tag = document.createElement('div');
             tag.className = 'series-tag';
-            tag.dataset.seriesTagFor = gn2;
             tag.innerHTML =
                 '<span class="series-flourish">' + FLOURISH_SVG + '</span>' +
-                '<span class="series-name">' + _esc(gn2) + '</span>' +
+                '<span class="series-name">' + _esc(gnm) + '</span>' +
                 '<span class="series-flourish" style="transform: scaleX(-1)">' + FLOURISH_SVG + '</span>';
-            tag.style.left      = centerX + 'px';
-            tag.style.top       = topY + 'px';
-            tag.style.transform = 'translateX(-50%)';
-            grid.appendChild(tag);
+
+            frame.appendChild(tag);
+            frame.appendChild(inner);
+
+            /* Anchor the wrapper at the first member's current position, then
+             * move all members (in series-index order) into the inner subgrid. */
+            grid.insertBefore(frame, ca);
+            for (var m = 0; m < members.length; m++) inner.appendChild(members[m]);
         }
     }
     window.applySkriptorium = applySkriptorium;
