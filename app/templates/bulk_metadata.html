@@ -2097,14 +2097,16 @@
             display: grid;
             grid-template-columns: subgrid;
             border: none !important;
-            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.5);
+            /* Airy frame via box-shadow spread (no layout impact):
+               Layer 1: 8px tint spread (breathing room)
+               Layer 2: 2px border at outer edge */
+            box-shadow:
+                0 0 0 8px rgba(76, 175, 80, 0.06),
+                0 0 0 10px rgba(76, 175, 80, 0.5);
             border-radius: 6px;
-            background: rgba(76, 175, 80, 0.07);
-            padding-top: 0;
-            padding-bottom: 6px;
-            padding-left: 0 !important;
-            padding-right: 0 !important;
-            margin-top: 14px;
+            background: rgba(76, 175, 80, 0.06);
+            padding: 0 !important;
+            margin-top: 20px;
             margin-bottom: 0 !important;
             margin-left: 0 !important;
             margin-right: 0 !important;
@@ -2122,16 +2124,16 @@
         }
         /* Match standalone cards' top to the frame's top so covers align */
         #gridView.series-grouping-active > .grid-card {
-            margin-top: 14px;
+            margin-top: 20px;
         }
         .series-frame .synopsis-popup { display: none !important; }
 
         .series-tag {
             position: absolute;
-            top: -10px;
+            top: -14px;
             left: 50%;
             transform: translateX(-50%);
-            background: var(--bg-secondary);
+            background: var(--bg-primary, #1a1a1a);
             padding: 2px 10px;
             white-space: nowrap;
             z-index: 4;
