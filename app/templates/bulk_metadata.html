@@ -2024,8 +2024,9 @@
 
         /* Wider container in Hyllvy (shelf paradigm) */
         body.shelf-active .container {
-            max-width: 95vw;
             max-width: min(95vw, 1600px);
+            margin: 0 auto;
+            padding: 18px 24px 40px;
         }
 
         #gridView {
@@ -2095,19 +2096,26 @@
             position: relative;
             display: grid;
             grid-template-columns: subgrid;
-            border: none;
+            border: none !important;
             box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.5);
             border-radius: 6px;
             background: rgba(76, 175, 80, 0.07);
-            padding: 20px 0 6px;
+            padding-top: 20px;
+            padding-bottom: 6px;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            margin: 0 !important;
+            column-gap: 20px;
         }
         .series-inner {
             grid-column: 1 / -1;
             display: grid;
             grid-template-columns: subgrid;
             row-gap: 20px;
-            padding-left: 0;
-            padding-right: 0;
+            column-gap: 20px;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: 0 !important;
         }
         .series-frame .synopsis-popup { display: none !important; }
 
