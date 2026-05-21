@@ -1815,3 +1815,73 @@ def ai_metadata_json(item_id):
     }
 
     return jsonify({"ok": True, "suggestions": filtered})
+
+
+@metadata_bp.route("/metadata/duplicates")
+def find_duplicates_view():
+    """Return potential duplicate groups across the library."""
+    from app.services.duplicate_detector import find_duplicates
+    groups = find_duplicates()
+    return jsonify({"ok": True, "groups": groups})
+
+
+@metadata_bp.route("/metadata/delete-item/<int:item_id>", methods=["DELETE"])
+def delete_item_safe(item_id):
+    """Delete a book (file + cover + DB row) for the duplicate-resolution UI.
+
+    Safety: only files under the configured LIBRARY_DIR mount are removed.
+    """
+    item = LibraryItem.query.get_or_404(item_id)
+
+    library_dir = current_app.config.get("LIBRARY_DIR", "")
+    try:
+        library_root = os.path.realpath(library_dir) if library_dir else ""
+    except OSError:
+        library_root = ""
+
+    file_path = item.file_path or ""
+    cover_path = item.cover_path or ""
+
+    file_removed = False
+    cover_removed = False
+
+    if file_path:
+        try:
+            real_file = os.path.realpath(file_path)
+        except OSError:
+            real_file = file_path
+        if not library_root or not (real_file == library_root or real_file.startswith(library_root + os.sep)):
+            return jsonify({
+                "ok": False,
+                "error": "file_outside_library",
+                "detail": f"Refusing to delete file outside {library_dir}",
+            }), 400
+
+        if os.path.exists(real_file):
+            try:
+                os.unlink(real_file)
+                file_removed = True
+            except OSError as exc:
+                logger.warning("Could not delete file %s: %s", real_file, exc)
+                return jsonify({"ok": False, "error": "file_delete_failed", "detail": str(exc)}), 500
+
+    if cover_path and os.path.exists(cover_path):
+        try:
+            os.unlink(cover_path)
+            cover_removed = True
+        except OSError as exc:
+            logger.warning("Could not delete cover %s: %s", cover_path, exc)
+
+    try:
+        db.session.delete(item)
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        logger.exception("DB delete failed for item %s", item_id)
+        return jsonify({"ok": False, "error": "db_delete_failed", "detail": str(exc)}), 500
+
+    return jsonify({
+        "ok": True,
+        "file_removed": file_removed,
+        "cover_removed": cover_removed,
+    })
