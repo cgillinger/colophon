@@ -2107,6 +2107,48 @@ msgstr "Skapa en API-nyckel under Credentials"
 msgid "Free tier: 1000 requests/day. No billing required."
 msgstr "Gratis: 1000 anrop/dag. Ingen fakturering krävs."
 
+msgid "Find duplicates"
+msgstr "Hitta duplikater"
+
+msgid "Searching for duplicates..."
+msgstr "Söker efter duplikater..."
+
+msgid "Potential duplicate groups found"
+msgstr "Potentiella duplikatgrupper hittade"
+
+msgid "No duplicates found"
+msgstr "Inga duplikater hittades"
+
+msgid "Same ISBN"
+msgstr "Samma ISBN"
+
+msgid "Same title"
+msgstr "Samma titel"
+
+msgid "Similar title"
+msgstr "Liknande titel"
+
+msgid "Delete selected"
+msgstr "Radera valda"
+
+msgid "Skip — not duplicates"
+msgstr "Hoppa över — inte duplikater"
+
+msgid "Delete file? This cannot be undone."
+msgstr "Radera filen? Detta kan inte ångras."
+
+msgid "Delete %(n)d files? This cannot be undone."
+msgstr "Radera %(n)d filer? Detta kan inte ångras."
+
+msgid "At least one book must be kept"
+msgstr "Minst en bok måste behållas"
+
+msgid "Error loading duplicates:"
+msgstr "Kunde inte ladda duplikater:"
+
+msgid "Could not delete %(n)d file(s)."
+msgstr "Kunde inte radera %(n)d fil(er)."
+
 #~ msgid "Settings saved."
 #~ msgstr "Inställningar sparade."
 

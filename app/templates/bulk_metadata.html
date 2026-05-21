@@ -2014,6 +2014,113 @@
         [data-view="gallery"] .book-title { font-size: 16px; }
         [data-view="gallery"] .author-cell { font-size: 14px; }
 
+        /* === Duplicate-finder modal === */
+        .dup-group {
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+            background: var(--bg-secondary);
+        }
+        .dup-group-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .dup-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+            color: #fff;
+        }
+        .dup-badge.isbn         { background: var(--accent-green, #4caf50); }
+        .dup-badge.exact_title  { background: var(--accent-primary, #3b82f6); }
+        .dup-badge.fuzzy_title  { background: #d4a017; }
+        .dup-group-detail {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        .dup-item {
+            display: grid;
+            grid-template-columns: 28px 70px 1fr;
+            gap: 12px;
+            padding: 10px 0;
+            border-top: 0.5px solid var(--border-light);
+            align-items: start;
+        }
+        .dup-item:first-of-type { border-top: none; }
+        .dup-item input[type="checkbox"] {
+            margin-top: 6px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--accent-red, #dc3545);
+        }
+        .dup-cover {
+            width: 70px;
+            height: 105px;
+            border-radius: 3px;
+            background: var(--cover-placeholder, var(--bg-tertiary));
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-tertiary);
+            font-size: 20px;
+        }
+        .dup-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .dup-meta { font-size: 13px; min-width: 0; }
+        .dup-title {
+            font-weight: 500;
+            font-size: 14px;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+        .dup-author {
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+        .dup-path {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 12px;
+            color: var(--text-secondary);
+            word-break: break-all;
+            margin-bottom: 2px;
+        }
+        .dup-extras {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+        .dup-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            justify-content: flex-end;
+        }
+        .dup-item.removed {
+            opacity: 0.45;
+            text-decoration: line-through;
+        }
+        .dup-group.resolved {
+            opacity: 0.6;
+        }
+        .dup-empty {
+            padding: 24px;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
         /* === Grid view === */
         [data-view="grid"] #bookTable { display: none !important; }
         [data-view="grid"] #gridView { display: grid; }
@@ -2454,6 +2561,9 @@
         <div class="library-bar">
             <button id="scanBtn" type="button" class="btn primary" onclick="startScan()">
                 <i class="ti ti-refresh"></i> {{ _('Find new books') }}
+            </button>
+            <button type="button" class="btn outline" onclick="openDuplicatesModal()">
+                <i class="ti ti-copy"></i> {{ _('Find duplicates') }}
             </button>
             <span class="chip" id="libraryChipTotal">{{ _('%(count)d books', count=total_count) }}</span>
             {% if missing_count %}
@@ -2905,6 +3015,20 @@
         <div class="modal-actions">
             <button type="button" class="btn primary" id="brmSaveBtn" onclick="saveBulkResult()">{{ _('Save selected') }}</button>
             <button type="button" class="btn ghost" onclick="closeBulkResultModal()">{{ _('Close') }}</button>
+        </div>
+    </div>
+</div>
+
+<!-- Duplicate detection modal -->
+<div id="duplicatesModal" style="display:none; position:fixed; inset:0; z-index:1000; background:var(--modal-overlay); align-items:center; justify-content:center;">
+    <div class="modal-box" style="max-width:1000px;">
+        <button type="button" class="modal-close-x" onclick="closeDuplicatesModal()" title="{{ _('Close') }}">&times;</button>
+        <h2 style="margin-top:0;">{{ _('Find duplicates') }}</h2>
+        <div id="dupFeedback" class="modal-feedback" style="display:none;"></div>
+        <div id="dupHeader" style="font-size:13px; color:var(--text-secondary); margin-bottom:16px;"></div>
+        <div id="dupGroups"></div>
+        <div class="modal-actions">
+            <button type="button" class="btn ghost" onclick="closeDuplicatesModal()">{{ _('Close') }}</button>
         </div>
     </div>
 </div>
@@ -3380,6 +3504,230 @@
             subtitle.textContent = bookText;
         }
     }
+
+    /* ===== Duplicate detection ===== */
+
+    var _dupGroups = [];
+
+    function openDuplicatesModal() {
+        var modal = document.getElementById('duplicatesModal');
+        var groupsEl = document.getElementById('dupGroups');
+        var headerEl = document.getElementById('dupHeader');
+        var feedback = document.getElementById('dupFeedback');
+        feedback.style.display = 'none';
+        modal.style.display = 'flex';
+        headerEl.textContent = '{{ _('Searching for duplicates...') }}';
+        groupsEl.innerHTML = '<div class="dup-empty"><i class="ti ti-loader ti-rotate"></i> {{ _('Searching for duplicates...') }}</div>';
+
+        fetch('/metadata/duplicates', {headers: {'Accept': 'application/json'}})
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                _dupGroups = (data && data.groups) || [];
+                _renderDuplicateGroups();
+            })
+            .catch(function(err) {
+                groupsEl.innerHTML = '';
+                feedback.className = 'modal-feedback modal-feedback-error';
+                feedback.textContent = '{{ _('Error loading duplicates:') }} ' + err;
+                feedback.style.display = 'block';
+            });
+    }
+    window.openDuplicatesModal = openDuplicatesModal;
+
+    function closeDuplicatesModal() {
+        document.getElementById('duplicatesModal').style.display = 'none';
+    }
+    window.closeDuplicatesModal = closeDuplicatesModal;
+
+    document.getElementById('duplicatesModal').addEventListener('click', function(e) {
+        if (e.target === this) closeDuplicatesModal();
+    });
+
+    function _escDup(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function _dupBadgeLabel(type, confidence, detail) {
+        if (type === 'isbn') {
+            return '{{ _('Same ISBN') }}';
+        }
+        if (type === 'exact_title') {
+            return '{{ _('Same title') }}';
+        }
+        var pct = Math.round((confidence || 0) * 100);
+        return '{{ _('Similar title') }} (' + pct + '%)';
+    }
+
+    function _formatSize(bytes) {
+        if (!bytes) return '';
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+        return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+    }
+
+    function _renderDuplicateGroups() {
+        var groupsEl = document.getElementById('dupGroups');
+        var headerEl = document.getElementById('dupHeader');
+
+        if (!_dupGroups.length) {
+            headerEl.textContent = '';
+            groupsEl.innerHTML = '<div class="dup-empty">{{ _('No duplicates found') }}</div>';
+            return;
+        }
+
+        headerEl.textContent = '{{ _('Potential duplicate groups found') }}: ' + _dupGroups.length;
+
+        var html = '';
+        for (var gi = 0; gi < _dupGroups.length; gi++) {
+            var g = _dupGroups[gi];
+            var badge = _dupBadgeLabel(g.match_type, g.confidence, g.match_detail);
+            html += '<div class="dup-group" data-group-index="' + gi + '">';
+            html += '<div class="dup-group-header">';
+            html +=   '<span class="dup-badge ' + _escDup(g.match_type) + '">' + _escDup(badge) + '</span>';
+            if (g.match_detail) {
+                html += '<span class="dup-group-detail">' + _escDup(g.match_detail) + '</span>';
+            }
+            html += '</div>';
+
+            for (var ii = 0; ii < g.items.length; ii++) {
+                var it = g.items[ii];
+                var coverHtml = it.cover_url
+                    ? '<img src="' + _escDup(it.cover_url) + '" alt="" loading="lazy" onerror="this.parentNode.innerHTML=\'<i class=\\\'ti ti-book\\\'></i>\'">'
+                    : '<i class="ti ti-book"></i>';
+                var extras = [];
+                if (it.file_ext) extras.push(it.file_ext.toUpperCase());
+                if (it.file_size) extras.push(_formatSize(it.file_size));
+                if (it.isbn) extras.push('ISBN ' + it.isbn);
+                if (it.series) {
+                    var s = it.series + (it.series_index ? ' #' + it.series_index : '');
+                    extras.push(s);
+                }
+                if (it.published_date) extras.push(it.published_date);
+
+                html += '<div class="dup-item" data-item-id="' + it.id + '">';
+                html +=   '<input type="checkbox" class="dup-check" data-group-index="' + gi + '" data-item-id="' + it.id + '" onchange="_dupOnCheckChange(' + gi + ')">';
+                html +=   '<div class="dup-cover">' + coverHtml + '</div>';
+                html +=   '<div class="dup-meta">';
+                html +=     '<div class="dup-title">' + _escDup(it.title) + '</div>';
+                html +=     '<div class="dup-author">' + _escDup(it.author) + '</div>';
+                html +=     '<div class="dup-path">' + _escDup(it.filepath || it.filename) + '</div>';
+                html +=     '<div class="dup-extras">' + _escDup(extras.join(' · ')) + '</div>';
+                html +=   '</div>';
+                html += '</div>';
+            }
+
+            html += '<div class="dup-actions">';
+            html +=   '<button type="button" class="btn ghost" onclick="_dupSkipGroup(' + gi + ')">{{ _('Skip — not duplicates') }}</button>';
+            html +=   '<button type="button" class="btn-danger small" data-dup-delete-btn="' + gi + '" onclick="_dupDeleteSelected(' + gi + ')" disabled>';
+            html +=     '<i class="ti ti-trash"></i> {{ _('Delete selected') }}';
+            html +=   '</button>';
+            html += '</div>';
+            html += '</div>';
+        }
+        groupsEl.innerHTML = html;
+    }
+
+    function _dupOnCheckChange(groupIndex) {
+        var groupEl = document.querySelector('.dup-group[data-group-index="' + groupIndex + '"]');
+        if (!groupEl) return;
+        var checks = groupEl.querySelectorAll('.dup-check');
+        var liveItems = [];
+        var checkedItems = [];
+        for (var i = 0; i < checks.length; i++) {
+            var row = checks[i].closest('.dup-item');
+            if (row && row.classList.contains('removed')) continue;
+            liveItems.push(checks[i]);
+            if (checks[i].checked) checkedItems.push(checks[i]);
+        }
+        var btn = groupEl.querySelector('[data-dup-delete-btn]');
+        if (!btn) return;
+        // At least one must remain unchecked → can't check ALL live items.
+        var anyChecked = checkedItems.length > 0;
+        var allChecked = checkedItems.length === liveItems.length;
+        btn.disabled = !anyChecked || allChecked;
+        if (allChecked && liveItems.length > 0) {
+            btn.title = '{{ _('At least one book must be kept') }}';
+        } else {
+            btn.title = '';
+        }
+    }
+    window._dupOnCheckChange = _dupOnCheckChange;
+
+    function _dupSkipGroup(groupIndex) {
+        var groupEl = document.querySelector('.dup-group[data-group-index="' + groupIndex + '"]');
+        if (groupEl && groupEl.parentNode) groupEl.parentNode.removeChild(groupEl);
+        // Update header count
+        var remaining = document.querySelectorAll('#dupGroups .dup-group').length;
+        var headerEl = document.getElementById('dupHeader');
+        if (remaining === 0) {
+            headerEl.textContent = '';
+            document.getElementById('dupGroups').innerHTML = '<div class="dup-empty">{{ _('No duplicates found') }}</div>';
+        } else {
+            headerEl.textContent = '{{ _('Potential duplicate groups found') }}: ' + remaining;
+        }
+    }
+    window._dupSkipGroup = _dupSkipGroup;
+
+    function _dupDeleteSelected(groupIndex) {
+        var groupEl = document.querySelector('.dup-group[data-group-index="' + groupIndex + '"]');
+        if (!groupEl) return;
+        var checks = groupEl.querySelectorAll('.dup-check:checked');
+        var toDelete = [];
+        for (var i = 0; i < checks.length; i++) {
+            var row = checks[i].closest('.dup-item');
+            if (row && row.classList.contains('removed')) continue;
+            toDelete.push({id: parseInt(checks[i].dataset.itemId, 10), row: row});
+        }
+        if (!toDelete.length) return;
+
+        var msg = toDelete.length === 1
+            ? '{{ _('Delete file? This cannot be undone.') }}'
+            : '{{ _('Delete %(n)d files? This cannot be undone.', n=0) }}'.replace('0', toDelete.length);
+        if (!confirm(msg)) return;
+
+        var btn = groupEl.querySelector('[data-dup-delete-btn]');
+        if (btn) { btn.disabled = true; btn.classList.add('btn-save-saving'); }
+
+        var promises = toDelete.map(function(entry) {
+            return fetch('/metadata/delete-item/' + entry.id, {method: 'DELETE'})
+                .then(function(r) { return r.json().then(function(j) { return {ok: r.ok && j.ok, entry: entry, data: j}; }); })
+                .catch(function(err) { return {ok: false, entry: entry, data: {error: String(err)}}; });
+        });
+
+        Promise.all(promises).then(function(results) {
+            var failures = [];
+            results.forEach(function(res) {
+                if (res.ok) {
+                    if (res.entry.row) res.entry.row.classList.add('removed');
+                    var cb = res.entry.row && res.entry.row.querySelector('.dup-check');
+                    if (cb) { cb.checked = false; cb.disabled = true; }
+                    // Remove the row from the page table too (if present)
+                    var tableRow = document.querySelector('#bookTableBody tr[data-item-id="' + res.entry.id + '"]');
+                    if (tableRow && tableRow.parentNode) tableRow.parentNode.removeChild(tableRow);
+                } else {
+                    failures.push(res);
+                }
+            });
+
+            if (btn) { btn.disabled = false; btn.classList.remove('btn-save-saving'); }
+
+            var liveRows = groupEl.querySelectorAll('.dup-item:not(.removed)');
+            if (liveRows.length < 2) {
+                groupEl.classList.add('resolved');
+            }
+            _dupOnCheckChange(groupIndex);
+
+            if (failures.length) {
+                var feedback = document.getElementById('dupFeedback');
+                feedback.className = 'modal-feedback modal-feedback-error';
+                feedback.textContent = '{{ _('Could not delete %(n)d file(s).', n=0) }}'.replace('0', failures.length);
+                feedback.style.display = 'block';
+            }
+        });
+    }
+    window._dupDeleteSelected = _dupDeleteSelected;
 
     function openBatchModal() {
         var checked = document.querySelectorAll('.book-checkbox:checked');
