@@ -434,6 +434,32 @@ def download_cover_to_file(cover_url, cover_dir, item_id):
                 logger.debug("Tystat fel ignorerat", exc_info=True)
             return None
 
+        is_google_zoom0 = "books.google.com" in cover_url and "zoom=0" in cover_url
+        is_likely_placeholder = total_bytes < 15000 and str(cover_path).lower().endswith(".png")
+
+        if is_google_zoom0 and is_likely_placeholder:
+            logger.warning(
+                "Google Books zoom=0 returned likely placeholder (%d bytes, PNG) for %s — retrying with zoom=1",
+                total_bytes,
+                cover_url,
+            )
+            fallback_url = cover_url.replace("zoom=0", "zoom=1")
+            try:
+                fallback_resp = requests.get(
+                    fallback_url,
+                    headers={"User-Agent": USER_AGENT},
+                    timeout=10,
+                    allow_redirects=True,
+                )
+                if fallback_resp.ok and len(fallback_resp.content) > 1000:
+                    with open(cover_path, "wb") as cover_file:
+                        cover_file.write(fallback_resp.content)
+                    logger.info(
+                        "Fallback zoom=1 succeeded: %d bytes", len(fallback_resp.content)
+                    )
+            except Exception:
+                logger.debug("zoom=1 fallback failed", exc_info=True)
+
         return str(cover_path.resolve())
 
     except Exception:
