@@ -333,7 +333,7 @@
             frame.appendChild(inner);
 
             /* Anchor the wrapper at the first member's current position, then
-             * move all members (in series-index order) into the inner subgrid. */
+             * move all members (in series-index order) into the inner grid. */
             grid.insertBefore(frame, ca);
             for (var m = 0; m < members.length; m++) inner.appendChild(members[m]);
         }

@@ -2033,9 +2033,10 @@
             --cover-width: 160px;
             position: relative;
             grid-template-columns: repeat(auto-fill, var(--cover-width));
-            justify-content: center;
-            gap: 20px;
+            gap: 24px 20px;
             padding: 16px 0;
+            justify-content: center;
+            align-items: start;
         }
 
         /* Paradigm + density + Skriptorium toolbar controls */
@@ -2087,69 +2088,56 @@
         body.shelf-active .density-toggle { display: none; }
         body:not(.shelf-active) .skriptorium-toggle { display: none; }
 
-        /* === Skriptorium (wrapper + CSS subgrid) === */
+        /* === Skriptorium (wrapper, fixed column width, no subgrid) === */
         #gridView.series-grouping-active {
             grid-auto-flow: dense;
         }
 
         .series-frame {
             position: relative;
-            display: grid;
-            grid-template-columns: subgrid;
-            border: none !important;
-            /* Airy frame via box-shadow spread (no layout impact):
-               Layer 1: 8px tint spread (breathing room)
-               Layer 2: 2px border at outer edge */
-            box-shadow:
-                0 0 0 4px rgba(76, 175, 80, 0.06),
-                0 0 0 5.5px rgba(76, 175, 80, 0.45);
-            border-radius: 6px;
+            padding: 14px 0 10px;
+            border: none;
+            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.5);
+            border-radius: 5px;
             background: rgba(76, 175, 80, 0.06);
-            padding: 0 !important;
-            margin-top: 20px;
-            margin-bottom: 0 !important;
-            margin-left: 0 !important;
-            margin-right: 0 !important;
-            column-gap: 20px;
+            min-width: 0;
         }
         .series-inner {
-            grid-column: 1 / -1;
             display: grid;
-            grid-template-columns: subgrid;
-            row-gap: 20px;
-            column-gap: 20px;
-            padding: 0 !important;
-            margin: 0 !important;
-            border: 0 !important;
+            grid-template-columns: repeat(auto-fill, var(--cover-width));
+            gap: 24px 20px;
+            align-items: start;
+            justify-content: center;
+            padding: 0;
         }
-        /* Match standalone cards' top to the frame's top so covers align */
+        /* Standalone cards compensate the frame's top padding so covers align */
         #gridView.series-grouping-active > .grid-card {
-            margin-top: 20px;
+            padding-top: 14px;
         }
         .series-frame .synopsis-popup { display: none !important; }
 
         .series-tag {
             position: absolute;
-            top: -14px;
+            top: -10px;
             left: 50%;
             transform: translateX(-50%);
-            background: var(--bg-primary, #1a1a1a);
-            padding: 2px 10px;
-            white-space: nowrap;
-            z-index: 4;
-            line-height: 1;
             display: flex;
             align-items: center;
             gap: 4px;
+            background: var(--bg-primary, #1a1a1a);
+            padding: 0 10px;
+            white-space: nowrap;
+            z-index: 4;
+            line-height: 1;
         }
         .series-name {
             font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
             font-size: 18px;
             font-weight: 500;
             font-style: italic;
-            color: rgba(196, 164, 90, 1);
+            color: rgba(196, 164, 90, 1.0);
             letter-spacing: 0.4px;
-            padding: 0 3px;
+            padding: 0 4px;
         }
         .series-flourish {
             display: inline-block;
@@ -2173,6 +2161,7 @@
         }
 
         .grid-card {
+            width: var(--cover-width);
             cursor: pointer;
             border-radius: 8px;
             transition: transform 0.15s, box-shadow 0.15s;
