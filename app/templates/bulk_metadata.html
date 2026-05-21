@@ -7217,7 +7217,9 @@
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (!data.ok) {
-                setModalFeedback('error', 'Omslaget kunde inte sparas.');
+                var errMsg = 'Omslaget kunde inte sparas: ' + (data.error || 'okänt fel');
+                setModalFeedback('error', errMsg);
+                console.error('[cover-apply]', errMsg, data);
                 return;
             }
             // Refresh cover thumbnail in modal
@@ -7252,8 +7254,10 @@
                 }
             }
         })
-        .catch(function() {
-            setModalFeedback('error', 'Omslaget kunde inte sparas.');
+        .catch(function(err) {
+            var errMsg = 'Omslaget kunde inte sparas: ' + (err.message || 'nätverksfel');
+            setModalFeedback('error', errMsg);
+            console.error('[cover-apply]', errMsg, err);
         });
     }
 
@@ -7263,9 +7267,14 @@
 
     function setModalFeedback(type, msg) {
         var el = document.getElementById('modalFeedback');
+        // Don't let info messages overwrite a recent error
+        if (type === 'info' && el._errorUntil && Date.now() < el._errorUntil) return;
         el.style.display = 'block';
         el.className = 'modal-feedback modal-feedback-' + type;
         el.textContent = msg;
+        if (type === 'error') {
+            el._errorUntil = Date.now() + 5000;
+        }
     }
     function clearModalFeedback() {
         var el = document.getElementById('modalFeedback');
