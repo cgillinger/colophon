@@ -197,16 +197,62 @@ We need a reliable `updated_at` column. **Confirm one exists**; if not, add it a
 
 ---
 
-## 8. Settings UI
+## 8. UI / UX
 
-New tab `Settings → Kobo Sync` in `settings_kobo.html`:
+Three surfaces in the existing UI are touched. No new top-level area.
 
-- Section 1: **Devices** — table of `KoboDevice` rows with name, last seen, total syncs, revoke button.
-- Section 2: **Add device** — name field + "Generate". Modal shows the URL exactly once with copy button + QR code. Plaintext key never stored.
-- Section 3: **Setup instructions** — collapsible block with the `.kobo/Kobo/Kobo eReader.conf` steps and a screenshot.
-- Section 4: **Cache** — current kepub cache size, "Clear cache" button.
+### 8.1 Navigation — new topbar icon
 
-i18n via `_()` like everything else; add Swedish strings to `messages.po`.
+Today's topbar (`bulk_metadata.html:2622` and mirrored in every settings page) has, from left to right:
+
+```
+[📊 Stats]  [EN | SV]  [🌙 theme]  [⚙ API settings]
+```
+
+`📊 Stats` links to `settings.ai_settings`, `⚙` links to `settings.api_settings`. Two settings areas, two icons. Same pattern for Kobo: add a third icon between Stats and the language switcher.
+
+```
+[📊 Stats]  [📱 Kobo]  [EN | SV]  [🌙]  [⚙]
+```
+
+- Icon: Tabler `ti-device-tablet` (or `ti-book-upload`).
+- Tooltip: `_('Kobo sync')`.
+- Links to `settings.kobo_settings` → `settings_kobo.html`.
+- Must be added to every page that renders the topbar: `bulk_metadata.html`, `settings_api.html`, `settings_ai.html`, `settings_kobo.html`, plus any of the preview templates that include it.
+
+### 8.2 New page — `settings_kobo.html`
+
+Same visual language as `settings_api.html` (dark background, card sections, status pills). Sections top to bottom:
+
+1. **Devices** — table of `KoboDevice` rows.
+   Columns: name, key prefix (e.g. `ab12cd34…`), created, last seen, books synced, revoke (trash icon).
+   Empty state: "No devices yet. Add one below to start syncing."
+
+2. **Add device** — single input ("Device name", e.g. "Libra 2") and a `Generate` button.
+   On submit: modal opens showing the full URL **exactly once**, with a copy-to-clipboard button and a QR code (for easier reading on a phone before connecting the Kobo). Modal headline: "Save this URL now — it will not be shown again." On close, the key is hashed and the plaintext is dropped.
+
+3. **Setup guide** — collapsible (closed by default), titled `_('How do I connect my Kobo?')`. Inside: the 4-step instruction (USB-connect, open `.kobo/Kobo/Kobo eReader.conf`, replace `api_endpoint=` under `[OneStoreServices]` with the URL, eject + Sync). Include a small screenshot of the relevant config-file section.
+
+4. **KEPUB cache** — shows current size, file count, and a `Clear cache` button. Caption: `_('KEPUB files are regenerated on demand. Clearing the cache is safe.')`.
+
+### 8.3 Bulk view changes — `bulk_metadata.html`
+
+Reading state lives where the user already looks at books, not in Settings. Two new optional columns surfaced via the existing column-toggle menu:
+
+- **`Kobo: % read`** — 0–100 from the most recently updated `KoboBookState` row for this book across all devices. Empty if no device has touched the book.
+- **`Kobo: last read`** — date stamp from same row.
+
+Both columns **off by default** so existing users don't see clutter. Sortable like other columns.
+
+No per-device breakdown in the table; for a single-user installation the "most recent device wins" rule is sufficient. A future per-book modal expansion could show per-device detail if needed.
+
+### 8.4 Not in the UI
+
+The Kobo sync protocol routes (`/kobo/<token>/...`) are invisible to the user. No menu entry, no link, no list of recent sync requests. The endpoints exist only for the Kobo device to call. If we want observability we add it to the existing logs, not to the UI.
+
+### 8.5 i18n
+
+All new strings wrap in `_()`. Add Swedish translations to `app/translations/sv/LC_MESSAGES/messages.po` and run the `pybabel` cycle from `CLAUDE.md` §i18n. Estimated ~25–30 new strings.
 
 ---
 
