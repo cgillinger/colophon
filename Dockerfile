@@ -37,4 +37,4 @@ RUN mkdir -p /books /data
 
 EXPOSE 5000
 
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--timeout", "300", "--workers", "2", "wsgi:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--timeout", "300", "--workers", "2", "--access-logfile", "-", "--access-logformat", "%(h)s %(r)s %(s)s %(b)s %(L)ss \"%(a)s\"", "wsgi:app"]
