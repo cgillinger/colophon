@@ -2218,3 +2218,11 @@ msgstr "Kunde inte radera %(n)d fil(er)."
 
 #~ msgid "replaced %(count)d"
 #~ msgstr "ersatte %(count)d"
+
+#: app/templates/bulk_metadata.html
+msgid "Series view"
+msgstr "Serievy"
+
+#: app/templates/bulk_metadata.html
+msgid "Standalone books"
+msgstr "Fristående böcker"

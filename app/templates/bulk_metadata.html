@@ -2450,6 +2450,91 @@
                 overflow: hidden;
             }
         }
+
+        /* === Series view === */
+        #seriesView {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 16px;
+            padding: 16px 0;
+        }
+        .series-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            gap: 14px;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .series-card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        }
+        .series-card-cover {
+            width: 70px;
+            height: 105px;
+            border-radius: 4px;
+            overflow: hidden;
+            background: var(--bg-tertiary);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-tertiary);
+            font-size: 20px;
+        }
+        .series-card-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .series-card-body { flex: 1; min-width: 0; }
+        .series-card-title {
+            font-weight: 600;
+            font-size: 15px;
+            margin-bottom: 2px;
+            color: var(--text-primary);
+        }
+        .series-card-count {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+        .series-card-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .series-card-list li {
+            padding: 2px 0;
+            display: flex;
+            gap: 8px;
+            align-items: baseline;
+        }
+        .series-card-list .series-num {
+            color: var(--accent-primary);
+            font-weight: 600;
+            min-width: 22px;
+        }
+        .series-card-list .series-book-title {
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        #seriesView .series-standalone-header {
+            grid-column: 1 / -1;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            padding: 12px 0 4px;
+            border-top: 1px solid var(--border-light);
+            margin-top: 8px;
+        }
     </style>
 </head>
 <body>
@@ -2607,6 +2692,10 @@
         </div>
 
         <div class="filter-row">
+            <button id="orgToggle" class="filter-btn icon-toggle" type="button"
+                    onclick="toggleOrgMode()" title="{{ _('Series view') }}">
+                <i class="ti ti-books"></i>
+            </button>
             <button id="groupToggle" class="filter-btn icon-toggle" type="button" onclick="toggleGroupView()" title="{{ _('Group formats') }}">
                 <i class="ti ti-stack-2" style="font-size:20px;"></i><span id="groupCountLabel" style="display:none; margin-left:6px; font-size:12px;"></span>
             </button>
@@ -2762,6 +2851,7 @@
             </table>
             <div id="gridView"></div>
         </div>
+        <div id="seriesView" style="display:none;"></div>
 
         <div id="paginationBar">
             <span id="paginationInfo">{{ _('Showing %(count)d books', count=0) }}</span>
@@ -3062,6 +3152,9 @@
 
 <script>
     var _i18n = {
+        seriesBooks: {{ _('books')|tojson }},
+        standaloneBooks: {{ _('Standalone books')|tojson }},
+        seriesView: {{ _('Series view')|tojson }},
         connectionLost: {{ _('Connection lost.')|tojson }},
         scanning: {{ _('Scanning...')|tojson }},
         searchingEbooks: {{ _('Searching for ebooks...')|tojson }},
@@ -3288,6 +3381,171 @@
     function isSkriptoriumOn() { return _skriptorium; }
 
     (function _initialViewSync() { _syncViewUI(); })();
+
+    /* -------------------------------------------------------------------- */
+    /* Series organisation view                                              */
+    /* -------------------------------------------------------------------- */
+    var _orgMode = localStorage.getItem('colophon-orgMode') || 'books';
+
+    function _orgEsc(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function toggleOrgMode() {
+        _orgMode = _orgMode === 'books' ? 'series' : 'books';
+        localStorage.setItem('colophon-orgMode', _orgMode);
+        applyOrgMode();
+    }
+
+    function applyOrgMode() {
+        var btn = document.getElementById('orgToggle');
+        if (btn) btn.classList.toggle('active', _orgMode === 'series');
+
+        var tableWrap = document.querySelector('.table-wrap');
+        var seriesView = document.getElementById('seriesView');
+        var paradigmToggle = document.querySelector('.paradigm-toggle');
+        var densityToggle = document.getElementById('densityToggle');
+        var skriptoriumWrap = document.getElementById('skriptoriumToggleWrap');
+        var groupToggle = document.getElementById('groupToggle');
+        var paginationBar = document.getElementById('paginationBar');
+
+        if (_orgMode === 'series') {
+            if (tableWrap) tableWrap.style.display = 'none';
+            if (seriesView) seriesView.style.display = '';
+            if (paradigmToggle) paradigmToggle.style.display = 'none';
+            if (densityToggle) densityToggle.style.display = 'none';
+            if (skriptoriumWrap) skriptoriumWrap.style.display = 'none';
+            if (groupToggle) groupToggle.style.display = 'none';
+            if (paginationBar) paginationBar.style.display = 'none';
+            renderSeriesView();
+        } else {
+            if (tableWrap) tableWrap.style.display = '';
+            if (seriesView) seriesView.style.display = 'none';
+            if (paradigmToggle) paradigmToggle.style.display = '';
+            if (densityToggle) densityToggle.style.display = '';
+            if (skriptoriumWrap) skriptoriumWrap.style.display = '';
+            if (groupToggle) groupToggle.style.display = '';
+            if (paginationBar) paginationBar.style.display = '';
+        }
+    }
+
+    function renderSeriesView() {
+        var container = document.getElementById('seriesView');
+        if (!container) return;
+
+        var rows = (typeof getFilteredRows === 'function')
+            ? getFilteredRows()
+            : Array.from(document.querySelectorAll('#bookTableBody tr'));
+        var seriesMap = {};
+        var standalone = [];
+
+        rows.forEach(function(row) {
+            var seriesName = (row.dataset.series || '').trim();
+            var titleEl = row.querySelector('.book-title');
+            var title = titleEl ? titleEl.textContent.trim() : (row.dataset.title || '');
+            var coverImg = row.querySelector('.cover img');
+            var coverSrc = coverImg ? coverImg.getAttribute('src') : '';
+            var itemId = row.dataset.itemId || '';
+            var idx = row.dataset.seriesIndex || '';
+
+            if (!seriesName) {
+                standalone.push({ title: title, coverSrc: coverSrc, itemId: itemId });
+                return;
+            }
+
+            if (!seriesMap[seriesName]) seriesMap[seriesName] = [];
+            seriesMap[seriesName].push({
+                index: idx,
+                indexNum: parseFloat(idx) || 9999,
+                title: title,
+                coverSrc: coverSrc,
+                itemId: itemId
+            });
+        });
+
+        Object.keys(seriesMap).forEach(function(key) {
+            seriesMap[key].sort(function(a, b) { return a.indexNum - b.indexNum; });
+        });
+
+        var seriesNames = Object.keys(seriesMap).sort(function(a, b) {
+            return a.toLowerCase().localeCompare(b.toLowerCase());
+        });
+
+        var html = '';
+
+        seriesNames.forEach(function(name) {
+            var books = seriesMap[name];
+            var coverHtml = books[0].coverSrc
+                ? '<img src="' + _orgEsc(books[0].coverSrc) + '" alt="">'
+                : '📚';
+
+            var listHtml = '';
+            books.forEach(function(b) {
+                var num = b.index || '?';
+                listHtml += '<li>'
+                    + '<span class="series-num">#' + _orgEsc(num) + '</span>'
+                    + '<span class="series-book-title">' + _orgEsc(b.title) + '</span>'
+                    + '</li>';
+            });
+
+            var nameAttr = _orgEsc(name);
+            html += '<div class="series-card" data-series-name="' + nameAttr + '">'
+                + '<div class="series-card-cover">' + coverHtml + '</div>'
+                + '<div class="series-card-body">'
+                + '<div class="series-card-title">' + nameAttr + '</div>'
+                + '<div class="series-card-count">' + books.length + ' ' + _orgEsc(_i18n.seriesBooks) + '</div>'
+                + '<ul class="series-card-list">' + listHtml + '</ul>'
+                + '</div></div>';
+        });
+
+        if (standalone.length > 0) {
+            html += '<div class="series-standalone-header">'
+                + _orgEsc(_i18n.standaloneBooks) + ' (' + standalone.length + ')</div>';
+            standalone.forEach(function(b) {
+                var coverHtml = b.coverSrc
+                    ? '<img src="' + _orgEsc(b.coverSrc) + '" alt="">'
+                    : '📖';
+                html += '<div class="series-card" data-item-id="' + _orgEsc(b.itemId) + '">'
+                    + '<div class="series-card-cover">' + coverHtml + '</div>'
+                    + '<div class="series-card-body">'
+                    + '<div class="series-card-title">' + _orgEsc(b.title) + '</div>'
+                    + '</div></div>';
+            });
+        }
+
+        container.innerHTML = html;
+    }
+
+    document.addEventListener('click', function(ev) {
+        var card = ev.target.closest && ev.target.closest('#seriesView .series-card');
+        if (!card) return;
+        var seriesName = card.getAttribute('data-series-name');
+        if (seriesName) {
+            filterBySeries(seriesName);
+            return;
+        }
+        var itemId = card.getAttribute('data-item-id');
+        if (itemId && typeof openBookModal === 'function') {
+            openBookModal(parseInt(itemId, 10));
+        }
+    });
+
+    function filterBySeries(seriesName) {
+        _orgMode = 'books';
+        localStorage.setItem('colophon-orgMode', 'books');
+        applyOrgMode();
+
+        var searchInput = document.getElementById('filterSearch');
+        if (searchInput) {
+            searchInput.value = seriesName;
+            applyFilters();
+        }
+    }
 
     /* -------------------------------------------------------------------- */
     /* Scan SSE                                                              */
@@ -5686,6 +5944,7 @@
     applyFilters = function() {
         _origApplyFilters.apply(this, arguments);
         if (_paradigm === 'shelf' && typeof refreshShelfView === 'function') refreshShelfView();
+        if (_orgMode === 'series') renderSeriesView();
     };
     var _origSortTable2 = sortTable;
     sortTable = function(key) {
@@ -5709,6 +5968,7 @@
     updateSelectedCount();
     updateBatchBar();
     if (_paradigm === 'shelf' && typeof initShelfView === 'function') initShelfView();
+    applyOrgMode();
 
     /* -------------------------------------------------------------------- */
     /* Bulk delete                                                           */
