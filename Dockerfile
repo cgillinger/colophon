@@ -20,6 +20,10 @@ COPY tools/install_calibre_plugins.sh /tmp/install_calibre_plugins.sh
 RUN bash /tmp/install_calibre_plugins.sh \
     && rm /tmp/install_calibre_plugins.sh
 
+COPY tools/install_kepubify.sh /tmp/install_kepubify.sh
+RUN bash /tmp/install_kepubify.sh \
+    && rm /tmp/install_kepubify.sh
+
 WORKDIR /app
 
 COPY requirements.txt ./

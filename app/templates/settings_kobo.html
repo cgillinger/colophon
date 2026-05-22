@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="{{ get_locale() }}" data-theme="light">
+<head>
+    <meta charset="utf-8">
+    <script>
+        (function(){
+            var t = localStorage.getItem('colophon-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+    <link rel="icon" href="{{ url_for('static', filename='icons/favicon.ico') }}" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabler-icons/tabler-icons.min.css') }}">
+    <title>{{ _('Kobo sync') }} - Colophon</title>
+    <style>
+        :root, [data-theme="light"] {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #ebedf0;
+            --bg-info: #ecfdf5;
+            --text-primary: #1a1a1a;
+            --text-secondary: #555555;
+            --text-tertiary: #888888;
+            --text-info: #065f46;
+            --border-light: rgba(0, 0, 0, 0.08);
+            --border-medium: rgba(0, 0, 0, 0.15);
+            --accent-primary: #059669;
+            --accent-primary-hover: #047857;
+            --accent-purple: #6c5ce7;
+            --accent-green: #059669;
+            --accent-red: #dc3545;
+            --accent-yellow: #e6a817;
+            --badge-ok-bg: #d1fae5;
+            --badge-ok-text: #065f46;
+            --badge-warn-bg: #fef3cd;
+            --badge-warn-text: #856404;
+            --badge-info-bg: #dbeafe;
+            --badge-info-text: #1e40af;
+            --modal-overlay: rgba(0, 0, 0, 0.4);
+        }
+        [data-theme="dark"] {
+            --bg-primary: #1e2227;
+            --bg-secondary: #252a30;
+            --bg-tertiary: #30363b;
+            --bg-info: #064e3b;
+            --text-primary: #e8ecef;
+            --text-secondary: #aeb7bd;
+            --text-tertiary: #6c757d;
+            --text-info: #a7f3d0;
+            --border-light: rgba(255, 255, 255, 0.06);
+            --border-medium: rgba(255, 255, 255, 0.12);
+            --accent-primary: #10b981;
+            --accent-primary-hover: #34d399;
+            --accent-purple: #7c6ff0;
+            --accent-green: #10b981;
+            --accent-red: #ff6b6b;
+            --accent-yellow: #ffd166;
+            --badge-ok-bg: #065f46;
+            --badge-ok-text: #a7f3d0;
+            --badge-warn-bg: #3a3020;
+            --badge-warn-text: #ffd166;
+            --badge-info-bg: #1e3a5f;
+            --badge-info-text: #93c5fd;
+            --modal-overlay: rgba(0, 0, 0, 0.7);
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 14px;
+        }
+        a { color: inherit; text-decoration: none; }
+        button, input, select { font-family: inherit; color: inherit; }
+
+        .topbar { background: var(--bg-primary); border-bottom: 1px solid var(--border-light); display: flex; justify-content: center; position: sticky; top: 0; z-index: 50; }
+        .topbar-inner { width: 100%; max-width: 1300px; padding: 12px 20px; display: flex; align-items: center; gap: 14px; }
+        .topbar-brand { display: flex; align-items: center; gap: 12px; font-size: 20px; font-weight: 500; color: var(--text-primary); }
+        .topbar-brand img { width: 96px; height: 96px; border-radius: 14px; display: block; object-fit: contain; }
+        .topbar-brand span { font-size: 28px; font-weight: 500; }
+        .topbar-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+        .lang-toggle { display: flex; gap: 4px; font-size: 12px; margin-right: 4px; }
+        .lang-toggle a { color: var(--text-tertiary); padding: 2px 6px; border-radius: 4px; }
+        .lang-toggle a.active { color: var(--text-primary); font-weight: 600; background: var(--bg-tertiary); }
+        .topbar-btn { background: transparent; color: var(--text-secondary); border: 1px solid transparent; border-radius: 6px; padding: 7px 12px; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; line-height: 1; }
+        .topbar-btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .topbar-btn i { font-size: 22px; }
+        .topbar-btn.icon-only { padding: 8px; }
+
+        .container { max-width: 860px; margin: 0 auto; padding: 18px 20px 40px; }
+        h1 { margin: 0 0 6px; font-size: 22px; font-weight: 600; }
+        .lead { margin: 0 0 22px; color: var(--text-secondary); font-size: 14px; line-height: 1.55; }
+
+        .panel { background: var(--bg-primary); border: 1px solid var(--border-light); border-radius: 8px; padding: 22px 24px; margin-bottom: 18px; }
+        .panel-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: var(--text-primary); }
+        .panel-title-left { display: flex; align-items: center; gap: 10px; }
+        .panel-desc { color: var(--text-secondary); font-size: 14px; line-height: 1.55; margin: 0 0 14px 0; }
+
+        .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+        .badge.ok { background: var(--badge-ok-bg); color: var(--badge-ok-text); }
+        .badge.warn { background: var(--badge-warn-bg); color: var(--badge-warn-text); }
+        .badge.info { background: var(--badge-info-bg); color: var(--badge-info-text); }
+
+        .messages { margin-bottom: 18px; }
+        .message { padding: 12px 14px; border-radius: 6px; margin-bottom: 8px; background: var(--bg-primary); border: 1px solid var(--border-light); }
+        .message.success { border-left: 4px solid var(--accent-green); }
+        .message.warning { border-left: 4px solid var(--accent-yellow); }
+
+        .field { margin-bottom: 12px; }
+        .field label { display: block; font-weight: 500; margin-bottom: 5px; color: var(--text-primary); }
+        .field input[type="text"] { width: 100%; background: var(--bg-secondary); border: 1px solid var(--border-medium); border-radius: 6px; color: var(--text-primary); padding: 8px 12px; font-size: 14px; }
+        .field input:focus { outline: none; border-color: var(--accent-primary); }
+
+        .btn { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-light); border-radius: 6px; padding: 9px 16px; font-size: 14px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn:hover { background: var(--bg-secondary); }
+        .btn.primary { background: var(--accent-primary); color: #fff; border-color: var(--accent-primary); }
+        .btn.primary:hover { background: var(--accent-primary-hover); }
+        .btn.danger { background: transparent; color: var(--accent-red); border-color: transparent; padding: 6px 8px; }
+        .btn.danger:hover { background: var(--bg-tertiary); }
+
+        table.devices { width: 100%; border-collapse: collapse; font-size: 14px; }
+        table.devices th, table.devices td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border-light); }
+        table.devices th { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+        table.devices td.prefix { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-secondary); font-size: 13px; }
+        table.devices tr:last-child td { border-bottom: none; }
+        .empty-state { color: var(--text-tertiary); font-style: italic; padding: 20px; text-align: center; }
+
+        .new-key-banner { background: var(--bg-info); color: var(--text-info); border: 1px solid var(--accent-green); border-radius: 8px; padding: 18px 22px; margin-bottom: 22px; }
+        .new-key-banner h3 { margin: 0 0 8px; font-size: 16px; }
+        .new-key-banner .url-box { background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-medium); border-radius: 6px; padding: 10px 14px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; word-break: break-all; margin-top: 10px; }
+        .new-key-banner .url-row { display: flex; gap: 8px; align-items: stretch; }
+        .new-key-banner .url-row .url-box { flex: 1; margin: 0; }
+        .new-key-banner .warning-line { font-weight: 600; margin-top: 12px; font-size: 13px; }
+
+        details.howto { margin-top: 0; }
+        details.howto > summary { cursor: pointer; color: var(--accent-primary); font-size: 14px; font-weight: 500; list-style: none; display: inline-flex; align-items: center; gap: 4px; }
+        details.howto > summary::-webkit-details-marker { display: none; }
+        details.howto > summary::before { content: "▸"; display: inline-block; transition: transform 0.15s ease; }
+        details.howto[open] > summary::before { transform: rotate(90deg); }
+        details.howto .howto-body { margin-top: 14px; font-size: 14px; color: var(--text-secondary); line-height: 1.65; }
+        details.howto .howto-body ol { padding-left: 22px; margin: 0; }
+        details.howto .howto-body li { margin-bottom: 10px; }
+        details.howto .howto-body code { background: var(--bg-secondary); padding: 1px 6px; border-radius: 3px; font-size: 13px; }
+    </style>
+</head>
+<body>
+
+<header class="topbar">
+    <div class="topbar-inner">
+        <a class="topbar-brand" href="{{ url_for('metadata.bulk_metadata') }}">
+            <img src="{{ url_for('static', filename='icons/colophon-transparent.png') }}" alt="Colophon">
+            <span>Colophon</span>
+        </a>
+        <div class="topbar-actions">
+            <a class="topbar-btn" href="{{ url_for('settings.ai_settings') }}" title="{{ _('AI stats and upstream library') }}">
+                <i class="ti ti-chart-bar"></i> {{ _('Stats') }}
+            </a>
+            <a class="topbar-btn icon-only" href="{{ url_for('settings.kobo_settings') }}" title="{{ _('Kobo sync') }}">
+                <i class="ti ti-device-tablet"></i>
+            </a>
+            <div class="lang-toggle">
+                <a href="#" onclick="setLanguage('en'); return false;" class="{{ 'active' if get_locale() == 'en' else '' }}" title="English">EN</a>
+                <a href="#" onclick="setLanguage('sv'); return false;" class="{{ 'active' if get_locale() == 'sv' else '' }}" title="Svenska">SV</a>
+            </div>
+            <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="{{ _('Toggle theme') }}">
+                <i id="themeIcon" class="ti ti-sun"></i>
+            </button>
+            <a class="topbar-btn icon-only" href="{{ url_for('settings.api_settings') }}" title="{{ _('Settings') }}">
+                <i class="ti ti-settings"></i>
+            </a>
+        </div>
+    </div>
+</header>
+
+<div class="container">
+    <h1><i class="ti ti-device-tablet"></i> {{ _('Kobo sync') }}</h1>
+    <p class="lead">
+        {{ _('Let a Kobo e-reader sync EPUB books wirelessly from Colophon, as if Colophon were the Kobo store. Each device gets its own URL with a unique key.') }}
+    </p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="messages">
+                {% for category, message in messages %}
+                    <div class="message {{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    {% if new_token %}
+    <div class="new-key-banner">
+        <h3>&#10003; {{ _('Device created: %(name)s', name=new_name) }}</h3>
+        <p>{{ _('Copy this URL into the api_endpoint setting on your Kobo. It will not be shown again.') }}</p>
+        <div class="url-row">
+            <div class="url-box" id="newKeyUrl">{{ host_url }}/kobo/{{ new_token }}</div>
+            <button type="button" class="btn primary" onclick="copyNewUrl()"><i class="ti ti-copy"></i> {{ _('Copy') }}</button>
+        </div>
+        <p class="warning-line">&#9888; {{ _('Save it now — Colophon stores only the hash, never the URL itself.') }}</p>
+    </div>
+    {% endif %}
+
+    <!-- ============ Devices ============ -->
+    <div class="panel">
+        <div class="panel-title">
+            <span class="panel-title-left">
+                <i class="ti ti-devices" style="color:var(--accent-purple); font-size:20px;"></i>
+                {{ _('Devices') }}
+            </span>
+            <span class="badge info">{{ devices|length }} {{ _('connected') }}</span>
+        </div>
+        {% if devices %}
+        <table class="devices">
+            <thead>
+                <tr>
+                    <th>{{ _('Name') }}</th>
+                    <th>{{ _('Key prefix') }}</th>
+                    <th>{{ _('Last seen') }}</th>
+                    <th>{{ _('Syncs') }}</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in devices %}
+                <tr>
+                    <td>{{ d.name }}</td>
+                    <td class="prefix">{{ d.api_key_prefix }}…</td>
+                    <td>{{ d.last_seen_at.strftime('%Y-%m-%d %H:%M') if d.last_seen_at else '—' }}</td>
+                    <td>{{ d.sync_count or 0 }}</td>
+                    <td style="text-align: right;">
+                        <form method="post" action="{{ url_for('settings.kobo_revoke_device', device_id=d.id) }}"
+                              style="display:inline;"
+                              onsubmit="return confirm({{ _('Revoke this device? The Kobo will stop being able to sync until reconfigured.')|tojson }});">
+                            <button type="submit" class="btn danger" title="{{ _('Revoke') }}">
+                                <i class="ti ti-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">{{ _('No devices yet. Add one below to start syncing.') }}</div>
+        {% endif %}
+    </div>
+
+    <!-- ============ Add device ============ -->
+    <div class="panel">
+        <div class="panel-title">
+            <span class="panel-title-left">
+                <i class="ti ti-plus" style="color:var(--accent-green); font-size:20px;"></i>
+                {{ _('Add device') }}
+            </span>
+        </div>
+        <p class="panel-desc">
+            {{ _('Each Kobo needs its own URL. Generate one here, then enter it on the device (see setup guide below).') }}
+        </p>
+        <form method="post" action="{{ url_for('settings.kobo_create_device') }}">
+            <div class="field">
+                <label for="name">{{ _('Device name') }}</label>
+                <input type="text" id="name" name="name" placeholder="{{ _('e.g. Libra 2 in the kitchen') }}" required>
+            </div>
+            <button type="submit" class="btn primary"><i class="ti ti-key"></i> {{ _('Generate URL') }}</button>
+        </form>
+    </div>
+
+    <!-- ============ KEPUB conversion ============ -->
+    <div class="panel">
+        <div class="panel-title">
+            <span class="panel-title-left">
+                <i class="ti ti-file-zip" style="color:var(--accent-purple); font-size:20px;"></i>
+                {{ _('KEPUB conversion') }}
+            </span>
+            {% if kepubify.available %}
+                <span class="badge ok">&#10003; {{ _('Available') }}</span>
+            {% else %}
+                <span class="badge warn">{{ _('Not installed') }}</span>
+            {% endif %}
+        </div>
+        <p class="panel-desc">
+            {% if kepubify.available %}
+                {{ _('Books are converted from EPUB to KEPUB on the fly when the Kobo downloads them. KEPUB gives the device accurate reading-position tracking.') }}
+            {% else %}
+                {{ _('kepubify converts EPUB to KEPUB on the fly, which gives the Kobo accurate reading-position tracking. Colophon will auto-download a pinned release on the first book download. If the download fails, books are served as raw EPUB (still readable, just less precise position tracking).') }}
+            {% endif %}
+        </p>
+        <div class="status-grid" style="display:grid; grid-template-columns: 160px 1fr; row-gap: 8px;">
+            {% if kepubify.available %}
+            <span class="status-label">{{ _('Binary') }}</span>
+            <span class="status-value"><code>{{ kepubify.path }}</code></span>
+            {% if kepubify.version %}
+            <span class="status-label">{{ _('Version') }}</span>
+            <span class="status-value"><code>{{ kepubify.version }}</code></span>
+            {% endif %}
+            {% endif %}
+            <span class="status-label">{{ _('Cache') }}</span>
+            <span class="status-value">
+                {{ cache.files }} {{ _('files') }} ·
+                {{ (cache.size_bytes / 1024 / 1024) | round(1) }} MB
+                {% if cache.cap_bytes %}/ {{ (cache.cap_bytes / 1024 / 1024) | int }} MB {{ _('cap') }}{% endif %}
+            </span>
+        </div>
+        {% if cache.files %}
+        <form method="post" action="{{ url_for('settings.kobo_clear_cache') }}" style="margin-top: 12px;"
+              onsubmit="return confirm({{ _('Clear the KEPUB cache? Files will be regenerated on next download.')|tojson }});">
+            <button type="submit" class="btn"><i class="ti ti-trash"></i> {{ _('Clear cache') }}</button>
+        </form>
+        {% endif %}
+    </div>
+
+    <!-- ============ Setup guide ============ -->
+    <div class="panel">
+        <details class="howto">
+            <summary>{{ _('How do I connect my Kobo?') }}</summary>
+            <div class="howto-body">
+                <ol>
+                    <li>{{ _('Generate a URL above and copy it.') }}</li>
+                    <li>{{ _('Connect your Kobo to a computer via USB. A KOBOeReader drive appears.') }}</li>
+                    <li>{{ _('Open the file .kobo/Kobo/Kobo eReader.conf on the device in a text editor.') }}</li>
+                    <li>{{ _('Find the [OneStoreServices] section. Replace the api_endpoint= line with:') }}<br>
+                        <code>api_endpoint={{ host_url }}/kobo/&lt;your-url-key&gt;</code></li>
+                    <li>{{ _('Save the file and safely eject the Kobo.') }}</li>
+                    <li>{{ _('On the Kobo: Settings → Sync now. Books from Colophon should appear in your Library.') }}</li>
+                </ol>
+                <p style="margin-top: 14px;">
+                    {{ _('To undo, restore the original api_endpoint (a backup is saved as Kobo eReader.conf.bak by some firmware versions, otherwise the default is https://storeapi.kobo.com).') }}
+                </p>
+            </div>
+        </details>
+    </div>
+</div>
+
+<script>
+function toggleTheme() {
+    var current = document.documentElement.getAttribute('data-theme');
+    var next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('colophon-theme', next);
+    document.getElementById('themeIcon').className = 'ti ' + (next === 'dark' ? 'ti-moon' : 'ti-sun');
+}
+(function(){
+    var t = document.documentElement.getAttribute('data-theme');
+    document.getElementById('themeIcon').className = 'ti ' + (t === 'dark' ? 'ti-moon' : 'ti-sun');
+})();
+
+function setLanguage(lang) {
+    document.cookie = 'colophon_lang=' + lang + '; path=/; max-age=' + (365*24*60*60);
+    window.location.href = '/set-language/' + lang;
+}
+
+function copyNewUrl() {
+    var url = document.getElementById('newKeyUrl').textContent.trim();
+    navigator.clipboard.writeText(url).then(function() {
+        alert({{ _('URL copied to clipboard.')|tojson }});
+    }, function() {
+        // Fallback for non-secure contexts
+        var ta = document.createElement('textarea');
+        ta.value = url;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        alert({{ _('URL copied to clipboard.')|tojson }});
+    });
+}
+</script>
+</body>
+</html>
