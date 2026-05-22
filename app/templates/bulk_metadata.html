@@ -1507,24 +1507,15 @@
             color: var(--text-primary);
             position: relative;
         }
-        .modal-close-x {
-            position: absolute;
-            top: 12px;
-            right: 14px;
-            background: none;
-            border: none;
-            font-size: 24px;
-            color: var(--text-tertiary);
-            cursor: pointer;
-            padding: 4px 8px;
-            line-height: 1;
-            z-index: 2;
+        .modal-header-row {
+            display: flex;
+            align-items: center;
+            margin: -8px -8px 12px -8px;
         }
-        .modal-close-x:hover { color: var(--text-primary); }
+        .modal-header-row .spacer {
+            flex: 1;
+        }
         .modal-delete-x {
-            position: absolute;
-            top: 12px;
-            left: 14px;
             background: none;
             border: none;
             font-size: 18px;
@@ -1532,13 +1523,22 @@
             cursor: pointer;
             padding: 4px 8px;
             line-height: 1;
-            z-index: 2;
             border-radius: 4px;
         }
         .modal-delete-x:hover {
             color: var(--accent-red);
             background: rgba(220, 53, 69, 0.08);
         }
+        .modal-close-x {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            padding: 4px 8px;
+            line-height: 1;
+        }
+        .modal-close-x:hover { color: var(--text-primary); }
         .modal-feedback {
             padding: 10px 14px;
             border-radius: 5px;
@@ -2784,10 +2784,14 @@
 <!-- Book modal -->
 <div id="bookModal" style="display:none;">
     <div class="modal-box">
-        <button type="button" class="modal-delete-x" id="modalDeleteBtn" onclick="deleteBookFromModal()" title="{{ _('Delete book') }}">
-            <i class="ti ti-trash"></i>
-        </button>
-        <button type="button" class="modal-close-x" onclick="closeBookModal()" title="{{ _('Close') }}">&times;</button>
+        <div class="modal-header-row">
+            <button type="button" class="modal-delete-x" id="modalDeleteBtn"
+                    onclick="deleteBookFromModal()" title="{{ _('Delete book') }}">
+                <i class="ti ti-trash"></i>
+            </button>
+            <div class="spacer"></div>
+            <button type="button" class="modal-close-x" onclick="closeBookModal()" title="{{ _('Close') }}">&times;</button>
+        </div>
         <div id="modalFeedback" class="modal-feedback" style="display:none;"></div>
         <div class="modal-grid">
             <div>
@@ -3033,7 +3037,10 @@
 <!-- Duplicate detection modal -->
 <div id="duplicatesModal" style="display:none; position:fixed; inset:0; z-index:1000; background:var(--modal-overlay); align-items:center; justify-content:center;">
     <div class="modal-box" style="max-width:1000px;">
-        <button type="button" class="modal-close-x" onclick="closeDuplicatesModal()" title="{{ _('Close') }}">&times;</button>
+        <div class="modal-header-row">
+            <div class="spacer"></div>
+            <button type="button" class="modal-close-x" onclick="closeDuplicatesModal()" title="{{ _('Close') }}">&times;</button>
+        </div>
         <h2 style="margin-top:0;">{{ _('Find duplicates') }}</h2>
         <div id="dupFeedback" class="modal-feedback" style="display:none;"></div>
         <div id="dupHeader" style="font-size:13px; color:var(--text-secondary); margin-bottom:16px;"></div>
@@ -6533,8 +6540,7 @@
             saveBtnSaving: 'Sparar...',
             saveBtnSuccess: '✓ Sparat!',
             saveBtnError: '✗ Misslyckades',
-            confirmDeleteBook: 'Vill du verkligen radera "{title}" från biblioteket?',
-            confirmDeleteFile: 'Vill du också radera filen från disk?\n\nSkriv RADERA för att ta bort filen permanent.\nTryck OK/Cancel för att bara ta bort från biblioteket.',
+            confirmDeleteBook: 'Radera "{title}" permanent?\n\nBoken tas bort från biblioteket och filen raderas från disk.',
             deleting: 'Raderar…',
             deleteFailed: 'Radering misslyckades.',
             deleteFileError: 'Boken raderad från biblioteket, men filen kunde inte tas bort: {error}',
@@ -6559,8 +6565,7 @@
             saveBtnSaving: 'Saving...',
             saveBtnSuccess: '✓ Saved!',
             saveBtnError: '✗ Failed',
-            confirmDeleteBook: 'Delete "{title}" from library?',
-            confirmDeleteFile: 'Also delete the file from disk?\n\nType DELETE to permanently remove the file.\nPress OK/Cancel to only remove from library.',
+            confirmDeleteBook: 'Permanently delete "{title}"?\n\nThe book will be removed from the library and the file deleted from disk.',
             deleting: 'Deleting…',
             deleteFailed: 'Delete failed.',
             deleteFileError: 'Book removed from library, but the file could not be deleted: {error}',
@@ -7384,15 +7389,11 @@
 
         if (!confirm(_mt('confirmDeleteBook').replace('{title}', title))) return;
 
-        var deleteFile = false;
-        var fileAnswer = prompt(_mt('confirmDeleteFile'));
-        if (fileAnswer === 'RADERA' || fileAnswer === 'DELETE') deleteFile = true;
-
         _setModalBusy(true);
         setModalFeedback('info', _mt('deleting'));
 
         var formData = new FormData();
-        if (deleteFile) formData.append('delete_file', '1');
+        formData.append('delete_file', '1');
 
         fetch('/metadata/' + id + '/delete', {
             method: 'POST',
@@ -7406,14 +7407,10 @@
                 return;
             }
 
-            // Remove row from table DOM
             var row = document.querySelector('#bookTableBody tr[data-item-id="' + id + '"]');
             if (row) row.remove();
 
-            // Re-render grid
             renderGroupedView();
-
-            // Close without triggering dirty-refresh (book is gone)
             _modalDirty = false;
             closeBookModal();
 
