@@ -69,7 +69,7 @@ docs/
 Register `kobo_bp` in `app/__init__.py` next to the existing three. URL prefix is `/kobo` so the existing routes stay untouched.
 
 ### Dockerfile additions
-Append a stage that downloads kepubify (single static Go binary, ~5 MB) into `/usr/local/bin/kepubify`. Versioned, no apt package needed.
+Append a stage that downloads kepubify (single static Go binary, ~5 MB) into `/usr/local/bin/kepubify`. Versioned, no apt package needed. See §13 for the native-install equivalent.
 
 ### Gunicorn implications
 The `/library/sync` response can be large on first sync (every EPUB in the library). The 300 s timeout is fine; the response is a single JSON array, not streamed. For now we accept the blocking write — if it ever becomes a problem we can switch to SSE-style chunked JSON like the scan endpoint does.
@@ -153,18 +153,34 @@ Exact DTO field names are copied verbatim from Komga (the Kobo client is brittle
 
 KEPUB is EPUB with Kobo-specific span/markup that the reader needs for accurate reading-position tracking. `kepubify` does the conversion and is idempotent.
 
+### Binary detection (Docker + native)
+
+Same pattern Colophon uses for Calibre tools (`shutil.which("ebook-meta")`):
+
+```python
+KEPUBIFY_BIN = os.environ.get("COLOPHON_KEPUBIFY_BIN") or shutil.which("kepubify")
+```
+
+- Docker: binary installed at `/usr/local/bin/kepubify` by the Dockerfile, found via `which`.
+- Native: user installs via brew / `go install` / GitHub release. As long as it's on `$PATH`, found via `which`. Custom locations supported via `COLOPHON_KEPUBIFY_BIN`.
+- If not found: Settings → Kobo Sync shows a `✗ kepubify not installed` banner with install instructions. Sync continues to work, but `/v1/books/<id>/file/epub` falls back to streaming the raw EPUB (Kobo accepts it with degraded position tracking).
+
+### Cache
+
 **Strategy:** convert lazily, cache on disk.
 
 ```
-/data/kobo-cache/<library_item_id>-<source_mtime>.kepub.epub
+<DATA_DIR>/kobo-cache/<library_item_id>-<source_mtime>.kepub.epub
 ```
+
+Cache root resolves to `app.config["KOBO_CACHE_DIR"]`, defaulting to `os.path.join(DATA_DIR, "kobo-cache")` and overridable via `COLOPHON_KOBO_CACHE_DIR`. This makes Docker (where `DATA_DIR=/data`) and native installs (where `DATA_DIR` is wherever the user pointed it) both work without code branches.
 
 - On `/v1/books/<id>/file/epub`: if cache hit and source unchanged, stream cached file.
 - Else: run `kepubify -o <tmp> <source>`, move into cache, stream.
 - Cache eviction: simple LRU by file mtime, capped at e.g. 2 GB (configurable via `COLOPHON_KOBO_CACHE_MB`).
 - If the source file is touched by Colophon's metadata writer (`ebook-meta`), the source mtime changes and the cache entry becomes stale automatically.
 
-Failure modes: if kepubify exits non-zero (malformed EPUB), fall back to streaming the raw EPUB. Kobo accepts it, just with degraded position tracking.
+Failure modes: if kepubify exits non-zero (malformed EPUB), fall back to streaming the raw EPUB.
 
 ---
 
@@ -312,7 +328,55 @@ All new strings wrap in `_()`. Add Swedish translations to `app/translations/sv/
 
 ---
 
-## 12. What this design explicitly does NOT cover
+## 12. Docker vs native install
+
+Colophon supports both deployment modes today. Kobo sync follows the same conventions so neither is special-cased.
+
+### Path resolution
+
+All Kobo-sync paths derive from `app.config` values that already read env vars with Docker-friendly defaults:
+
+| Concern | Config key | Env var | Docker default | Native install |
+|---|---|---|---|---|
+| Data root | `DATA_DIR` | `COLOPHON_DATA_DIR` | `/data` (existing) | User sets, e.g. `~/.local/share/colophon` |
+| KEPUB cache | `KOBO_CACHE_DIR` | `COLOPHON_KOBO_CACHE_DIR` | `<DATA_DIR>/kobo-cache` | Same default; override if you want it elsewhere |
+| Cache size cap | `KOBO_CACHE_MB` | `COLOPHON_KOBO_CACHE_MB` | `2048` | Same |
+| kepubify binary | n/a (resolved at runtime) | `COLOPHON_KEPUBIFY_BIN` | `/usr/local/bin/kepubify` (installed by Dockerfile) | Whatever `which kepubify` finds |
+
+No code path checks "am I in Docker?" — everything goes through these config values.
+
+### kepubify installation
+
+**Docker:** `tools/install_kepubify.sh` runs in the Dockerfile, downloads a pinned release from GitHub (we choose a version, e.g. `v4.5.1`), verifies the SHA-256, drops the binary in `/usr/local/bin/kepubify`.
+
+**Native:** documented in README under a new "Optional: Kobo sync" section.
+
+```bash
+# macOS
+brew install pgaskin/kepubify/kepubify
+
+# Linux — single static binary, no deps
+curl -L -o /usr/local/bin/kepubify \
+  https://github.com/pgaskin/kepubify/releases/latest/download/kepubify-linux-64bit
+chmod +x /usr/local/bin/kepubify
+
+# Or via Go
+go install github.com/pgaskin/kepubify/v4/cmd/kepubify@latest
+```
+
+Same expectation as Calibre tools today: not bundled, must be on `$PATH` (or pointed to via env var). Sync gracefully degrades to raw-EPUB streaming if missing.
+
+### Network binding
+
+Kobo device talks HTTP to Colophon over the LAN. Both deployment modes already bind the same way (Gunicorn on `0.0.0.0:5055`) so no change needed. Reverse-proxy in front (Caddy, nginx) works for both; the catch-all proxy to `storeapi.kobo.com` requires outbound HTTPS, which both modes have by default.
+
+### Where data persists
+
+`KoboDevice` and `KoboBookState` rows live in the same SQLite DB as everything else (`<DATA_DIR>/colophon.db`). KEPUB cache files live in `<DATA_DIR>/kobo-cache/`. A native user who already backs up `DATA_DIR` automatically backs up the Kobo state — no separate concern.
+
+---
+
+## 13. What this design explicitly does NOT cover
 
 - The Kobo store features beyond sync (recommendations, purchases, browse) — handled by the catch-all proxy as a black box.
 - DRM. Colophon doesn't store DRM'd files; we won't start now.
