@@ -191,6 +191,9 @@ def _settings_view_context():
     google_books_key = (get_setting("GOOGLE_BOOKS_KEY") or "").strip()
     hardcover_token = (get_setting("HARDCOVER_API_TOKEN") or "").strip()
 
+    library_container_path = os.environ.get("COLOPHON_LIBRARY_DIR", "/books")
+    library_host_path = os.environ.get("COLOPHON_LIBRARY_HOST", "").strip() or None
+
     return {
         "ai_url": (get_setting("AI_API_URL") or _DEFAULT_AI_API_URL).strip(),
         "ai_url_default": _DEFAULT_AI_API_URL,
@@ -206,6 +209,8 @@ def _settings_view_context():
         "google_zoom_enabled": (get_setting("COVER_GOOGLE_ZOOM_ENABLED", "true") or "true").lower() == "true",
         "wikidata_enabled": (get_setting("COVER_WIKIDATA_ENABLED", "true") or "true").lower() == "true",
         "ddgs_enabled": (get_setting("COVER_DDGS_ENABLED", "true") or "true").lower() == "true",
+        "library_container_path": library_container_path,
+        "library_host_path": library_host_path,
     }
 
 

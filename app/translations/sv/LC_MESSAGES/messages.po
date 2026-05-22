@@ -2278,3 +2278,19 @@ msgstr "Flest böcker"
 #: app/templates/bulk_metadata.html
 msgid "Hide single-book series"
 msgstr "Dölj serier med bara en bok"
+
+#: app/templates/settings_api.html
+msgid "Library"
+msgstr "Bibliotek"
+
+#: app/templates/settings_api.html
+msgid "Path (container)"
+msgstr "Sökväg (container)"
+
+#: app/templates/settings_api.html
+msgid "Path (host)"
+msgstr "Sökväg (värd)"
+
+#: app/templates/settings_api.html
+msgid "To display the physical host path, set COLOPHON_LIBRARY_HOST in your .env file."
+msgstr "För att visa den fysiska sökvägen, sätt COLOPHON_LIBRARY_HOST i din .env-fil."
