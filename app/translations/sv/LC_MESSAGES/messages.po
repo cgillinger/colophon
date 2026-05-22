@@ -2140,6 +2140,12 @@ msgstr "Radera filen? Detta kan inte ångras."
 msgid "Delete book"
 msgstr "Radera bok"
 
+msgid "Find series"
+msgstr "Hitta serie"
+
+msgid "Find series with AI"
+msgstr "Hitta serie med AI"
+
 msgid "Delete %(n)d files? This cannot be undone."
 msgstr "Radera %(n)d filer? Detta kan inte ångras."
 
