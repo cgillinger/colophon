@@ -219,14 +219,18 @@ i18n via `_()` like everything else; add Swedish strings to `messages.po`.
 
 ---
 
-## 10. Open questions for review
+## 10. Decisions and open questions
 
-1. **Reading position write-back to file?** The Kobo posts bookmark updates as JSON blobs. Komga stores them per-device, doesn't write back to the EPUB. Same here? Or do we want to surface "% read" in the bulk view?
-2. **Multi-format groups.** If a `group_key` contains EPUB + MOBI, we expose only the EPUB. If the user later deletes the EPUB but keeps the MOBI, does the Kobo see a `DeletedEntitlement`? (Probably yes — fine.)
-3. **`updated_at` on `LibraryItem`.** Does this column exist today? If not, this design needs a migration step before any of it works.
-4. **Library subset.** Should the Kobo see every EPUB, or do we want a "Sync to Kobo" toggle per book / per tag? Komga exposes everything; simpler to start there.
-5. **Series & collections.** Kobo supports series metadata in the sync response. Colophon already extracts series — we should populate `Series` field in the entitlement DTO from day 1.
-6. **Store proxy fallback.** Necessary for the device's online-search feature to keep working. Cheap to add (one route, `requests.request(...)`). Skip in MVP?
+### Decided
+1. **UX model: Komga-style "Library", not fake Store.** Every EPUB in Colophon appears in the Kobo's **Library** tab as a pre-owned book (cover, title, author, series). User taps to download and read. This is what the user wants and matches what Komga does. We do **not** attempt to simulate the Kobo Store browse experience — that would require reverse-engineering a separate undocumented API surface for no UX win.
+2. **Reading position: DB-only, no EPUB writeback.** Bookmark blobs from the Kobo are stored in `KoboBookState` per device. Bulk view will surface "% read" and "last read". The EPUB file is never touched. (If multi-reader interop is ever needed, revisit.)
+3. **Store proxy: in MVP, not deferred.** ~40 lines of Python. Without it the Kobo shows "cannot connect" errors in non-sync UI areas and some background features (dictionary, recommendations) misbehave. Catch-all route forwards anything we don't handle to `https://storeapi.kobo.com`, stripping our auth token from the path first.
+4. **`updated_at` on `LibraryItem`: already present** with `onupdate=datetime.utcnow`. No migration needed for sync token logic.
+
+### Still open
+5. **Multi-format groups.** If a `group_key` contains EPUB + MOBI, we expose only the EPUB. If the user later deletes the EPUB but keeps the MOBI, the Kobo will see a `DeletedEntitlement`. Assumed fine — flag if not.
+6. **Library subset.** Phase 1 sends every EPUB. A per-book or per-tag "Sync to Kobo" toggle is listed in Phase 4. Confirm Phase 1 default is correct.
+7. **Series & collections.** Kobo supports series metadata in the sync response. Colophon already extracts series — populate the `Series` field in the entitlement DTO from day 1.
 
 ---
 
@@ -237,18 +241,20 @@ i18n via `_()` like everything else; add Swedish strings to `messages.po`.
 - `/ping`, `/v1/initialization`, `/v1/auth/device` — hardcoded responses.
 - `/v1/library/sync` returns **one** hardcoded entitlement pointing at a known test EPUB.
 - `/v1/books/<id>/file/epub` streams the raw EPUB (no kepubify yet).
-- Verify on a real Kobo: book appears in library, downloads, opens.
+- **Catch-all proxy to `storeapi.kobo.com`** — included in P1 per §10 decision so the Kobo's non-sync UI behaves from the start.
+- Verify on a real Kobo: book appears in Library tab, downloads, opens; store browse still works.
 
 ### Phase 2 — Real sync (2–3 days)
 - `KoboBookState` table + migration.
 - Full delta computation against `LibraryItem`, including sync token.
 - Cover thumbnail endpoint reusing existing cover assets.
+- Series metadata populated in entitlement DTO.
 - Pagination.
 - kepubify integration + disk cache.
 
 ### Phase 3 — State + polish (1–2 days)
-- Reading-state GET/PUT.
-- Catch-all proxy to Kobo store.
+- Reading-state GET/PUT (DB-only per §10 decision — no EPUB writeback).
+- "% read" / "last read" columns in the bulk view.
 - Multiple devices, revocation flow, cache management UI.
 - Swedish translation strings.
 - Tests: `test_kobo_sync.py` mocking a Kobo client through the full flow.
