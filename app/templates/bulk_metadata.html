@@ -2128,8 +2128,9 @@
            only set the gridView layout. */
         #gridView { display: none; }
 
-        /* Wider container in Hyllvy (shelf paradigm) */
-        body.shelf-active .container {
+        /* Wider container in Hyllvy and Serievy */
+        body.shelf-active .container,
+        body.series-active .container {
             max-width: min(95vw, 1600px);
             margin: 0 auto;
             padding: 18px 24px 40px;
@@ -2515,17 +2516,17 @@
         /* === Series view === */
         #seriesView {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-            gap: 16px;
+            grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+            gap: 18px;
             padding: 16px 0;
         }
         .series-card {
             background: var(--bg-primary);
             border: 1px solid var(--border-light);
             border-radius: 8px;
-            padding: 16px;
+            padding: 18px;
             display: flex;
-            gap: 14px;
+            gap: 18px;
             cursor: pointer;
             transition: transform 0.1s, box-shadow 0.1s;
         }
@@ -2534,8 +2535,8 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.12);
         }
         .series-card-cover {
-            width: 70px;
-            height: 105px;
+            width: 120px;
+            height: 180px;
             border-radius: 4px;
             overflow: hidden;
             background: var(--bg-tertiary);
@@ -2544,7 +2545,7 @@
             align-items: center;
             justify-content: center;
             color: var(--text-tertiary);
-            font-size: 20px;
+            font-size: 28px;
         }
         .series-card-cover img {
             width: 100%;
@@ -3492,6 +3493,7 @@
             btn.classList.toggle('active', btn.dataset.mode === _viewMode);
         });
         document.body.classList.toggle('shelf-active', _viewMode === 'shelf');
+        document.body.classList.toggle('series-active', _viewMode === 'series');
         document.body.setAttribute('data-density', _density);
 
         var tableWrap = document.querySelector('.table-wrap');
