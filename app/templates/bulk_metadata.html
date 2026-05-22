@@ -195,22 +195,6 @@
             box-shadow: 0 0 0 3px var(--accent-primary-light);
         }
 
-        /* Library bar */
-        .library-bar {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: #f0f4f8;
-            border: 2px solid var(--green-200);
-            border-radius: 10px;
-            padding: 12px 16px;
-            margin-bottom: 14px;
-            flex-wrap: wrap;
-        }
-        [data-theme="dark"] .library-bar {
-            background: #1a2332;
-            border-color: var(--green-700);
-        }
         [data-theme="dark"] #bookTable,
         [data-theme="dark"] .filter-row {
             border-color: var(--green-800);
@@ -2022,15 +2006,15 @@
             justify-content: center;
         }
 
-        /* View mode: Compact (default) */
-        [data-view="compact"] .cover { width: 50px; height: 75px; }
-        [data-view="compact"] #bookTableBody td { padding: 6px 10px; font-size: 13px; }
+        /* Table density: Compact (default) */
+        [data-density="compact"] .cover { width: 50px; height: 75px; }
+        [data-density="compact"] #bookTableBody td { padding: 6px 10px; font-size: 13px; }
 
-        /* View mode: Gallery */
-        [data-view="gallery"] .cover { width: 80px; height: 120px; }
-        [data-view="gallery"] #bookTableBody td { padding: 16px 12px; }
-        [data-view="gallery"] .book-title { font-size: 16px; }
-        [data-view="gallery"] .author-cell { font-size: 14px; }
+        /* Table density: Airy */
+        [data-density="airy"] .cover { width: 80px; height: 120px; }
+        [data-density="airy"] #bookTableBody td { padding: 16px 12px; }
+        [data-density="airy"] .book-title { font-size: 16px; }
+        [data-density="airy"] .author-cell { font-size: 14px; }
 
         /* === Duplicate-finder modal === */
         .dup-group {
@@ -2139,13 +2123,10 @@
             color: var(--text-secondary);
         }
 
-        /* === Grid view === */
-        [data-view="grid"] #bookTable { display: none !important; }
-        [data-view="grid"] #gridView { display: grid; }
-        [data-view="compact"] #gridView,
-        [data-view="gallery"] #gridView { display: none; }
-        [data-view="grid"] #groupToggle { display: none; }
-        [data-view="grid"] #paginationBar { display: none !important; }
+        /* === Grid view ===
+           Display switching is handled by applyViewMode() (JS). These rules
+           only set the gridView layout. */
+        #gridView { display: none; }
 
         /* Wider container in Hyllvy (shelf paradigm) */
         body.shelf-active .container {
@@ -2164,14 +2145,14 @@
             align-items: start;
         }
 
-        /* Paradigm + density + Skriptorium toolbar controls */
-        .paradigm-toggle {
+        /* View segment group (Tabell / Hyllvy / Serier) */
+        .seg-group {
             display: inline-flex;
             border: 1px solid var(--border-light);
             border-radius: 6px;
             overflow: hidden;
         }
-        .paradigm-btn {
+        .seg-btn {
             background: var(--bg-secondary);
             color: var(--text-secondary);
             border: none;
@@ -2184,9 +2165,9 @@
             gap: 6px;
             line-height: 1;
         }
-        .paradigm-btn + .paradigm-btn { border-left: 1px solid var(--border-light); }
-        .paradigm-btn:hover { background: var(--bg-tertiary); }
-        .paradigm-btn.active {
+        .seg-btn + .seg-btn { border-left: 1px solid var(--border-light); }
+        .seg-btn:hover { background: var(--bg-tertiary); }
+        .seg-btn.active {
             background: var(--accent-primary);
             color: #fff;
         }
@@ -2208,10 +2189,90 @@
             accent-color: var(--accent-primary);
             margin: 0;
         }
+        .toolbar-dim {
+            opacity: 0.3;
+            pointer-events: none;
+        }
 
-        /* Hide density-toggle in shelf, hide Skriptorium-toggle in table */
-        body.shelf-active .density-toggle { display: none; }
-        body:not(.shelf-active) .skriptorium-toggle { display: none; }
+        /* Filter toggle button + active indicator dot */
+        #filterToggle { position: relative; }
+        #filterToggle .filter-active-dot {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #dc3545;
+            display: none;
+        }
+        #filterToggle.has-active-filter .filter-active-dot { display: block; }
+
+        /* Filter panel (dropdown beneath the toolbar) */
+        #filterPanel {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        #filterPanel select {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            color: var(--text-primary);
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-size: 13px;
+        }
+
+        /* Dots (actions) menu */
+        .menu-wrap { position: relative; display: inline-block; }
+        .dots-menu {
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            padding: 6px;
+            min-width: 200px;
+            z-index: 50;
+            display: none;
+        }
+        .dots-menu.open { display: block; }
+        .dots-menu button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            background: transparent;
+            border: none;
+            padding: 8px 10px;
+            font-size: 13px;
+            color: var(--text-primary);
+            cursor: pointer;
+            border-radius: 5px;
+            text-align: left;
+        }
+        .dots-menu button:hover { background: var(--bg-secondary); }
+
+        /* Pagination bar: stats row */
+        #paginationStats {
+            font-size: 13px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        #paginationStats .stats-badge {
+            cursor: pointer;
+        }
 
         /* === Skriptorium (wrapper, fixed column width, no subgrid) === */
         #gridView.series-grouping-active {
@@ -2661,63 +2722,73 @@
     {% endif %}
 
     <form method="post" id="bulkForm">
-        <div class="library-bar">
-            <button id="scanBtn" type="button" class="btn primary" onclick="startScan()">
-                <i class="ti ti-refresh"></i> {{ _('Find new books') }}
-            </button>
-            <button type="button" class="btn outline" onclick="openDuplicatesModal()">
-                <i class="ti ti-copy"></i> {{ _('Find duplicates') }}
-            </button>
-            <span class="chip" id="libraryChipTotal">{{ _('%(count)d books', count=total_count) }}</span>
-            {% if missing_count %}
-                <span class="chip stats-badge" id="libraryChipMissing" onclick="toggleBadgeFilter('missing_metadata', '1', event)">{{ _('%(count)d incomplete', count=missing_count) }}</span>
-            {% endif %}
-            {% if format_counts %}
-                {% for ext, count in format_counts.items() %}
-                    <span class="chip chip-format stats-badge" onclick="toggleBadgeFilter('format', '{{ ext }}', event)">{{ count }} {{ ext }}</span>
-                {% endfor %}
-            {% endif %}
-            {% if missing_cover_count %}
-                <span class="chip chip-warn stats-badge" id="libraryChipMissingCover" onclick="toggleBadgeFilter('missing_cover', '1', event)">{{ _('%(count)d missing cover', count=missing_cover_count) }}</span>
-            {% endif %}
-            {% if upstream_enabled and unsynced_count %}
-                <span class="chip chip-sync stats-badge" id="libraryChipUnsynced"
-                      onclick="toggleBadgeFilter('unsynced', '1', event)">
-                    {{ _('%(count)d unsynced', count=unsynced_count) }}
-                </span>
-            {% endif %}
-            <div id="scanInline" style="display:none; font-size:13px; color:var(--accent-primary-text);">
-                <span id="scanInlineText">{{ _('Scanning...') }}</span>
-            </div>
-        </div>
-
         <div class="filter-row">
-            <button id="orgToggle" class="filter-btn icon-toggle" type="button"
-                    onclick="toggleOrgMode()" title="{{ _('Series view') }}">
-                <i class="ti ti-books"></i>
-            </button>
+            <div class="seg-group" id="viewSegGroup" role="group" aria-label="{{ _('View') }}">
+                <button class="seg-btn" type="button" data-mode="table" onclick="setViewMode('table')" title="{{ _('Table view') }}">
+                    <i class="ti ti-list"></i> {{ _('Table') }}
+                </button>
+                <button class="seg-btn" type="button" data-mode="shelf" onclick="setViewMode('shelf')" title="{{ _('Shelf view') }}">
+                    <i class="ti ti-layout-grid"></i> {{ _('Shelf') }}
+                </button>
+                <button class="seg-btn" type="button" data-mode="series" onclick="setViewMode('series')" title="{{ _('Series view') }}">
+                    <i class="ti ti-books"></i> {{ _('Series') }}
+                </button>
+            </div>
+
             <button id="groupToggle" class="filter-btn icon-toggle" type="button" onclick="toggleGroupView()" title="{{ _('Group formats') }}">
                 <i class="ti ti-stack-2" style="font-size:20px;"></i><span id="groupCountLabel" style="display:none; margin-left:6px; font-size:12px;"></span>
             </button>
-            <div class="paradigm-toggle" role="group" aria-label="{{ _('View') }}">
-                <button id="paradigmTable" class="paradigm-btn" type="button" onclick="switchView('table')" title="{{ _('Table view') }}">
-                    <i class="ti ti-list"></i> {{ _('Table') }}
-                </button>
-                <button id="paradigmShelf" class="paradigm-btn" type="button" onclick="switchView('shelf')" title="{{ _('Shelf view') }}">
-                    <i class="ti ti-books"></i> {{ _('Shelf') }}
-                </button>
+
+            <div class="density-toggle" id="densityRadios">
+                <label><input type="radio" name="density" value="compact" onchange="setDensity('compact')"> {{ _('Compact') }}</label>
+                <label><input type="radio" name="density" value="airy" onchange="setDensity('airy')"> {{ _('Airy') }}</label>
             </div>
-            <div class="density-toggle" id="densityToggle">
-                <label><input type="radio" name="tableDensity" value="compact" onchange="setTableDensity('compact')"> {{ _('Compact') }}</label>
-                <label><input type="radio" name="tableDensity" value="gallery" onchange="setTableDensity('gallery')"> {{ _('Airy') }}</label>
-            </div>
-            <label class="skriptorium-toggle" id="skriptoriumToggleWrap">
+
+            <label class="skriptorium-toggle" id="skriptoriumToggleWrap" style="display:none;">
                 <input type="checkbox" id="skriptoriumToggle" onchange="setSkriptorium(this.checked)">
                 {{ _('Group series') }}
             </label>
 
-            <div class="filter-sep"></div>
+            <button id="filterToggle" class="filter-btn icon-toggle" type="button" onclick="toggleFilterPanel()" title="{{ _('Filter') }}">
+                <i class="ti ti-filter" style="font-size:20px;"></i>
+                <span class="filter-active-dot"></span>
+            </button>
 
+            <span id="seriesControls" style="display:none; gap:10px; align-items:center;">
+                <select id="seriesSortSelect" onchange="setSeriesSort(this.value)" title="{{ _('Sort series') }}">
+                    <option value="alpha">{{ _('A–Ö') }}</option>
+                    <option value="count">{{ _('Most books') }}</option>
+                </select>
+                <label class="filter-check">
+                    <input type="checkbox" id="hideOnlyOneSeriesCb" onchange="toggleHideOnlyOneSeries(this)">
+                    {{ _('Hide single-book series') }}
+                </label>
+            </span>
+
+            <div class="filter-spacer"></div>
+
+            <span class="selected-count" id="selectedCount">{{ _('%(count)d selected', count=0) }}</span>
+
+            <div id="scanInline" style="display:none; font-size:13px; color:var(--accent-primary-text);">
+                <span id="scanInlineText">{{ _('Scanning...') }}</span>
+            </div>
+
+            <div class="menu-wrap">
+                <button id="actionsMenuBtn" class="filter-btn icon-toggle" type="button" onclick="toggleActionsMenu(event)" title="{{ _('Actions') }}">
+                    <i class="ti ti-dots" style="font-size:20px;"></i>
+                </button>
+                <div class="dots-menu" id="actionsMenu">
+                    <button type="button" onclick="closeActionsMenu(); startScan();">
+                        <i class="ti ti-refresh"></i> {{ _('Find new books') }}
+                    </button>
+                    <button type="button" onclick="closeActionsMenu(); openDuplicatesModal();">
+                        <i class="ti ti-copy"></i> {{ _('Find duplicates') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="filterPanel" style="display:none;">
             <select id="filterStatus" onchange="applyFilters()" title="{{ _('Status') }}">
                 <option value="">{{ _('All') }}</option>
                 <option value="missing">{{ _('Missing metadata') }}</option>
@@ -2739,8 +2810,6 @@
                 <option value="genres">{{ _('Missing genre') }}</option>
                 <option value="published_date">{{ _('Missing publication date') }}</option>
             </select>
-
-            <span class="selected-count" id="selectedCount">{{ _('%(count)d selected', count=0) }}</span>
 
             <div class="filter-sep"></div>
 
@@ -2854,6 +2923,24 @@
         <div id="seriesView" style="display:none;"></div>
 
         <div id="paginationBar">
+            <div id="paginationStats">
+                <span id="libraryChipTotal">{{ _('%(count)d books', count=total_count) }}</span>
+                {% if missing_count %}
+                    · <span class="stats-badge" id="libraryChipMissing" onclick="toggleBadgeFilter('missing_metadata', '1', event)">{{ _('%(count)d incomplete', count=missing_count) }}</span>
+                {% endif %}
+                {% if format_counts %}
+                    ·
+                    {% for ext, count in format_counts.items() %}
+                        <span class="stats-badge" onclick="toggleBadgeFilter('format', '{{ ext }}', event)">{{ count }} {{ ext }}</span>{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                {% endif %}
+                {% if missing_cover_count %}
+                    · <span class="stats-badge" id="libraryChipMissingCover" onclick="toggleBadgeFilter('missing_cover', '1', event)">{{ _('%(count)d missing cover', count=missing_cover_count) }}</span>
+                {% endif %}
+                {% if upstream_enabled and unsynced_count %}
+                    · <span class="stats-badge" id="libraryChipUnsynced" onclick="toggleBadgeFilter('unsynced', '1', event)">{{ _('%(count)d unsynced', count=unsynced_count) }}</span>
+                {% endif %}
+            </div>
             <span id="paginationInfo">{{ _('Showing %(count)d books', count=0) }}</span>
             <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
                 <label style="font-size:13px; color:var(--text-secondary);">
@@ -3155,6 +3242,9 @@
         seriesBooks: {{ _('books')|tojson }},
         standaloneBooks: {{ _('Standalone books')|tojson }},
         seriesView: {{ _('Series view')|tojson }},
+        hideSingleBookSeries: {{ _('Hide single-book series')|tojson }},
+        sortAlpha: {{ _('A–Ö')|tojson }},
+        sortCount: {{ _('Most books')|tojson }},
         connectionLost: {{ _('Connection lost.')|tojson }},
         scanning: {{ _('Scanning...')|tojson }},
         searchingEbooks: {{ _('Searching for ebooks...')|tojson }},
@@ -3299,95 +3389,61 @@
     })();
 
     /* -------------------------------------------------------------------- */
-    /* View paradigm: Tabellvy / Hyllvy + density + Skriptorium             */
+    /* Unified view system: table / shelf / series  +  density compact/airy */
     /* -------------------------------------------------------------------- */
-    var _paradigm = 'table';                  /* 'table' | 'shelf' */
-    var _tableDensity = 'compact';            /* 'compact' | 'gallery' */
-    var _skriptorium = false;                 /* boolean */
+    var _viewMode = 'table';          /* 'table' | 'shelf' | 'series' */
+    var _density = 'compact';         /* 'compact' | 'airy' */
+    var _skriptorium = false;
+    var _seriesSort = 'alpha';        /* 'alpha' | 'count' */
+    var _hideOnlyOneSeries = false;
+    var _filterOpen = false;
 
-    /* One-time migration from the old `colophon-viewMode` key */
-    (function _migrateViewMode() {
+    /* One-time migration from legacy keys */
+    (function _migrateViewState() {
         var legacy = localStorage.getItem('colophon-viewMode');
-        if (legacy != null) {
-            if (legacy === 'gallery') {
-                localStorage.setItem('colophon-view-mode', 'table');
-                localStorage.setItem('colophon-table-density', 'gallery');
+        var newMode = localStorage.getItem('colophon-view-mode');
+        var newModeNew = localStorage.getItem('colophon-viewMode-v2');
+
+        if (!newModeNew) {
+            if (legacy === 'compact' || legacy === 'gallery') {
+                localStorage.setItem('colophon-viewMode-v2', 'table');
+                if (legacy === 'gallery') localStorage.setItem('colophon-density', 'airy');
             } else if (legacy === 'grid') {
-                localStorage.setItem('colophon-view-mode', 'shelf');
-            } else {
-                localStorage.setItem('colophon-view-mode', 'table');
-                localStorage.setItem('colophon-table-density', 'compact');
+                localStorage.setItem('colophon-viewMode-v2', 'shelf');
+            } else if (newMode === 'shelf' || newMode === 'table') {
+                localStorage.setItem('colophon-viewMode-v2', newMode);
             }
+
+            var oldDensity = localStorage.getItem('colophon-table-density');
+            if (oldDensity === 'gallery') localStorage.setItem('colophon-density', 'airy');
+            else if (oldDensity === 'compact' && !localStorage.getItem('colophon-density')) {
+                localStorage.setItem('colophon-density', 'compact');
+            }
+
+            if (localStorage.getItem('colophon-orgMode') === 'series') {
+                localStorage.setItem('colophon-viewMode-v2', 'series');
+            }
+
             localStorage.removeItem('colophon-viewMode');
+            localStorage.removeItem('colophon-view-mode');
+            localStorage.removeItem('colophon-table-density');
+            localStorage.removeItem('colophon-orgMode');
         }
     })();
 
     (function _loadViewState() {
-        var p = localStorage.getItem('colophon-view-mode');
-        if (p === 'shelf' || p === 'table') _paradigm = p;
-        var d = localStorage.getItem('colophon-table-density');
-        if (d === 'compact' || d === 'gallery') _tableDensity = d;
-        var s = localStorage.getItem('colophon-skriptorium');
-        _skriptorium = (s === '1');
+        var v = localStorage.getItem('colophon-viewMode-v2');
+        if (v === 'table' || v === 'shelf' || v === 'series') _viewMode = v;
+        var d = localStorage.getItem('colophon-density');
+        if (d === 'compact' || d === 'airy') _density = d;
+        _skriptorium = (localStorage.getItem('colophon-skriptorium') === '1');
+        var s = localStorage.getItem('colophon-seriesSort');
+        if (s === 'alpha' || s === 'count') _seriesSort = s;
+        _hideOnlyOneSeries = (localStorage.getItem('colophon-hideOnlyOneSeries') === '1');
+        _filterOpen = (localStorage.getItem('colophon-filterOpen') === '1');
     })();
 
-    function _computeDataView() {
-        if (_paradigm === 'shelf') return 'grid';
-        return _tableDensity === 'gallery' ? 'gallery' : 'compact';
-    }
-
-    function _syncViewUI() {
-        document.body.setAttribute('data-view', _computeDataView());
-        document.body.classList.toggle('shelf-active', _paradigm === 'shelf');
-
-        var btnT = document.getElementById('paradigmTable');
-        var btnS = document.getElementById('paradigmShelf');
-        if (btnT) btnT.classList.toggle('active', _paradigm === 'table');
-        if (btnS) btnS.classList.toggle('active', _paradigm === 'shelf');
-
-        document.querySelectorAll('input[name="tableDensity"]').forEach(function(r) {
-            r.checked = (r.value === _tableDensity);
-        });
-        var sk = document.getElementById('skriptoriumToggle');
-        if (sk) sk.checked = _skriptorium;
-    }
-
-    function switchView(paradigm) {
-        if (paradigm !== 'table' && paradigm !== 'shelf') return;
-        if (paradigm === _paradigm) return;
-        var prev = _paradigm;
-        _paradigm = paradigm;
-        localStorage.setItem('colophon-view-mode', _paradigm);
-        _syncViewUI();
-        if (prev === 'shelf' && typeof destroyShelfView === 'function') destroyShelfView();
-        if (paradigm === 'shelf' && typeof initShelfView === 'function') initShelfView();
-    }
-
-    function setTableDensity(d) {
-        if (d !== 'compact' && d !== 'gallery') return;
-        _tableDensity = d;
-        localStorage.setItem('colophon-table-density', d);
-        _syncViewUI();
-    }
-
-    function setSkriptorium(on) {
-        _skriptorium = !!on;
-        localStorage.setItem('colophon-skriptorium', _skriptorium ? '1' : '0');
-        if (_paradigm !== 'shelf') return;
-        if (_skriptorium && typeof applySkriptorium === 'function') applySkriptorium();
-        else if (!_skriptorium && typeof removeSkriptorium === 'function') removeSkriptorium();
-    }
-
-    function isSkriptoriumOn() { return _skriptorium; }
-
-    (function _initialViewSync() { _syncViewUI(); })();
-
-    /* -------------------------------------------------------------------- */
-    /* Series organisation view                                              */
-    /* -------------------------------------------------------------------- */
-    var _orgMode = localStorage.getItem('colophon-orgMode') || 'books';
-
-    function _orgEsc(s) {
+    function _seriesEsc(s) {
         return String(s == null ? '' : s)
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
@@ -3396,42 +3452,107 @@
             .replace(/'/g, '&#39;');
     }
 
-    function toggleOrgMode() {
-        _orgMode = _orgMode === 'books' ? 'series' : 'books';
-        localStorage.setItem('colophon-orgMode', _orgMode);
-        applyOrgMode();
+    function setViewMode(mode) {
+        if (mode !== 'table' && mode !== 'shelf' && mode !== 'series') return;
+        if (mode === _viewMode) return;
+        var prev = _viewMode;
+        _viewMode = mode;
+        localStorage.setItem('colophon-viewMode-v2', mode);
+        applyViewMode();
+        if (prev === 'shelf' && typeof destroyShelfView === 'function') destroyShelfView();
+        if (mode === 'shelf' && typeof initShelfView === 'function') initShelfView();
     }
 
-    function applyOrgMode() {
-        var btn = document.getElementById('orgToggle');
-        if (btn) btn.classList.toggle('active', _orgMode === 'series');
+    function setDensity(val) {
+        if (val !== 'compact' && val !== 'airy') return;
+        _density = val;
+        localStorage.setItem('colophon-density', val);
+        document.body.setAttribute('data-density', val);
+        _syncDensityRadios();
+    }
+
+    function _syncDensityRadios() {
+        document.querySelectorAll('input[name="density"]').forEach(function(r) {
+            r.checked = (r.value === _density);
+        });
+    }
+
+    function setSkriptorium(on) {
+        _skriptorium = !!on;
+        localStorage.setItem('colophon-skriptorium', _skriptorium ? '1' : '0');
+        if (_viewMode !== 'shelf') return;
+        if (_skriptorium && typeof applySkriptorium === 'function') applySkriptorium();
+        else if (!_skriptorium && typeof removeSkriptorium === 'function') removeSkriptorium();
+    }
+
+    function isSkriptoriumOn() { return _skriptorium; }
+
+    function applyViewMode() {
+        document.querySelectorAll('#viewSegGroup .seg-btn').forEach(function(btn) {
+            btn.classList.toggle('active', btn.dataset.mode === _viewMode);
+        });
+        document.body.classList.toggle('shelf-active', _viewMode === 'shelf');
+        document.body.setAttribute('data-density', _density);
 
         var tableWrap = document.querySelector('.table-wrap');
+        var gridView = document.getElementById('gridView');
         var seriesView = document.getElementById('seriesView');
-        var paradigmToggle = document.querySelector('.paradigm-toggle');
-        var densityToggle = document.getElementById('densityToggle');
-        var skriptoriumWrap = document.getElementById('skriptoriumToggleWrap');
-        var groupToggle = document.getElementById('groupToggle');
         var paginationBar = document.getElementById('paginationBar');
+        var groupToggle = document.getElementById('groupToggle');
+        var densityRadios = document.getElementById('densityRadios');
+        var skriptoriumWrap = document.getElementById('skriptoriumToggleWrap');
+        var seriesControls = document.getElementById('seriesControls');
 
-        if (_orgMode === 'series') {
-            if (tableWrap) tableWrap.style.display = 'none';
-            if (seriesView) seriesView.style.display = '';
-            if (paradigmToggle) paradigmToggle.style.display = 'none';
-            if (densityToggle) densityToggle.style.display = 'none';
-            if (skriptoriumWrap) skriptoriumWrap.style.display = 'none';
-            if (groupToggle) groupToggle.style.display = 'none';
-            if (paginationBar) paginationBar.style.display = 'none';
-            renderSeriesView();
-        } else {
-            if (tableWrap) tableWrap.style.display = '';
-            if (seriesView) seriesView.style.display = 'none';
-            if (paradigmToggle) paradigmToggle.style.display = '';
-            if (densityToggle) densityToggle.style.display = '';
-            if (skriptoriumWrap) skriptoriumWrap.style.display = '';
-            if (groupToggle) groupToggle.style.display = '';
-            if (paginationBar) paginationBar.style.display = '';
+        if (tableWrap) tableWrap.style.display = 'none';
+        if (gridView) gridView.style.display = 'none';
+        if (seriesView) seriesView.style.display = 'none';
+        if (seriesControls) seriesControls.style.display = 'none';
+        if (skriptoriumWrap) skriptoriumWrap.style.display = 'none';
+
+        function dim(el, on) {
+            if (!el) return;
+            el.classList.toggle('toolbar-dim', !!on);
         }
+
+        if (_viewMode === 'table') {
+            if (tableWrap) tableWrap.style.display = '';
+            if (paginationBar) paginationBar.style.display = '';
+            dim(groupToggle, false);
+            dim(densityRadios, false);
+        } else if (_viewMode === 'shelf') {
+            if (gridView) gridView.style.display = 'grid';
+            if (paginationBar) paginationBar.style.display = '';
+            if (skriptoriumWrap) skriptoriumWrap.style.display = '';
+            dim(groupToggle, true);
+            dim(densityRadios, true);
+        } else if (_viewMode === 'series') {
+            if (seriesView) seriesView.style.display = '';
+            if (seriesControls) seriesControls.style.display = 'inline-flex';
+            if (paginationBar) paginationBar.style.display = 'none';
+            dim(groupToggle, true);
+            dim(densityRadios, true);
+            renderSeriesView();
+        }
+
+        _syncDensityRadios();
+        var sk = document.getElementById('skriptoriumToggle');
+        if (sk) sk.checked = _skriptorium;
+    }
+
+    /* -------------------------------------------------------------------- */
+    /* Series view rendering                                                 */
+    /* -------------------------------------------------------------------- */
+    function setSeriesSort(val) {
+        if (val !== 'alpha' && val !== 'count') return;
+        _seriesSort = val;
+        localStorage.setItem('colophon-seriesSort', val);
+        renderSeriesView();
+    }
+
+    function toggleHideOnlyOneSeries(cb) {
+        _hideOnlyOneSeries = !!cb.checked;
+        localStorage.setItem('colophon-hideOnlyOneSeries', _hideOnlyOneSeries ? '1' : '0');
+        renderSeriesView();
     }
 
     function renderSeriesView() {
@@ -3472,48 +3593,56 @@
             seriesMap[key].sort(function(a, b) { return a.indexNum - b.indexNum; });
         });
 
-        var seriesNames = Object.keys(seriesMap).sort(function(a, b) {
-            return a.toLowerCase().localeCompare(b.toLowerCase());
-        });
+        var seriesNames = Object.keys(seriesMap);
+        if (_hideOnlyOneSeries) {
+            seriesNames = seriesNames.filter(function(n) { return seriesMap[n].length > 1; });
+        }
+        if (_seriesSort === 'count') {
+            seriesNames.sort(function(a, b) { return seriesMap[b].length - seriesMap[a].length; });
+        } else {
+            seriesNames.sort(function(a, b) {
+                return a.toLowerCase().localeCompare(b.toLowerCase());
+            });
+        }
 
         var html = '';
 
         seriesNames.forEach(function(name) {
             var books = seriesMap[name];
             var coverHtml = books[0].coverSrc
-                ? '<img src="' + _orgEsc(books[0].coverSrc) + '" alt="">'
+                ? '<img src="' + _seriesEsc(books[0].coverSrc) + '" alt="">'
                 : '📚';
 
             var listHtml = '';
             books.forEach(function(b) {
                 var num = b.index || '?';
                 listHtml += '<li>'
-                    + '<span class="series-num">#' + _orgEsc(num) + '</span>'
-                    + '<span class="series-book-title">' + _orgEsc(b.title) + '</span>'
+                    + '<span class="series-num">#' + _seriesEsc(num) + '</span>'
+                    + '<span class="series-book-title">' + _seriesEsc(b.title) + '</span>'
                     + '</li>';
             });
 
-            var nameAttr = _orgEsc(name);
+            var nameAttr = _seriesEsc(name);
             html += '<div class="series-card" data-series-name="' + nameAttr + '">'
                 + '<div class="series-card-cover">' + coverHtml + '</div>'
                 + '<div class="series-card-body">'
                 + '<div class="series-card-title">' + nameAttr + '</div>'
-                + '<div class="series-card-count">' + books.length + ' ' + _orgEsc(_i18n.seriesBooks) + '</div>'
+                + '<div class="series-card-count">' + books.length + ' ' + _seriesEsc(_i18n.seriesBooks) + '</div>'
                 + '<ul class="series-card-list">' + listHtml + '</ul>'
                 + '</div></div>';
         });
 
-        if (standalone.length > 0) {
+        if (standalone.length > 0 && !_hideOnlyOneSeries) {
             html += '<div class="series-standalone-header">'
-                + _orgEsc(_i18n.standaloneBooks) + ' (' + standalone.length + ')</div>';
+                + _seriesEsc(_i18n.standaloneBooks) + ' (' + standalone.length + ')</div>';
             standalone.forEach(function(b) {
                 var coverHtml = b.coverSrc
-                    ? '<img src="' + _orgEsc(b.coverSrc) + '" alt="">'
+                    ? '<img src="' + _seriesEsc(b.coverSrc) + '" alt="">'
                     : '📖';
-                html += '<div class="series-card" data-item-id="' + _orgEsc(b.itemId) + '">'
+                html += '<div class="series-card" data-item-id="' + _seriesEsc(b.itemId) + '">'
                     + '<div class="series-card-cover">' + coverHtml + '</div>'
                     + '<div class="series-card-body">'
-                    + '<div class="series-card-title">' + _orgEsc(b.title) + '</div>'
+                    + '<div class="series-card-title">' + _seriesEsc(b.title) + '</div>'
                     + '</div></div>';
             });
         }
@@ -3536,16 +3665,67 @@
     });
 
     function filterBySeries(seriesName) {
-        _orgMode = 'books';
-        localStorage.setItem('colophon-orgMode', 'books');
-        applyOrgMode();
-
+        setViewMode('table');
         var searchInput = document.getElementById('filterSearch');
         if (searchInput) {
             searchInput.value = seriesName;
             applyFilters();
         }
     }
+
+    /* -------------------------------------------------------------------- */
+    /* Filter panel toggle + active-filter indicator                         */
+    /* -------------------------------------------------------------------- */
+    function toggleFilterPanel() {
+        _filterOpen = !_filterOpen;
+        localStorage.setItem('colophon-filterOpen', _filterOpen ? '1' : '0');
+        var panel = document.getElementById('filterPanel');
+        if (panel) panel.style.display = _filterOpen ? 'flex' : 'none';
+    }
+
+    function _updateFilterActiveDot() {
+        var btn = document.getElementById('filterToggle');
+        if (!btn) return;
+        var anyActive = false;
+        ['filterStatus', 'filterExtension', 'filterMissingField'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el && el.value) anyActive = true;
+        });
+        btn.classList.toggle('has-active-filter', anyActive);
+    }
+
+    /* -------------------------------------------------------------------- */
+    /* Actions (⋯) menu                                                      */
+    /* -------------------------------------------------------------------- */
+    function toggleActionsMenu(ev) {
+        if (ev) ev.stopPropagation();
+        var m = document.getElementById('actionsMenu');
+        if (!m) return;
+        m.classList.toggle('open');
+    }
+    function closeActionsMenu() {
+        var m = document.getElementById('actionsMenu');
+        if (m) m.classList.remove('open');
+    }
+    document.addEventListener('click', function(ev) {
+        var menu = document.getElementById('actionsMenu');
+        if (!menu || !menu.classList.contains('open')) return;
+        if (ev.target.closest('.menu-wrap')) return;
+        menu.classList.remove('open');
+    });
+
+    /* -------------------------------------------------------------------- */
+    /* Initial UI sync                                                       */
+    /* -------------------------------------------------------------------- */
+    (function _initialUiSync() {
+        document.body.setAttribute('data-density', _density);
+        var sortSel = document.getElementById('seriesSortSelect');
+        if (sortSel) sortSel.value = _seriesSort;
+        var hideCb = document.getElementById('hideOnlyOneSeriesCb');
+        if (hideCb) hideCb.checked = _hideOnlyOneSeries;
+        var panel = document.getElementById('filterPanel');
+        if (panel) panel.style.display = _filterOpen ? 'flex' : 'none';
+    })();
 
     /* -------------------------------------------------------------------- */
     /* Scan SSE                                                              */
@@ -3582,17 +3762,9 @@
     }
 
     function startScan() {
-        var btn = document.getElementById('scanBtn');
         var inline = document.getElementById('scanInline');
         var inlineText = document.getElementById('scanInlineText');
-        var chipTotal = document.getElementById('libraryChipTotal');
-        var chipMissing = document.getElementById('libraryChipMissing');
-        btn.disabled = true;
-        var origLabel = btn.innerHTML;
-        btn.innerHTML = '<i class="ti ti-loader"></i> ' + _i18n.scanning;
-        if (chipTotal) chipTotal.style.display = 'none';
-        if (chipMissing) chipMissing.style.display = 'none';
-        if (inline) inline.style.display = 'block';
+        if (inline) inline.style.display = 'inline-flex';
         if (inlineText) inlineText.textContent = _i18n.searchingEbooks;
 
         var source = new EventSource('/scan?progress=1');
@@ -3609,20 +3781,11 @@
             } else if (d.type === 'error') {
                 if (inlineText) inlineText.textContent = _i18n.scanError + ' ' + d.message;
                 source.close();
-                btn.disabled = false;
-                btn.innerHTML = origLabel;
-                if (chipTotal) chipTotal.style.display = '';
-                if (chipMissing) chipMissing.style.display = '';
-                if (inline) inline.style.display = 'none';
             }
         };
         source.onerror = function() {
             if (inlineText) inlineText.textContent = _i18n.connectionLost;
             source.close();
-            btn.disabled = false;
-            btn.innerHTML = origLabel;
-            if (chipTotal) chipTotal.style.display = '';
-            if (chipMissing) chipMissing.style.display = '';
         };
     }
 
@@ -5938,18 +6101,19 @@
     var _origRenderPagination = renderPagination;
     renderPagination = function() {
         _origRenderPagination.apply(this, arguments);
-        if (_paradigm === 'shelf' && typeof refreshShelfView === 'function') refreshShelfView();
+        if (_viewMode === 'shelf' && typeof refreshShelfView === 'function') refreshShelfView();
     };
     var _origApplyFilters = applyFilters;
     applyFilters = function() {
         _origApplyFilters.apply(this, arguments);
-        if (_paradigm === 'shelf' && typeof refreshShelfView === 'function') refreshShelfView();
-        if (_orgMode === 'series') renderSeriesView();
+        _updateFilterActiveDot();
+        if (_viewMode === 'shelf' && typeof refreshShelfView === 'function') refreshShelfView();
+        if (_viewMode === 'series') renderSeriesView();
     };
     var _origSortTable2 = sortTable;
     sortTable = function(key) {
         _origSortTable2.apply(this, arguments);
-        if (_paradigm === 'shelf' && typeof refreshShelfView === 'function') refreshShelfView();
+        if (_viewMode === 'shelf' && typeof refreshShelfView === 'function') refreshShelfView();
     };
     /* Re-bind sort handlers to the latest sortTable */
     document.querySelectorAll('#bookTable th[data-sort]').forEach(function(th) {
@@ -5960,15 +6124,16 @@
     var _origRenderGroupedView = renderGroupedView;
     renderGroupedView = function() {
         _origRenderGroupedView.apply(this, arguments);
-        if (_paradigm === 'shelf' && typeof refreshShelfView === 'function') refreshShelfView();
+        if (_viewMode === 'shelf' && typeof refreshShelfView === 'function') refreshShelfView();
     };
 
     updateGroupToggleButton();
     renderGroupedView();
     updateSelectedCount();
     updateBatchBar();
-    if (_paradigm === 'shelf' && typeof initShelfView === 'function') initShelfView();
-    applyOrgMode();
+    applyViewMode();
+    _updateFilterActiveDot();
+    if (_viewMode === 'shelf' && typeof initShelfView === 'function') initShelfView();
 
     /* -------------------------------------------------------------------- */
     /* Bulk delete                                                           */
@@ -7399,12 +7564,13 @@
         var pill = document.getElementById('libraryChipUnsynced');
         if (!pill) {
             if (delta <= 0) return;
-            var bar = document.querySelector('.library-bar .stats-row');
+            var bar = document.getElementById('paginationStats');
             if (!bar) return;
             pill = document.createElement('span');
-            pill.className = 'chip chip-sync stats-badge';
+            pill.className = 'stats-badge';
             pill.id = 'libraryChipUnsynced';
             pill.onclick = function(e) { toggleBadgeFilter('unsynced', '1', e); };
+            bar.appendChild(document.createTextNode(' · '));
             bar.appendChild(pill);
         }
         var text = pill.textContent.trim();
@@ -8415,7 +8581,7 @@
        The inline script ran initShelfView() defensively, but at that point
        shelf-view.js wasn't loaded yet. Run it now. */
     (function() {
-        if (typeof _paradigm !== 'undefined' && _paradigm === 'shelf' && typeof initShelfView === 'function') {
+        if (typeof _viewMode !== 'undefined' && _viewMode === 'shelf' && typeof initShelfView === 'function') {
             initShelfView();
         }
     })();
