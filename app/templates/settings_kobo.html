@@ -269,6 +269,50 @@
         </form>
     </div>
 
+    <!-- ============ KEPUB conversion ============ -->
+    <div class="panel">
+        <div class="panel-title">
+            <span class="panel-title-left">
+                <i class="ti ti-file-zip" style="color:var(--accent-purple); font-size:20px;"></i>
+                {{ _('KEPUB conversion') }}
+            </span>
+            {% if kepubify.available %}
+                <span class="badge ok">&#10003; {{ _('Available') }}</span>
+            {% else %}
+                <span class="badge warn">{{ _('Not installed') }}</span>
+            {% endif %}
+        </div>
+        <p class="panel-desc">
+            {% if kepubify.available %}
+                {{ _('Books are converted from EPUB to KEPUB on the fly when the Kobo downloads them. KEPUB gives the device accurate reading-position tracking.') }}
+            {% else %}
+                {{ _('kepubify converts EPUB to KEPUB on the fly, which gives the Kobo accurate reading-position tracking. Colophon will auto-download a pinned release on the first book download. If the download fails, books are served as raw EPUB (still readable, just less precise position tracking).') }}
+            {% endif %}
+        </p>
+        <div class="status-grid" style="display:grid; grid-template-columns: 160px 1fr; row-gap: 8px;">
+            {% if kepubify.available %}
+            <span class="status-label">{{ _('Binary') }}</span>
+            <span class="status-value"><code>{{ kepubify.path }}</code></span>
+            {% if kepubify.version %}
+            <span class="status-label">{{ _('Version') }}</span>
+            <span class="status-value"><code>{{ kepubify.version }}</code></span>
+            {% endif %}
+            {% endif %}
+            <span class="status-label">{{ _('Cache') }}</span>
+            <span class="status-value">
+                {{ cache.files }} {{ _('files') }} ·
+                {{ (cache.size_bytes / 1024 / 1024) | round(1) }} MB
+                {% if cache.cap_bytes %}/ {{ (cache.cap_bytes / 1024 / 1024) | int }} MB {{ _('cap') }}{% endif %}
+            </span>
+        </div>
+        {% if cache.files %}
+        <form method="post" action="{{ url_for('settings.kobo_clear_cache') }}" style="margin-top: 12px;"
+              onsubmit="return confirm({{ _('Clear the KEPUB cache? Files will be regenerated on next download.')|tojson }});">
+            <button type="submit" class="btn"><i class="ti ti-trash"></i> {{ _('Clear cache') }}</button>
+        </form>
+        {% endif %}
+    </div>
+
     <!-- ============ Setup guide ============ -->
     <div class="panel">
         <details class="howto">

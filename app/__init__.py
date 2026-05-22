@@ -22,6 +22,7 @@ from app.services.database import (
     ensure_ai_usage_log_table,
     ensure_app_settings_table,
     ensure_database_columns,
+    ensure_kobo_book_states_table,
     ensure_kobo_devices_table,
 )
 
@@ -117,6 +118,7 @@ def create_app():
         ensure_app_settings_table()
         ensure_ai_usage_log_table()
         ensure_kobo_devices_table()
+        ensure_kobo_book_states_table()
 
     app.register_blueprint(metadata_bp)
     app.register_blueprint(scan_bp)

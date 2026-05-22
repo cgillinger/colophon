@@ -200,6 +200,32 @@ def ensure_kobo_devices_table():
     db.session.commit()
 
 
+def ensure_kobo_book_states_table():
+    db.session.execute(text("""
+        CREATE TABLE IF NOT EXISTS kobo_book_states (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            device_id INTEGER NOT NULL,
+            library_item_id INTEGER NOT NULL,
+            last_synced_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            revision_id VARCHAR(64),
+            status VARCHAR(50),
+            current_bookmark TEXT,
+            statistics TEXT,
+            state_modified_at DATETIME,
+            UNIQUE (device_id, library_item_id)
+        )
+    """))
+    db.session.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_kobo_book_states_device_id "
+        "ON kobo_book_states (device_id)"
+    ))
+    db.session.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_kobo_book_states_library_item_id "
+        "ON kobo_book_states (library_item_id)"
+    ))
+    db.session.commit()
+
+
 def ensure_ai_usage_log_table():
     db.session.execute(text("""
         CREATE TABLE IF NOT EXISTS ai_usage_log (

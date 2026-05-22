@@ -84,3 +84,29 @@ class KoboDevice(db.Model):
     last_sync_at = db.Column(db.DateTime, nullable=True)
     sync_count = db.Column(db.Integer, default=0)
     revoked = db.Column(db.Boolean, default=False)
+
+
+class KoboBookState(db.Model):
+    """Per-device tracking of which LibraryItems a Kobo has been told about.
+
+    Phase 2 uses last_synced_at + revision_id for delta computation and
+    deletion detection. Phase 3 fills in the reading-state fields when
+    we start accepting PUT /v1/library/<id>/state from the device.
+    """
+    __tablename__ = "kobo_book_states"
+
+    id = db.Column(db.Integer, primary_key=True)
+    device_id = db.Column(db.Integer, db.ForeignKey("kobo_devices.id"), nullable=False, index=True)
+    library_item_id = db.Column(db.Integer, db.ForeignKey("library_items.id"), nullable=False, index=True)
+    last_synced_at = db.Column(db.DateTime, default=datetime.utcnow)
+    revision_id = db.Column(db.String(64), nullable=True)
+
+    # Phase 3 fields (populated by reading-state writes from the device):
+    status = db.Column(db.String(50), nullable=True)
+    current_bookmark = db.Column(db.Text, nullable=True)  # JSON blob
+    statistics = db.Column(db.Text, nullable=True)        # JSON blob
+    state_modified_at = db.Column(db.DateTime, nullable=True)
+
+    __table_args__ = (
+        db.UniqueConstraint("device_id", "library_item_id", name="uq_kobo_book_state_device_item"),
+    )

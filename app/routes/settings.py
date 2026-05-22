@@ -307,6 +307,8 @@ def test_api_connections():
 @settings_bp.route("/settings/kobo")
 def kobo_settings():
     from app.services.kobo_auth import list_devices
+    from app.services.kobo_kepub import cache_stats, kepubify_status
+
     devices = list_devices()
     new_token = request.args.get("new_token") or None
     new_name = request.args.get("new_name") or None
@@ -316,7 +318,17 @@ def kobo_settings():
         new_token=new_token,
         new_name=new_name,
         host_url=request.host_url.rstrip("/"),
+        kepubify=kepubify_status(),
+        cache=cache_stats(),
     )
+
+
+@settings_bp.route("/settings/kobo/clear-cache", methods=["POST"])
+def kobo_clear_cache():
+    from app.services.kobo_kepub import clear_cache
+    count = clear_cache()
+    flash(_("Cleared %(n)d cached KEPUB files.", n=count), "success")
+    return redirect(url_for("settings.kobo_settings"))
 
 
 @settings_bp.route("/settings/kobo/create", methods=["POST"])

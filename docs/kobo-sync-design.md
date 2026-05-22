@@ -1,6 +1,6 @@
 # Kobo Sync for Colophon — Design Document
 
-**Status:** Draft for review
+**Status:** Phase 1 + Phase 2 implemented; Phase 3 pending
 **Author:** Initial draft generated 2026-05-22
 **Goal:** Let a Kobo e-reader sync EPUB books wirelessly from Colophon as if Colophon were the Kobo store.
 

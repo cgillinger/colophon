@@ -70,15 +70,32 @@ def test_iso_format():
 
 @pytest.fixture
 def app(tmp_path, monkeypatch):
-    """Build a Flask app pointed at a temp SQLite file."""
-    monkeypatch.setenv("COLOPHON_DATA_DIR", str(tmp_path))
-    monkeypatch.setenv("COLOPHON_LIBRARY_DIR", str(tmp_path / "books"))
+    """Build a Flask app and wipe all rows that matter for these tests.
+
+    Config caches env vars at class-definition time, so the SQLite DB
+    path is fixed at the harness's launch env. We don't reuse rows
+    between tests — wiping is enough for the isolation we need.
+    """
     monkeypatch.setenv("COLOPHON_SECRET_KEY", "test-secret")
 
     from app import create_app
+    from app.models import KoboBookState, KoboDevice, LibraryItem, db
+    from sqlalchemy import text
+
     flask_app = create_app()
     flask_app.config["TESTING"] = True
+
+    def _wipe():
+        with flask_app.app_context():
+            # Order matters: KoboBookState FK -> kobo_devices + library_items
+            db.session.execute(text("DELETE FROM kobo_book_states"))
+            db.session.execute(text("DELETE FROM kobo_devices"))
+            db.session.execute(text("DELETE FROM library_items"))
+            db.session.commit()
+
+    _wipe()
     yield flask_app
+    _wipe()
 
 
 @pytest.fixture
@@ -183,6 +200,258 @@ def test_library_sync_returns_epubs(app, client):
     )
     # Headers the Kobo expects on a sync response
     assert "x-kobo-sync" in resp.headers
+    assert resp.headers["x-kobo-sync"] == "done"
+    assert resp.headers.get("x-kobo-synctoken")  # non-empty after Phase 2
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 — delta sync, pagination, deletion detection
+# ---------------------------------------------------------------------------
+
+def test_sync_token_roundtrip():
+    from datetime import datetime
+    from app.services.kobo_sync import SyncToken
+
+    original = SyncToken(since=datetime(2026, 5, 22, 10, 30, 45, 123000), page=3)
+    encoded = original.encode()
+    decoded = SyncToken.parse(encoded)
+    assert decoded.since == original.since
+    assert decoded.page == original.page
+
+
+def test_sync_token_handles_empty_and_garbage():
+    from app.services.kobo_sync import SyncToken
+    assert SyncToken.parse(None).since is None
+    assert SyncToken.parse("").since is None
+    assert SyncToken.parse("not-base64!!!").since is None
+    assert SyncToken.parse("Zm9vYmFy").since is None  # b64 but not our JSON
+
+
+def test_second_sync_returns_only_changed(app, client):
+    from datetime import datetime, timedelta
+    from app.models import LibraryItem, db
+    from app.services.kobo_auth import create_device
+
+    with app.app_context():
+        _, token = create_device("Delta test")
+        old_time = datetime.utcnow() - timedelta(days=10)
+        # Three books at different times
+        for i in range(3):
+            db.session.add(LibraryItem(
+                title=f"Book {i}",
+                file_path=f"/books/b{i}.epub",
+                file_name=f"b{i}.epub",
+                extension=".epub",
+                created_at=old_time,
+                updated_at=old_time,
+            ))
+        db.session.commit()
+
+    # First sync — gets all three
+    r1 = client.get(f"/kobo/{token}/v1/library/sync")
+    assert r1.status_code == 200
+    assert len(r1.get_json()) == 3
+    token1 = r1.headers["x-kobo-synctoken"]
+    assert token1
+
+    # Second sync with token — nothing new, returns empty
+    r2 = client.get(
+        f"/kobo/{token}/v1/library/sync",
+        headers={"x-kobo-synctoken": token1},
+    )
+    assert r2.status_code == 200
+    assert r2.get_json() == []
+
+
+def test_changed_book_appears_as_ChangedEntitlement(app, client):
+    from datetime import datetime
+    from app.models import LibraryItem, db
+    from app.services.kobo_auth import create_device
+
+    with app.app_context():
+        _, token = create_device("Change test")
+        item = LibraryItem(
+            title="Original",
+            file_path="/books/change.epub",
+            file_name="change.epub",
+            extension=".epub",
+        )
+        db.session.add(item)
+        db.session.commit()
+        item_id = item.id
+
+    # First sync — appears as NewEntitlement
+    r1 = client.get(f"/kobo/{token}/v1/library/sync")
+    token1 = r1.headers["x-kobo-synctoken"]
+    assert "NewEntitlement" in r1.get_json()[0]
+
+    # Modify and re-sync
+    with app.app_context():
+        item = LibraryItem.query.get(item_id)
+        item.title = "Updated"
+        item.updated_at = datetime.utcnow()
+        db.session.commit()
+
+    r2 = client.get(
+        f"/kobo/{token}/v1/library/sync",
+        headers={"x-kobo-synctoken": token1},
+    )
+    payload = r2.get_json()
+    assert len(payload) == 1
+    assert "ChangedEntitlement" in payload[0]
+    assert payload[0]["ChangedEntitlement"]["ChangedEntitlement"]["BookMetadata"]["Title"] == "Updated"
+
+
+def test_deleted_book_emits_DeletedEntitlement(app, client):
+    from app.models import LibraryItem, db
+    from app.services.kobo_auth import create_device
+
+    with app.app_context():
+        _, token = create_device("Delete test")
+        item = LibraryItem(
+            title="To Be Deleted",
+            file_path="/books/del.epub",
+            file_name="del.epub",
+            extension=".epub",
+        )
+        db.session.add(item)
+        db.session.commit()
+        item_id = item.id
+
+    r1 = client.get(f"/kobo/{token}/v1/library/sync")
+    token1 = r1.headers["x-kobo-synctoken"]
+    assert len(r1.get_json()) == 1
+
+    # Delete the book from Colophon
+    with app.app_context():
+        LibraryItem.query.filter_by(id=item_id).delete()
+        db.session.commit()
+
+    r2 = client.get(
+        f"/kobo/{token}/v1/library/sync",
+        headers={"x-kobo-synctoken": token1},
+    )
+    payload = r2.get_json()
+    assert len(payload) == 1
+    assert "DeletedEntitlement" in payload[0]
+
+    # And a third sync should not re-send the deletion
+    token2 = r2.headers["x-kobo-synctoken"]
+    r3 = client.get(
+        f"/kobo/{token}/v1/library/sync",
+        headers={"x-kobo-synctoken": token2},
+    )
+    assert r3.get_json() == []
+
+
+def test_sync_pagination(app, client, monkeypatch):
+    from app.models import LibraryItem, db
+    from app.services import kobo_sync
+    from app.services.kobo_auth import create_device
+
+    # Force tiny page size so we don't need to insert 200+ rows
+    monkeypatch.setattr(kobo_sync, "SYNC_PAGE_SIZE", 3)
+
+    with app.app_context():
+        _, token = create_device("Pagination test")
+        for i in range(7):
+            db.session.add(LibraryItem(
+                title=f"Book {i:02d}",
+                file_path=f"/books/p{i}.epub",
+                file_name=f"p{i}.epub",
+                extension=".epub",
+            ))
+        db.session.commit()
+
+    seen_titles = []
+    current_token = None
+    pages = 0
+    while True:
+        headers = {"x-kobo-synctoken": current_token} if current_token else {}
+        resp = client.get(f"/kobo/{token}/v1/library/sync", headers=headers)
+        pages += 1
+        for w in resp.get_json():
+            inner = w.get("NewEntitlement") or w.get("ChangedEntitlement")
+            if inner:
+                seen_titles.append(list(inner.values())[0]["BookMetadata"]["Title"])
+        if resp.headers["x-kobo-sync"] != "continue":
+            break
+        current_token = resp.headers["x-kobo-synctoken"]
+        assert pages < 10, "pagination did not terminate"
+
+    assert pages == 3  # 3 + 3 + 1
+    assert len(seen_titles) == 7
+    assert sorted(seen_titles) == [f"Book {i:02d}" for i in range(7)]
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 — kepubify wrapper (no actual binary needed for tests)
+# ---------------------------------------------------------------------------
+
+def test_kepubify_returns_none_when_unavailable(app, monkeypatch, tmp_path):
+    from app.services import kobo_kepub
+
+    monkeypatch.setattr(kobo_kepub, "resolve_kepubify_path", lambda **_: None)
+    monkeypatch.delenv("COLOPHON_KEPUBIFY_BIN", raising=False)
+
+    source = tmp_path / "fake.epub"
+    source.write_bytes(b"not a real epub")
+
+    with app.app_context():
+        result = kobo_kepub.convert_epub_to_kepub(99, str(source))
+    assert result is None
+
+
+def test_kepubify_uses_cache_on_second_call(app, monkeypatch, tmp_path):
+    from app.services import kobo_kepub
+
+    source = tmp_path / "book.epub"
+    source.write_bytes(b"PK\x03\x04 fake")
+
+    # Stub binary that just copies input to output
+    fake_bin = tmp_path / "fake-kepubify"
+    fake_bin.write_text(
+        "#!/bin/sh\ncp \"$3\" \"$2/$(basename $3 .epub).kepub.epub\"\n"
+    )
+    fake_bin.chmod(0o755)
+
+    monkeypatch.setattr(kobo_kepub, "resolve_kepubify_path", lambda **_: str(fake_bin))
+
+    with app.app_context():
+        first = kobo_kepub.convert_epub_to_kepub(7, str(source))
+        assert first is not None
+        assert first.endswith(".kepub.epub")
+        # Second call must return same path without re-running the binary
+        fake_bin.unlink()  # Remove it so a second conversion would fail
+        second = kobo_kepub.convert_epub_to_kepub(7, str(source))
+        assert second == first
+
+
+def test_book_download_falls_back_to_raw_when_kepubify_missing(app, client, tmp_path, monkeypatch):
+    from app.models import LibraryItem, db
+    from app.services import kobo_kepub
+    from app.services.kobo_auth import create_device
+
+    epub_path = tmp_path / "raw.epub"
+    epub_path.write_bytes(b"PK\x03\x04 raw epub content")
+
+    monkeypatch.setattr(kobo_kepub, "convert_epub_to_kepub", lambda *a, **kw: None)
+
+    with app.app_context():
+        _, token = create_device("Fallback test")
+        item = LibraryItem(
+            title="Raw",
+            file_path=str(epub_path),
+            file_name="raw.epub",
+            extension=".epub",
+        )
+        db.session.add(item)
+        db.session.commit()
+        item_id = item.id
+
+    resp = client.get(f"/kobo/{token}/v1/books/{item_id}/file/epub")
+    assert resp.status_code == 200
+    assert resp.data == b"PK\x03\x04 raw epub content"
 
 
 def test_library_sync_increments_sync_count(app, client):

@@ -32,6 +32,13 @@ from sqlalchemy import or_
 
 from app.models import LibraryItem
 from app.services.kobo_auth import find_device_by_token, touch_device
+from app.services.kobo_kepub import convert_epub_to_kepub
+from app.services.kobo_sync import (
+    SyncToken,
+    compute_delta,
+    forget_items,
+    record_sync,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -361,12 +368,43 @@ def _entitlement_dtos(item: LibraryItem, base_url: str, token: str) -> dict:
         },
     }
 
+    full = {
+        "BookEntitlement": book_entitlement,
+        "BookMetadata": book_metadata,
+        "ReadingState": reading_state,
+    }
+    return full
+
+
+def _new_entitlement_wrapper(item: LibraryItem, base_url: str, token: str) -> dict:
+    return {"NewEntitlement": {"NewEntitlement": _entitlement_dtos(item, base_url, token)}}
+
+
+def _changed_entitlement_wrapper(item: LibraryItem, base_url: str, token: str) -> dict:
     return {
-        "NewEntitlement": {
-            "NewEntitlement": {
-                "BookEntitlement": book_entitlement,
-                "BookMetadata": book_metadata,
-                "ReadingState": reading_state,
+        "ChangedEntitlement": {"ChangedEntitlement": _entitlement_dtos(item, base_url, token)}
+    }
+
+
+def _deleted_entitlement_wrapper(library_item_id: int) -> dict:
+    """The Kobo expects a minimal BookEntitlement for deletions."""
+    book_uuid = _book_uuid(library_item_id)
+    now = _iso(None)
+    return {
+        "DeletedEntitlement": {
+            "DeletedEntitlement": {
+                "Accessibility": "Full",
+                "ActivePeriod": {"From": now},
+                "Created": now,
+                "CrossRevisionId": book_uuid,
+                "Id": book_uuid,
+                "IsHiddenFromArchive": True,
+                "IsLocked": False,
+                "IsRemoved": True,
+                "LastModified": now,
+                "OriginCategory": "Imported",
+                "RevisionId": book_uuid,
+                "Status": "Active",
             }
         }
     }
@@ -384,22 +422,49 @@ def _series_number_float(value):
 @kobo_bp.route("/<token>/v1/library/sync")
 @require_device
 def library_sync(device):
-    """Phase 1: return every EPUB as a NewEntitlement on every sync.
-    No delta yet; the Kobo dedupes by RevisionId on the device side.
-    Phase 2 will introduce sync-token-based delta computation."""
+    """Phase 2: delta sync.
+
+    The Kobo sends back the ``x-kobo-synctoken`` we issued on the
+    previous response. We return only items whose ``updated_at`` is
+    newer, paginated at SYNC_PAGE_SIZE per request. Books that
+    disappeared from the library since the device last saw them are
+    sent as DeletedEntitlement on the first page of the run.
+    """
     touch_device(device, mark_sync=True)
 
     base_url = request.host_url.rstrip("/")
     token = _token_from_path()
 
-    items = _epub_items_query().all()
-    payload = [_entitlement_dtos(item, base_url, token) for item in items]
+    incoming = SyncToken.parse(request.headers.get("x-kobo-synctoken"))
+    # Read SYNC_PAGE_SIZE at request time (not at function-def time) so
+    # tests can monkeypatch it via the module attribute.
+    from app.services import kobo_sync as _kobo_sync
+    delta = compute_delta(
+        device.id, incoming, _epub_items_query, page_size=_kobo_sync.SYNC_PAGE_SIZE
+    )
 
-    logger.info("Kobo sync: device=%s items=%d", device.name, len(items))
+    payload = (
+        [_new_entitlement_wrapper(item, base_url, token) for item in delta.new_items]
+        + [_changed_entitlement_wrapper(item, base_url, token) for item in delta.changed_items]
+        + [_deleted_entitlement_wrapper(item_id) for item_id in delta.deleted_item_ids]
+    )
+
+    # Persist what we just sent so the next sync knows
+    record_sync(device.id, delta.new_items + delta.changed_items, _book_uuid)
+    forget_items(device.id, delta.deleted_item_ids)
+
+    logger.info(
+        "Kobo sync: device=%s new=%d changed=%d deleted=%d more=%s",
+        device.name,
+        len(delta.new_items),
+        len(delta.changed_items),
+        len(delta.deleted_item_ids),
+        delta.has_more,
+    )
 
     response = jsonify(payload)
-    response.headers["x-kobo-sync"] = "done"
-    response.headers["x-kobo-synctoken"] = ""  # Phase 2 fills this in
+    response.headers["x-kobo-sync"] = "continue" if delta.has_more else "done"
+    response.headers["x-kobo-synctoken"] = delta.next_token.encode()
     response.headers["x-kobo-apitoken"] = "e30="  # base64("{}") — placeholder
     return response
 
@@ -414,8 +479,8 @@ def library_metadata(device, book_id):
         return jsonify({"error": "not_found"}), 404
     base_url = request.host_url.rstrip("/")
     token = _token_from_path()
-    dto = _entitlement_dtos(item, base_url, token)
-    return jsonify([dto["NewEntitlement"]["NewEntitlement"]["BookMetadata"]])
+    full = _entitlement_dtos(item, base_url, token)
+    return jsonify([full["BookMetadata"]])
 
 
 # ---------------------------------------------------------------------------
@@ -425,19 +490,43 @@ def library_metadata(device, book_id):
 @kobo_bp.route("/<token>/v1/books/<int:book_id>/file/epub")
 @require_device
 def book_file(device, book_id):
-    """Phase 1: stream raw EPUB. Phase 2 adds kepubify conversion."""
+    """Stream the book to the Kobo, converted to KEPUB if kepubify
+    is available (better reading-position tracking on-device).
+    Falls back to raw EPUB if conversion is unavailable or fails."""
     item = LibraryItem.query.get(book_id)
     if item is None or not item.file_path:
         abort(404)
     if not os.path.exists(item.file_path):
         logger.warning("Kobo download: file missing on disk: %s", item.file_path)
         abort(404)
-    download_name = os.path.basename(item.file_path)
+
+    # Already a .kepub.epub? Serve as-is.
+    ext = (item.extension or "").lower()
+    if ext in (".kepub", ".kepub.epub"):
+        return send_file(
+            item.file_path,
+            mimetype="application/epub+zip",
+            as_attachment=True,
+            download_name=os.path.basename(item.file_path),
+        )
+
+    kepub_path = convert_epub_to_kepub(item.id, item.file_path)
+    if kepub_path and os.path.exists(kepub_path):
+        download_name = os.path.basename(item.file_path).rsplit(".", 1)[0] + ".kepub.epub"
+        return send_file(
+            kepub_path,
+            mimetype="application/epub+zip",
+            as_attachment=True,
+            download_name=download_name,
+        )
+
+    # Fallback: raw EPUB. The Kobo accepts it (position tracking degraded).
+    logger.info("Kobo download: kepubify unavailable, serving raw EPUB for book %d", item.id)
     return send_file(
         item.file_path,
         mimetype="application/epub+zip",
         as_attachment=True,
-        download_name=download_name,
+        download_name=os.path.basename(item.file_path),
     )
 
 
