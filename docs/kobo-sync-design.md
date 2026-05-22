@@ -349,22 +349,17 @@ No code path checks "am I in Docker?" — everything goes through these config v
 
 **Docker:** `tools/install_kepubify.sh` runs in the Dockerfile, downloads a pinned release from GitHub (we choose a version, e.g. `v4.5.1`), verifies the SHA-256, drops the binary in `/usr/local/bin/kepubify`.
 
-**Native:** documented in README under a new "Optional: Kobo sync" section.
+**Native:** zero manual install. On first request that needs conversion, if no kepubify is on `$PATH` and `COLOPHON_KEPUBIFY_BIN` is unset, Colophon downloads a pinned release from GitHub into `<DATA_DIR>/bin/kepubify`, verifies the SHA-256, and caches it. Subsequent requests reuse the cached binary. The user does nothing.
 
-```bash
-# macOS
-brew install pgaskin/kepubify/kepubify
+Detection order at startup:
+1. `COLOPHON_KEPUBIFY_BIN` if set → use it.
+2. `shutil.which("kepubify")` → use system binary if user already has one (brew, distro package).
+3. `<DATA_DIR>/bin/kepubify` if previously downloaded → use cached.
+4. Else: trigger one-time download (logged, blocking the first KEPUB request by a few seconds), then use it.
 
-# Linux — single static binary, no deps
-curl -L -o /usr/local/bin/kepubify \
-  https://github.com/pgaskin/kepubify/releases/latest/download/kepubify-linux-64bit
-chmod +x /usr/local/bin/kepubify
+If the download fails (offline install, blocked network), sync gracefully degrades to raw-EPUB streaming and the Kobo Sync settings page shows a banner with manual install hints. No GitHub repo hunting required for the default case.
 
-# Or via Go
-go install github.com/pgaskin/kepubify/v4/cmd/kepubify@latest
-```
-
-Same expectation as Calibre tools today: not bundled, must be on `$PATH` (or pointed to via env var). Sync gracefully degrades to raw-EPUB streaming if missing.
+The pinned version + per-platform SHA-256 checksums live in `app/services/kobo_kepub.py` as a constant. Bumping the version is a one-line change.
 
 ### Network binding
 

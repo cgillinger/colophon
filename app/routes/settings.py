@@ -298,3 +298,44 @@ def test_api_connections():
             results["openlibrary"] = {"ok": False, "error": "timeout"}
 
     return jsonify(results)
+
+
+# ---------------------------------------------------------------------------
+# Kobo sync settings
+# ---------------------------------------------------------------------------
+
+@settings_bp.route("/settings/kobo")
+def kobo_settings():
+    from app.services.kobo_auth import list_devices
+    devices = list_devices()
+    new_token = request.args.get("new_token") or None
+    new_name = request.args.get("new_name") or None
+    return render_template(
+        "settings_kobo.html",
+        devices=devices,
+        new_token=new_token,
+        new_name=new_name,
+        host_url=request.host_url.rstrip("/"),
+    )
+
+
+@settings_bp.route("/settings/kobo/create", methods=["POST"])
+def kobo_create_device():
+    from app.services.kobo_auth import create_device
+    name = (request.form.get("name") or "").strip() or "Kobo device"
+    device, token = create_device(name)
+    return redirect(url_for(
+        "settings.kobo_settings",
+        new_token=token,
+        new_name=device.name,
+    ))
+
+
+@settings_bp.route("/settings/kobo/revoke/<int:device_id>", methods=["POST"])
+def kobo_revoke_device(device_id):
+    from app.services.kobo_auth import revoke_device
+    if revoke_device(device_id):
+        flash(_("Device revoked."), "success")
+    else:
+        flash(_("Device not found."), "warning")
+    return redirect(url_for("settings.kobo_settings"))

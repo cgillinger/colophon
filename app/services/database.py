@@ -179,6 +179,27 @@ def ensure_app_settings_table():
     db.session.commit()
 
 
+def ensure_kobo_devices_table():
+    db.session.execute(text("""
+        CREATE TABLE IF NOT EXISTS kobo_devices (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name VARCHAR(200) NOT NULL,
+            api_key_hash VARCHAR(64) NOT NULL UNIQUE,
+            api_key_prefix VARCHAR(16) NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            last_seen_at DATETIME,
+            last_sync_at DATETIME,
+            sync_count INTEGER DEFAULT 0,
+            revoked BOOLEAN DEFAULT 0
+        )
+    """))
+    db.session.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_kobo_devices_api_key_hash "
+        "ON kobo_devices (api_key_hash)"
+    ))
+    db.session.commit()
+
+
 def ensure_ai_usage_log_table():
     db.session.execute(text("""
         CREATE TABLE IF NOT EXISTS ai_usage_log (

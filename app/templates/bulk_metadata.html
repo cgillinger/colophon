@@ -2619,6 +2619,9 @@
             <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="{{ _('Toggle theme') }}">
                 <i id="themeIcon" class="ti ti-sun"></i>
             </button>
+            <a class="topbar-btn icon-only" href="{{ url_for('settings.kobo_settings') }}" title="{{ _('Kobo sync') }}">
+                <i class="ti ti-device-tablet"></i>
+            </a>
             <a class="topbar-btn icon-only" href="{{ url_for('settings.api_settings') }}" title="{{ _('Settings') }}">
                 <i class="ti ti-settings"></i>
             </a>

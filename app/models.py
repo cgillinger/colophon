@@ -70,3 +70,17 @@ class LibraryItem(db.Model):
             return text[:450] + "..."
 
         return text
+
+
+class KoboDevice(db.Model):
+    __tablename__ = "kobo_devices"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    api_key_hash = db.Column(db.String(64), nullable=False, unique=True, index=True)
+    api_key_prefix = db.Column(db.String(16), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_seen_at = db.Column(db.DateTime, nullable=True)
+    last_sync_at = db.Column(db.DateTime, nullable=True)
+    sync_count = db.Column(db.Integer, default=0)
+    revoked = db.Column(db.Boolean, default=False)

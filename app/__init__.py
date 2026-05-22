@@ -14,10 +14,16 @@ from flask_session import Session
 from app.config import Config
 from app.models import db
 from app.paths import LOG_DIR
+from app.routes.kobo import kobo_bp
 from app.routes.metadata import metadata_bp
 from app.routes.scan import scan_bp
 from app.routes.settings import settings_bp
-from app.services.database import ensure_database_columns, ensure_ai_usage_log_table, ensure_app_settings_table
+from app.services.database import (
+    ensure_ai_usage_log_table,
+    ensure_app_settings_table,
+    ensure_database_columns,
+    ensure_kobo_devices_table,
+)
 
 SUPPORTED_LANGUAGES = ("en", "sv")
 
@@ -110,10 +116,12 @@ def create_app():
         ensure_database_columns()
         ensure_app_settings_table()
         ensure_ai_usage_log_table()
+        ensure_kobo_devices_table()
 
     app.register_blueprint(metadata_bp)
     app.register_blueprint(scan_bp)
     app.register_blueprint(settings_bp)
+    app.register_blueprint(kobo_bp)
 
     @app.after_request
     def no_cache_html(response):

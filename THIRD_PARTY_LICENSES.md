@@ -30,6 +30,18 @@
 | Goodreads Calibre plugin (optional) | GPL-3.0 | https://github.com/kiwidude68/calibre_plugins |
 | Fantastic Fiction Calibre plugin (optional) | GPL-3.0 | https://github.com/kiwidude68/calibre_plugins |
 | FictionDB Calibre plugin (optional) | GPL-3.0 | https://github.com/kiwidude68/calibre_plugins |
+| kepubify (optional, for Kobo sync) | MIT | https://github.com/pgaskin/kepubify |
+
+## Protocol references
+
+The Kobo sync endpoints in `app/routes/kobo.py` implement the wire
+protocol that a Kobo e-reader expects when its `api_endpoint` config is
+pointed at a self-hosted server. The protocol shape — endpoint paths,
+DTO field names, casing — was reconstructed by reading the Kotlin
+implementation in **Komga** (MIT, Copyright 2019 Gauthier Roebroeck,
+https://github.com/gotson/komga). No source code was copied; the
+Python implementation was written from scratch using Komga's DTOs as
+a reference for what the Kobo client requires.
 
 ## External APIs (require separate accounts and keys)
 
