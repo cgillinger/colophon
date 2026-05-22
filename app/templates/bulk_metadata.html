@@ -590,6 +590,14 @@
             background: var(--bg-tertiary);
             color: var(--text-primary);
         }
+        .btn.danger {
+            background: var(--accent-red, #dc3545);
+            color: #fff;
+            border: none;
+        }
+        .btn.danger:hover {
+            background: #b02a37;
+        }
         .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
         /* Compact settings row */
@@ -2871,6 +2879,10 @@
             </details>
         </div>
         <div class="modal-actions">
+            <button type="button" class="btn btn-sm danger" id="modalDeleteBtn"
+                    onclick="deleteBookFromModal()" title="{{ _('Delete book') }}">
+                <i class="ti ti-trash"></i> {{ _('Delete book') }}
+            </button>
             <button type="button" class="btn primary" id="modalFetchBtn" onclick="fetchMetadata()"><i class="ti ti-search"></i> {{ _('Fetch metadata') }}</button>
             <button type="button" class="btn ai-ghost" id="modalAiBtn" onclick="fetchAiMetadata()" style="display:none;"><i class="ti ti-sparkles"></i> {{ _('Ask AI') }}</button>
             <div class="spacer"></div>
@@ -3166,6 +3178,7 @@
         notImplemented: {{ _('not implemented')|tojson }},
         reviewViewFor: {{ _('Review view for:')|tojson }},
         connectionDropped: {{ _('Connection dropped.')|tojson }},
+        deleteBook: {{ _('Delete book')|tojson }},
     };
     /* -------------------------------------------------------------------- */
     /* Theme toggle                                                          */
@@ -6240,12 +6253,14 @@
     /* Book modal                                                            */
     /* -------------------------------------------------------------------- */
     var _modalItemId = null;
+    var _modalDirty = false;
     var _modalAllCandidates = [];
     var _coverUrlBase = '{{ url_for("metadata.cover_item", item_id=0) }}'.replace(/\/0$/, '');
     var _modalSSESource = null;
 
     function openBookModal(itemId) {
         _modalItemId = itemId;
+        _modalDirty = false;
         _modalAllCandidates = [];
         document.getElementById('bookModal').style.display = 'flex';
         var mp = document.getElementById('modalProgress');
@@ -7003,6 +7018,7 @@
                     return;
                 }
                 _updateTableRow(id, payload);
+                _modalDirty = true;
                 _updateUnsyncedPill(1);
                 setModalFeedback('success', _mt('saved'));
                 setTimeout(clearModalFeedback, 3000);
@@ -7130,6 +7146,23 @@
         }
         _setFetchingState(false);
         _setModalBusy(false);
+        if (_modalDirty) {
+            var scrollY = window.scrollY;
+
+            // Cache-bust the cover image for the edited book in the table
+            var row = document.querySelector('#bookTableBody tr[data-item-id="' + _modalItemId + '"]');
+            if (row) {
+                var img = row.querySelector('.cover img');
+                if (img) img.src = _coverUrlBase + '/' + _modalItemId + '?t=' + Date.now();
+            }
+
+            // Re-render grid view (it reads from the table DOM, which _updateTableRow already patched)
+            renderGroupedView();
+
+            // Restore scroll after grid re-render
+            requestAnimationFrame(function() { window.scrollTo(0, scrollY); });
+        }
+        _modalDirty = false;
         document.getElementById('bookModal').style.display = 'none';
         _modalItemId = null;
         var progressEl = document.getElementById('modalProgress');
@@ -7228,6 +7261,7 @@
             // Refresh thumbnail in the book list row
             var listImg = document.querySelector('tr[data-item-id="' + itemId + '"] .cover img');
             if (listImg) listImg.src = _coverUrlBase + '/' + itemId + '?t=' + Date.now();
+            _modalDirty = true;
             setModalFeedback('success', 'Omslag sparat' + (data.source ? ' (' + data.source + ')' : '') + '.');
             document.getElementById('modalCoverResults').style.display = 'none';
 
@@ -7258,6 +7292,63 @@
             var errMsg = 'Omslaget kunde inte sparas: ' + (err.message || 'nätverksfel');
             setModalFeedback('error', errMsg);
             console.error('[cover-apply]', errMsg, err);
+        });
+    }
+
+    function deleteBookFromModal() {
+        var id = _modalItemId;
+        if (!id) return;
+
+        var title = (document.getElementById('modalTitle').value || '').trim() || 'denna bok';
+
+        // Step 1: confirm delete
+        if (!confirm('Vill du verkligen radera "' + title + '" från biblioteket?')) return;
+
+        // Step 2: ask about file deletion
+        var deleteFile = false;
+        var fileAnswer = prompt(
+            'Vill du också radera filen från disk?\n\n'
+            + 'Skriv RADERA för att ta bort filen permanent.\n'
+            + 'Tryck OK eller Cancel för att bara ta bort från biblioteket.'
+        );
+        if (fileAnswer === 'RADERA' || fileAnswer === 'DELETE') deleteFile = true;
+
+        _setModalBusy(true);
+        setModalFeedback('info', 'Raderar...');
+
+        var formData = new FormData();
+        if (deleteFile) formData.append('delete_file', '1');
+
+        fetch('/metadata/' + id + '/delete', {
+            method: 'POST',
+            body: formData
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            _setModalBusy(false);
+            if (!data.ok) {
+                setModalFeedback('error', 'Radering misslyckades.');
+                return;
+            }
+
+            // Remove the row from the table
+            var row = document.querySelector('#bookTableBody tr[data-item-id="' + id + '"]');
+            if (row) row.remove();
+
+            // Re-render grid and close modal
+            renderGroupedView();
+
+            // Close modal without triggering the dirty-refresh (book is gone)
+            _modalDirty = false;
+            closeBookModal();
+
+            if (data.file_error) {
+                alert('Boken raderad från biblioteket, men filen kunde inte tas bort: ' + data.file_error);
+            }
+        })
+        .catch(function() {
+            _setModalBusy(false);
+            setModalFeedback('error', 'Radering misslyckades.');
         });
     }
 

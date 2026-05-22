@@ -2137,6 +2137,9 @@ msgstr "Hoppa över — inte duplikater"
 msgid "Delete file? This cannot be undone."
 msgstr "Radera filen? Detta kan inte ångras."
 
+msgid "Delete book"
+msgstr "Radera bok"
+
 msgid "Delete %(n)d files? This cannot be undone."
 msgstr "Radera %(n)d filer? Detta kan inte ångras."
 
