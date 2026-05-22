@@ -2226,3 +2226,55 @@ msgstr "Serievy"
 #: app/templates/bulk_metadata.html
 msgid "Standalone books"
 msgstr "Fristående böcker"
+
+#: app/templates/bulk_metadata.html
+msgid "Table"
+msgstr "Tabell"
+
+#: app/templates/bulk_metadata.html
+msgid "Shelf"
+msgstr "Hyllvy"
+
+#: app/templates/bulk_metadata.html
+msgid "Table view"
+msgstr "Tabellvy"
+
+#: app/templates/bulk_metadata.html
+msgid "Shelf view"
+msgstr "Hyllvy"
+
+#: app/templates/bulk_metadata.html
+msgid "Compact"
+msgstr "Kompakt"
+
+#: app/templates/bulk_metadata.html
+msgid "Airy"
+msgstr "Luftig"
+
+#: app/templates/bulk_metadata.html
+msgid "Group series"
+msgstr "Gruppera serier"
+
+#: app/templates/bulk_metadata.html
+msgid "Filter"
+msgstr "Filter"
+
+#: app/templates/bulk_metadata.html
+msgid "Actions"
+msgstr "Åtgärder"
+
+#: app/templates/bulk_metadata.html
+msgid "Sort series"
+msgstr "Sortera serier"
+
+#: app/templates/bulk_metadata.html
+msgid "A–Ö"
+msgstr "A–Ö"
+
+#: app/templates/bulk_metadata.html
+msgid "Most books"
+msgstr "Flest böcker"
+
+#: app/templates/bulk_metadata.html
+msgid "Hide single-book series"
+msgstr "Dölj serier med bara en bok"
