@@ -590,14 +590,6 @@
             background: var(--bg-tertiary);
             color: var(--text-primary);
         }
-        .btn.danger {
-            background: var(--accent-red, #dc3545);
-            color: #fff;
-            border: none;
-        }
-        .btn.danger:hover {
-            background: #b02a37;
-        }
         .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
         /* Compact settings row */
@@ -1529,6 +1521,24 @@
             z-index: 2;
         }
         .modal-close-x:hover { color: var(--text-primary); }
+        .modal-delete-x {
+            position: absolute;
+            top: 12px;
+            left: 14px;
+            background: none;
+            border: none;
+            font-size: 18px;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            padding: 4px 8px;
+            line-height: 1;
+            z-index: 2;
+            border-radius: 4px;
+        }
+        .modal-delete-x:hover {
+            color: var(--accent-red);
+            background: rgba(220, 53, 69, 0.08);
+        }
         .modal-feedback {
             padding: 10px 14px;
             border-radius: 5px;
@@ -2774,6 +2784,9 @@
 <!-- Book modal -->
 <div id="bookModal" style="display:none;">
     <div class="modal-box">
+        <button type="button" class="modal-delete-x" id="modalDeleteBtn" onclick="deleteBookFromModal()" title="{{ _('Delete book') }}">
+            <i class="ti ti-trash"></i>
+        </button>
         <button type="button" class="modal-close-x" onclick="closeBookModal()" title="{{ _('Close') }}">&times;</button>
         <div id="modalFeedback" class="modal-feedback" style="display:none;"></div>
         <div class="modal-grid">
@@ -2806,6 +2819,12 @@
                         <label for="modalSeriesIndex">{{ _('Part') }}</label>
                         <input type="text" id="modalSeriesIndex" class="modal-input">
                     </div>
+                </div>
+                <div style="margin-top:-4px; margin-bottom:4px;">
+                    <button type="button" class="btn btn-sm ai-ghost" id="modalFindSeriesBtn"
+                            onclick="findSeriesAi()" title="{{ _('Find series with AI') }}" style="display:none;">
+                        <i class="ti ti-books"></i> {{ _('Find series') }}
+                    </button>
                 </div>
                 <div class="modal-field">
                     <label for="modalIsbn">{{ _('ISBN') }}</label>
@@ -2862,27 +2881,7 @@
                 <a href="#" onclick="toggleModalFields(false);return false;" style="color:var(--text-secondary);">{{ _('None') }}</a>
             </div>
         </div>
-        <div style="margin-top:10px; padding:10px; background:var(--bg-secondary); border-radius:6px; font-size:12px;">
-            <details id="smartReplaceDetails">
-                <summary style="cursor:pointer; font-weight:500; user-select:none; position:relative; z-index:2;">
-                    <i class="ti ti-adjustments-horizontal" style="font-size:13px;"></i> {{ _('Smart replace') }}
-                </summary>
-                <div style="margin-top:8px; display:flex; flex-direction:column; gap:4px;">
-                    <label class="field-check"><input type="checkbox" class="modal-smart" value="title"> {{ _('Title — strip series/marketing in parentheses') }}</label>
-                    <label class="field-check"><input type="checkbox" class="modal-smart" value="author" checked> {{ _('Author — remove [Lastname, Firstname]') }}</label>
-                    <label class="field-check"><input type="checkbox" class="modal-smart" value="isbn"> {{ _('ISBN — replace if fetched is ISBN-13') }}</label>
-                    <label class="field-check"><input type="checkbox" class="modal-smart" value="publisher"> {{ _('Publisher — replace if existing = author name') }}</label>
-                    <label class="field-check"><input type="checkbox" class="modal-smart" value="genres"> {{ _('Genre — replace if fetched has more genres') }}</label>
-                    <label class="field-check"><input type="checkbox" class="modal-smart" value="published_date" checked> {{ _('Publication date — replace if fetched is more precise') }}</label>
-                    <label class="field-check"><input type="checkbox" class="modal-smart" value="description" checked> {{ _('Synopsis — replace if fetched is 50%% longer') }}</label>
-                </div>
-            </details>
-        </div>
         <div class="modal-actions">
-            <button type="button" class="btn btn-sm danger" id="modalDeleteBtn"
-                    onclick="deleteBookFromModal()" title="{{ _('Delete book') }}">
-                <i class="ti ti-trash"></i> {{ _('Delete book') }}
-            </button>
             <button type="button" class="btn primary" id="modalFetchBtn" onclick="fetchMetadata()"><i class="ti ti-search"></i> {{ _('Fetch metadata') }}</button>
             <button type="button" class="btn ai-ghost" id="modalAiBtn" onclick="fetchAiMetadata()" style="display:none;"><i class="ti ti-sparkles"></i> {{ _('Ask AI') }}</button>
             <div class="spacer"></div>
@@ -3178,7 +3177,6 @@
         notImplemented: {{ _('not implemented')|tojson }},
         reviewViewFor: {{ _('Review view for:')|tojson }},
         connectionDropped: {{ _('Connection dropped.')|tojson }},
-        deleteBook: {{ _('Delete book')|tojson }},
     };
     /* -------------------------------------------------------------------- */
     /* Theme toggle                                                          */
@@ -6266,10 +6264,6 @@
         var mp = document.getElementById('modalProgress');
         if (mp) { mp.innerHTML = ''; mp.style.display = 'none'; }
         window._modalSourceDetails = {};
-        // Collapse smart-replace and clear its checkboxes on each open
-        var details = document.getElementById('smartReplaceDetails');
-        if (details) details.open = false;
-        document.querySelectorAll('.modal-smart').forEach(function(cb) { cb.checked = false; });
         var closeBtn = document.getElementById('modalCloseBtn');
         if (closeBtn) closeBtn.textContent = _mt('close');
         var saveBtn = document.getElementById('modalSaveBtn');
@@ -6310,6 +6304,8 @@
         document.getElementById('modalDescription').value   = data.description    || '';
 
         document.getElementById('modalAiBtn').style.display = data.ai_configured ? 'inline-flex' : 'none';
+        var findSeriesBtn = document.getElementById('modalFindSeriesBtn');
+        if (findSeriesBtn) findSeriesBtn.style.display = data.ai_configured ? '' : 'none';
     }
 
     function _getSelectedFields() {
@@ -6318,8 +6314,7 @@
     }
 
     function _getModalSmartReplace() {
-        return Array.from(document.querySelectorAll('.modal-smart:checked'))
-            .map(function(cb) { return cb.value; });
+        return ['title', 'author', 'isbn', 'publisher', 'genres', 'published_date', 'description'];
     }
 
     function toggleModalFields(checked) {
@@ -6537,7 +6532,17 @@
             selectField: 'Välj minst ett fält.',
             saveBtnSaving: 'Sparar...',
             saveBtnSuccess: '✓ Sparat!',
-            saveBtnError: '✗ Misslyckades'
+            saveBtnError: '✗ Misslyckades',
+            confirmDeleteBook: 'Vill du verkligen radera "{title}" från biblioteket?',
+            confirmDeleteFile: 'Vill du också radera filen från disk?\n\nSkriv RADERA för att ta bort filen permanent.\nTryck OK/Cancel för att bara ta bort från biblioteket.',
+            deleting: 'Raderar…',
+            deleteFailed: 'Radering misslyckades.',
+            deleteFileError: 'Boken raderad från biblioteket, men filen kunde inte tas bort: {error}',
+            searching: 'Söker…',
+            seriesLabel: 'Serie',
+            aiNoSeries: 'AI hittade ingen serieinformation.',
+            aiSeriesFound: '🤖 AI-förslag:',
+            fetchFailed: 'Hämtning misslyckades.'
         },
         en: {
             fetchBtn: '<i class="ti ti-search"></i> Fetch metadata',
@@ -6553,7 +6558,17 @@
             selectField: 'Select at least one field.',
             saveBtnSaving: 'Saving...',
             saveBtnSuccess: '✓ Saved!',
-            saveBtnError: '✗ Failed'
+            saveBtnError: '✗ Failed',
+            confirmDeleteBook: 'Delete "{title}" from library?',
+            confirmDeleteFile: 'Also delete the file from disk?\n\nType DELETE to permanently remove the file.\nPress OK/Cancel to only remove from library.',
+            deleting: 'Deleting…',
+            deleteFailed: 'Delete failed.',
+            deleteFileError: 'Book removed from library, but the file could not be deleted: {error}',
+            searching: 'Searching…',
+            seriesLabel: 'Series',
+            aiNoSeries: 'AI found no series information.',
+            aiSeriesFound: '🤖 AI suggestion:',
+            fetchFailed: 'Fetch failed.'
         }
     };
     function _mt(key) {
@@ -7295,26 +7310,86 @@
         });
     }
 
+    function findSeriesAi() {
+        var id = _modalItemId;
+        if (!id) return;
+
+        var btn = document.getElementById('modalFindSeriesBtn');
+        var origHTML = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite;"></i> ' + _mt('searching');
+
+        var currentValues = {
+            title: document.getElementById('modalTitle').value.trim(),
+            author: document.getElementById('modalAuthor').value.trim(),
+            series: document.getElementById('modalSeries').value.trim(),
+            series_index: document.getElementById('modalSeriesIndex').value.trim(),
+            isbn: document.getElementById('modalIsbn').value.trim(),
+            publisher: document.getElementById('modalPublisher').value.trim(),
+            language: document.getElementById('modalLanguage').value.trim(),
+            description: document.getElementById('modalDescription').value.trim()
+        };
+
+        fetch('/metadata/' + id + '/ai-json?fields=series,series_index', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ current_values: currentValues })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            btn.disabled = false;
+            btn.innerHTML = origHTML;
+
+            if (!data.ok) {
+                var errKey = 'ai' + data.error.charAt(0).toUpperCase() + data.error.slice(1);
+                setModalFeedback('error', _i18n[errKey] || _mt('fetchFailed'));
+                return;
+            }
+
+            var s = data.suggestions || {};
+            var applied = [];
+
+            if (s.series && s.series.value) {
+                document.getElementById('modalSeries').value = s.series.value;
+                applied.push(_mt('seriesLabel') + ': ' + s.series.value);
+            }
+            if (s.series_index && s.series_index.value) {
+                document.getElementById('modalSeriesIndex').value = s.series_index.value;
+                applied.push('#' + s.series_index.value);
+            }
+
+            if (applied.length === 0) {
+                setModalFeedback('info', _mt('aiNoSeries'));
+                return;
+            }
+
+            var reason = (s.series && s.series.reason) || '';
+            var msg = _mt('aiSeriesFound') + ' ' + applied.join(', ');
+            if (reason) msg += ' — ' + reason;
+            setModalFeedback('success', msg);
+            setTimeout(clearModalFeedback, 6000);
+        })
+        .catch(function() {
+            btn.disabled = false;
+            btn.innerHTML = origHTML;
+            setModalFeedback('error', _mt('fetchFailed'));
+        });
+    }
+
     function deleteBookFromModal() {
         var id = _modalItemId;
         if (!id) return;
 
         var title = (document.getElementById('modalTitle').value || '').trim() || 'denna bok';
 
-        // Step 1: confirm delete
-        if (!confirm('Vill du verkligen radera "' + title + '" från biblioteket?')) return;
+        if (!confirm(_mt('confirmDeleteBook').replace('{title}', title))) return;
 
-        // Step 2: ask about file deletion
         var deleteFile = false;
-        var fileAnswer = prompt(
-            'Vill du också radera filen från disk?\n\n'
-            + 'Skriv RADERA för att ta bort filen permanent.\n'
-            + 'Tryck OK eller Cancel för att bara ta bort från biblioteket.'
-        );
+        var fileAnswer = prompt(_mt('confirmDeleteFile'));
         if (fileAnswer === 'RADERA' || fileAnswer === 'DELETE') deleteFile = true;
 
         _setModalBusy(true);
-        setModalFeedback('info', 'Raderar...');
+        setModalFeedback('info', _mt('deleting'));
 
         var formData = new FormData();
         if (deleteFile) formData.append('delete_file', '1');
@@ -7327,28 +7402,28 @@
         .then(function(data) {
             _setModalBusy(false);
             if (!data.ok) {
-                setModalFeedback('error', 'Radering misslyckades.');
+                setModalFeedback('error', _mt('deleteFailed'));
                 return;
             }
 
-            // Remove the row from the table
+            // Remove row from table DOM
             var row = document.querySelector('#bookTableBody tr[data-item-id="' + id + '"]');
             if (row) row.remove();
 
-            // Re-render grid and close modal
+            // Re-render grid
             renderGroupedView();
 
-            // Close modal without triggering the dirty-refresh (book is gone)
+            // Close without triggering dirty-refresh (book is gone)
             _modalDirty = false;
             closeBookModal();
 
             if (data.file_error) {
-                alert('Boken raderad från biblioteket, men filen kunde inte tas bort: ' + data.file_error);
+                alert(_mt('deleteFileError').replace('{error}', data.file_error));
             }
         })
         .catch(function() {
             _setModalBusy(false);
-            setModalFeedback('error', 'Radering misslyckades.');
+            setModalFeedback('error', _mt('deleteFailed'));
         });
     }
 
