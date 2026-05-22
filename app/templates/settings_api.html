@@ -382,6 +382,24 @@
         .test-row .status.ok { color: var(--accent-green); font-weight: 600; }
         .test-row .status.fail { color: var(--accent-red); font-weight: 600; }
         .test-row .status.skip { color: var(--text-tertiary); }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: 160px 1fr;
+            row-gap: 10px;
+            column-gap: 16px;
+            align-items: baseline;
+        }
+        .status-label { color: var(--text-secondary); font-size: 14px; }
+        .status-value { color: var(--text-primary); font-size: 15px; }
+        .status-value code {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 13px;
+        }
     </style>
 </head>
 <body>
@@ -429,6 +447,24 @@
             </div>
         {% endif %}
     {% endwith %}
+
+    <!-- ============ Library paths ============ -->
+    <h2>{{ _('Library') }}</h2>
+    <div class="panel">
+        <div class="status-grid">
+            <span class="status-label">{{ _('Path (container)') }}</span>
+            <span class="status-value"><code>{{ library_container_path }}</code></span>
+            {% if library_host_path %}
+                <span class="status-label">{{ _('Path (host)') }}</span>
+                <span class="status-value"><code>{{ library_host_path }}</code></span>
+            {% endif %}
+        </div>
+        {% if not library_host_path %}
+            <div class="hint" style="margin-top:12px;">
+                {{ _('To display the physical host path, set COLOPHON_LIBRARY_HOST in your .env file.') }}
+            </div>
+        {% endif %}
+    </div>
 
     <form method="post" action="{{ url_for('settings.api_settings') }}" autocomplete="off">
 
