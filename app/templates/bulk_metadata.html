@@ -2573,13 +2573,16 @@
         .grid-card-checkbox {
             position: absolute;
             top: 6px;
-            left: 6px;
+            right: 6px;
             width: 20px;
             height: 20px;
             cursor: pointer;
             opacity: 0;
             transition: opacity 0.15s;
-            z-index: 2;
+            /* Above the Finished ✓ badge (z-index 3) so it wins on hover.
+               The progress bar at the bottom of the cover still signals
+               Finished state visually while the user is selecting. */
+            z-index: 4;
             accent-color: var(--accent-primary);
         }
         .grid-card:hover .grid-card-checkbox,
@@ -3152,6 +3155,23 @@
             <button type="button" class="modal-close-x" onclick="closeBookModal()" title="{{ _('Close') }}">&times;</button>
         </div>
         <div id="modalFeedback" class="modal-feedback" style="display:none;"></div>
+        <div id="modalReadingState" class="reading-state-box" style="display:none;">
+            <div class="rs-row">
+                <strong>{{ _('Reading state') }}</strong>
+                <span id="modalReadStatusBadge" class="reading-state-badge"></span>
+                <div class="rs-bar"><span class="fill" id="modalReadFill" style="width:0%"></span></div>
+                <span id="modalReadPercent" style="font-variant-numeric: tabular-nums; min-width:42px; text-align:right;">—</span>
+            </div>
+            <div class="rs-row" id="modalReadDates"></div>
+            <div class="rs-actions">
+                <button type="button" class="btn btn-sm outline" id="modalMarkReadBtn" onclick="markReadManually()">
+                    <i class="ti ti-check"></i> {{ _('Mark as read manually') }}
+                </button>
+                <button type="button" class="btn btn-sm ghost" id="modalResetReadBtn" onclick="resetReadingState()">
+                    <i class="ti ti-refresh"></i> {{ _('Reset reading state') }}
+                </button>
+            </div>
+        </div>
         <div class="modal-grid">
             <div>
                 <div id="modalCover" class="modal-cover">📖</div>
@@ -3226,23 +3246,6 @@
             </div>
         </div>
         <div id="modalProgress" style="display:none; margin:12px 0;"></div>
-        <div id="modalReadingState" class="reading-state-box" style="display:none;">
-            <div class="rs-row">
-                <strong>{{ _('Reading state') }}</strong>
-                <span id="modalReadStatusBadge" class="reading-state-badge"></span>
-                <div class="rs-bar"><span class="fill" id="modalReadFill" style="width:0%"></span></div>
-                <span id="modalReadPercent" style="font-variant-numeric: tabular-nums; min-width:42px; text-align:right;">—</span>
-            </div>
-            <div class="rs-row" id="modalReadDates"></div>
-            <div class="rs-actions">
-                <button type="button" class="btn btn-sm outline" id="modalMarkReadBtn" onclick="markReadManually()">
-                    <i class="ti ti-check"></i> {{ _('Mark as read manually') }}
-                </button>
-                <button type="button" class="btn btn-sm ghost" id="modalResetReadBtn" onclick="resetReadingState()">
-                    <i class="ti ti-refresh"></i> {{ _('Reset reading state') }}
-                </button>
-            </div>
-        </div>
         <div style="margin-top:14px; padding-top:14px; border-top:0.5px solid var(--border-light);">
             <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;">{{ _('Fetch/update:') }}</div>
             <div style="display:flex; flex-wrap:wrap; gap:6px;">

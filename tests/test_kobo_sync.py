@@ -595,6 +595,69 @@ def test_state_put_records_progress(app, client):
         assert item.times_started == 1
 
 
+def test_state_put_accepts_reading_states_array_shape(app, client):
+    """Real Kobo firmware wraps state in {"ReadingStates":[{...}]}, not
+    flat. Without unwrapping, every field reads as None and the row
+    stays ReadyToRead even when the device reports active reading."""
+    from app.models import LibraryItem
+
+    with app.app_context():
+        token, item_id, book_uuid = _make_book("Wrapped book")
+
+    resp = client.put(
+        f"/kobo/{token}/v1/library/{book_uuid}/state",
+        json={
+            "ReadingStates": [
+                {
+                    "StatusInfo": {
+                        "Status": "Reading",
+                        "LastModified": "2026-05-23T10:00:00.000Z",
+                    },
+                    "CurrentBookmark": {
+                        "ProgressPercent": 55.0,
+                        "Location": {"Value": "epubcfi(/6/12)", "Type": "KoboSpan"},
+                        "LastModified": "2026-05-23T10:00:00.000Z",
+                    },
+                    "LastModified": "2026-05-23T10:00:00.000Z",
+                }
+            ]
+        },
+    )
+    assert resp.status_code == 200
+
+    with app.app_context():
+        item = LibraryItem.query.get(item_id)
+        assert item.read_status == "Reading"
+        assert item.read_progress == 55.0
+        assert item.read_location == "epubcfi(/6/12)"
+
+
+def test_state_get_returns_saved_dto(app, client):
+    """GET /state must return the saved DTO wrapped in ReadingStates.
+    A `{}` response (the old catch-all behaviour) lets the device
+    overwrite our state with its local ReadyToRead default."""
+    from datetime import datetime
+    from app.models import LibraryItem, db
+
+    with app.app_context():
+        token, item_id, book_uuid = _make_book("Get state book")
+        item = LibraryItem.query.get(item_id)
+        item.read_status = "Reading"
+        item.read_progress = 42.0
+        item.read_location = "epubcfi(/6/8)"
+        item.read_last_modified = datetime(2026, 5, 23, 12, 0, 0)
+        db.session.commit()
+
+    resp = client.get(f"/kobo/{token}/v1/library/{book_uuid}/state")
+    assert resp.status_code == 200
+    payload = resp.get_json()
+    assert "ReadingStates" in payload
+    state = payload["ReadingStates"][0]
+    assert state["StatusInfo"]["Status"] == "Reading"
+    assert state["CurrentBookmark"]["ProgressPercent"] == 42.0
+    assert state["CurrentBookmark"]["Location"]["Value"] == "epubcfi(/6/8)"
+
+
 def test_state_put_older_timestamp_is_ignored(app, client):
     from datetime import datetime
     from app.models import LibraryItem, db
