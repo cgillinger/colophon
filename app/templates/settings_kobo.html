@@ -321,15 +321,77 @@
                 <ol>
                     <li>{{ _('Generate a URL above and copy it.') }}</li>
                     <li>{{ _('Connect your Kobo to a computer via USB. A KOBOeReader drive appears.') }}</li>
-                    <li>{{ _('Open the file .kobo/Kobo/Kobo eReader.conf on the device in a text editor.') }}</li>
+                    <li>{{ _('Open the file .kobo/Kobo/Kobo eReader.conf on the device in a text editor.') }}
+                        <br><span style="color:var(--text-tertiary); font-size:13px;">{{ _('Optional but recommended: copy the file to Kobo eReader.conf.bak first as a backup.') }}</span></li>
                     <li>{{ _('Find the [OneStoreServices] section. Replace the api_endpoint= line with:') }}<br>
-                        <code>api_endpoint={{ host_url }}/kobo/&lt;your-url-key&gt;</code></li>
+                        <code>api_endpoint={{ host_url }}/kobo/&lt;your-url-key&gt;</code>
+                        <br><span style="color:var(--text-tertiary); font-size:13px;">{{ _('If the file has image_host, image_url_template, or image_url_quality_template lines, delete them. Stale values from a previous setup can override the new ones until you reboot the device.') }}</span></li>
                     <li>{{ _('Save the file and safely eject the Kobo.') }}</li>
-                    <li>{{ _('On the Kobo: Settings → Sync now. Books from Colophon should appear in your Library.') }}</li>
+                    <li>{{ _('On the Kobo: Settings → Sync now. Books from Colophon appear in your Library.') }}
+                        <br><span style="color:var(--text-tertiary); font-size:13px;">{{ _('First sync of a large library can take a few minutes — covers and books arrive in batches. Keep the device awake until the Devices table above shows the sync count incrementing.') }}</span></li>
                 </ol>
                 <p style="margin-top: 14px;">
-                    {{ _('To undo, restore the original api_endpoint (a backup is saved as Kobo eReader.conf.bak by some firmware versions, otherwise the default is https://storeapi.kobo.com).') }}
+                    {{ _('To undo: restore api_endpoint=https://storeapi.kobo.com in the .conf file and sync again. The device returns to the official Kobo store.') }}
                 </p>
+            </div>
+        </details>
+    </div>
+
+    <!-- ============ What syncs ============ -->
+    <div class="panel">
+        <details class="howto">
+            <summary>{{ _('What syncs (and what does not)') }}</summary>
+            <div class="howto-body">
+                <p style="margin-top: 0;">{{ _('Colophon implements the parts of the Kobo OneStore protocol that matter for a personal library. Some things the device tries to do still go to Kobo&rsquo;s real servers (and fail silently), or are not implemented yet.') }}</p>
+                <ul style="padding-left: 22px; margin: 0;">
+                    <li>&#10003; {{ _('EPUB and KEPUB books — sent automatically. Other formats (MOBI, AZW3, PDF) stay in your Colophon library but are not shipped to the Kobo.') }}</li>
+                    <li>&#10003; {{ _('Cover images, title, author, series, ISBN, publisher, language, genre, publication date, synopsis.') }}</li>
+                    <li>&#10003; {{ _('Reading progress in both directions — see below.') }}</li>
+                    <li>&#9888; {{ _('The Kobo&rsquo;s built-in series view is empty for Colophon books. Use Colophon&rsquo;s series view in the library instead.') }}</li>
+                    <li>&#9888; {{ _('Store browsing, recommendations, wishlist, audiobooks, subscriptions — these UI areas on the Kobo do nothing useful while pointed at Colophon.') }}</li>
+                </ul>
+            </div>
+        </details>
+    </div>
+
+    <!-- ============ Reading state ============ -->
+    <div class="panel">
+        <details class="howto">
+            <summary>{{ _('Reading progress sync') }}</summary>
+            <div class="howto-body">
+                <p style="margin-top: 0;">{{ _('Phase 3 keeps reading state in sync between Colophon and every connected Kobo. Status is one of: Unread, Reading, Finished.') }}</p>
+                <ul style="padding-left: 22px; margin: 0;">
+                    <li>{{ _('Read a book on the Kobo → progress lands in Colophon on the next Sync now. Refresh the library page to see the updated bar in shelf view.') }}</li>
+                    <li>{{ _('Open any book in Colophon → the Reading state box at the top of the modal shows status, percent, started/finished dates.') }}</li>
+                    <li>{{ _('Mark as read manually on a book → next Sync now on the Kobo flips it to Finished there as well.') }}</li>
+                    <li>{{ _('Reset reading state on a book → clears it back to Unread everywhere, useful if a sync got stuck or you want to re-read.') }}</li>
+                    <li>{{ _('Status is monotonic — once a book is Finished it stays Finished, even if a device later reports it as Reading. Use Reset to override deliberately.') }}</li>
+                    <li>{{ _('Pair a second Kobo and it inherits all reading state on first sync — no per-device merge step.') }}</li>
+                </ul>
+                <p style="margin-top: 10px;">{{ _('The All / Unread / Reading / Finished tabs at the top of the library let you filter on status.') }}</p>
+            </div>
+        </details>
+    </div>
+
+    <!-- ============ Troubleshooting ============ -->
+    <div class="panel">
+        <details class="howto">
+            <summary>{{ _('Troubleshooting') }}</summary>
+            <div class="howto-body">
+                <p style="margin-top: 0;"><strong>{{ _('Sync runs but no books appear on the Kobo.') }}</strong><br>
+                    {{ _('Confirm the Devices table above shows the sync count incrementing after you press Sync now. If it does, the Kobo received data but is filtering it — check that the books in Colophon are EPUB or KEPUB. If the count does not increment, the .conf api_endpoint is wrong or the device cannot reach Colophon on the network.') }}</p>
+
+                <p><strong>{{ _('Books appear but covers stay blank.') }}</strong><br>
+                    {{ _('This is almost always a wrong base URL in the configuration: the Kobo strips the port from the Host header on some firmware, so cover URLs end up pointing at port 80. Make sure the COLOPHON_PUBLIC_URL environment variable on the server includes the port (e.g. http://192.168.1.100:5055). Restart Colophon, then on the Kobo: edit the .conf, delete any image_host/image_url_template lines, save, sync.') }}</p>
+
+                <p><strong>{{ _('The Kobo was previously paired with Komga or Calibre-Web.') }}</strong><br>
+                    {{ _('Old entitlements live in the device&rsquo;s KoboReader.sqlite. They appear alongside Colophon books and will 404 when opened. To fully clean up: connect via USB, delete .kobo/KoboReader.sqlite, and let the device run its first-boot setup again (you will need to re-sign in to a Kobo account). Less drastic: ignore the broken entries.') }}</p>
+
+                <p><strong>{{ _('Reading progress from the Kobo never updates in Colophon.') }}</strong><br>
+                    {{ _('Make sure you press Sync now (or close the book) on the Kobo — state is pushed in sync windows, not on every page turn. If still nothing arrives, check docker logs for a line like &quot;Kobo state PUT: book_id=...&quot; — its absence means the device is not sending state at all (rare; usually a stuck local cache that resolves after a device restart).') }}</p>
+
+                <p style="margin-bottom: 0;"><strong>{{ _('Start over from scratch.') }}</strong><br>
+                    {{ _('Restore api_endpoint=https://storeapi.kobo.com in the .conf, sync, then come back and edit it again. The Devices table here can be used to revoke an old URL key if you generated a fresh one.') }}</p>
             </div>
         </details>
     </div>
