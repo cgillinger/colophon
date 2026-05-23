@@ -127,7 +127,8 @@
             +        '<span class="grid-card-placeholder-title">' + _esc(title) + '</span>'
             +        '<span class="grid-card-placeholder-author">' + _esc(author) + '</span>'
             +      '</div>'
-            +      '<input type="checkbox" class="grid-card-checkbox" value="' + _esc(value) + '"' + checked + '>'
+            +      '<input type="checkbox" class="grid-card-checkbox" value="' + _esc(value) + '"' + checked
+            +        ' onclick="event.stopPropagation();">'
             +      badgeHtml
             +      readHtml
             +    '</div>'
