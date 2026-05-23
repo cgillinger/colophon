@@ -2,49 +2,50 @@
 
 [![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![SQLite](https://img.shields.io/badge/SQLite-3-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.0.0-brightgreen)](https://github.com/cgillinger/colophon/releases) [![i18n](https://img.shields.io/badge/i18n-EN%20%7C%20SV-yellow)](#-internationalisation) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#-kobo-wireless-sync) [![Self-hosted](https://img.shields.io/badge/self--hosted-✓-blueviolet)](#) [![GitHub stars](https://img.shields.io/github/stars/cgillinger/colophon?style=social)](https://github.com/cgillinger/colophon/stargazers) [![Last commit](https://img.shields.io/github/last-commit/cgillinger/colophon)](https://github.com/cgillinger/colophon/commits/main)
 
-Colophon is a **self-hosted e-book metadata manager** for home libraries. Drop your EPUBs (and MOBI, AZW3, KEPUB, PDF, CBZ, CBR) into a folder and Colophon will scan them, fetch fresh metadata from Google Books and Calibre, identify book series with AI, pick the best cover art from five free sources, and let a Kobo e-reader sync the result wirelessly as if it were the Kobo store.
+Colophon is a personal project — a **self-hosted e-book metadata manager** I built to keep my own home library in order. It scans a folder of e-book files (EPUB, MOBI, AZW3, KEPUB, PDF, CBZ, CBR), fetches cleaner metadata from Google Books and Calibre, uses AI to figure out which books belong to which series, finds nicer cover art from a few free sources, and lets a Kobo sync the whole catalogue wirelessly.
 
-Built for home use. Plays nicely with **Komga**, **Kavita**, **Bookstation**, and any other server that reads embedded metadata from e-book files. Self-hosted, MIT-licensed, no telemetry, runs in a single Docker container.
+If your library looks roughly like mine, you might find it useful too. It plays nicely with Komga, Kavita, Bookstation and other servers that read embedded metadata from e-book files. Self-hosted, MIT-licensed, no telemetry, runs in a single Docker container.
 
-> **Keywords for the algorithm:** ebook server, kobo sync, kobo wireless, komga alternative, calibre alternative, ebook metadata, self-hosted library, EPUB management, kepubify, koreader.
+Built solo, on evenings and weekends, when the metadata in my own library annoyed me enough. Not a product, not a startup, not seeking contributors — though if it's useful to you, that genuinely makes my day. There's a fuller [note about that at the bottom](#a-note-about-this-project).
 
 ---
 
-## What Colophon is — and isn't
+## Scope
 
-Colophon is a **metadata manager**. The simplest way to understand the scope: anything that's *data about books in your library* belongs here. Anything else doesn't.
+The way I think about what belongs here: **anything that's data about books in your library**. That's the whole rule.
 
-That includes two kinds of metadata:
+It covers two kinds of metadata:
 
 - **Bibliographic metadata** — title, author, ISBN, description, cover art, series, publisher, language. Facts about the book that exist in the world independent of you.
-- **Library-state metadata** — reading progress, finished date, started date, your personal rating *(planned)*, tags and collections *(planned)*. Facts about *your* relationship to the book.
+- **Library-state metadata** — reading progress, finished date, started date, personal rating *(planned)*, tags and collections *(planned)*. Facts about your relationship to the book.
 
-Kobo wireless sync is a consequence of this scope, not a separate feature: because Colophon knows about every book in your library and can serve their files and covers, a Kobo can use it as if it were the official Kobo store. The reading state your Kobo sends back is just more metadata.
+Kobo wireless sync isn't really a separate feature — it falls out of having all that metadata in one place. Because Colophon knows about every book and can serve their files and covers, a Kobo treats it like the official store. The reading state the Kobo sends back is just more metadata going the other direction.
 
 ### What it does
 
 - Scans a folder of e-book files and builds a queryable catalogue
 - Fetches and cleans bibliographic metadata from Google Books, Calibre's metadata sources, and embedded EPUB data
 - Identifies book series with AI (Mistral / OpenAI / DeepSeek / local Ollama)
-- Finds cover art from five free sources
+- Finds cover art from a handful of free sources
 - Writes metadata back into the e-book files so other tools see the same data
 - Lets one or more Kobo e-readers sync wirelessly — covers, titles, downloads, reading progress *(Phase 3)*
-- Survives multiple devices: progress from one Kobo carries over to another
 
 ### What it isn't
 
-- **Not a reader.** You don't open books inside Colophon. Open them in your e-reader, in Calibre, in KOReader, on a Kobo.
-- **Not a comic server.** Kavita and Komga handle CBZ/CBR/manga page-by-page reading with the polish that domain needs. Colophon can store comics as files but doesn't render them.
-- **Not multi-user.** No accounts, no permissions, no per-user libraries. One household, one library, one set of metadata.
-- **Not an OPDS server.** If your reader app expects an OPDS catalogue, use Komga in front of (or instead of) Colophon.
-- **Not exposed to the internet.** Bind it to your LAN. The Kobo sync flow uses path-based tokens, not real authentication; security beyond your local network is out of scope.
+I haven't built any of this and don't plan to:
+
+- **Not a reader.** I don't open books inside Colophon — I open them on the Kobo, in Calibre, or in KOReader.
+- **Not a comic server.** Kavita and Komga handle CBZ/CBR/manga with the page-by-page polish that domain needs. Colophon can store comics as files but doesn't render them.
+- **Not multi-user.** No accounts, no permissions, no per-user libraries. One household, one library, one set of metadata. That's enough for me.
+- **Not an OPDS server.** If a reader app needs OPDS, run Komga in front of (or instead of) Colophon.
+- **Not exposed to the internet.** Mine sits on my LAN. The Kobo sync uses path-based tokens, not real authentication; anything more would mean designing for threat models I don't have.
 - **Not a backup tool.** Colophon writes to your e-book files. Keep your own backups.
 
-### Where the line goes
+### When I'm not sure whether to add something
 
-For features other people request, the test is *"is this data about books in my library?"*
+The test I use: *"is this data about books in my library?"*
 
-Likely yes → could fit:
+Probably yes — might happen one day if I have the time and itch:
 
 - Personal ratings, notes, highlights
 - Tags, collections, virtual shelves
@@ -52,7 +53,7 @@ Likely yes → could fit:
 - Importing reading history from Goodreads / StoryGraph
 - Aggregate statistics ("year in books")
 
-Likely no → belongs in a different tool:
+Probably no — would belong in a different tool:
 
 - An in-browser reader
 - User accounts / roles / sharing
@@ -60,7 +61,7 @@ Likely no → belongs in a different tool:
 - Page-level comic rendering
 - Audiobook playback
 
-If you want all of that in one piece of software, you want Komga or Kavita. If you want clean metadata curation with AI assistance and your Kobo to behave, you want Colophon.
+If you want all of that in one piece of software, look at Komga or Kavita. If clean metadata curation, AI series detection, and a Kobo that just works sounds like what you've been hand-rolling — this might save you the effort.
 
 ---
 
