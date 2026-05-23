@@ -487,13 +487,11 @@ def _entitlement_dtos(item: LibraryItem, base_url: str, token: str) -> dict:
 
 
 def _new_entitlement_wrapper(item: LibraryItem, base_url: str, token: str) -> dict:
-    return {"NewEntitlement": {"NewEntitlement": _entitlement_dtos(item, base_url, token)}}
+    return {"NewEntitlement": _entitlement_dtos(item, base_url, token)}
 
 
 def _changed_entitlement_wrapper(item: LibraryItem, base_url: str, token: str) -> dict:
-    return {
-        "ChangedEntitlement": {"ChangedEntitlement": _entitlement_dtos(item, base_url, token)}
-    }
+    return {"ChangedEntitlement": _entitlement_dtos(item, base_url, token)}
 
 
 def _deleted_entitlement_wrapper(library_item_id: int) -> dict:
@@ -502,20 +500,18 @@ def _deleted_entitlement_wrapper(library_item_id: int) -> dict:
     now = _iso(None)
     return {
         "DeletedEntitlement": {
-            "DeletedEntitlement": {
-                "Accessibility": "Full",
-                "ActivePeriod": {"From": now},
-                "Created": now,
-                "CrossRevisionId": book_uuid,
-                "Id": book_uuid,
-                "IsHiddenFromArchive": True,
-                "IsLocked": False,
-                "IsRemoved": True,
-                "LastModified": now,
-                "OriginCategory": "Imported",
-                "RevisionId": book_uuid,
-                "Status": "Active",
-            }
+            "Accessibility": "Full",
+            "ActivePeriod": {"From": now},
+            "Created": now,
+            "CrossRevisionId": book_uuid,
+            "Id": book_uuid,
+            "IsHiddenFromArchive": True,
+            "IsLocked": False,
+            "IsRemoved": True,
+            "LastModified": now,
+            "OriginCategory": "Imported",
+            "RevisionId": book_uuid,
+            "Status": "Active",
         }
     }
 
