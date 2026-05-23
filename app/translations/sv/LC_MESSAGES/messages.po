@@ -525,6 +525,14 @@ msgstr "Läser"
 msgid "Finished"
 msgstr "Utläst"
 
+#: app/templates/bulk_metadata.html
+msgid "authors"
+msgstr "författare"
+
+#: app/templates/bulk_metadata.html
+msgid "reading"
+msgstr "läser"
+
 #: app/templates/bulk_metadata.html:2840 app/templates/bulk_metadata.html:3380
 msgid "Result"
 msgstr "Resultat"
