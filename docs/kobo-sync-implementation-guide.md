@@ -186,7 +186,9 @@ Note the URL template you advertise: the device may capitalise the IsGrey value 
 
 ### 4.8 Catch-all for everything else
 
-The remaining ~50-100 endpoints the Kobo calls — `/v1/user/profile`, `/v1/user/loyalty/benefits`, `/v1/products/featured`, `/v1/products/{id}/nextread`, `/v1/analytics/event`, `/v1/products/books/series/{id}`, `/v1/user/wishlist`, `/v1/library/{id}/state` (reading state PUTs), etc. — all return empty `{}`.
+The remaining ~50-100 endpoints the Kobo calls — `/v1/user/profile`, `/v1/user/loyalty/benefits`, `/v1/products/featured`, `/v1/products/{id}/nextread`, `/v1/analytics/event`, `/v1/products/books/series/{id}`, `/v1/user/wishlist`, etc. — all return empty `{}`.
+
+Reading-state endpoints (`GET` / `PUT /v1/library/{id}/state`) used to live here too but should be handled properly — see §6.
 
 ```python
 @kobo_bp.route("/<token>/<path:rest>", methods=["GET","POST","PUT","DELETE","PATCH"])
@@ -285,7 +287,151 @@ See `app/routes/kobo.py:_entitlement_dtos` in this repo. Every field has a comme
 
 ---
 
-## 6. The device-side reality check
+## 6. Reading state — the second sync direction
+
+Everything in §4 and §5 is server-to-device: the Kobo asks for a catalogue, you ship one. Reading state is the other direction — the device tells you "I've read this book to 60%, last bookmark is here." Persisting it lets a wiped or second device pick up where the first one left off, and lets your library UI show progress next to each book.
+
+### 6.1 Endpoint pair
+
+Same URL, two methods:
+
+```
+GET  /kobo/<token>/v1/library/<book_uuid>/state    → device asks "what does the server say?"
+PUT  /kobo/<token>/v1/library/<book_uuid>/state    → device says "this is my current state"
+```
+
+The `<book_uuid>` is the same UUID you put in `BookEntitlement.RevisionId` / `CrossRevisionId`. Reverse-lookup to your DB id the same way you did for `/v1/library/{id}/metadata`.
+
+**Critical:** these endpoints must be registered before any catch-all route. In Flask, more specific routes win over `<path:rest>` regardless of registration order, but write a regression test for it anyway — a stale catch-all silently swallowing PUTs is one of those bugs that takes a real-device session to notice.
+
+### 6.2 The PUT body shape — Kobo wraps it in an array
+
+The Kobo Libra Color (firmware 4.45.23684) sends:
+
+```json
+{
+  "ReadingStates": [
+    {
+      "EntitlementId": "12f45e84-b3a7-...",
+      "LastModified": "2026-05-23T15:59:52Z",
+      "StatusInfo": {
+        "LastModified": "2026-05-23T15:59:52Z",
+        "Status": "Reading"
+      },
+      "CurrentBookmark": {
+        "LastModified": "2026-05-23T15:59:52Z",
+        "ProgressPercent": 69,
+        "ContentSourceProgressPercent": 80,
+        "Location": {
+          "Source": "OEBPS/Text/part0028.html",
+          "Type": "KoboSpan",
+          "Value": "kobo.157.8"
+        }
+      },
+      "Statistics": {
+        "LastModified": "2026-05-23T15:59:52Z",
+        "SpentReadingMinutes": 15,
+        "RemainingTimeMinutes": 286
+      }
+    }
+  ]
+}
+```
+
+The wrap in `ReadingStates: [ ... ]` is what tripped us up in production. We initially parsed the inner object directly — `payload.get("StatusInfo")` returned `None` on every PUT, the handler fell back to defaults, and the row stayed `ReadyToRead` even though the user was on page 800/1000. Komga unwraps the array; do the same:
+
+```python
+payload = request.get_json(silent=True) or {}
+if isinstance(payload.get("ReadingStates"), list) and payload["ReadingStates"]:
+    payload = payload["ReadingStates"][0]
+# Now StatusInfo / CurrentBookmark / Statistics are at top level
+```
+
+Keep the flat-shape path as a fallback so a future firmware shift doesn't silently break parsing. Either: `if "ReadingStates" in payload: payload = payload["ReadingStates"][0]; else: payload stays as-is`.
+
+**`ProgressPercent` vs `ContentSourceProgressPercent`.** ProgressPercent is the user-facing percent the Kobo shows (counts only readable content). ContentSourceProgressPercent includes covers/TOC/colophon. Persist `ProgressPercent` — that's what shows up next to the book in the library UI everywhere else.
+
+**`Location.Value`.** Opaque kobospan / EPUB-CFI string. Store it as text, replay it back on GET. Don't try to parse or transform it.
+
+### 6.3 The status field is monotonic
+
+Three values: `ReadyToRead`, `Reading`, `Finished` (ranks 0, 1, 2). Apply this rule unconditionally on every PUT:
+
+> Incoming status with rank < current row's status rank → drop the entire PUT, even if the timestamp is newer.
+
+Reason: the device sometimes reports `Reading 30%` for books you've explicitly finished server-side ("Mark as read manually" in your UI). Without monotonic guarding, the device's local view silently overwrites yours every sync.
+
+The same rule means promoting `ReadyToRead` → `Reading` or `Reading` → `Finished` always wins regardless of the existing timestamp, which is what you want for fresh reading sessions.
+
+### 6.4 Last-write-wins for equal-rank PUTs
+
+For PUTs where status matches the existing row (e.g. both `Reading`), use the incoming `LastModified` to decide. Reject if older or equal:
+
+```python
+RANK = {"ReadyToRead": 0, "Reading": 1, "Finished": 2}
+if RANK[incoming_status] < RANK[item.status]:
+    return jsonify({}), 200   # monotonic drop
+
+if (RANK[incoming_status] == RANK[item.status]
+    and item.read_last_modified
+    and incoming_mod and incoming_mod <= item.read_last_modified):
+    return jsonify({}), 200   # older timestamp loses
+```
+
+The Kobo retries the same state several times in a sync window — without this guard you get noisy log churn and a flapping `read_last_modified` column.
+
+### 6.5 GET /state must return the saved DTO
+
+When `GET /v1/library/<uuid>/state` falls through to your catch-all and returns `{}`, the device reads it as "server has no state for this book — I'll push mine." For books the device hasn't actively tracked, its local state is `ReadyToRead`. So the next PUT effectively wipes whatever you set server-side via your UI's "Mark as read manually" button.
+
+Return the saved state in the same `ReadingStates`-array shape the device uses:
+
+```python
+@route("/v1/library/<book_uuid>/state", methods=["GET"])
+def get_state(book_uuid):
+    item = find_by_uuid(book_uuid)
+    if item is None:
+        return jsonify({}), 200
+    return jsonify({"ReadingStates": [_build_state_dto(item)]})
+```
+
+`_build_state_dto` is the same shape you ship in the `ReadingState` block of each entitlement during `/library/sync`. Factor it out so both paths use one helper.
+
+### 6.6 Sync direction summary
+
+Server-originated changes (your "Mark as read manually" UI button):
+1. UI updates the row: `status='Finished', progress=100, read_last_modified=now()`.
+2. Bump `updated_at` on the book so the next `/library/sync` re-ships it.
+3. Server response to `GET /state` now returns the new state.
+4. Device's next sync gets the new state, accepts it (incoming rank ≥ current local rank).
+
+Device-originated changes (page-turn / book close):
+1. Device PUTs `{ReadingStates: [...]}`.
+2. You unwrap, apply monotonic + last-write-wins.
+3. Optionally set `read_started_at` on first `Reading`, `read_finished_at` on first `Finished`.
+4. Your UI re-renders progress on next page load.
+
+### 6.7 Diagnostic body-logging
+
+When this breaks — and the first attempt usually does — server logs say "PUT 200" but nothing changed in the DB. The bug is almost always shape-related. Make this trivial to confirm:
+
+```python
+if logger.isEnabledFor(logging.DEBUG):
+    logger.debug("Kobo state PUT body[:600]=%s",
+                 request.get_data(as_text=True)[:600])
+```
+
+Flip the logger to DEBUG once, do one read on the device, grep the log. You'll see exactly what shape the firmware sends. The first time we did this, the wrap in `ReadingStates: [...]` was visible in one line and the fix was three lines of code.
+
+### 6.8 Out of scope (and why)
+
+- **Per-device `SpentReadingMinutes` aggregation.** The PUT body has it. Useful for "year in books" stats. Belongs in a separate `reading_sessions` table — it's denormalised per-device data, not library state.
+- **EPUB writeback of position.** Some sync tools write the bookmark into the EPUB file itself for portability. We didn't — DB-only is simpler and the Kobo's own KEPUB tracking is what matters on-device.
+- **Multi-device merge logic beyond LWW.** With one library row and last-write-wins, two devices reading the same book just race and the most recent PUT wins. Good enough for single-user setups. Multi-user needs proper CRDTs.
+
+---
+
+## 7. The device-side reality check
 
 Even with all of the above right, you'll have issues that aren't your server's fault. Three to be aware of:
 
@@ -329,7 +475,7 @@ Komga handles this with a *SyncPoint* model: snapshot the library state at sync 
 
 ---
 
-## 7. Diagnostic workflow
+## 8. Diagnostic workflow
 
 When sync misbehaves, here's the order to debug.
 
@@ -391,7 +537,7 @@ Test thumbnail endpoint in isolation: `curl -sI http://your.server/kobo/<token>/
 
 ---
 
-## 8. Setup UX for the end user
+## 9. Setup UX for the end user
 
 Once your endpoints work, the user-facing flow is:
 
@@ -408,11 +554,10 @@ Document the conf file path on the device clearly. We've had users edit the wron
 
 ---
 
-## 9. What we explicitly didn't do (yet)
+## 10. What we explicitly didn't do (yet)
 
 Honest scope list, so you can pick whether to implement these or live without them.
 
-- **Reading state persistence.** We accept `PUT /v1/library/{id}/state` and stub-return `{}`. Komga deserialises these into a [Readium R2 Progression](https://readium.org/architecture/proposals/locators/) and persists. Worth doing for "I left off on page 142" continuity.
 - **Real `/v1/products/books/series/{id}` responses.** The Kobo's series view depends on this. We return `{}` and the series UI is empty. To fix: return a SeriesDto with the full ordered list of books in the series.
 - **Resumable sync via SyncPoint.** Our delta is "since `max(updated_at)` last sent". A snapshot model is cleaner.
 - **Cover thumbnail resizing.** We send the original JPEG regardless of requested `{Width}/{Height}`. Larger libraries on slower WiFi might want PIL-based resize + cache.
@@ -421,7 +566,7 @@ Honest scope list, so you can pick whether to implement these or live without th
 
 ---
 
-## 10. A condensed list of every bug we hit (and the fix)
+## 11. A condensed list of every bug we hit (and the fix)
 
 If you implement this from scratch, expect to hit some subset of these. None of them have obvious error messages; the Kobo just behaves weirdly or refuses to progress.
 
@@ -442,10 +587,13 @@ If you implement this from scratch, expect to hit some subset of these. None of 
 15. **`image_host` derived from `request.host_url` → port stripped by Kobo's Host header → covers fetch from port 80 → silent fail.** Read public URL from environment variable, not request.
 16. **Same Host-stripping bug bit again in `library_sync` and `library_metadata` → `DownloadUrls[0].Url` came out without the port → device never requests `/file/epub`, "Ladda ner" silently resets.** Factor the env-var-aware base URL into a single helper and call it from every endpoint that mints URLs.
 17. **`Series.Number` as float (3.0) instead of string ("3") → Komga's KoboSeriesDto declares Number as String + NumberFloat as Float, the device type-rejects the float-as-Number.** Send `Number` as `str(series_index)`, keep `NumberFloat` as float.
+18. **Reading-state PUT body parsed as flat `{StatusInfo, CurrentBookmark, ...}` → every field reads `None` because the device wraps it as `{ReadingStates: [{...}]}` → progress silently never updates server-side even though PUTs return 200.** Unwrap the array before reading fields. See §6.2.
+19. **GET `/v1/library/{id}/state` falls through to catch-all and returns `{}` → device assumes server has no state → on next PUT it overwrites your server-set "Finished" with its local `ReadyToRead`.** Implement the GET handler to return the saved state DTO. See §6.5.
+20. **Server returns `200 + {}` to state PUTs but DB stays at `ReadyToRead`. No errors anywhere — the access log shows 200, your handler's "saved status=X" log never fires because the parser bailed.** Debug-log the raw body (`request.get_data()[:600]`) once and you see the shape mismatch in one read. Keep the body log gated on DEBUG so it doesn't spam INFO once you're done.
 
 ---
 
-## 11. Final notes for porting to your project
+## 12. Final notes for porting to your project
 
 If you're building on Flask + SQLAlchemy this maps almost line-for-line. For other stacks:
 
@@ -480,7 +628,7 @@ This catches structure bugs without burning a real-device round trip.
 
 ---
 
-## 12. Credits
+## 13. Credits
 
 - [gotson/komga](https://github.com/gotson/komga) — protocol reference implementation, MIT-licensed. Read their `KoboController.kt`, `KoboDtoDao.kt`, and `KoboDtos.kt` directly. The values they ship in `nativeKoboResources` are gold.
 - [pgaskin/kepubify](https://github.com/pgaskin/kepubify) — the only tool for clean EPUB→KEPUB conversion. Single static binary, MIT.

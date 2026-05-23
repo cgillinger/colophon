@@ -1666,6 +1666,22 @@
             line-height: 1;
         }
         .modal-close-x:hover { color: var(--text-primary); }
+
+        /* Book modal: instead of a dedicated header row that's mostly empty,
+           float delete and close as small chrome icons in the modal corners.
+           Trash sits left so it's clearly separate from the friendly close. */
+        .modal-box .modal-corner-delete {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+        }
+        .modal-box .modal-corner-close {
+            position: absolute;
+            top: 6px;
+            right: 10px;
+            z-index: 10;
+        }
         .modal-feedback {
             padding: 10px 14px;
             border-radius: 5px;
@@ -3146,14 +3162,11 @@
 <!-- Book modal -->
 <div id="bookModal" style="display:none;">
     <div class="modal-box">
-        <div class="modal-header-row">
-            <button type="button" class="modal-delete-x" id="modalDeleteBtn"
-                    onclick="deleteBookFromModal()" title="{{ _('Delete book') }}">
-                <i class="ti ti-trash"></i>
-            </button>
-            <div class="spacer"></div>
-            <button type="button" class="modal-close-x" onclick="closeBookModal()" title="{{ _('Close') }}">&times;</button>
-        </div>
+        <button type="button" class="modal-delete-x modal-corner-delete" id="modalDeleteBtn"
+                onclick="deleteBookFromModal()" title="{{ _('Delete book') }}">
+            <i class="ti ti-trash"></i>
+        </button>
+        <button type="button" class="modal-close-x modal-corner-close" onclick="closeBookModal()" title="{{ _('Close') }}">&times;</button>
         <div id="modalFeedback" class="modal-feedback" style="display:none;"></div>
         <div id="modalReadingState" class="reading-state-box" style="display:none;">
             <div class="rs-row">
