@@ -147,18 +147,25 @@ def test_initialization_returns_resources_map(app, client):
     with app.app_context():
         _, token = create_device("Init test")
 
-    resp = client.get(f"/kobo/{token}/v1/initialization")
+    # Init requires the Bearer header — without it the device gets 401 and
+    # is forced to POST /v1/auth/device first.
+    resp = client.get(
+        f"/kobo/{token}/v1/initialization",
+        headers={"Authorization": "Bearer dummy"},
+    )
     assert resp.status_code == 200
     data = resp.get_json()
     assert "Resources" in data
-    # Sync URL must point back at our host, not Kobo store
-    sync_url = data["Resources"]["library_sync"]
-    assert "/kobo/" in sync_url
-    assert token in sync_url
-    assert "storeapi.kobo.com" not in sync_url
-    # Image template URL must be present and use the same token
+    # We deliberately mirror Komga: most Resources URLs still point at the
+    # real Kobo hosts (the device follows api_endpoint for /v1/* paths
+    # regardless). The image_* keys are the ones the device actually reads
+    # from this map, so those must point at us with our token spliced in.
     assert "image_url_template" in data["Resources"]
     assert token in data["Resources"]["image_url_template"]
+    assert "/kobo/" in data["Resources"]["image_url_template"]
+    # The feature flag that unlocks the OneStore code path on the device
+    # was the one that took a day to find — guard against regression.
+    assert data["Resources"]["use_one_store"] == "True"
 
 
 def test_library_sync_returns_epubs(app, client):
@@ -192,7 +199,7 @@ def test_library_sync_returns_epubs(app, client):
     assert len(payload) == 1
     wrapper = payload[0]
     assert "NewEntitlement" in wrapper
-    inner = wrapper["NewEntitlement"]["NewEntitlement"]
+    inner = wrapper["NewEntitlement"]
     assert inner["BookMetadata"]["Title"] == "The Test Book"
     assert inner["BookMetadata"]["Contributors"] == ["Jane Doe"]
     assert inner["BookMetadata"]["DownloadUrls"][0]["Url"].endswith(
@@ -299,7 +306,7 @@ def test_changed_book_appears_as_ChangedEntitlement(app, client):
     payload = r2.get_json()
     assert len(payload) == 1
     assert "ChangedEntitlement" in payload[0]
-    assert payload[0]["ChangedEntitlement"]["ChangedEntitlement"]["BookMetadata"]["Title"] == "Updated"
+    assert payload[0]["ChangedEntitlement"]["BookMetadata"]["Title"] == "Updated"
 
 
 def test_deleted_book_emits_DeletedEntitlement(app, client):
@@ -373,7 +380,7 @@ def test_sync_pagination(app, client, monkeypatch):
         for w in resp.get_json():
             inner = w.get("NewEntitlement") or w.get("ChangedEntitlement")
             if inner:
-                seen_titles.append(list(inner.values())[0]["BookMetadata"]["Title"])
+                seen_titles.append(inner["BookMetadata"]["Title"])
         if resp.headers["x-kobo-sync"] != "continue":
             break
         current_token = resp.headers["x-kobo-synctoken"]
@@ -505,3 +512,312 @@ def test_book_file_404_for_missing_id(app, client):
 
     resp = client.get(f"/kobo/{token}/v1/books/99999/file/epub")
     assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 — reading-state PUT handling
+# ---------------------------------------------------------------------------
+
+def _make_book(title="Phase 3 Book", **kwargs):
+    """Insert a single EPUB and return (token, item_id, book_uuid)."""
+    from app.models import LibraryItem, db
+    from app.routes.kobo import _book_uuid
+    from app.services.kobo_auth import create_device
+
+    _, token = create_device(kwargs.pop("device_name", "Phase 3 device"))
+    item = LibraryItem(
+        title=title,
+        file_path=kwargs.pop("file_path", f"/books/{title}.epub"),
+        file_name=f"{title}.epub",
+        extension=".epub",
+        **kwargs,
+    )
+    db.session.add(item)
+    db.session.commit()
+    return token, item.id, _book_uuid(item.id)
+
+
+def test_state_put_unknown_uuid_is_acked(app, client):
+    """Unknown UUIDs from a stale catalogue ack silently and don't crash."""
+    from app.models import LibraryItem
+    from app.services.kobo_auth import create_device
+
+    with app.app_context():
+        _, token = create_device("Stale UUID test")
+
+    resp = client.put(
+        f"/kobo/{token}/v1/library/00000000-0000-0000-0000-000000000000/state",
+        json={
+            "StatusInfo": {
+                "Status": "Reading",
+                "LastModified": "2026-05-23T10:00:00.000Z",
+            },
+            "CurrentBookmark": {"ProgressPercent": 42.0},
+        },
+    )
+    assert resp.status_code == 200
+    with app.app_context():
+        # No rows touched — there's no library at all.
+        assert LibraryItem.query.count() == 0
+
+
+def test_state_put_records_progress(app, client):
+    from app.models import LibraryItem
+    from app.routes.kobo import _book_uuid
+
+    with app.app_context():
+        token, item_id, book_uuid = _make_book("Progress book")
+
+    resp = client.put(
+        f"/kobo/{token}/v1/library/{book_uuid}/state",
+        json={
+            "StatusInfo": {
+                "Status": "Reading",
+                "LastModified": "2026-05-23T10:00:00.000Z",
+            },
+            "CurrentBookmark": {
+                "ProgressPercent": 30.0,
+                "Location": {"Value": "epubcfi(/6/4!/4/2/2)", "Type": "KoboSpan"},
+                "LastModified": "2026-05-23T10:00:00.000Z",
+            },
+            "LastModified": "2026-05-23T10:00:00.000Z",
+        },
+    )
+    assert resp.status_code == 200
+
+    with app.app_context():
+        item = LibraryItem.query.get(item_id)
+        assert item.read_status == "Reading"
+        assert item.read_progress == 30.0
+        assert item.read_location == "epubcfi(/6/4!/4/2/2)"
+        assert item.read_last_modified is not None
+        assert item.read_started_at is not None
+        assert item.times_started == 1
+
+
+def test_state_put_older_timestamp_is_ignored(app, client):
+    from datetime import datetime
+    from app.models import LibraryItem, db
+    from app.routes.kobo import _book_uuid
+
+    with app.app_context():
+        token, item_id, book_uuid = _make_book("Older book")
+        item = LibraryItem.query.get(item_id)
+        item.read_status = "Reading"
+        item.read_progress = 60.0
+        item.read_last_modified = datetime(2026, 5, 23, 12, 0, 0)
+        db.session.commit()
+
+    # Older incoming timestamp, same status — must be dropped.
+    resp = client.put(
+        f"/kobo/{token}/v1/library/{book_uuid}/state",
+        json={
+            "StatusInfo": {
+                "Status": "Reading",
+                "LastModified": "2026-05-22T08:00:00.000Z",
+            },
+            "CurrentBookmark": {"ProgressPercent": 40.0},
+            "LastModified": "2026-05-22T08:00:00.000Z",
+        },
+    )
+    assert resp.status_code == 200
+
+    with app.app_context():
+        item = LibraryItem.query.get(item_id)
+        assert item.read_progress == 60.0
+
+
+def test_state_put_finished_stays_finished(app, client):
+    """Monotonic status — a 'Reading' PUT can never demote a 'Finished' row."""
+    from datetime import datetime
+    from app.models import LibraryItem, db
+    from app.routes.kobo import _book_uuid
+
+    with app.app_context():
+        token, item_id, book_uuid = _make_book("Finished book")
+        item = LibraryItem.query.get(item_id)
+        item.read_status = "Finished"
+        item.read_progress = 100.0
+        item.read_last_modified = datetime(2026, 5, 1, 12, 0, 0)
+        item.read_finished_at = datetime(2026, 5, 1, 12, 0, 0)
+        db.session.commit()
+
+    # Newer timestamp but a downgrade — must be ignored regardless.
+    resp = client.put(
+        f"/kobo/{token}/v1/library/{book_uuid}/state",
+        json={
+            "StatusInfo": {
+                "Status": "Reading",
+                "LastModified": "2026-06-01T10:00:00.000Z",
+            },
+            "CurrentBookmark": {"ProgressPercent": 30.0},
+            "LastModified": "2026-06-01T10:00:00.000Z",
+        },
+    )
+    assert resp.status_code == 200
+
+    with app.app_context():
+        item = LibraryItem.query.get(item_id)
+        assert item.read_status == "Finished"
+        assert item.read_progress == 100.0
+
+
+def test_state_put_times_started_not_double_counted(app, client):
+    """Second 'Reading' PUT must not bump times_started again."""
+    from app.models import LibraryItem
+    from app.routes.kobo import _book_uuid
+
+    with app.app_context():
+        token, item_id, book_uuid = _make_book("Restart book")
+
+    # First Reading PUT — sets started_at, times_started=1.
+    client.put(
+        f"/kobo/{token}/v1/library/{book_uuid}/state",
+        json={
+            "StatusInfo": {
+                "Status": "Reading",
+                "LastModified": "2026-05-23T10:00:00.000Z",
+            },
+            "CurrentBookmark": {"ProgressPercent": 20.0},
+            "LastModified": "2026-05-23T10:00:00.000Z",
+        },
+    )
+
+    # Second Reading PUT a day later — times_started stays at 1.
+    client.put(
+        f"/kobo/{token}/v1/library/{book_uuid}/state",
+        json={
+            "StatusInfo": {
+                "Status": "Reading",
+                "LastModified": "2026-05-24T10:00:00.000Z",
+            },
+            "CurrentBookmark": {"ProgressPercent": 35.0},
+            "LastModified": "2026-05-24T10:00:00.000Z",
+        },
+    )
+
+    with app.app_context():
+        item = LibraryItem.query.get(item_id)
+        assert item.read_status == "Reading"
+        assert item.read_progress == 35.0
+        assert item.times_started == 1
+
+
+def test_state_put_finished_sets_finished_at(app, client):
+    from app.models import LibraryItem
+    from app.routes.kobo import _book_uuid
+
+    with app.app_context():
+        token, item_id, book_uuid = _make_book("Done book")
+
+    resp = client.put(
+        f"/kobo/{token}/v1/library/{book_uuid}/state",
+        json={
+            "StatusInfo": {
+                "Status": "Finished",
+                "LastModified": "2026-05-23T10:00:00.000Z",
+            },
+            "CurrentBookmark": {"ProgressPercent": 99.5},
+            "LastModified": "2026-05-23T10:00:00.000Z",
+        },
+    )
+    assert resp.status_code == 200
+
+    with app.app_context():
+        item = LibraryItem.query.get(item_id)
+        assert item.read_status == "Finished"
+        # Device sometimes reports 99.x on finished — coerce to 100.
+        assert item.read_progress == 100.0
+        assert item.read_finished_at is not None
+
+
+def test_entitlement_includes_reading_state_from_db(app, client):
+    """A library_sync response must reflect the persisted reading state."""
+    from datetime import datetime
+    from app.models import LibraryItem, db
+    from app.services.kobo_auth import create_device
+
+    with app.app_context():
+        _, token = create_device("State DTO test")
+        item = LibraryItem(
+            title="In Progress",
+            file_path="/books/inprogress.epub",
+            file_name="inprogress.epub",
+            extension=".epub",
+            read_status="Reading",
+            read_progress=50.0,
+            read_location="epubcfi(/6/8)",
+            read_last_modified=datetime(2026, 5, 23, 9, 0, 0),
+            read_started_at=datetime(2026, 5, 20, 9, 0, 0),
+            times_started=1,
+        )
+        db.session.add(item)
+        db.session.commit()
+        item_id = item.id
+
+    resp = client.get(f"/kobo/{token}/v1/library/sync")
+    assert resp.status_code == 200
+    payload = resp.get_json()
+    inner = payload[0]["NewEntitlement"]
+    rs = inner["ReadingState"]
+    assert rs["StatusInfo"]["Status"] == "Reading"
+    assert rs["StatusInfo"]["TimesStartedReading"] == 1
+    assert rs["CurrentBookmark"]["ProgressPercent"] == 50.0
+    loc = rs["CurrentBookmark"]["Location"]
+    assert loc is not None
+    assert loc["Value"] == "epubcfi(/6/8)"
+    assert loc["Type"] == "KoboSpan"
+    assert loc["Source"]  # the book UUID
+    del item_id  # silence linter
+
+
+def test_entitlement_omits_location_when_none(app, client):
+    """Location must be null (not {}) when no progress yet — Komga sends null."""
+    from app.models import LibraryItem, db
+    from app.services.kobo_auth import create_device
+
+    with app.app_context():
+        _, token = create_device("No state test")
+        item = LibraryItem(
+            title="Fresh",
+            file_path="/books/fresh.epub",
+            file_name="fresh.epub",
+            extension=".epub",
+        )
+        db.session.add(item)
+        db.session.commit()
+
+    resp = client.get(f"/kobo/{token}/v1/library/sync")
+    inner = resp.get_json()[0]["NewEntitlement"]
+    rs = inner["ReadingState"]
+    assert rs["StatusInfo"]["Status"] == "ReadyToRead"
+    assert rs["CurrentBookmark"]["Location"] is None
+
+
+def test_state_put_route_shadows_catchall(app, client):
+    """Regression: the PUT handler must be registered before the catch-all
+    so /v1/library/<uuid>/state hits the real handler (which mutates the
+    row), not store_proxy (which ack-and-drops). We assert by writing and
+    reading back, which would silently fail under store_proxy."""
+    from app.models import LibraryItem
+    from app.routes.kobo import _book_uuid
+
+    with app.app_context():
+        token, item_id, book_uuid = _make_book("Shadow test")
+
+    client.put(
+        f"/kobo/{token}/v1/library/{book_uuid}/state",
+        json={
+            "StatusInfo": {
+                "Status": "Reading",
+                "LastModified": "2026-05-23T10:00:00.000Z",
+            },
+            "CurrentBookmark": {"ProgressPercent": 12.5},
+            "LastModified": "2026-05-23T10:00:00.000Z",
+        },
+    )
+
+    with app.app_context():
+        item = LibraryItem.query.get(item_id)
+        assert item.read_status == "Reading"
+        assert item.read_progress == 12.5

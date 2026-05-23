@@ -440,11 +440,29 @@ def search_covers_json(item_id):
 
 @metadata_bp.route("/metadata/bulk", methods=["GET", "POST"])
 def bulk_metadata():
-    items = (
-        LibraryItem.query
-        .order_by(LibraryItem.title.asc())
-        .all()
-    )
+    # Reading-state filter from header tabs. None / "all" → no filter.
+    # The filter is view-agnostic — it applies to every render mode
+    # (table / shelf / series) by shrinking the items list before render.
+    read_filter = (request.args.get("status") or "").strip().lower()
+    if read_filter not in ("reading", "finished", "unread"):
+        read_filter = ""
+
+    base_q = LibraryItem.query
+    if read_filter == "reading":
+        items_q = base_q.filter(LibraryItem.read_status == "Reading")
+    elif read_filter == "finished":
+        items_q = base_q.filter(LibraryItem.read_status == "Finished")
+    elif read_filter == "unread":
+        items_q = base_q.filter(
+            db.or_(
+                LibraryItem.read_status == "ReadyToRead",
+                LibraryItem.read_status.is_(None),
+            )
+        )
+    else:
+        items_q = base_q
+
+    items = items_q.order_by(LibraryItem.title.asc()).all()
 
     summary = None
 
@@ -657,11 +675,7 @@ def bulk_metadata():
                 parts.append(_("skipped: %(count)d", count=len(summary["skipped"])))
             flash(_("Bulk update complete.") + " " + ", ".join(parts) + ".", "success")
 
-        items = (
-            LibraryItem.query
-            .order_by(LibraryItem.title.asc())
-            .all()
-        )
+        items = items_q.order_by(LibraryItem.title.asc()).all()
 
     from collections import OrderedDict
     groups = OrderedDict()
@@ -709,6 +723,12 @@ def bulk_metadata():
     upstream_enabled = upstream_configured()
     unsynced_count = get_unsynced_count() if upstream_enabled else 0
 
+    # Reading-state tab counts — computed from the full library, not the
+    # filtered view, so the tabs stay accurate while a filter is active.
+    reading_count = LibraryItem.query.filter(LibraryItem.read_status == "Reading").count()
+    finished_count = LibraryItem.query.filter(LibraryItem.read_status == "Finished").count()
+    unread_count = total_count - reading_count - finished_count
+
     return render_template(
         "bulk_metadata.html",
         items=items,
@@ -720,6 +740,10 @@ def bulk_metadata():
         missing_cover_count=missing_cover_count,
         upstream_enabled=upstream_enabled,
         unsynced_count=unsynced_count,
+        read_filter=read_filter,
+        reading_count=reading_count,
+        finished_count=finished_count,
+        unread_count=unread_count,
     )
 
 
@@ -1581,7 +1605,50 @@ def metadata_json(item_id):
         "cover_path": bool(item.cover_path),
         "manual_metadata": bool(item.manual_metadata),
         "ai_configured": ai_is_configured(),
+        "read_status": item.read_status or "ReadyToRead",
+        "read_progress": item.read_progress,
+        "read_last_modified": item.read_last_modified.isoformat() if item.read_last_modified else None,
+        "read_started_at": item.read_started_at.isoformat() if item.read_started_at else None,
+        "read_finished_at": item.read_finished_at.isoformat() if item.read_finished_at else None,
+        "times_started": int(item.times_started or 0),
     })
+
+
+@metadata_bp.route("/metadata/<int:item_id>/mark-read", methods=["POST"])
+def mark_read_manually(item_id):
+    """Mark a book as Finished from the UI. Bumps read_last_modified so the
+    next Kobo sync ships the change via _entitlement_dtos."""
+    item = get_item_or_404(item_id)
+    now = datetime.utcnow()
+    item.read_status = "Finished"
+    item.read_progress = 100.0
+    if not item.read_finished_at:
+        item.read_finished_at = now
+    if not item.read_started_at:
+        item.read_started_at = now
+        item.times_started = max(int(item.times_started or 0), 1)
+    item.read_last_modified = now
+    item.updated_at = now
+    db.session.commit()
+    return jsonify({"ok": True, "read_status": item.read_status})
+
+
+@metadata_bp.route("/metadata/<int:item_id>/reset-read", methods=["POST"])
+def reset_reading_state(item_id):
+    """Clear reading state back to ReadyToRead. Used for stuck syncs or
+    when the user wants to re-read a book from the start."""
+    item = get_item_or_404(item_id)
+    now = datetime.utcnow()
+    item.read_status = "ReadyToRead"
+    item.read_progress = None
+    item.read_location = None
+    item.read_started_at = None
+    item.read_finished_at = None
+    item.times_started = 0
+    item.read_last_modified = now
+    item.updated_at = now
+    db.session.commit()
+    return jsonify({"ok": True, "read_status": item.read_status})
 
 
 @metadata_bp.route("/metadata/<int:item_id>/save-json", methods=["POST"])

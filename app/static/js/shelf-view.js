@@ -67,6 +67,25 @@
         return '#' + raw;
     }
 
+    function _readStateHtml(row) {
+        /* Cover-progress bar + check badge for Phase 3 reading-state sync.
+         * Shelf view only. Reads data-read-status / data-read-progress that
+         * the bulk template emits on every <tr>. */
+        var status = row.dataset.readStatus || 'ReadyToRead';
+        if (status === 'ReadyToRead' || !status) return '';
+        var html = '';
+        var pct = parseFloat(row.dataset.readProgress);
+        if (isNaN(pct)) pct = (status === 'Finished') ? 100 : 0;
+        if (pct < 0) pct = 0;
+        if (pct > 100) pct = 100;
+        var cls = status === 'Finished' ? 'cover-progress finished' : 'cover-progress';
+        html += '<div class="' + cls + '"><span class="fill" style="width:' + pct + '%"></span></div>';
+        if (status === 'Finished') {
+            html += '<span class="cover-check" title="Finished">✓</span>';
+        }
+        return html;
+    }
+
     function _cardHtml(row) {
         var itemId    = row.dataset.itemId || '';
         var titleEl   = row.querySelector('.book-title');
@@ -80,6 +99,8 @@
         var value     = cb ? cb.value : itemId;
         var series    = row.dataset.series || '';
         var seriesIdx = row.dataset.seriesIndex || '';
+        var readSt    = row.dataset.readStatus || 'ReadyToRead';
+        var readPct   = row.dataset.readProgress || '';
         var seq       = _renderSeq++;
 
         var imgStyle = coverSrc ? '' : 'display:none;';
@@ -89,10 +110,14 @@
             ? '<span class="series-index-badge">' + _esc(_formatIdx(seriesIdx)) + '</span>'
             : '';
 
+        var readHtml = _readStateHtml(row);
+
         return '<div class="grid-card"'
             +    ' data-item-id="' + _esc(itemId) + '"'
             +    ' data-series="' + _esc(series) + '"'
             +    ' data-series-index="' + _esc(seriesIdx) + '"'
+            +    ' data-read-status="' + _esc(readSt) + '"'
+            +    ' data-read-progress="' + _esc(readPct) + '"'
             +    ' data-render-seq="' + seq + '">'
             +    '<div class="grid-card-cover" onclick="openBookModal(' + _esc(itemId) + ')">'
             +      '<img src="' + _esc(coverSrc) + '" alt="" loading="lazy" style="' + imgStyle + '"'
@@ -104,6 +129,7 @@
             +      '</div>'
             +      '<input type="checkbox" class="grid-card-checkbox" value="' + _esc(value) + '"' + checked + '>'
             +      badgeHtml
+            +      readHtml
             +    '</div>'
             +    '<div class="grid-card-info" onclick="openBookModal(' + _esc(itemId) + ')">'
             +      '<div class="grid-card-title">' + _esc(title) + '</div>'

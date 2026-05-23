@@ -46,6 +46,17 @@ class LibraryItem(db.Model):
 
     completeness_score = db.Column(db.Integer, nullable=True)
 
+    # Reading state — shared across devices, last-write-wins with monotonic
+    # status (ReadyToRead < Reading < Finished). Updated by Kobo PUTs to
+    # /v1/library/<uuid>/state, and by the manual buttons in the book modal.
+    read_status = db.Column(db.String(20), default="ReadyToRead", nullable=False)
+    read_progress = db.Column(db.Float, nullable=True)
+    read_location = db.Column(db.Text, nullable=True)
+    read_last_modified = db.Column(db.DateTime, nullable=True)
+    read_started_at = db.Column(db.DateTime, nullable=True)
+    read_finished_at = db.Column(db.DateTime, nullable=True)
+    times_started = db.Column(db.Integer, default=0, nullable=False)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
