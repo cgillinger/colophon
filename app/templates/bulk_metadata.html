@@ -2582,6 +2582,11 @@
             z-index: 2;
             accent-color: var(--accent-primary);
         }
+        /* Series books carry a #N badge at top-left (z-index 5, pointer-events:
+           none). Push the checkbox down so it isn't hidden under the badge. */
+        .grid-card[data-series-index]:not([data-series-index=""]) .grid-card-checkbox {
+            top: 30px;
+        }
         .grid-card:hover .grid-card-checkbox,
         .grid-card-checkbox:checked {
             opacity: 1;
