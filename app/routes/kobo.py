@@ -583,8 +583,9 @@ def library_sync(device):
 @require_device
 def library_metadata(device, book_id):
     """Returns fresh download URL for a single book (called by the
-    device just before download)."""
-    item = LibraryItem.query.get(book_id)
+    device just before download). book_id is the UUID we minted at
+    sync time, not the raw DB primary key — use the reverse lookup."""
+    item = _find_item_by_uuid(book_id)
     if item is None:
         return jsonify({"error": "not_found"}), 404
     base_url = request.host_url.rstrip("/")
