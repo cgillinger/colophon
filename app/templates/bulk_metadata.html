@@ -538,6 +538,54 @@
             color: var(--text-secondary);
             font-size: 13px;
         }
+
+        /* Structured series-filter chip (set by series-view, dismissible). */
+        .series-filter-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 4px 4px 10px;
+            border-radius: 999px;
+            background: var(--accent-primary-light, #ecfdf5);
+            border: 1px solid var(--accent-primary-border, #a7f3d0);
+            color: var(--accent-primary-text, #065f46);
+            font-size: 12px;
+            line-height: 1;
+            max-width: 320px;
+        }
+        [data-theme="dark"] .series-filter-chip {
+            background: rgba(16, 185, 129, 0.12);
+            border-color: rgba(16, 185, 129, 0.4);
+            color: #6ee7b7;
+        }
+        .series-filter-chip-label {
+            font-weight: 600;
+            opacity: 0.75;
+        }
+        .series-filter-chip-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 220px;
+        }
+        .series-filter-chip-clear {
+            background: none;
+            border: none;
+            color: inherit;
+            font-size: 16px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 999px;
+            opacity: 0.7;
+        }
+        .series-filter-chip-clear:hover {
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.08);
+        }
+        [data-theme="dark"] .series-filter-chip-clear:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
         .filter-sep {
             width: 1px;
             height: 24px;
@@ -3174,6 +3222,14 @@
 
             <div class="filter-spacer"></div>
 
+            <span id="seriesFilterChip" class="series-filter-chip" style="display:none;" role="status">
+                <span class="series-filter-chip-label">{{ _('Series:') }}</span>
+                <span class="series-filter-chip-name" id="seriesFilterChipName"></span>
+                <button type="button" class="series-filter-chip-clear"
+                        onclick="clearSeriesFilter()" title="{{ _('Clear series filter') }}"
+                        aria-label="{{ _('Clear series filter') }}">&times;</button>
+            </span>
+
             <span class="selected-count" id="selectedCount">{{ _('%(count)d selected', count=0) }}</span>
 
             <div id="scanInline" style="display:none; font-size:13px; color:var(--accent-primary-text);">
@@ -4117,12 +4173,39 @@
         }
     });
 
+    /* Structured series filter: exact match against row.dataset.series.
+       Set by clicking a series card; cleared via the chip's × button. */
+    var _activeSeriesFilter = null;
+
     function filterBySeries(seriesName) {
-        setViewMode('table');
+        _activeSeriesFilter = (seriesName || '').trim();
+        // Don't pollute the general search input — the chip in the filter row
+        // is the source of truth for this filter.
         var searchInput = document.getElementById('filterSearch');
-        if (searchInput) {
-            searchInput.value = seriesName;
-            applyFilters();
+        if (searchInput && searchInput.value) {
+            searchInput.value = '';
+        }
+        _renderSeriesFilterChip();
+        setViewMode('table');
+        applyFilters();
+    }
+
+    function clearSeriesFilter() {
+        _activeSeriesFilter = null;
+        _renderSeriesFilterChip();
+        applyFilters();
+    }
+
+    function _renderSeriesFilterChip() {
+        var chip = document.getElementById('seriesFilterChip');
+        var nameEl = document.getElementById('seriesFilterChipName');
+        if (!chip || !nameEl) return;
+        if (_activeSeriesFilter) {
+            nameEl.textContent = _activeSeriesFilter;
+            chip.style.display = 'inline-flex';
+        } else {
+            chip.style.display = 'none';
+            nameEl.textContent = '';
         }
     }
 
@@ -6224,6 +6307,10 @@
             if (show && missingField) {
                 var attrKey = _missingFieldAttr[missingField];
                 if (attrKey && row.dataset[attrKey] !== '0') show = false;
+            }
+
+            if (show && _activeSeriesFilter) {
+                if ((row.dataset.series || '') !== _activeSeriesFilter) show = false;
             }
 
             if (show && _activeBadgeFilter) {
