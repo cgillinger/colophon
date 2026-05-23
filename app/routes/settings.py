@@ -351,3 +351,66 @@ def kobo_revoke_device(device_id):
     else:
         flash(_("Device not found."), "warning")
     return redirect(url_for("settings.kobo_settings"))
+
+
+@settings_bp.route("/settings/kobo/patch-conf", methods=["POST"])
+def kobo_patch_conf():
+    """Accept a Kobo eReader.conf upload, rewrite the [OneStoreServices]
+    section for the given device token, return the patched file as a
+    download. The file is processed in memory and never persisted.
+
+    Token comes in as a form field rather than from the URL because the
+    page that hosts the form already has it visible to the user (the
+    one-time banner after device creation), and we don't want to expose
+    tokens in URLs / referer / browser history.
+    """
+    import io
+    from flask import send_file
+    from app.services.kobo_auth import find_device_by_token, is_valid_token_format
+    from app.services.kobo_conf import (
+        KoboConfError,
+        MAX_CONF_BYTES,
+        decode_conf,
+        encode_conf,
+        patch_conf_text,
+    )
+
+    token = (request.form.get("token") or "").strip()
+    if not is_valid_token_format(token):
+        flash(_("Invalid or missing device token."), "warning")
+        return redirect(url_for("settings.kobo_settings"))
+
+    device = find_device_by_token(token)
+    if device is None:
+        flash(_("Device not found — was it revoked?"), "warning")
+        return redirect(url_for("settings.kobo_settings"))
+
+    upload = request.files.get("conf")
+    if upload is None or not upload.filename:
+        flash(_("No file uploaded."), "warning")
+        return redirect(url_for("settings.kobo_settings"))
+
+    raw = upload.read(MAX_CONF_BYTES + 1)
+    if not raw:
+        flash(_("Uploaded file was empty."), "warning")
+        return redirect(url_for("settings.kobo_settings"))
+    if len(raw) > MAX_CONF_BYTES:
+        flash(_("Uploaded file is too large to be a Kobo conf (max 200 KB)."), "warning")
+        return redirect(url_for("settings.kobo_settings"))
+
+    try:
+        text_content, encoding = decode_conf(raw)
+        new_endpoint = f"{request.host_url.rstrip('/')}/kobo/{token}"
+        patched_text = patch_conf_text(text_content, new_endpoint)
+    except KoboConfError as exc:
+        flash(_("Could not patch the file: %(msg)s", msg=str(exc)), "warning")
+        return redirect(url_for("settings.kobo_settings"))
+
+    payload = encode_conf(patched_text, encoding)
+    buf = io.BytesIO(payload)
+    return send_file(
+        buf,
+        mimetype="text/plain",
+        as_attachment=True,
+        download_name="Kobo eReader.conf",
+    )
