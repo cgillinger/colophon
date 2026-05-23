@@ -199,6 +199,149 @@
         [data-theme="dark"] .filter-row {
             border-color: var(--green-800);
         }
+
+        /* Reading-state tabs — view-agnostic header strip. */
+        .read-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-light);
+            padding: 6px 20px;
+            position: sticky;
+            top: 0; /* container scrolls; topbar is already sticky above */
+            z-index: 40;
+            font-size: 13px;
+        }
+        .read-tab {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 999px;
+            color: var(--text-secondary);
+            border: 1px solid transparent;
+            line-height: 1;
+            white-space: nowrap;
+        }
+        .read-tab:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        .read-tab.active {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-color: var(--border-medium);
+        }
+        .read-tab .count {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            background: var(--bg-secondary);
+            padding: 1px 7px;
+            border-radius: 999px;
+        }
+        .read-tab.active .count {
+            color: var(--text-secondary);
+        }
+        .read-tab.read-tab-reading.active { color: #b45309; }
+        [data-theme="dark"] .read-tab.read-tab-reading.active { color: #f59e0b; }
+        .read-tab.read-tab-finished.active { color: #15803d; }
+        [data-theme="dark"] .read-tab.read-tab-finished.active { color: #4ade80; }
+
+        /* Shelf cover progress indicator (3px bar at the bottom of the cover)
+           + check badge for Finished. Shelf view only — table stays clean. */
+        .cover-progress {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 3px;
+            background: rgba(0, 0, 0, 0.25);
+            pointer-events: none;
+            z-index: 2;
+        }
+        .cover-progress .fill {
+            display: block;
+            height: 100%;
+            background: #f59e0b; /* amber for Reading */
+        }
+        .cover-progress.finished .fill {
+            background: #16a34a; /* green for Finished */
+        }
+        .cover-check {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #16a34a;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        /* Reading-state section inside the book modal. */
+        .reading-state-box {
+            margin-top: 14px;
+            padding: 12px 14px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+        }
+        .reading-state-box .rs-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+        .reading-state-box .rs-row strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .reading-state-box .rs-bar {
+            flex: 1;
+            height: 6px;
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .reading-state-box .rs-bar .fill {
+            display: block;
+            height: 100%;
+            background: #f59e0b;
+        }
+        .reading-state-box.is-finished .rs-bar .fill { background: #16a34a; }
+        .reading-state-box .rs-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .reading-state-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .reading-state-badge.s-Reading { background: #fef3c7; color: #92400e; }
+        .reading-state-badge.s-Finished { background: #dcfce7; color: #166534; }
+        .reading-state-badge.s-ReadyToRead { background: var(--bg-tertiary); color: var(--text-tertiary); }
+        [data-theme="dark"] .reading-state-badge.s-Reading { background: #78350f; color: #fde68a; }
+        [data-theme="dark"] .reading-state-badge.s-Finished { background: #14532d; color: #bbf7d0; }
+
         .chip {
             background: var(--bg-primary);
             border: 1px solid var(--border-medium);
@@ -2564,6 +2707,20 @@
             color: var(--text-secondary);
             margin-bottom: 8px;
         }
+        .series-card-read {
+            display: inline-block;
+            margin-left: 8px;
+            padding: 1px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            background: #dcfce7;
+            color: #166534;
+        }
+        [data-theme="dark"] .series-card-read {
+            background: #14532d;
+            color: #bbf7d0;
+        }
         .series-card-list {
             list-style: none;
             padding: 0;
@@ -2628,6 +2785,25 @@
         </div>
     </div>
 </header>
+
+<nav class="read-tabs" aria-label="{{ _('Reading state') }}">
+    <a href="{{ url_for('metadata.bulk_metadata') }}"
+       class="read-tab {{ 'active' if not read_filter else '' }}">
+        {{ _('All') }} <span class="count">{{ total_count }}</span>
+    </a>
+    <a href="{{ url_for('metadata.bulk_metadata', status='unread') }}"
+       class="read-tab {{ 'active' if read_filter == 'unread' else '' }}">
+        {{ _('Unread') }} <span class="count">{{ unread_count }}</span>
+    </a>
+    <a href="{{ url_for('metadata.bulk_metadata', status='reading') }}"
+       class="read-tab read-tab-reading {{ 'active' if read_filter == 'reading' else '' }}">
+        {{ _('Reading') }} <span class="count">{{ reading_count }}</span>
+    </a>
+    <a href="{{ url_for('metadata.bulk_metadata', status='finished') }}"
+       class="read-tab read-tab-finished {{ 'active' if read_filter == 'finished' else '' }}">
+        {{ _('Finished') }} <span class="count">{{ finished_count }}</span>
+    </a>
+</nav>
 
 <div class="container">
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -2873,7 +3049,9 @@
                             data-item-id="{{ item.id }}"
                             data-group-key="{{ item.group_key or '' }}"
                             data-series="{{ item.series or '' }}"
-                            data-series-index="{{ item.series_index or '' }}">
+                            data-series-index="{{ item.series_index or '' }}"
+                            data-read-status="{{ item.read_status or 'ReadyToRead' }}"
+                            data-read-progress="{{ item.read_progress if item.read_progress is not none else '' }}">
                             <td>
                                 <input type="checkbox" name="item_ids" value="{{ item.id }}" class="book-checkbox">
                             </td>
@@ -3048,6 +3226,23 @@
             </div>
         </div>
         <div id="modalProgress" style="display:none; margin:12px 0;"></div>
+        <div id="modalReadingState" class="reading-state-box" style="display:none;">
+            <div class="rs-row">
+                <strong>{{ _('Reading state') }}</strong>
+                <span id="modalReadStatusBadge" class="reading-state-badge"></span>
+                <div class="rs-bar"><span class="fill" id="modalReadFill" style="width:0%"></span></div>
+                <span id="modalReadPercent" style="font-variant-numeric: tabular-nums; min-width:42px; text-align:right;">—</span>
+            </div>
+            <div class="rs-row" id="modalReadDates"></div>
+            <div class="rs-actions">
+                <button type="button" class="btn btn-sm outline" id="modalMarkReadBtn" onclick="markReadManually()">
+                    <i class="ti ti-check"></i> {{ _('Mark as read manually') }}
+                </button>
+                <button type="button" class="btn btn-sm ghost" id="modalResetReadBtn" onclick="resetReadingState()">
+                    <i class="ti ti-refresh"></i> {{ _('Reset reading state') }}
+                </button>
+            </div>
+        </div>
         <div style="margin-top:14px; padding-top:14px; border-top:0.5px solid var(--border-light);">
             <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;">{{ _('Fetch/update:') }}</div>
             <div style="display:flex; flex-wrap:wrap; gap:6px;">
@@ -3244,6 +3439,7 @@
 <script>
     var _i18n = {
         seriesBooks: {{ _('books')|tojson }},
+        seriesRead: {{ _('read')|tojson }},
         standaloneBooks: {{ _('Standalone books')|tojson }},
         seriesView: {{ _('Series view')|tojson }},
         hideSingleBookSeries: {{ _('Hide single-book series')|tojson }},
@@ -3590,7 +3786,8 @@
                 indexNum: parseFloat(idx) || 9999,
                 title: title,
                 coverSrc: coverSrc,
-                itemId: itemId
+                itemId: itemId,
+                readStatus: row.dataset.readStatus || 'ReadyToRead'
             });
         });
 
@@ -3627,12 +3824,22 @@
                     + '</li>';
             });
 
+            var finishedInSeries = 0;
+            for (var bi = 0; bi < books.length; bi++) {
+                if (books[bi].readStatus === 'Finished') finishedInSeries++;
+            }
+            var readBadge = finishedInSeries > 0
+                ? ' <span class="series-card-read">' + finishedInSeries + '/' + books.length + ' '
+                  + _seriesEsc(_i18n.seriesRead || 'read') + '</span>'
+                : '';
+
             var nameAttr = _seriesEsc(name);
             html += '<div class="series-card" data-series-name="' + nameAttr + '">'
                 + '<div class="series-card-cover">' + coverHtml + '</div>'
                 + '<div class="series-card-body">'
                 + '<div class="series-card-title">' + nameAttr + '</div>'
-                + '<div class="series-card-count">' + books.length + ' ' + _seriesEsc(_i18n.seriesBooks) + '</div>'
+                + '<div class="series-card-count">' + books.length + ' ' + _seriesEsc(_i18n.seriesBooks)
+                + readBadge + '</div>'
                 + '<ul class="series-card-list">' + listHtml + '</ul>'
                 + '</div></div>';
         });
@@ -6743,6 +6950,123 @@
         document.getElementById('modalAiBtn').style.display = data.ai_configured ? 'inline-flex' : 'none';
         var findSeriesBtn = document.getElementById('modalFindSeriesBtn');
         if (findSeriesBtn) findSeriesBtn.style.display = data.ai_configured ? '' : 'none';
+
+        _populateReadingState(data);
+    }
+
+    /* ---------------- Phase 3 — Reading state ---------------- */
+
+    var _READ_STATUS_LABEL = {
+        'ReadyToRead': '{{ _("Unread") }}',
+        'Reading':     '{{ _("Reading") }}',
+        'Finished':    '{{ _("Finished") }}'
+    };
+
+    function _fmtDate(iso) {
+        if (!iso) return '—';
+        try {
+            var d = new Date(iso);
+            if (isNaN(d.getTime())) return iso.slice(0, 10);
+            return d.toLocaleDateString();
+        } catch (e) {
+            return iso.slice(0, 10);
+        }
+    }
+
+    function _populateReadingState(data) {
+        var box = document.getElementById('modalReadingState');
+        if (!box) return;
+        box.style.display = '';
+        var status = data.read_status || 'ReadyToRead';
+        box.classList.toggle('is-finished', status === 'Finished');
+
+        var badge = document.getElementById('modalReadStatusBadge');
+        badge.textContent = _READ_STATUS_LABEL[status] || status;
+        badge.className = 'reading-state-badge s-' + status;
+
+        var pct = data.read_progress;
+        if (pct === null || pct === undefined || isNaN(pct)) {
+            pct = (status === 'Finished') ? 100 : 0;
+        }
+        document.getElementById('modalReadFill').style.width = pct + '%';
+        document.getElementById('modalReadPercent').textContent =
+            (status === 'ReadyToRead') ? '—' : (Math.round(pct) + '%');
+
+        var dates = [];
+        if (data.read_started_at) {
+            dates.push('{{ _("Started") }}: ' + _fmtDate(data.read_started_at));
+        }
+        if (data.read_finished_at) {
+            dates.push('{{ _("Finished") }}: ' + _fmtDate(data.read_finished_at));
+        }
+        if (data.times_started && data.times_started > 1) {
+            dates.push('{{ _("Times started") }}: ' + data.times_started);
+        }
+        if (data.read_last_modified) {
+            dates.push('{{ _("Last update") }}: ' + _fmtDate(data.read_last_modified));
+        }
+        document.getElementById('modalReadDates').textContent = dates.join('  ·  ');
+    }
+
+    function markReadManually() {
+        if (!_modalItemId) return;
+        var btn = document.getElementById('modalMarkReadBtn');
+        if (btn) btn.disabled = true;
+        fetch('/metadata/' + _modalItemId + '/mark-read', { method: 'POST' })
+            .then(function(r) { return r.json(); })
+            .then(function(j) {
+                if (j && j.ok) {
+                    setModalFeedback('success', '{{ _("Marked as finished. Sync your Kobo to push the change.") }}');
+                    // Re-fetch so dates and progress reflect server state.
+                    fetch('/metadata/' + _modalItemId + '/json', { cache: 'no-store' })
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                            _populateReadingState(data);
+                            _syncReadStateToRow(_modalItemId, data);
+                        });
+                }
+            })
+            .catch(function() {
+                setModalFeedback('error', '{{ _("Could not update reading state.") }}');
+            })
+            .finally(function() { if (btn) btn.disabled = false; });
+    }
+    window.markReadManually = markReadManually;
+
+    function resetReadingState() {
+        if (!_modalItemId) return;
+        var btn = document.getElementById('modalResetReadBtn');
+        if (btn) btn.disabled = true;
+        fetch('/metadata/' + _modalItemId + '/reset-read', { method: 'POST' })
+            .then(function(r) { return r.json(); })
+            .then(function(j) {
+                if (j && j.ok) {
+                    setModalFeedback('success', '{{ _("Reading state cleared.") }}');
+                    fetch('/metadata/' + _modalItemId + '/json', { cache: 'no-store' })
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                            _populateReadingState(data);
+                            _syncReadStateToRow(_modalItemId, data);
+                        });
+                }
+            })
+            .catch(function() {
+                setModalFeedback('error', '{{ _("Could not update reading state.") }}');
+            })
+            .finally(function() { if (btn) btn.disabled = false; });
+    }
+    window.resetReadingState = resetReadingState;
+
+    function _syncReadStateToRow(itemId, data) {
+        var row = document.querySelector('#bookTableBody tr[data-item-id="' + itemId + '"]');
+        if (!row) return;
+        row.dataset.readStatus = data.read_status || 'ReadyToRead';
+        row.dataset.readProgress = (data.read_progress === null || data.read_progress === undefined)
+            ? '' : data.read_progress;
+        if (typeof _viewMode !== 'undefined' && _viewMode === 'shelf'
+            && typeof refreshShelfView === 'function') {
+            refreshShelfView();
+        }
     }
 
     function _getSelectedFields() {

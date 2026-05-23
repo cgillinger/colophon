@@ -60,6 +60,28 @@ def _iso(dt: datetime | None) -> str:
     return dt.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
 
+def _parse_iso(raw) -> datetime | None:
+    """Parse an ISO 8601 timestamp as the Kobo sends them, return a naive
+    UTC datetime (matching how the rest of LibraryItem stores datetimes).
+    Returns None on anything unparseable so callers can fall back."""
+    if not raw:
+        return None
+    s = str(raw)
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"
+    try:
+        dt = datetime.fromisoformat(s)
+    except ValueError:
+        return None
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt
+
+
+# Monotonic ranking for reading status — finished books stay finished.
+_READ_STATUS_RANK = {"ReadyToRead": 0, "Reading": 1, "Finished": 2}
+
+
 def require_device(f):
     """Decorator: resolve <token> path param to a KoboDevice or 401."""
     @wraps(f)
@@ -511,24 +533,32 @@ def _entitlement_dtos(item: LibraryItem, base_url: str, token: str) -> dict:
     if series_obj:
         book_metadata["Series"] = series_obj
 
+    state_last_modified = _iso(item.read_last_modified) if item.read_last_modified else last_modified
+    location_obj = None
+    if item.read_location:
+        location_obj = {
+            "Value": item.read_location,
+            "Type": "KoboSpan",
+            "Source": book_uuid,
+        }
     reading_state = {
         "Created": created,
         "CurrentBookmark": {
-            "LastModified": last_modified,
-            "Location": None,
-            "ProgressPercent": None,
-            "ContentSourceProgressPercent": None,
+            "LastModified": state_last_modified,
+            "Location": location_obj,
+            "ProgressPercent": item.read_progress,
+            "ContentSourceProgressPercent": item.read_progress,
         },
         "EntitlementId": book_uuid,
-        "LastModified": last_modified,
-        "PriorityTimestamp": last_modified,
+        "LastModified": state_last_modified,
+        "PriorityTimestamp": state_last_modified,
         "StatusInfo": {
-            "LastModified": last_modified,
-            "Status": "ReadyToRead",
-            "TimesStartedReading": 0,
+            "LastModified": state_last_modified,
+            "Status": item.read_status or "ReadyToRead",
+            "TimesStartedReading": int(item.times_started or 0),
         },
         "Statistics": {
-            "LastModified": last_modified,
+            "LastModified": state_last_modified,
             "SpentReadingMinutes": 0,
             "RemainingTimeMinutes": 0,
         },
@@ -725,6 +755,112 @@ def _find_item_by_uuid(image_id: str) -> LibraryItem | None:
         if _book_uuid(item.id) == image_id:
             return item
     return None
+
+
+# ---------------------------------------------------------------------------
+# Reading state — Phase 3
+# ---------------------------------------------------------------------------
+#
+# The Kobo PUTs to /v1/library/<book_uuid>/state every page turn. We treat
+# the per-book row in `library_items` as the single source of truth for
+# progress (see docs/kobo-sync-design.md §11 — "Progress is library-state,
+# not device-state"). The handler is registered before `store_proxy` so it
+# shadows the catch-all stub.
+
+@kobo_bp.route("/<token>/v1/library/<book_id>/state", methods=["PUT"])
+@require_device
+def update_reading_state(device, book_id):
+    """Persist a reading-state PUT from a Kobo onto the LibraryItem.
+
+    Returns 200 + {} regardless of whether the update was accepted —
+    the Kobo doesn't differentiate, and we don't want a stuck book to
+    block sync on the device.
+
+    Rules:
+      - Unknown UUIDs are acknowledged silently (might be from a
+        previous server's catalogue still cached on the device).
+      - Status is monotonic: ReadyToRead < Reading < Finished. A lower-
+        ranked incoming status is dropped, regardless of timestamp.
+      - Equal-or-higher status follows last-write-wins on
+        ``LastModified``: an older timestamp loses to the existing row.
+      - ``read_started_at`` / ``times_started`` are populated on the
+        first transition into ``Reading``; ``read_finished_at`` on the
+        first transition into ``Finished``.
+    """
+    from app.models import db
+
+    item = _find_item_by_uuid(book_id)
+    if item is None:
+        return jsonify({}), 200
+
+    payload = request.get_json(silent=True) or {}
+    status_info = payload.get("StatusInfo") or {}
+    bookmark = payload.get("CurrentBookmark") or {}
+    location = bookmark.get("Location") or {}
+
+    incoming_status = status_info.get("Status") or item.read_status or "ReadyToRead"
+    incoming_mod = (
+        _parse_iso(payload.get("LastModified"))
+        or _parse_iso(status_info.get("LastModified"))
+        or _parse_iso(bookmark.get("LastModified"))
+    )
+
+    current_rank = _READ_STATUS_RANK.get(item.read_status or "ReadyToRead", 0)
+    incoming_rank = _READ_STATUS_RANK.get(incoming_status, 0)
+
+    # Monotonic — finished books stay finished, etc.
+    if incoming_rank < current_rank:
+        logger.info(
+            "Kobo state PUT: dropped (monotonic) book_id=%s device=%s "
+            "current=%s incoming=%s",
+            book_id, device.name, item.read_status, incoming_status,
+        )
+        return jsonify({}), 200
+
+    # Last-write-wins on the timeline (only when status doesn't escalate).
+    if (
+        incoming_rank == current_rank
+        and item.read_last_modified
+        and incoming_mod
+        and incoming_mod <= item.read_last_modified
+    ):
+        logger.info(
+            "Kobo state PUT: dropped (older timestamp) book_id=%s device=%s",
+            book_id, device.name,
+        )
+        return jsonify({}), 200
+
+    progress = bookmark.get("ProgressPercent")
+    if progress is None:
+        progress = bookmark.get("ContentSourceProgressPercent")
+    location_value = location.get("Value") if isinstance(location, dict) else None
+
+    item.read_status = incoming_status
+    if progress is not None:
+        try:
+            item.read_progress = float(progress)
+        except (TypeError, ValueError):
+            pass
+    if location_value:
+        item.read_location = location_value
+    item.read_last_modified = incoming_mod or datetime.utcnow()
+
+    if incoming_status == "Reading" and not item.read_started_at:
+        item.read_started_at = item.read_last_modified
+        item.times_started = (item.times_started or 0) + 1
+    if incoming_status == "Finished":
+        if not item.read_finished_at:
+            item.read_finished_at = item.read_last_modified
+        # The device sometimes reports 99.x on finished books; coerce to 100.
+        if item.read_progress is None or item.read_progress < 100:
+            item.read_progress = 100.0
+
+    db.session.commit()
+    logger.info(
+        "Kobo state PUT: book_id=%s device=%s status=%s progress=%s",
+        book_id, device.name, item.read_status, item.read_progress,
+    )
+    return jsonify({}), 200
 
 
 # ---------------------------------------------------------------------------

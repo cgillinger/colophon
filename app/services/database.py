@@ -34,6 +34,21 @@ def ensure_database_columns():
         "file_modified_by_colophon": "ALTER TABLE library_items ADD COLUMN file_modified_by_colophon DATETIME",
         "upstream_synced_at": "ALTER TABLE library_items ADD COLUMN upstream_synced_at DATETIME",
         "completeness_score": "ALTER TABLE library_items ADD COLUMN completeness_score INTEGER",
+        # Phase 3 — Kobo reading state sync. Defaults match the model so
+        # books with no progress on Kobo aren't accidentally promoted.
+        "read_status": (
+            "ALTER TABLE library_items ADD COLUMN read_status "
+            "VARCHAR(20) NOT NULL DEFAULT 'ReadyToRead'"
+        ),
+        "read_progress": "ALTER TABLE library_items ADD COLUMN read_progress REAL",
+        "read_location": "ALTER TABLE library_items ADD COLUMN read_location TEXT",
+        "read_last_modified": "ALTER TABLE library_items ADD COLUMN read_last_modified DATETIME",
+        "read_started_at": "ALTER TABLE library_items ADD COLUMN read_started_at DATETIME",
+        "read_finished_at": "ALTER TABLE library_items ADD COLUMN read_finished_at DATETIME",
+        "times_started": (
+            "ALTER TABLE library_items ADD COLUMN times_started "
+            "INTEGER NOT NULL DEFAULT 0"
+        ),
     }
 
     changed = False
