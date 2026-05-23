@@ -232,6 +232,16 @@ def initialization(device):
         "wishlist_page": f"{KOBO_STORE_BASE}/account/wishlist",
     }
 
+    # Reroute every /v1/ API URL through us so the device never makes
+    # unsigned calls to storeapi.kobo.com that come back 4xx and
+    # trigger a loop on affiliate -> initialization. UI page URLs
+    # (no /v1/ in them) stay pointed at the real store — those are
+    # only ever opened in the device's browser pane, never auto-
+    # called by the sync engine.
+    for key, value in list(resources.items()):
+        if isinstance(value, str) and "/v1/" in value and value.startswith(KOBO_STORE_BASE):
+            resources[key] = value.replace(KOBO_STORE_BASE, prefix, 1)
+
     return jsonify({"Resources": resources})
 
 
