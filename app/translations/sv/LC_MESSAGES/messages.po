@@ -492,7 +492,7 @@ msgstr "Byt tema"
 #: app/templates/settings_api.html:428 app/templates/settings_kobo.html:16
 #: app/templates/settings_kobo.html:162 app/templates/settings_kobo.html:180
 msgid "Kobo sync"
-msgstr ""
+msgstr "Kobo-synk"
 
 #: app/templates/bulk_metadata.html:2801 app/templates/cover_lookup.html:259
 #: app/templates/metadata.html:353 app/templates/metadata_ai_preview.html:273
@@ -2395,25 +2395,30 @@ msgid ""
 "Colophon were the Kobo store. Each device gets its own URL with a unique "
 "key."
 msgstr ""
+"Låt en Kobo-läsplatta synka EPUB-böcker trådlöst från Colophon, som om "
+"Colophon vore Kobo-butiken. Varje enhet får en egen URL med en unik "
+"nyckel."
 
 #: app/templates/settings_kobo.html:197
 #, python-format
 msgid "Device created: %(name)s"
-msgstr ""
+msgstr "Enhet skapad: %(name)s"
 
 #: app/templates/settings_kobo.html:198
 msgid ""
 "Copy this URL into the api_endpoint setting on your Kobo. It will not be "
 "shown again."
 msgstr ""
+"Kopiera denna URL till api_endpoint-inställningen på din Kobo. Den kommer"
+" inte visas igen."
 
 #: app/templates/settings_kobo.html:201
 msgid "Copy"
-msgstr ""
+msgstr "Kopiera"
 
 #: app/templates/settings_kobo.html:203
 msgid "Save it now — Colophon stores only the hash, never the URL itself."
-msgstr ""
+msgstr "Spara den nu — Colophon lagrar bara hashen, aldrig URL:en själv."
 
 #: app/templates/settings_kobo.html:206
 msgid "Or: upload your Kobo eReader.conf and let Colophon patch it"
@@ -2467,88 +2472,88 @@ msgid "Patch & download"
 msgstr "Patcha & ladda ner"
 
 #: app/templates/settings_kobo.html:240
-#, fuzzy
 msgid "Devices"
-msgstr "Serie"
+msgstr "Enheter"
 
 #: app/templates/settings_kobo.html:242
-#, fuzzy
 msgid "connected"
-msgstr "Ansluten"
+msgstr "anslutna"
 
 #: app/templates/settings_kobo.html:248
 msgid "Name"
-msgstr ""
+msgstr "Namn"
 
 #: app/templates/settings_kobo.html:249
 msgid "Key prefix"
-msgstr ""
+msgstr "Nyckel-prefix"
 
 #: app/templates/settings_kobo.html:250
-#, fuzzy
 msgid "Last seen"
-msgstr "Senaste synk"
+msgstr "Senast sedd"
 
 #: app/templates/settings_kobo.html:251
-#, fuzzy
 msgid "Syncs"
-msgstr "Synopsis"
+msgstr "Synkar"
 
 #: app/templates/settings_kobo.html:265
 msgid ""
 "Revoke this device? The Kobo will stop being able to sync until "
 "reconfigured."
 msgstr ""
+"Återkalla den här enheten? Kobon kommer inte längre kunna synka förrän "
+"den konfigureras om."
 
 #: app/templates/settings_kobo.html:266
-#, fuzzy
 msgid "Revoke"
-msgstr "Ta bort token"
+msgstr "Återkalla"
 
 #: app/templates/settings_kobo.html:276
 msgid "No devices yet. Add one below to start syncing."
-msgstr ""
+msgstr "Inga enheter än. Lägg till en nedan för att börja synka."
 
 #: app/templates/settings_kobo.html:285
 msgid "Add device"
-msgstr ""
+msgstr "Lägg till enhet"
 
 #: app/templates/settings_kobo.html:289
 msgid ""
 "Each Kobo needs its own URL. Generate one here, then enter it on the "
 "device (see setup guide below)."
 msgstr ""
+"Varje Kobo behöver en egen URL. Generera en här och lägg sedan in den "
+"på enheten (se setup-guiden nedan)."
 
 #: app/templates/settings_kobo.html:293
 msgid "Device name"
-msgstr ""
+msgstr "Enhetsnamn"
 
 #: app/templates/settings_kobo.html:294
 msgid "e.g. Libra 2 in the kitchen"
-msgstr ""
+msgstr "t.ex. Libra 2 i köket"
 
 #: app/templates/settings_kobo.html:296
 msgid "Generate URL"
-msgstr ""
+msgstr "Generera URL"
 
 #: app/templates/settings_kobo.html:305
 msgid "KEPUB conversion"
-msgstr ""
+msgstr "KEPUB-konvertering"
 
 #: app/templates/settings_kobo.html:308
-#, fuzzy
 msgid "Available"
-msgstr "källa tillgänglig"
+msgstr "Tillgänglig"
 
 #: app/templates/settings_kobo.html:310
 msgid "Not installed"
-msgstr ""
+msgstr "Inte installerad"
 
 #: app/templates/settings_kobo.html:315
 msgid ""
 "Books are converted from EPUB to KEPUB on the fly when the Kobo downloads"
 " them. KEPUB gives the device accurate reading-position tracking."
 msgstr ""
+"Böcker konverteras från EPUB till KEPUB direkt när Kobon laddar ner dem."
+" KEPUB ger enheten exakt lägesspårning."
 
 #: app/templates/settings_kobo.html:317
 msgid ""
@@ -2557,47 +2562,46 @@ msgid ""
 "on the first book download. If the download fails, books are served as "
 "raw EPUB (still readable, just less precise position tracking)."
 msgstr ""
+"kepubify konverterar EPUB till KEPUB direkt, vilket ger Kobon exakt "
+"lägesspårning. Colophon laddar automatiskt ner en pinnad release vid "
+"första bok-nedladdningen. Om nedladdningen misslyckas serveras böckerna "
+"som rå EPUB (fortfarande läsbara, bara mindre exakt lägesspårning)."
 
 #: app/templates/settings_kobo.html:322
-#, fuzzy
 msgid "Binary"
-msgstr "Bibliotek"
+msgstr "Binär"
 
 #: app/templates/settings_kobo.html:325
 msgid "Version"
-msgstr ""
+msgstr "Version"
 
 #: app/templates/settings_kobo.html:329
-#, fuzzy
 msgid "Cache"
-msgstr "Avbryt"
+msgstr "Cache"
 
 #: app/templates/settings_kobo.html:331
-#, fuzzy
 msgid "files"
-msgstr "Fil:"
+msgstr "filer"
 
 #: app/templates/settings_kobo.html:333
 msgid "cap"
-msgstr ""
+msgstr "tak"
 
 #: app/templates/settings_kobo.html:338
 msgid "Clear the KEPUB cache? Files will be regenerated on next download."
-msgstr ""
+msgstr "Töm KEPUB-cachen? Filerna regenereras vid nästa nedladdning."
 
 #: app/templates/settings_kobo.html:339
-#, fuzzy
 msgid "Clear cache"
-msgstr "Sökte:"
+msgstr "Töm cache"
 
 #: app/templates/settings_kobo.html:347
-#, fuzzy
 msgid "How do I connect my Kobo?"
-msgstr "Hur skaffar jag en token?"
+msgstr "Hur ansluter jag min Kobo?"
 
 #: app/templates/settings_kobo.html:350
 msgid "Generate a URL above and copy it."
-msgstr ""
+msgstr "Generera en URL ovan och kopiera den."
 
 #: app/templates/settings_kobo.html:351
 msgid "Connect your Kobo to a computer via USB. A KOBOeReader drive appears."
@@ -2898,7 +2902,7 @@ msgstr ""
 
 #: app/templates/settings_kobo.html:454 app/templates/settings_kobo.html:463
 msgid "URL copied to clipboard."
-msgstr ""
+msgstr "URL kopierad till urklipp."
 
 #~ msgid "Settings saved."
 #~ msgstr "Inställningar sparade."
