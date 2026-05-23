@@ -100,20 +100,30 @@ def compute_delta(
     over the EPUB LibraryItems (injected so this stays unit-testable).
     """
     base_q = epub_items_query()
-    if incoming_token.since is not None:
-        base_q = base_q.filter(LibraryItem.updated_at > incoming_token.since)
-    base_q = base_q.order_by(LibraryItem.updated_at.asc(), LibraryItem.id.asc())
-
-    offset = incoming_token.page * page_size
-    fetched = base_q.offset(offset).limit(page_size + 1).all()
-    has_more = len(fetched) > page_size
-    items_this_page = fetched[:page_size]
 
     # Which items has this device already seen?
     seen_ids = {
         row.library_item_id
         for row in KoboBookState.query.filter_by(device_id=device_id).all()
     }
+
+    # If we have no record of having sent anything to this device,
+    # ignore the incoming token's `since` and re-send everything. The
+    # device may still be holding a token from a previous sync that
+    # we've since lost track of (eg. operator cleared kobo_book_states
+    # manually, or the row got dropped). Without this, every sync would
+    # come back empty because the filter `updated_at > since` matches
+    # nothing for an unchanged library.
+    effective_since = incoming_token.since if seen_ids else None
+
+    if effective_since is not None:
+        base_q = base_q.filter(LibraryItem.updated_at > effective_since)
+    base_q = base_q.order_by(LibraryItem.updated_at.asc(), LibraryItem.id.asc())
+
+    offset = incoming_token.page * page_size
+    fetched = base_q.offset(offset).limit(page_size + 1).all()
+    has_more = len(fetched) > page_size
+    items_this_page = fetched[:page_size]
 
     new_items: list[LibraryItem] = []
     changed_items: list[LibraryItem] = []
@@ -135,20 +145,20 @@ def compute_delta(
 
     # Compute outgoing token
     if has_more:
-        next_token = SyncToken(since=incoming_token.since, page=incoming_token.page + 1)
+        next_token = SyncToken(since=effective_since, page=incoming_token.page + 1)
     else:
         # Done. Advance `since` to the latest updated_at we've seen,
-        # falling back to the incoming value if we sent nothing.
+        # falling back to the effective_since value if we sent nothing.
         max_seen = max(
             (i.updated_at for i in items_this_page if i.updated_at is not None),
             default=None,
         )
         if max_seen is None:
-            new_since = incoming_token.since
-        elif incoming_token.since is None or max_seen > incoming_token.since:
+            new_since = effective_since
+        elif effective_since is None or max_seen > effective_since:
             new_since = max_seen
         else:
-            new_since = incoming_token.since
+            new_since = effective_since
         next_token = SyncToken(since=new_since, page=0)
 
     return SyncDelta(
