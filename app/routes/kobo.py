@@ -767,6 +767,61 @@ def _find_item_by_uuid(image_id: str) -> LibraryItem | None:
 # not device-state"). The handler is registered before `store_proxy` so it
 # shadows the catch-all stub.
 
+def _build_state_response(item: LibraryItem) -> dict:
+    """Render a saved LibraryItem as the ReadingState DTO the Kobo expects
+    back on GET /v1/library/<uuid>/state. Shape matches the ReadingState
+    block we ship in /library/sync entitlements."""
+    book_uuid = _book_uuid(item.id)
+    last_modified = _iso(item.read_last_modified or item.updated_at)
+    created = _iso(item.created_at)
+    location_obj = None
+    if item.read_location:
+        location_obj = {
+            "Value": item.read_location,
+            "Type": "KoboSpan",
+            "Source": book_uuid,
+        }
+    return {
+        "Created": created,
+        "CurrentBookmark": {
+            "LastModified": last_modified,
+            "Location": location_obj,
+            "ProgressPercent": item.read_progress,
+            "ContentSourceProgressPercent": item.read_progress,
+        },
+        "EntitlementId": book_uuid,
+        "LastModified": last_modified,
+        "PriorityTimestamp": last_modified,
+        "StatusInfo": {
+            "LastModified": last_modified,
+            "Status": item.read_status or "ReadyToRead",
+            "TimesStartedReading": int(item.times_started or 0),
+        },
+        "Statistics": {
+            "LastModified": last_modified,
+            "SpentReadingMinutes": 0,
+            "RemainingTimeMinutes": 0,
+        },
+    }
+
+
+@kobo_bp.route("/<token>/v1/library/<book_id>/state", methods=["GET"])
+@require_device
+def get_reading_state(device, book_id):
+    """Return the saved reading state to the device. The Kobo polls this
+    before deciding whether to PUT its local state — if we 404 or return
+    `{}` (which the catch-all does) the device assumes the server has no
+    state and overwrites ours with its local default (often ReadyToRead
+    for books the device hasn't actively tracked yet). Returning the
+    saved DTO breaks that loop and lets a Colophon-side "Mark as read"
+    survive a sync.
+    """
+    item = _find_item_by_uuid(book_id)
+    if item is None:
+        return jsonify({}), 200
+    return jsonify({"ReadingStates": [_build_state_response(item)]})
+
+
 @kobo_bp.route("/<token>/v1/library/<book_id>/state", methods=["PUT"])
 @require_device
 def update_reading_state(device, book_id):
@@ -794,6 +849,20 @@ def update_reading_state(device, book_id):
         return jsonify({}), 200
 
     payload = request.get_json(silent=True) or {}
+
+    # Diagnostic — log the raw body once per PUT so we can confirm the
+    # exact shape the device sends. Remove after Phase 3 settles.
+    raw_preview = request.get_data(as_text=True)[:600]
+    logger.info("Kobo state PUT body[:600]=%s", raw_preview)
+
+    # Empirically the Kobo wraps the actual state in a ReadingStates
+    # array: {"ReadingStates": [ { StatusInfo, CurrentBookmark, ... } ]}.
+    # Komga unwraps the same way. Older flat shape ({StatusInfo: ...} at
+    # the top level) is supported as a fallback so future firmware shifts
+    # don't silently break parsing.
+    if isinstance(payload.get("ReadingStates"), list) and payload["ReadingStates"]:
+        payload = payload["ReadingStates"][0] or {}
+
     status_info = payload.get("StatusInfo") or {}
     bookmark = payload.get("CurrentBookmark") or {}
     location = bookmark.get("Location") or {}
