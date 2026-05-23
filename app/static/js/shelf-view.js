@@ -407,4 +407,12 @@
         _renderBatch(INITIAL_BATCH);
     }
     window.refreshShelfView = refreshShelfView;
+
+    /* Bootstrap Hyllvy if it's the active paradigm at load time.
+       filters-sort-paging.js's bottom-of-script init runs applyViewMode()
+       which calls initShelfView, but at that point this file hasn't
+       loaded yet — so the typeof guard there skips it. Run it now. */
+    if (window._viewMode === 'shelf' && typeof initShelfView === 'function') {
+        initShelfView();
+    }
 })(window, document);

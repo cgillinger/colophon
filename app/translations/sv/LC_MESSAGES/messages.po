@@ -541,6 +541,14 @@ msgstr "Visa i tabell"
 msgid "Books in this series"
 msgstr "Böcker i den här serien"
 
+#: app/templates/bulk_metadata.html
+msgid "by"
+msgstr "av"
+
+#: app/templates/bulk_metadata.html
+msgid "No synopsis available."
+msgstr "Ingen synopsis tillgänglig."
+
 #: app/templates/bulk_metadata.html:2840 app/templates/bulk_metadata.html:3380
 msgid "Result"
 msgstr "Resultat"
