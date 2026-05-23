@@ -108,7 +108,14 @@ def initialization(device):
     if not auth.startswith("Bearer "):
         return jsonify({"error": "unauthorized"}), 401
 
-    base = request.host_url.rstrip("/")
+    # The Kobo Libra Color empirically sends `Host: 192.168.50.8`
+    # without the port even when api_endpoint has :5055, so
+    # request.host_url comes back without the port and our image
+    # URLs in the conf end up pointing at port 80. Prefer an explicit
+    # COLOPHON_PUBLIC_URL when configured (e.g. set in
+    # docker-compose.yml) so the URLs survive Kobo's Host-header
+    # mangling.
+    base = os.environ.get("COLOPHON_PUBLIC_URL", "").rstrip("/") or request.host_url.rstrip("/")
     token = _token_from_path()
     if not token:
         return jsonify({"error": "bad_request"}), 400
