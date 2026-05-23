@@ -385,10 +385,38 @@ def _epub_items_query():
 
 def _entitlement_dtos(item: LibraryItem, base_url: str, token: str) -> dict:
     """Build a NewEntitlement wrapper for one LibraryItem."""
+    from app.services.kobo_kepub import resolve_kepubify_path
+
     book_uuid = _book_uuid(item.id)
     last_modified = _iso(item.updated_at)
     created = _iso(item.created_at)
     download_url = f"{base_url}/kobo/{token}/v1/books/{item.id}/file/epub"
+
+    # Kobo silently skips metadata updates when Description is null or
+    # empty (per Komga's KoboDtoDao comment). Force at least a single
+    # space so the device commits the row.
+    description = (item.description or "").strip() or " "
+
+    # Komga uses "KEPUB" when a kepubify binary is reachable, "EPUB3"
+    # otherwise. We do the same — the actual conversion is handled
+    # on-demand by book_file().
+    download_format = "KEPUB" if resolve_kepubify_path() else "EPUB3"
+
+    # PublicationDate must be a real ISO 8601 datetime with timezone;
+    # the embedded item.published_date is often a year-only string or
+    # missing entirely, so normalise to created when we can't trust it.
+    published = item.published_date
+    if not published or len(str(published)) < 10:
+        publication_date = created
+    else:
+        # Pad year-only / date-only values out to a full timestamp.
+        s = str(published)
+        if len(s) == 4:
+            publication_date = f"{s}-01-01T00:00:00.000Z"
+        elif len(s) == 10:
+            publication_date = f"{s}T00:00:00.000Z"
+        else:
+            publication_date = s
 
     contributors = []
     contributor_roles = []
@@ -429,13 +457,13 @@ def _entitlement_dtos(item: LibraryItem, base_url: str, token: str) -> dict:
         "CrossRevisionId": book_uuid,
         "CurrentDisplayPrice": {"CurrencyCode": "USD", "TotalAmount": 0},
         "CurrentLoveDisplayPrice": {"TotalAmount": 0},
-        "Description": item.description or "",
+        "Description": description,
         "DownloadUrls": [
             {
-                "Format": "KEPUB",
+                "Format": download_format,
                 "Url": download_url,
                 "Size": item.size_bytes or 0,
-                "Platform": "Android",
+                "Platform": "Generic",
                 "DrmType": "None",
             }
         ],
@@ -446,9 +474,9 @@ def _entitlement_dtos(item: LibraryItem, base_url: str, token: str) -> dict:
         "IsInternetArchived": False,
         "IsPreOrder": False,
         "IsSocialEnabled": True,
-        "Language": item.language or "en",
+        "Language": (item.language or "en")[:2],
         "PhoneticPronunciations": {},
-        "PublicationDate": item.published_date or created[:10],
+        "PublicationDate": publication_date,
         "Publisher": {"Imprint": "", "Name": item.publisher or "Colophon"},
         "RevisionId": book_uuid,
         "Title": item.title or item.file_name or "Untitled",
@@ -460,6 +488,7 @@ def _entitlement_dtos(item: LibraryItem, base_url: str, token: str) -> dict:
     reading_state = {
         "Created": created,
         "CurrentBookmark": {
+            "LastModified": last_modified,
             "Location": None,
             "ProgressPercent": None,
             "ContentSourceProgressPercent": None,
@@ -470,11 +499,12 @@ def _entitlement_dtos(item: LibraryItem, base_url: str, token: str) -> dict:
         "StatusInfo": {
             "LastModified": last_modified,
             "Status": "ReadyToRead",
+            "TimesStartedReading": 0,
         },
         "Statistics": {
             "LastModified": last_modified,
-            "SpentReadingMinutes": None,
-            "RemainingTimeMinutes": None,
+            "SpentReadingMinutes": 0,
+            "RemainingTimeMinutes": 0,
         },
     }
 

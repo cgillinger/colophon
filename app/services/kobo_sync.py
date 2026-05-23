@@ -24,7 +24,7 @@ from app.models import KoboBookState, LibraryItem, db
 
 logger = logging.getLogger(__name__)
 
-SYNC_PAGE_SIZE = 200
+SYNC_PAGE_SIZE = 100
 TOKEN_VERSION = 1
 
 
