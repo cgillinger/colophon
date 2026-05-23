@@ -92,9 +92,22 @@ def ping(token):
 @require_device
 def initialization(device):
     """Returns a map of named resource URLs. The Kobo uses this to
-    decide which endpoint to call for each operation. Anything we
-    don't override falls back to the real Kobo store via the
-    catch-all proxy."""
+    decide which endpoint to call for each operation.
+
+    We require an Authorization: Bearer header here. Without it we
+    return 401, which is what Komga does. The 401 forces the device
+    to POST /v1/auth/device first to obtain a bearer token, and only
+    then retry initialization. Without that ordering, the device
+    happily takes our Resources map and starts calling URLs that
+    happen to still point at storeapi.kobo.com (autocomplete,
+    user_profile, configuration_data, ...) — those calls fail because
+    we've hijacked the device's api_endpoint, and the device loops on
+    affiliate -> initialization forever.
+    """
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return jsonify({"error": "unauthorized"}), 401
+
     base = request.host_url.rstrip("/")
     token = _token_from_path()
     if not token:
