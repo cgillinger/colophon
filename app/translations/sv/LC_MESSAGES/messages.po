@@ -676,7 +676,7 @@ msgstr "Hitta nya böcker"
 
 #: app/templates/bulk_metadata.html:2984 app/templates/bulk_metadata.html:3436
 msgid "Find duplicates"
-msgstr "Hitta dubletter"
+msgstr "Hitta dubbletter"
 
 #: app/templates/bulk_metadata.html:2991 app/templates/bulk_metadata.html:3043
 #: app/templates/settings_ai.html:350 app/templates/settings_ai.html:390
@@ -1554,11 +1554,11 @@ msgstr "Anslutningen bröts."
 
 #: app/templates/bulk_metadata.html:4186 app/templates/bulk_metadata.html:4187
 msgid "Searching for duplicates..."
-msgstr "Söker efter dubletter..."
+msgstr "Söker efter dubbletter..."
 
 #: app/templates/bulk_metadata.html:4198
 msgid "Error loading duplicates:"
-msgstr "Kunde inte ladda dubletter:"
+msgstr "Kunde inte ladda dubbletter:"
 
 #: app/templates/bulk_metadata.html:4221
 msgid "Same ISBN"
@@ -1574,15 +1574,15 @@ msgstr "Liknande titel"
 
 #: app/templates/bulk_metadata.html:4243 app/templates/bulk_metadata.html:4333
 msgid "No duplicates found"
-msgstr "Inga dubletter hittades"
+msgstr "Inga dubbletter hittades"
 
 #: app/templates/bulk_metadata.html:4247 app/templates/bulk_metadata.html:4335
 msgid "Potential duplicate groups found"
-msgstr "Potentiella dublettgrupper hittade"
+msgstr "Potentiella dubblettgrupper hittade"
 
 #: app/templates/bulk_metadata.html:4289
 msgid "Skip — not duplicates"
-msgstr "Hoppa över — inte dubletter"
+msgstr "Hoppa över — inte dubbletter"
 
 #: app/templates/bulk_metadata.html:4318
 msgid "At least one book must be kept"

@@ -907,82 +907,9 @@
         }
     };
 </script>
+<script src="{{ url_for('static', filename='js/core.js') }}"></script>
 <script>
     var _i18n = window.__colophonConfig.i18n;
-    /* -------------------------------------------------------------------- */
-    /* Theme toggle                                                          */
-    /* -------------------------------------------------------------------- */
-    /* -------------------------------------------------------------------- */
-    /* Smart-replace settings (persisted in localStorage)                    */
-    /* -------------------------------------------------------------------- */
-    function toggleTheme() {
-        var current = document.documentElement.getAttribute('data-theme');
-        var next = current === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', next);
-        localStorage.setItem('colophon-theme', next);
-        var icon = document.getElementById('themeIcon');
-        if (icon) icon.className = next === 'dark' ? 'ti ti-moon' : 'ti ti-sun';
-    }
-    (function() {
-        var t = document.documentElement.getAttribute('data-theme');
-        var icon = document.getElementById('themeIcon');
-        if (icon) icon.className = t === 'dark' ? 'ti ti-moon' : 'ti ti-sun';
-    })();
-
-    /* -------------------------------------------------------------------- */
-    /* Unified view system: table / shelf / series  +  density compact/airy */
-    /* -------------------------------------------------------------------- */
-    var _viewMode = 'table';          /* 'table' | 'shelf' | 'series' */
-    var _density = 'compact';         /* 'compact' | 'airy' */
-    var _skriptorium = false;
-    var _seriesSort = 'alpha';        /* 'alpha' | 'count' */
-    var _hideOnlyOneSeries = false;
-    var _filterOpen = false;
-
-    /* One-time migration from legacy keys */
-    (function _migrateViewState() {
-        var legacy = localStorage.getItem('colophon-viewMode');
-        var newMode = localStorage.getItem('colophon-view-mode');
-        var newModeNew = localStorage.getItem('colophon-viewMode-v2');
-
-        if (!newModeNew) {
-            if (legacy === 'compact' || legacy === 'gallery') {
-                localStorage.setItem('colophon-viewMode-v2', 'table');
-                if (legacy === 'gallery') localStorage.setItem('colophon-density', 'airy');
-            } else if (legacy === 'grid') {
-                localStorage.setItem('colophon-viewMode-v2', 'shelf');
-            } else if (newMode === 'shelf' || newMode === 'table') {
-                localStorage.setItem('colophon-viewMode-v2', newMode);
-            }
-
-            var oldDensity = localStorage.getItem('colophon-table-density');
-            if (oldDensity === 'gallery') localStorage.setItem('colophon-density', 'airy');
-            else if (oldDensity === 'compact' && !localStorage.getItem('colophon-density')) {
-                localStorage.setItem('colophon-density', 'compact');
-            }
-
-            if (localStorage.getItem('colophon-orgMode') === 'series') {
-                localStorage.setItem('colophon-viewMode-v2', 'series');
-            }
-
-            localStorage.removeItem('colophon-viewMode');
-            localStorage.removeItem('colophon-view-mode');
-            localStorage.removeItem('colophon-table-density');
-            localStorage.removeItem('colophon-orgMode');
-        }
-    })();
-
-    (function _loadViewState() {
-        var v = localStorage.getItem('colophon-viewMode-v2');
-        if (v === 'table' || v === 'shelf' || v === 'series') _viewMode = v;
-        var d = localStorage.getItem('colophon-density');
-        if (d === 'compact' || d === 'airy') _density = d;
-        _skriptorium = (localStorage.getItem('colophon-skriptorium') === '1');
-        var s = localStorage.getItem('colophon-seriesSort');
-        if (s === 'alpha' || s === 'count') _seriesSort = s;
-        _hideOnlyOneSeries = (localStorage.getItem('colophon-hideOnlyOneSeries') === '1');
-        _filterOpen = (localStorage.getItem('colophon-filterOpen') === '1');
-    })();
 
     function _seriesEsc(s) {
         return String(s == null ? '' : s)
@@ -993,93 +920,6 @@
             .replace(/'/g, '&#39;');
     }
 
-    function setViewMode(mode) {
-        if (mode !== 'table' && mode !== 'shelf' && mode !== 'series') return;
-        if (mode === _viewMode) return;
-        var prev = _viewMode;
-        _viewMode = mode;
-        localStorage.setItem('colophon-viewMode-v2', mode);
-        applyViewMode();
-        if (prev === 'shelf' && typeof destroyShelfView === 'function') destroyShelfView();
-        if (mode === 'shelf' && typeof initShelfView === 'function') initShelfView();
-    }
-
-    function setDensity(val) {
-        if (val !== 'compact' && val !== 'airy') return;
-        _density = val;
-        localStorage.setItem('colophon-density', val);
-        document.body.setAttribute('data-density', val);
-        _syncDensityRadios();
-    }
-
-    function _syncDensityRadios() {
-        document.querySelectorAll('input[name="density"]').forEach(function(r) {
-            r.checked = (r.value === _density);
-        });
-    }
-
-    function setSkriptorium(on) {
-        _skriptorium = !!on;
-        localStorage.setItem('colophon-skriptorium', _skriptorium ? '1' : '0');
-        if (_viewMode !== 'shelf') return;
-        if (_skriptorium && typeof applySkriptorium === 'function') applySkriptorium();
-        else if (!_skriptorium && typeof removeSkriptorium === 'function') removeSkriptorium();
-    }
-
-    function isSkriptoriumOn() { return _skriptorium; }
-
-    function applyViewMode() {
-        document.querySelectorAll('#viewSegGroup .seg-btn').forEach(function(btn) {
-            btn.classList.toggle('active', btn.dataset.mode === _viewMode);
-        });
-        document.body.classList.toggle('shelf-active', _viewMode === 'shelf');
-        document.body.classList.toggle('series-active', _viewMode === 'series');
-        document.body.setAttribute('data-density', _density);
-
-        var tableWrap = document.querySelector('.table-wrap');
-        var gridView = document.getElementById('gridView');
-        var seriesView = document.getElementById('seriesView');
-        var paginationBar = document.getElementById('paginationBar');
-        var groupToggle = document.getElementById('groupToggle');
-        var densityRadios = document.getElementById('densityRadios');
-        var skriptoriumWrap = document.getElementById('skriptoriumToggleWrap');
-        var seriesControls = document.getElementById('seriesControls');
-
-        if (tableWrap) tableWrap.style.display = 'none';
-        if (gridView) gridView.style.display = 'none';
-        if (seriesView) seriesView.style.display = 'none';
-        if (seriesControls) seriesControls.style.display = 'none';
-        if (skriptoriumWrap) skriptoriumWrap.style.display = 'none';
-
-        function dim(el, on) {
-            if (!el) return;
-            el.classList.toggle('toolbar-dim', !!on);
-        }
-
-        if (_viewMode === 'table') {
-            if (tableWrap) tableWrap.style.display = '';
-            if (paginationBar) paginationBar.style.display = '';
-            dim(groupToggle, false);
-            dim(densityRadios, false);
-        } else if (_viewMode === 'shelf') {
-            if (gridView) gridView.style.display = 'grid';
-            if (paginationBar) paginationBar.style.display = '';
-            if (skriptoriumWrap) skriptoriumWrap.style.display = '';
-            dim(groupToggle, true);
-            dim(densityRadios, true);
-        } else if (_viewMode === 'series') {
-            if (seriesView) seriesView.style.display = '';
-            if (seriesControls) seriesControls.style.display = 'inline-flex';
-            if (paginationBar) paginationBar.style.display = 'none';
-            dim(groupToggle, true);
-            dim(densityRadios, true);
-            renderSeriesView();
-        }
-
-        _syncDensityRadios();
-        var sk = document.getElementById('skriptoriumToggle');
-        if (sk) sk.checked = _skriptorium;
-    }
 
     /* -------------------------------------------------------------------- */
     /* Series view rendering                                                 */
@@ -6306,10 +6146,6 @@
             });
         }
     })();
-    function setLanguage(lang) {
-        document.cookie = 'colophon_lang=' + lang + ';path=/;max-age=31536000;SameSite=Lax';
-        location.reload();
-    }
 </script>
 <script src="{{ url_for('static', filename='js/duplicates.js') }}"></script>
 <script src="{{ url_for('static', filename='js/scan-sync.js') }}"></script>
