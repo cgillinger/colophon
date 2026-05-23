@@ -16,17 +16,12 @@ import uuid
 from datetime import datetime, timezone
 from functools import wraps
 
-import requests
 from flask import (
     Blueprint,
-    Response,
     abort,
-    current_app,
     jsonify,
     request,
     send_file,
-    stream_with_context,
-    url_for,
 )
 from sqlalchemy import or_
 
@@ -577,16 +572,8 @@ def _find_item_by_uuid(image_id: str) -> LibraryItem | None:
 
 
 # ---------------------------------------------------------------------------
-# Catch-all proxy to the real Kobo store
+# Catch-all stub for unhandled Kobo endpoints
 # ---------------------------------------------------------------------------
-
-# Headers we don't forward back from the upstream response
-_HOP_BY_HOP = {
-    "connection", "keep-alive", "proxy-authenticate", "proxy-authorization",
-    "te", "trailers", "transfer-encoding", "upgrade", "content-encoding",
-    "content-length",
-}
-
 
 @kobo_bp.route(
     "/<token>/<path:rest>",
@@ -594,39 +581,20 @@ _HOP_BY_HOP = {
 )
 @require_device
 def store_proxy(device, rest):
-    """Forward anything we don't explicitly handle to the real Kobo
-    store. The user's token is stripped before forwarding so it
-    never leaks to Kobo."""
-    upstream_url = f"{KOBO_STORE_BASE}/{rest}"
+    """Stub for any endpoint we don't explicitly handle.
 
-    # Forward all headers except Host and our auth token. The token
-    # was already consumed by @require_device; we don't pass it on.
-    fwd_headers = {
-        k: v for k, v in request.headers.items()
-        if k.lower() not in {"host", "content-length"}
-    }
+    We used to forward to storeapi.kobo.com here, but the real store
+    rejects unsigned requests with 4xx, which makes some firmwares
+    treat the whole sync as broken and loop on affiliate+init forever.
+    Returning an empty 200 instead lets the device move on. The user
+    loses store browsing (which never worked over our proxy anyway)
+    but sync works.
 
-    try:
-        upstream = requests.request(
-            method=request.method,
-            url=upstream_url,
-            params=request.args,
-            headers=fwd_headers,
-            data=request.get_data(),
-            allow_redirects=False,
-            stream=True,
-            timeout=30,
-        )
-    except requests.RequestException as exc:
-        logger.warning("Kobo proxy: upstream failure for %s: %s", rest, exc)
-        return jsonify({"error": "upstream_unavailable"}), 502
-
-    resp_headers = [
-        (k, v) for k, v in upstream.raw.headers.items()
-        if k.lower() not in _HOP_BY_HOP
-    ]
-    return Response(
-        stream_with_context(upstream.iter_content(chunk_size=8192)),
-        status=upstream.status_code,
-        headers=resp_headers,
+    Every fall-through is logged at WARNING so we can see which
+    endpoints the device wants and add proper handlers for them.
+    """
+    logger.warning(
+        "Kobo store_proxy fallthrough: %s %s args=%s",
+        request.method, rest, dict(request.args),
     )
+    return jsonify({}), 200
