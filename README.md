@@ -1,10 +1,12 @@
-# Colophon
+# Colophon — self-hosted e-book metadata manager with Kobo wireless sync
 
-![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white) ![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask) ![Docker](https://img.shields.io/badge/docker-ready-blue?logo=docker) ![License](https://img.shields.io/badge/license-MIT-green) ![Version](https://img.shields.io/badge/version-1.0.0-brightgreen) ![i18n](https://img.shields.io/badge/i18n-EN%20%7C%20SV-yellow)
+[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![SQLite](https://img.shields.io/badge/SQLite-3-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.0.0-brightgreen)](https://github.com/cgillinger/colophon/releases) [![i18n](https://img.shields.io/badge/i18n-EN%20%7C%20SV-yellow)](#-internationalisation) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#-kobo-wireless-sync) [![Self-hosted](https://img.shields.io/badge/self--hosted-✓-blueviolet)](#) [![GitHub stars](https://img.shields.io/github/stars/cgillinger/colophon?style=social)](https://github.com/cgillinger/colophon/stargazers) [![Last commit](https://img.shields.io/github/last-commit/cgillinger/colophon)](https://github.com/cgillinger/colophon/commits/main)
 
-Colophon is a self-hosted e-book metadata manager. It scans a folder of e-book files, fetches metadata from multiple sources, lets AI identify book series, and searches for cover art — all through a clean web interface running in Docker.
+Colophon is a **self-hosted e-book metadata manager** for home libraries. Drop your EPUBs (and MOBI, AZW3, KEPUB, PDF, CBZ, CBR) into a folder and Colophon will scan them, fetch fresh metadata from Google Books and Calibre, identify book series with AI, pick the best cover art from five free sources, and let a Kobo e-reader sync the result wirelessly as if it were the Kobo store.
 
-Built for home use. Works with Komga, Kavita, Bookstation, and other e-book servers that read metadata from e-book files.
+Built for home use. Plays nicely with **Komga**, **Kavita**, **Bookstation**, and any other server that reads embedded metadata from e-book files. Self-hosted, MIT-licensed, no telemetry, runs in a single Docker container.
+
+> **Keywords for the algorithm:** ebook server, kobo sync, kobo wireless, komga alternative, calibre alternative, ebook metadata, self-hosted library, EPUB management, kepubify, koreader.
 
 ---
 
