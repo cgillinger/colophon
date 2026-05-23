@@ -166,16 +166,51 @@
         updateBatchBar();
     });
 
-    /* ============================================================ *
-     * Bulk delete (Danger Zone)
-     * ============================================================ */
-
     function toggleDangerZone() {
         var show = document.getElementById('showDangerZone').checked;
         var el = document.getElementById('dangerZone');
         if (el) el.style.display = show ? '' : 'none';
     }
     window.toggleDangerZone = toggleDangerZone;
+
+    /* ============================================================ *
+     * Grid ↔ table checkbox mirroring (Hyllvy in shelf-view.js)
+     * ============================================================ */
+
+    /* Grid checkbox change → mirror to table checkbox */
+    document.addEventListener('change', function (e) {
+        var t = e.target;
+        if (!(t && t.classList && t.classList.contains('grid-card-checkbox'))) return;
+        var card = t.closest('.grid-card');
+        var itemId = card && card.dataset.itemId;
+        if (!itemId) return;
+        var row = document.querySelector('#bookTableBody tr[data-item-id="' + itemId + '"]');
+        if (row) {
+            var cb = row.querySelector('.book-checkbox');
+            if (cb && cb.checked !== t.checked) {
+                cb.checked = t.checked;
+                cb.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+        if (typeof updateGridSelectionState === 'function') updateGridSelectionState();
+    });
+
+    /* Table checkbox change → mirror to grid + refresh has-selection */
+    document.addEventListener('change', function (e) {
+        var t = e.target;
+        if (!(t && t.classList && t.classList.contains('book-checkbox'))) return;
+        var row = t.closest('tr');
+        var itemId = row && row.dataset.itemId;
+        if (itemId) {
+            var gridCb = document.querySelector('#gridView .grid-card[data-item-id="' + itemId + '"] .grid-card-checkbox');
+            if (gridCb && gridCb.checked !== t.checked) gridCb.checked = t.checked;
+        }
+        if (typeof updateGridSelectionState === 'function') updateGridSelectionState();
+    });
+
+    /* ============================================================ *
+     * Bulk delete (Danger Zone)
+     * ============================================================ */
 
     function confirmBulkDelete() {
         var checked = Array.from(document.querySelectorAll('.book-checkbox:checked'));
