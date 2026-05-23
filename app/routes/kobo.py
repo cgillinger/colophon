@@ -234,6 +234,18 @@ def _token_from_path() -> str | None:
     return parts[2] if len(parts) >= 3 else None
 
 
+@kobo_bp.route("/<token>/v1/affiliate")
+@require_device
+def affiliate(device):
+    """Stub for the Kobo affiliate/referral endpoint. The real Kobo
+    store returns affiliate tracking data here; if we let the catch-all
+    proxy forward to storeapi.kobo.com without proper signing it
+    answers 400, and the device then loops on affiliate forever and
+    never moves on to /v1/auth/device or /v1/library/sync. Returning a
+    minimal 200 lets it proceed."""
+    return jsonify({"Name": "Kobo"})
+
+
 @kobo_bp.route("/<token>/v1/auth/device", methods=["POST"])
 @require_device
 def auth_device(device):
