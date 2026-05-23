@@ -533,6 +533,14 @@ msgstr "författare"
 msgid "reading"
 msgstr "läser"
 
+#: app/templates/bulk_metadata.html
+msgid "View in table"
+msgstr "Visa i tabell"
+
+#: app/templates/bulk_metadata.html
+msgid "Books in this series"
+msgstr "Böcker i den här serien"
+
 #: app/templates/bulk_metadata.html:2840 app/templates/bulk_metadata.html:3380
 msgid "Result"
 msgstr "Resultat"
