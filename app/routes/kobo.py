@@ -115,7 +115,7 @@ def initialization(device):
     # COLOPHON_PUBLIC_URL when configured (e.g. set in
     # docker-compose.yml) so the URLs survive Kobo's Host-header
     # mangling.
-    base = os.environ.get("COLOPHON_PUBLIC_URL", "").rstrip("/") or request.host_url.rstrip("/")
+    base = _public_base_url()
     token = _token_from_path()
     if not token:
         return jsonify({"error": "bad_request"}), 400
@@ -330,6 +330,20 @@ def initialization(device):
     del prefix
 
     return jsonify({"Resources": resources})
+
+
+def _public_base_url() -> str:
+    """The URL the Kobo will use to reach us. Reads COLOPHON_PUBLIC_URL
+    when set, otherwise falls back to request.host_url.
+
+    Why we can't trust request.host_url alone: the Kobo Libra Color
+    sends Host: 192.168.50.8 (no port) even when api_endpoint includes
+    :5055, so Flask reconstructs host_url without the port. URLs we
+    bake into responses then point at port 80 and silent-fail when
+    the device follows them. The env var sidesteps this entirely.
+    """
+    explicit = os.environ.get("COLOPHON_PUBLIC_URL", "").rstrip("/")
+    return explicit or request.host_url.rstrip("/")
 
 
 def _token_from_path() -> str | None:
@@ -580,7 +594,7 @@ def library_sync(device):
     """
     touch_device(device, mark_sync=True)
 
-    base_url = request.host_url.rstrip("/")
+    base_url = _public_base_url()
     token = _token_from_path()
 
     incoming = SyncToken.parse(request.headers.get("x-kobo-synctoken"))
@@ -626,7 +640,7 @@ def library_metadata(device, book_id):
     item = _find_item_by_uuid(book_id)
     if item is None:
         return jsonify({"error": "not_found"}), 404
-    base_url = request.host_url.rstrip("/")
+    base_url = _public_base_url()
     token = _token_from_path()
     full = _entitlement_dtos(item, base_url, token)
     return jsonify([full["BookMetadata"]])
