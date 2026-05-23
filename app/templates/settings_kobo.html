@@ -201,6 +201,34 @@
             <button type="button" class="btn primary" onclick="copyNewUrl()"><i class="ti ti-copy"></i> {{ _('Copy') }}</button>
         </div>
         <p class="warning-line">&#9888; {{ _('Save it now — Colophon stores only the hash, never the URL itself.') }}</p>
+
+        <details class="howto" style="margin-top: 16px;">
+            <summary>{{ _('Or: upload your Kobo eReader.conf and let Colophon patch it') }}</summary>
+            <div class="howto-body">
+                <p>{{ _('Skip the manual edit. Connect the Kobo via USB, upload the conf file here, and Colophon hands back a patched version you save over the original.') }}</p>
+                <ol style="padding-left: 22px; margin: 0;">
+                    <li>{{ _('Plug the Kobo into this computer (USB).') }}</li>
+                    <li>{{ _('On the KOBOeReader drive, find this file:') }} <code>.kobo/Kobo/Kobo eReader.conf</code></li>
+                    <li>{{ _('Copy it to your desktop first as a backup.') }}</li>
+                    <li>{{ _('Choose the original below and click Patch & download.') }}</li>
+                    <li>{{ _('Save the downloaded file back over the original on the Kobo (replace).') }}</li>
+                    <li>{{ _('Eject the Kobo safely. On the Kobo: Settings → Sync now.') }}</li>
+                </ol>
+                <p style="margin-top: 10px; font-size: 13px; color: var(--text-tertiary);">
+                    {{ _('Colophon processes the file in memory only — it is never stored on the server or logged.') }}
+                </p>
+                <form method="post" action="{{ url_for('settings.kobo_patch_conf') }}"
+                      enctype="multipart/form-data"
+                      style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px;">
+                    <input type="hidden" name="token" value="{{ new_token }}">
+                    <input type="file" name="conf" accept=".conf,text/plain" required
+                           style="flex:1; min-width:200px;">
+                    <button type="submit" class="btn primary">
+                        <i class="ti ti-download"></i> {{ _('Patch & download') }}
+                    </button>
+                </form>
+            </div>
+        </details>
     </div>
     {% endif %}
 
