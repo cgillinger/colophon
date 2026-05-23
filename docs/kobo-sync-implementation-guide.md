@@ -269,9 +269,11 @@ reading_state = {
 
 The missing `LastModified` and `TimesStartedReading` were enough to make the device queue retries.
 
-### Fields you can pass through verbatim
+### Fields you can pass through verbatim — with one trap
 
-`Title`, `Contributors` (list of strings), `ContributorRoles` (list of `{Name, Role}` dicts), `Publisher.Name`, `Series.{Name, Number, NumberFloat, Id}`. These behave reasonably.
+`Title`, `Contributors` (list of strings), `ContributorRoles` (list of `{Name, Role}` dicts), `Publisher.Name`, `Series.{Name, Id}`. These behave reasonably.
+
+**Trap inside `Series`.** Komga's DTO declares `Number` as `String` and `NumberFloat` as `Float` — i.e. `"Number": "3", "NumberFloat": 3.0`. If you send both as float (`"Number": 3.0, "NumberFloat": 3.0`) the device type-rejects the entitlement and never proceeds to `/file/epub` after the metadata refresh. Symptom is identical to the URL-port bug — "Ladda ner" resets without a file request — so they can be hard to disentangle. Send `Number` as `str(series_index)`.
 
 ### Fields where reasonable defaults are fine
 
@@ -307,13 +309,17 @@ base = request.host_url.rstrip("/")  # ← this!
 
 …the resulting `image_host` and `image_url_template` come back as `http://192.168.50.8` without the port. The device writes those to its conf, then tries to fetch covers on port 80, where nothing listens. **Zero thumbnail requests will reach your server.**
 
-Fix: read the public base URL from environment configuration, not from the request:
+The same bug bites you a second time in `/v1/library/sync` and `/v1/library/{id}/metadata`, which build the `DownloadUrls[0].Url` from `request.host_url`. The device follows that URL to port 80, the download silent-fails after a few seconds, and the Kobo UI shows "Ladda ner" reverting back to its pre-download state. No `/v1/books/<id>/file/epub` request ever reaches your server.
+
+Fix: introduce a shared helper that prefers an environment variable for the public base URL, and call it from every endpoint that mints URLs the device will follow:
 
 ```python
-base = os.environ.get("MYAPP_PUBLIC_URL", "").rstrip("/") or request.host_url.rstrip("/")
+def _public_base_url() -> str:
+    explicit = os.environ.get("MYAPP_PUBLIC_URL", "").rstrip("/")
+    return explicit or request.host_url.rstrip("/")
 ```
 
-Then set `MYAPP_PUBLIC_URL=http://192.168.50.8:5055` in your deployment env (docker-compose, systemd, whatever). The env var wins, and your URLs survive Kobo's Host mangling.
+Then set `MYAPP_PUBLIC_URL=http://192.168.50.8:5055` in your deployment env (docker-compose, systemd, whatever). The env var wins, your URLs survive Kobo's Host mangling, **and you only need this in one place — the helper.**
 
 ### Sleep aggressively interrupts post-sync indexing
 
@@ -434,6 +440,8 @@ If you implement this from scratch, expect to hit some subset of these. None of 
 13. **`ReadingState.Statistics.LastModified: null` and missing `TimesStartedReading` → device queues retries.** Send complete rows with real timestamps and `0` for unread counters.
 14. **`SYNC_PAGE_SIZE = 200` → device processes batches slowly.** Lower to 100 (Komga's default).
 15. **`image_host` derived from `request.host_url` → port stripped by Kobo's Host header → covers fetch from port 80 → silent fail.** Read public URL from environment variable, not request.
+16. **Same Host-stripping bug bit again in `library_sync` and `library_metadata` → `DownloadUrls[0].Url` came out without the port → device never requests `/file/epub`, "Ladda ner" silently resets.** Factor the env-var-aware base URL into a single helper and call it from every endpoint that mints URLs.
+17. **`Series.Number` as float (3.0) instead of string ("3") → Komga's KoboSeriesDto declares Number as String + NumberFloat as Float, the device type-rejects the float-as-Number.** Send `Number` as `str(series_index)`, keep `NumberFloat` as float.
 
 ---
 

@@ -47,6 +47,14 @@ Built for home use. Works with Komga, Kavita, Bookstation, and other e-book serv
 - "Test connections" button with per-source status
 - Collapsible instructions for obtaining each API key
 
+### 📖 Kobo wireless sync
+
+- Point a Kobo e-reader at Colophon and it syncs your library wirelessly, like the official Kobo store
+- Covers, titles, authors and series info show on the device
+- Books download on-demand when you tap them; EPUB is converted to KEPUB on the fly for accurate reading-position tracking
+- One unique URL per device, revokable from the settings UI
+- See [Setting up Kobo sync](#setting-up-kobo-sync) below
+
 ### 🌐 Internationalisation
 
 - English (default) and Swedish
@@ -81,6 +89,7 @@ All variables are read from `.env` (loaded via `env_file` in `docker-compose.yml
 | `COLOPHON_LIBRARY_HOST` | No | `./bibliotek` | Host path mounted as the book folder |
 | `COLOPHON_DATA_HOST` | No | `./data` | Host path mounted as the data folder |
 | `COLOPHON_LOG_LEVEL` | No | `INFO` | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
+| `COLOPHON_PUBLIC_URL` | Only for Kobo sync | — | The URL the Kobo will use to reach Colophon, e.g. `http://192.168.x.x:5000`. Include the port. See [Setting up Kobo sync](#setting-up-kobo-sync). |
 | `COLOPHON_GOOGLE_BOOKS_KEY` | No | — | Google Books API key |
 | `COLOPHON_AI_API_URL` | No | Mistral URL | AI chat completions endpoint |
 | `COLOPHON_AI_API_KEY` | No | — | AI provider API key |
@@ -156,6 +165,137 @@ If you'd like to contribute a translation, submit a PR with:
 - Your language code added to the supported languages list
 
 No Python knowledge needed — just translate the strings in the `.po` file!
+
+---
+
+## Setting up Kobo sync
+
+This makes your Kobo e-reader use Colophon as if it were Kobo's official store. You sync books over WiFi, see covers and titles on the device, and tap to download — no more dragging EPUB files over USB.
+
+**Before you start, you'll need:**
+
+- A Kobo e-reader (Libra, Clara, Sage, Forma, Aura — anything modern)
+- The Kobo on the same WiFi as your Colophon server
+- A USB cable for the Kobo (one-time setup only)
+- A computer (Linux, Mac or Windows)
+- The Kobo signed in to a real Kobo account, with WiFi configured
+
+It's a one-time configuration. After this the Kobo syncs on its own whenever you press **Sync** on the device.
+
+### Step 1 — Set the public URL in Colophon's environment
+
+Colophon needs to know the URL the Kobo will use to reach it. Add this line to your `.env` file:
+
+```
+COLOPHON_PUBLIC_URL=http://192.168.x.x:5000
+```
+
+Replace `192.168.x.x:5000` with whatever URL your Colophon is actually reachable at from inside your network — the same one you type into a browser to open the Colophon web UI. **Include the port number** if it's not 80.
+
+Restart Colophon (`docker compose up -d` or `docker compose restart`) for the change to apply.
+
+### Step 2 — Generate a URL for your Kobo in Colophon
+
+1. Open Colophon in your browser.
+2. Click the device icon in the top bar (or go to Settings → Kobo Sync).
+3. Click **Add device**, give it a name (e.g. "Libra in the kitchen"), and click **Generate URL**.
+4. A long URL appears, something like `http://192.168.x.x:5000/kobo/abc123def456...`. **Copy it.**
+
+Important: the URL only shows once. If you lose it, revoke it and generate a new one.
+
+### Step 3 — Connect your Kobo to your computer with USB
+
+Plug the Kobo into your computer using a USB cable.
+
+The Kobo will pop up a question on its screen: **"Connect"** vs **"Continue reading"** — pick **Connect**.
+
+Your computer should see the Kobo as a USB drive:
+
+- **Mac:** it appears in Finder under "Locations". Look for **KOBOeReader**.
+- **Windows:** open This PC / File Explorer. Look for **KOBOeReader**.
+- **Linux (Ubuntu/Mint):** it usually mounts automatically and shows up in your file manager's sidebar.
+
+### Step 4 — Find the configuration file
+
+The file you need to edit is at this path on the Kobo:
+
+```
+KOBOeReader/.kobo/Kobo/Kobo eReader.conf
+```
+
+The `.kobo` folder starts with a dot, which means it's **hidden** on most systems. Show hidden files:
+
+- **Mac (Finder):** press `Cmd + Shift + .` (period). The folder appears.
+- **Windows (File Explorer):** View tab → tick "Hidden items".
+- **Linux:** in most file managers, `Ctrl + H` toggles hidden files.
+
+Once you can see `.kobo`, navigate to `.kobo/Kobo/`. You'll see `Kobo eReader.conf` there.
+
+### Step 5 — Edit the configuration file
+
+**Important:** use a plain text editor. **Not** Microsoft Word, **not** TextEdit in rich-text mode, **not** Google Docs. Those will silently add formatting that breaks the file.
+
+Good editors:
+
+- **Mac:** TextEdit (in plain-text mode: Format → Make Plain Text), or Sublime Text
+- **Windows:** Notepad, Notepad++
+- **Linux:** xed, gedit, nano, vim
+
+Open `Kobo eReader.conf`. It's a long file with sections in square brackets like `[OneStoreServices]`.
+
+Find the section that starts with `[OneStoreServices]`. Inside that section, locate **four** lines (some might not exist yet):
+
+```
+api_endpoint=...
+image_host=...
+image_url_template=...
+image_url_quality_template=...
+```
+
+Replace those four lines with these (paste the long URL you copied in step 2 in place of `<YOUR-COLOPHON-URL>`):
+
+```
+api_endpoint=<YOUR-COLOPHON-URL>
+image_host=http://192.168.x.x:5000
+image_url_template=<YOUR-COLOPHON-URL>/v1/books/{ImageId}/thumbnail/{Width}/{Height}/false/image.jpg
+image_url_quality_template=<YOUR-COLOPHON-URL>/v1/books/{ImageId}/thumbnail/{Width}/{Height}/{Quality}/{IsGreyscale}/image.jpg
+```
+
+The last three lines must include `http://192.168.x.x:5000` with the **port number** — the Kobo's quirk strips the port from headers, so we have to write it explicitly.
+
+Make sure no extra spaces, no quotation marks around the URLs. Save the file.
+
+**Tip:** before you save, also use File → Save As (or copy the original) to keep a backup as `Kobo eReader.conf.bak` next to it. If anything goes wrong, you can restore the original and the Kobo behaves normally again.
+
+### Step 6 — Eject the Kobo safely
+
+- **Mac:** click the eject button next to KOBOeReader in Finder, or drag it to the Trash icon (which becomes an eject icon).
+- **Windows:** right-click KOBOeReader in This PC → Eject. Or use the "Safely Remove Hardware" tray icon.
+- **Linux:** right-click in file manager → Eject / Safely Remove.
+
+Wait for the Kobo's screen to say it's safe to disconnect. **Then** unplug the cable.
+
+### Step 7 — Sync on the Kobo
+
+The Kobo will reload its library. Then:
+
+1. On the Kobo, tap **Settings** → **Sync now**.
+2. Wait. First sync of a large library takes a minute or two (about a second per 100 books for the protocol, then the Kobo spends a while updating its internal index).
+3. Books from Colophon appear in **My Books**.
+
+Tap a book to download it. The first download per book takes a couple of seconds (Colophon converts EPUB to KEPUB on the fly). Subsequent reads are instant.
+
+### Troubleshooting
+
+**Nothing shows up after Sync.** Check Colophon's logs — `docker logs colophon` — for lines containing `192.168.50.46` or whatever your Kobo's IP is. If you see HTTP requests there, sync is happening; the Kobo just needs more time. If you see nothing, the URL in your conf file is wrong.
+
+**Books appear but covers don't load.** The `image_host` / `image_url_template` lines are wrong or missing the port. Go back to step 5.
+
+**"Sync failed" on the Kobo.** Try restarting the Kobo (hold the power button 8 seconds). If still failing, double-check that `COLOPHON_PUBLIC_URL` in `.env` exactly matches the URL the Kobo can reach.
+
+**You want to remove a device.** Settings → Kobo Sync in Colophon → trash icon next to the device.
+
+**You want to undo and use Kobo's real store again.** Restore the backup `Kobo eReader.conf.bak`, or replace `api_endpoint=...` with `api_endpoint=https://storeapi.kobo.com` and remove the `image_*` lines.
 
 ---
 
