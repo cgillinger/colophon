@@ -2573,19 +2573,17 @@
         .grid-card-checkbox {
             position: absolute;
             top: 6px;
-            left: 6px;
+            right: 6px;
             width: 20px;
             height: 20px;
             cursor: pointer;
             opacity: 0;
             transition: opacity 0.15s;
-            z-index: 2;
+            /* Above the Finished ✓ badge (z-index 3) so it wins on hover.
+               The progress bar at the bottom of the cover still signals
+               Finished state visually while the user is selecting. */
+            z-index: 4;
             accent-color: var(--accent-primary);
-        }
-        /* Series books carry a #N badge at top-left (z-index 5, pointer-events:
-           none). Push the checkbox down so it isn't hidden under the badge. */
-        .grid-card[data-series-index]:not([data-series-index=""]) .grid-card-checkbox {
-            top: 30px;
         }
         .grid-card:hover .grid-card-checkbox,
         .grid-card-checkbox:checked {
