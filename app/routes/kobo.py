@@ -434,10 +434,15 @@ def _entitlement_dtos(item: LibraryItem, base_url: str, token: str) -> dict:
 
     series_obj = None
     if item.series:
+        num_float = _series_number_float(item.series_index)
         series_obj = {
             "Name": item.series,
-            "Number": _series_number_float(item.series_index),
-            "NumberFloat": _series_number_float(item.series_index),
+            # Komga's DTO has Number as a string ("3") and NumberFloat as
+            # a float (3.0). We had both as float, which the device
+            # rejects type-strictly — symptom: Kobo fetches metadata
+            # but never proceeds to /file/epub.
+            "Number": str(item.series_index) if item.series_index else "",
+            "NumberFloat": num_float,
             "Id": str(uuid.uuid5(_KOBO_UUID_NAMESPACE, f"series-{item.series}")),
         }
 
