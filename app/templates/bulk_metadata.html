@@ -1841,6 +1841,214 @@
         }
         .modal-actions .spacer { flex: 1; }
 
+        /* ---------------- Book modal: display ("shelf") mode ----------------
+           Same modal DOM, but with a typographic, read-only presentation.
+           Form chrome is hidden via .display-mode; display-only siblings show.
+           Mobile-aware: under 640px the grid collapses to a single column. */
+        .display-only { display: none; }
+        .modal-box.display-mode .display-only { display: block; }
+        .modal-box.display-mode .display-only.display-inline { display: inline-block; }
+        .modal-box.display-mode .display-only.display-flex { display: flex; }
+
+        /* Hide form chrome in display mode. */
+        .modal-box.display-mode .modal-field label,
+        .modal-box.display-mode .modal-input,
+        .modal-box.display-mode .modal-textarea,
+        .modal-box.display-mode #modalFindSeriesBtn,
+        .modal-box.display-mode .modal-cover-search-btn,
+        .modal-box.display-mode .modal-fetch-block,
+        .modal-box.display-mode .modal-actions,
+        .modal-box.display-mode .modal-corner-delete,
+        .modal-box.display-mode #modalProgress {
+            display: none !important;
+        }
+        /* Modal fields container shouldn't enforce vertical gap when only display
+           children are visible; the display elements own their own spacing. */
+        .modal-box.display-mode .modal-fields { gap: 0; }
+        .modal-box.display-mode .modal-field { gap: 0; }
+
+        /* Edit-mode chrome: hide the display-mode-only edit toggle button. */
+        .modal-box:not(.display-mode) #modalEditToggleBtn { display: none; }
+
+        /* Edit-toggle pill in the modal corner (display mode). */
+        .modal-edit-toggle {
+            position: absolute;
+            top: 10px;
+            right: 48px;
+            z-index: 10;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            color: var(--text-secondary);
+            border-radius: 999px;
+            padding: 4px 12px 4px 10px;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            line-height: 1;
+        }
+        .modal-edit-toggle:hover {
+            color: var(--text-primary);
+            border-color: var(--border-medium);
+            background: var(--bg-primary);
+        }
+        .modal-edit-toggle i { font-size: 14px; }
+
+        /* Slim reading-state strip in display mode (replaces the boxed look). */
+        .modal-box.display-mode .reading-state-box {
+            margin: 28px 0 18px 0;
+            padding: 10px 14px;
+            background: var(--bg-secondary);
+            border: none;
+            border-radius: 6px;
+        }
+        .modal-box.display-mode .reading-state-box .rs-row { margin-bottom: 2px; }
+        .modal-box.display-mode .reading-state-box .rs-actions {
+            margin-top: 6px;
+        }
+        .modal-box.display-mode .reading-state-box .rs-actions .btn {
+            font-size: 11px;
+            padding: 3px 8px;
+        }
+
+        /* Typographic display elements. */
+        .display-title {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 28px;
+            font-weight: 600;
+            line-height: 1.2;
+            color: var(--text-primary);
+            margin: 0 0 6px 0;
+            word-wrap: break-word;
+        }
+        .display-author {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin: 0 0 4px 0;
+        }
+        .display-author .by {
+            color: var(--text-tertiary);
+            font-style: italic;
+            margin-right: 4px;
+        }
+        .display-series {
+            font-size: 13px;
+            color: var(--text-tertiary);
+            margin: 0 0 16px 0;
+        }
+        .display-meta {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin: 0 0 10px 0;
+        }
+        .display-meta .sep {
+            color: var(--text-tertiary);
+            margin: 0 6px;
+        }
+        .display-meta .label {
+            color: var(--text-tertiary);
+            margin-right: 4px;
+        }
+        .display-genres {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin: 4px 0 14px 0;
+        }
+        .display-genre-chip {
+            font-size: 11px;
+            color: var(--text-secondary);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: 999px;
+            padding: 3px 10px;
+            letter-spacing: 0.02em;
+        }
+        .display-fileinfo {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            margin-top: 8px;
+        }
+        .display-synopsis-block {
+            margin-top: 28px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-light);
+        }
+        .display-synopsis-heading {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-tertiary);
+            margin: 0 0 12px 0;
+        }
+        .display-synopsis-body {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 15px;
+            line-height: 1.7;
+            color: var(--text-primary);
+            max-width: 65ch;
+            white-space: pre-wrap;
+        }
+        .display-synopsis-body.empty {
+            font-style: italic;
+            color: var(--text-tertiary);
+        }
+        /* Hide the synopsis-block container when not in display mode (it lives
+           in the modal markup alongside the form, but is display-only). */
+        .modal-box:not(.display-mode) .display-synopsis-block { display: none; }
+
+        /* In display mode the cover doesn't need the giant placeholder icon
+           shrink; keep current sizing but allow it to be a touch larger on
+           wide screens for that "spread" feel. */
+        @media (min-width: 900px) {
+            .modal-box.display-mode .modal-cover {
+                width: 240px;
+                height: 360px;
+            }
+            .modal-box.display-mode .modal-grid {
+                grid-template-columns: 240px 1fr;
+                gap: 32px;
+            }
+        }
+
+        /* Mobile: stack the grid, centre the cover, centre header text. */
+        @media (max-width: 640px) {
+            .modal-box {
+                width: 100%;
+                height: 95vh;
+                max-height: 95vh;
+                border-radius: 0;
+                padding: 16px;
+            }
+            .modal-box.display-mode .modal-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+                justify-items: center;
+                text-align: center;
+            }
+            .modal-box.display-mode .modal-cover {
+                width: 60vw;
+                max-width: 220px;
+                height: auto;
+                aspect-ratio: 2 / 3;
+            }
+            .modal-box.display-mode .display-genres {
+                justify-content: center;
+            }
+            .modal-box.display-mode .display-synopsis-body {
+                text-align: left;
+            }
+            .modal-edit-toggle {
+                top: 8px;
+                right: 44px;
+                font-size: 11px;
+                padding: 3px 10px 3px 8px;
+            }
+        }
+
         .field-check {
             font-size: 12px;
             color: var(--text-secondary);
@@ -3167,6 +3375,10 @@
             <i class="ti ti-trash"></i>
         </button>
         <button type="button" class="modal-close-x modal-corner-close" onclick="closeBookModal()" title="{{ _('Close') }}">&times;</button>
+        <button type="button" class="modal-edit-toggle" id="modalEditToggleBtn"
+                onclick="toggleModalMode()" title="{{ _('Edit metadata') }}">
+            <i class="ti ti-pencil"></i> {{ _('Edit') }}
+        </button>
         <div id="modalFeedback" class="modal-feedback" style="display:none;"></div>
         <div id="modalReadingState" class="reading-state-box" style="display:none;">
             <div class="rs-row">
@@ -3198,6 +3410,14 @@
                 </div>
             </div>
             <div class="modal-fields">
+                <!-- Display-mode typographic header (populated alongside form fields). -->
+                <h1 class="display-title display-only" id="modalTitleDisplay"></h1>
+                <p class="display-author display-only" id="modalAuthorDisplay"></p>
+                <p class="display-series display-only" id="modalSeriesDisplay"></p>
+                <div class="display-meta display-only" id="modalMetaDisplay"></div>
+                <div class="display-genres display-only display-flex" id="modalGenresDisplay"></div>
+                <div class="display-fileinfo display-only" id="modalFileInfoDisplay"></div>
+
                 <div class="modal-field">
                     <label for="modalTitle">{{ _('Title') }}</label>
                     <input type="text" id="modalTitle" class="modal-input">
@@ -3258,8 +3478,13 @@
                 </div>
             </div>
         </div>
+        <!-- Display-mode synopsis (full-width, typographic). Hidden in edit mode via CSS. -->
+        <div class="display-synopsis-block">
+            <div class="display-synopsis-heading">{{ _('Synopsis') }}</div>
+            <div class="display-synopsis-body" id="modalDescriptionDisplay"></div>
+        </div>
         <div id="modalProgress" style="display:none; margin:12px 0;"></div>
-        <div style="margin-top:14px; padding-top:14px; border-top:0.5px solid var(--border-light);">
+        <div class="modal-fetch-block" style="margin-top:14px; padding-top:14px; border-top:0.5px solid var(--border-light);">
             <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;">{{ _('Fetch/update:') }}</div>
             <div style="display:flex; flex-wrap:wrap; gap:6px;">
                 <label class="field-check"><input type="checkbox" value="title" class="modal-field-check" checked> {{ _('Title') }}</label>
@@ -6920,7 +7145,17 @@
         _modalItemId = itemId;
         _modalDirty = false;
         _modalAllCandidates = [];
-        document.getElementById('bookModal').style.display = 'flex';
+        var modalEl = document.getElementById('bookModal');
+        var box = modalEl.querySelector('.modal-box');
+        // Shelf-view opens in display mode by default. Other views open in edit.
+        if (box) {
+            if (typeof _viewMode !== 'undefined' && _viewMode === 'shelf') {
+                box.classList.add('display-mode');
+            } else {
+                box.classList.remove('display-mode');
+            }
+        }
+        modalEl.style.display = 'flex';
         var mp = document.getElementById('modalProgress');
         if (mp) { mp.innerHTML = ''; mp.style.display = 'none'; }
         window._modalSourceDetails = {};
@@ -6967,7 +7202,132 @@
         var findSeriesBtn = document.getElementById('modalFindSeriesBtn');
         if (findSeriesBtn) findSeriesBtn.style.display = data.ai_configured ? '' : 'none';
 
+        _populateDisplayMirror(data, size, ext);
         _populateReadingState(data);
+    }
+
+    /* Display-mode mirror: populate read-only typographic elements alongside
+       the form fields. Same data source, just nicer presentation. */
+    var _LANG_LABEL = {
+        'en': 'English', 'sv': 'Svenska', 'no': 'Norsk', 'da': 'Dansk',
+        'fi': 'Suomi', 'de': 'Deutsch', 'fr': 'Français', 'es': 'Español'
+    };
+    function _setDisplayHidden(el, hidden) {
+        if (!el) return;
+        el.style.display = hidden ? 'none' : '';
+    }
+    function _populateDisplayMirror(data, size, ext) {
+        var titleEl = document.getElementById('modalTitleDisplay');
+        if (titleEl) titleEl.textContent = data.title || '—';
+
+        var authorEl = document.getElementById('modalAuthorDisplay');
+        if (authorEl) {
+            if (data.author) {
+                authorEl.innerHTML = '<span class="by">{{ _("by") }}</span>' + _esc(data.author);
+            }
+            _setDisplayHidden(authorEl, !data.author);
+        }
+
+        var seriesEl = document.getElementById('modalSeriesDisplay');
+        if (seriesEl) {
+            if (data.series) {
+                var s = data.series;
+                if (data.series_index) s += ' · {{ _("Book") }} ' + data.series_index;
+                seriesEl.textContent = s;
+            }
+            _setDisplayHidden(seriesEl, !data.series);
+        }
+
+        var metaEl = document.getElementById('modalMetaDisplay');
+        if (metaEl) {
+            var parts = [];
+            if (data.publisher) parts.push(_esc(data.publisher));
+            var year = (data.published_date || '').slice(0, 4);
+            if (year && /^\d{4}$/.test(year)) parts.push(year);
+            if (data.language && _LANG_LABEL[data.language]) {
+                parts.push(_LANG_LABEL[data.language]);
+            } else if (data.language) {
+                parts.push(_esc(data.language));
+            }
+            var metaHtml = parts.join('<span class="sep">·</span>');
+            if (data.isbn) {
+                if (metaHtml) metaHtml += '<br>';
+                metaHtml += '<span class="label">ISBN</span>' + _esc(data.isbn);
+            }
+            metaEl.innerHTML = metaHtml;
+            _setDisplayHidden(metaEl, !metaHtml);
+        }
+
+        var genresEl = document.getElementById('modalGenresDisplay');
+        if (genresEl) {
+            genresEl.innerHTML = '';
+            var hasGenres = false;
+            if (data.genres) {
+                var genres = String(data.genres).split(',').map(function(g) {
+                    return g.trim();
+                }).filter(function(g) { return g.length > 0; });
+                genres.forEach(function(g) {
+                    var chip = document.createElement('span');
+                    chip.className = 'display-genre-chip';
+                    chip.textContent = g;
+                    genresEl.appendChild(chip);
+                });
+                hasGenres = genres.length > 0;
+            }
+            _setDisplayHidden(genresEl, !hasGenres);
+        }
+
+        var fileEl = document.getElementById('modalFileInfoDisplay');
+        if (fileEl) {
+            fileEl.textContent = (ext || '—') + ' · ' + (size || '—');
+        }
+
+        var descEl = document.getElementById('modalDescriptionDisplay');
+        if (descEl) {
+            if (data.description) {
+                descEl.textContent = data.description;
+                descEl.classList.remove('empty');
+            } else {
+                descEl.textContent = '{{ _("No synopsis available.") }}';
+                descEl.classList.add('empty');
+            }
+        }
+    }
+
+    /* Rebuild the synthetic "data" object the display mirror expects, sourced
+       from the form fields (which are authoritative after a save). */
+    function _displayDataFromForm() {
+        return {
+            title:          document.getElementById('modalTitle').value,
+            author:         document.getElementById('modalAuthor').value,
+            series:         document.getElementById('modalSeries').value,
+            series_index:   document.getElementById('modalSeriesIndex').value,
+            isbn:           document.getElementById('modalIsbn').value,
+            publisher:      document.getElementById('modalPublisher').value,
+            language:       document.getElementById('modalLanguage').value,
+            genres:         document.getElementById('modalGenres').value,
+            published_date: document.getElementById('modalPublishedDate').value,
+            description:    document.getElementById('modalDescription').value
+        };
+    }
+
+    /* Toggle between display ("shelf reading view") and edit (form) modes. */
+    function toggleModalMode() {
+        var box = document.querySelector('#bookModal .modal-box');
+        if (!box) return;
+        var goingToDisplay = !box.classList.contains('display-mode');
+        if (goingToDisplay) {
+            // Sync display elements from current form values so any unsaved
+            // edits made before toggling are also reflected.
+            var fileInfo = document.getElementById('modalFileInfo');
+            var parts = (fileInfo && fileInfo.innerText) ? fileInfo.innerText.split('\n') : ['', ''];
+            var fileMeta = (parts[1] || '').split('·');
+            var ext = (fileMeta[0] || '').trim();
+            var size = (fileMeta[1] || '').trim();
+            _populateDisplayMirror(_displayDataFromForm(), size, ext);
+        }
+        box.classList.toggle('display-mode');
+        box.scrollTop = 0;
     }
 
     /* ---------------- Phase 3 — Reading state ---------------- */
