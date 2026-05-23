@@ -27,6 +27,25 @@
 
     var _i18n = (window.__colophonConfig && window.__colophonConfig.i18n) || {};
 
+    /* ------------------------------------------------------------------ */
+    /* Batch wizard — state and step navigation                           */
+    /* ------------------------------------------------------------------ */
+    var _batchWizard = {
+        step: 1,
+        selectedFields: [],
+        selectedItemIds: [],
+        searchCache: {},
+        reviewQueue: [],
+        reviewIndex: 0,
+        results: { saved: 0, skipped: 0, noMatch: 0, fieldCounts: {} }
+    };
+
+    var _BATCH_TEXT_FIELDS = [
+        'title', 'author', 'series', 'isbn',
+        'publisher', 'language', 'genres', 'published_date'
+    ];
+
+    var _batchSSESource = null;
 
     function _resetBatchWizardState() {
         _batchWizard.step = 1;
