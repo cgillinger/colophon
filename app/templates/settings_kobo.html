@@ -321,12 +321,17 @@
                 <ol>
                     <li>{{ _('Generate a URL above and copy it.') }}</li>
                     <li>{{ _('Connect your Kobo to a computer via USB. A KOBOeReader drive appears.') }}</li>
-                    <li>{{ _('Open the file .kobo/Kobo/Kobo eReader.conf on the device in a text editor.') }}
-                        <br><span style="color:var(--text-tertiary); font-size:13px;">{{ _('Optional but recommended: copy the file to Kobo eReader.conf.bak first as a backup.') }}</span></li>
-                    <li>{{ _('Find the [OneStoreServices] section. Replace the api_endpoint= line with:') }}<br>
-                        <code>api_endpoint={{ host_url }}/kobo/&lt;your-url-key&gt;</code>
-                        <br><span style="color:var(--text-tertiary); font-size:13px;">{{ _('If the file has image_host, image_url_template, or image_url_quality_template lines, delete them. Stale values from a previous setup can override the new ones until you reboot the device.') }}</span></li>
-                    <li>{{ _('Save the file and safely eject the Kobo.') }}</li>
+                    <li>{{ _('On that drive, open this exact file in a text editor:') }}<br>
+                        <code>.kobo/Kobo/Kobo eReader.conf</code>
+                        <br><span style="color:var(--text-tertiary); font-size:13px;">{{ _('Note the leading dot — the .kobo folder is hidden on most operating systems. The file lives a few levels deep; do not edit any other .conf you might find. Optional but recommended: copy the file to Kobo eReader.conf.bak first as a backup.') }}</span></li>
+                    <li>{{ _('Find the [OneStoreServices] section. Replace the existing api_endpoint= line with:') }}<br>
+                        <code>api_endpoint={{ host_url }}/kobo/&lt;your-url-key&gt;</code></li>
+                    <li>{{ _('In the same [OneStoreServices] section, delete these three lines if they exist:') }}<br>
+                        <code>image_host=</code><br>
+                        <code>image_url_template=</code><br>
+                        <code>image_url_quality_template=</code>
+                        <br><span style="color:var(--text-tertiary); font-size:13px;">{{ _('Stale values here (often left over from a previous Komga or Calibre-Web setup) silently override the ones Colophon sends, which is the #1 cause of "books sync but covers are blank". Deleting lets Colophon supply fresh ones on the next sync.') }}</span></li>
+                    <li>{{ _('Save the file. Eject the Kobo safely — wait a few seconds first so the device finishes flushing the write.') }}</li>
                     <li>{{ _('On the Kobo: Settings → Sync now. Books from Colophon appear in your Library.') }}
                         <br><span style="color:var(--text-tertiary); font-size:13px;">{{ _('First sync of a large library can take a few minutes — covers and books arrive in batches. Keep the device awake until the Devices table above shows the sync count incrementing.') }}</span></li>
                 </ol>
