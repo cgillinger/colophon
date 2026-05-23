@@ -314,12 +314,206 @@ All new strings wrap in `_()`. Add Swedish translations to `app/translations/sv/
 - Pagination.
 - kepubify integration + disk cache.
 
-### Phase 3 — State + polish (1–2 days)
-- Reading-state GET/PUT (DB-only per §10 decision — no EPUB writeback).
-- "% read" / "last read" columns in the bulk view.
-- Multiple devices, revocation flow, cache management UI.
-- Swedish translation strings.
-- Tests: `test_kobo_sync.py` mocking a Kobo client through the full flow.
+### Phase 3 — Reading state sync (3–4 hours)
+
+**Goal:** When the Kobo PUTs `/v1/library/<uuid>/state` (which it does
+every page-turn), persist the progress so it survives sleep, multi-
+device setups, and shows up in Colophon's UI. A second Kobo
+connected later picks up where the first one left off.
+
+#### Design decisions
+
+**Progress is library-state, not device-state.** Reading state lives
+on `LibraryItem`, not on `(device, item)`. Per-device tracking in
+`kobo_book_states` stays — that's "have we sent this book to this
+device?" — but the actual progress moves up to the book row.
+
+**Why:** lets a new Kobo inherit progress at first sync without any
+merge logic, lets a "Mark as read manually" button in the UI affect
+every device automatically, and matches how Komga/Kindle/Audible all
+handle multi-device reading. The cost is per-device "I last read on
+device X" data is collapsed — we keep `last_modified` but lose
+fidelity on "who finished what". That's an acceptable trade for a
+single-user home setup.
+
+**Last-write-wins with monotonic status.** When the canonical row is
+`Reading 60%` and an incoming PUT says `Reading 40%`, the older
+timestamp loses and we ignore. When canonical is `Finished` and
+incoming says `Reading 30%`, we treat that as a downgrade and
+**ignore regardless of timestamp** — finished books stay finished.
+Status rank: `ReadyToRead=0 < Reading=1 < Finished=2`. Only equal-or-
+higher ranks can win.
+
+**Location strings round-trip untouched.** The Kobo's
+`CurrentBookmark.Location.Value` is an opaque kobospan / EPUB-CFI
+string. We store it as text and play it back on next sync.
+
+#### Schema changes
+
+Add columns to `LibraryItem`:
+
+```python
+read_status         = Column(String, default="ReadyToRead", nullable=False)
+                    # ReadyToRead | Reading | Finished
+read_progress       = Column(Float, nullable=True)   # 0.0–100.0
+read_location       = Column(Text, nullable=True)    # opaque
+read_last_modified  = Column(DateTime, nullable=True)
+read_started_at     = Column(DateTime, nullable=True)
+read_finished_at    = Column(DateTime, nullable=True)
+times_started       = Column(Integer, default=0, nullable=False)
+```
+
+Migration ensures defaults for existing rows (`read_status='ReadyToRead'`,
+`times_started=0`). Wire it into `app/services/database.py`'s
+`ensure_*_table` helpers.
+
+#### Backend work
+
+**1. Replace catch-all stub for state PUTs with a real handler.**
+
+```python
+@kobo_bp.route("/<token>/v1/library/<book_id>/state", methods=["PUT"])
+@require_device
+def update_reading_state(device, book_id):
+    item = _find_item_by_uuid(book_id)
+    if item is None:
+        return jsonify({}), 200   # ack and drop (might be from a
+                                  # previous server, not our book)
+
+    payload         = request.get_json(silent=True) or {}
+    status_info     = payload.get("StatusInfo") or {}
+    bookmark        = payload.get("CurrentBookmark") or {}
+    location        = bookmark.get("Location") or {}
+
+    incoming_status = status_info.get("Status")
+    incoming_mod    = _parse_iso(payload.get("LastModified") or
+                                 status_info.get("LastModified"))
+
+    # Monotonic status — finished books stay finished
+    RANK = {"ReadyToRead": 0, "Reading": 1, "Finished": 2}
+    if RANK.get(incoming_status, 0) < RANK.get(item.read_status, 0):
+        return jsonify({}), 200
+
+    # Last-write-wins on the timeline
+    if item.read_last_modified and incoming_mod \
+       and incoming_mod <= item.read_last_modified:
+        return jsonify({}), 200
+
+    item.read_status   = incoming_status or item.read_status
+    item.read_progress = bookmark.get("ProgressPercent")
+    item.read_location = location.get("Value")
+    item.read_last_modified = incoming_mod
+    if incoming_status == "Reading" and not item.read_started_at:
+        item.read_started_at = incoming_mod
+        item.times_started = (item.times_started or 0) + 1
+    if incoming_status == "Finished" and not item.read_finished_at:
+        item.read_finished_at = incoming_mod
+    db.session.commit()
+
+    return jsonify({}), 200
+```
+
+The route must be registered **before** the catch-all so it shadows
+the stub. Add a `@kobo_bp.before_request` no-op test to confirm.
+
+**2. Populate `ReadingState` block in `_entitlement_dtos` from the DB.**
+
+Replace the current `None`/`0` defaults with values read from
+`item.read_*`. Make sure `CurrentBookmark.Location` is shaped exactly
+as `{"Value": <string>, "Type": "KoboSpan", "Source": <book_uuid>}`
+when location is present, and `null` when absent (don't send an
+empty dict — Komga sends null).
+
+**3. Tests in `tests/test_kobo_sync.py`.**
+
+- Empty library, PUT state on unknown UUID → 200, no DB row touched.
+- Synced book, PUT `Reading 30%` → row updated.
+- Existing `Reading 60%`, PUT `Reading 40%` with older timestamp → ignored.
+- Existing `Finished`, PUT `Reading 30%` with newer timestamp → ignored (monotonic).
+- Existing `ReadyToRead`, PUT `Reading 30%` → `read_started_at` set; PUT same again → `times_started` not double-counted.
+- `_entitlement_dtos` for a `Reading 50%` book returns `StatusInfo.Status=Reading`, `CurrentBookmark.ProgressPercent=50`.
+
+#### UI work — shelf view only
+
+Per §8.3 of this doc, the bulk view has three modes: table, shelf,
+series. We only add the indicator to shelf. Table stays curator-mode
+clean.
+
+**Shelf cover overlay** in `bulk_metadata.html`:
+
+```html
+{% if item.read_status != 'ReadyToRead' %}
+<div class="cover-progress {{ 'finished' if item.read_status == 'Finished' }}">
+    <div class="fill" style="width: {{ item.read_progress or 0 }}%"></div>
+</div>
+{% endif %}
+{% if item.read_status == 'Finished' %}
+<span class="cover-check" title="{{ _('Finished') }}">✓</span>
+{% endif %}
+```
+
+CSS — bottom 3px bar, amber for Reading, green for Finished. Top-
+right corner check badge for Finished. No animation, no transitions
+(the JS list is large; cheap renders matter).
+
+**Header filter tabs** — vy-agnostic, work in all three modes:
+
+```
+[All N] [Unread M1] [Reading M2] [Finished M3]
+```
+
+Implemented as URL query param `?status=reading`. Counts come from
+the same query that builds the page. Tabs are persistent across
+view switches (table↔shelf↔series). Indicator on cover only in
+shelf mode.
+
+**Book modal extension.** In the existing single-book modal:
+
+- New "Reading state" section showing status, progress %, last_modified,
+  started_at / finished_at when present, times_started.
+- **"Mark as read manually"** button — sets `read_status='Finished'`,
+  `read_progress=100`, `read_finished_at=utcnow()`. Triggers a Kobo
+  re-sync on the next device sync because we bump
+  `read_last_modified`, which advances `LibraryItem.updated_at` via a
+  hook.
+- **"Reset reading state"** button — clears everything back to
+  `ReadyToRead`. Useful for stuck syncs or testing.
+
+**Series view ("X/Y read")** — optional but cheap. On the series
+header row, compute `len([b for b in series if b.read_status ==
+'Finished']) / len(series)` and render as `"3/5 read"`. Doesn't
+require any progress-bar work, just one aggregate per series.
+
+#### i18n
+
+New strings: "Finished", "Reading", "Unread", "All", "Mark as read
+manually", "Reset reading state", "Reading state", "Started", "X/Y
+read". Add to `messages.pot`, translate in `app/translations/sv/`.
+
+#### Out of scope for Phase 3
+
+- **Per-device reading-time aggregation** (`SpentReadingMinutes`).
+  Kobon reports it but it's per-device. Aggregating belongs in a
+  separate `kobo_reading_sessions` table when someone wants
+  statistics.
+- **Statistics export** ("year in books"). Separate endpoint, separate
+  session.
+- **Import from Calibre/Goodreads CSV.** Uses the same canonical
+  columns but is a Settings-page feature, not part of sync.
+- **EPUB writeback** of position. Per §10 decision — DB-only.
+
+#### Verification
+
+End-to-end test, by hand:
+
+1. Mark a book as Finished in Colophon UI.
+2. Trigger Sync on Kobo.
+3. Confirm the book shows up as "Finished" / has a check badge on Kobo.
+4. Start reading another book on Kobo to 30%.
+5. Wait for `PUT /state` in the log.
+6. Refresh Colophon — the book has a partial progress bar in shelf view.
+7. Connect a second Kobo (or wipe and reconnect the first). Both
+   states show up on the device at first sync.
 
 ### Phase 4 — Nice to have
 - "Sync to Kobo" per-book toggle.
