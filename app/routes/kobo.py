@@ -850,10 +850,15 @@ def update_reading_state(device, book_id):
 
     payload = request.get_json(silent=True) or {}
 
-    # Diagnostic — log the raw body once per PUT so we can confirm the
-    # exact shape the device sends. Remove after Phase 3 settles.
-    raw_preview = request.get_data(as_text=True)[:600]
-    logger.info("Kobo state PUT body[:600]=%s", raw_preview)
+    # Body shape verified in production 2026-05-23 — Kobo Libra Color
+    # firmware 4.45.23684 sends {"ReadingStates":[{...}]} with the fields
+    # we expect. Keep the debug log available for future firmware
+    # surprises, but don't flood normal-level output.
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug(
+            "Kobo state PUT body[:600]=%s",
+            request.get_data(as_text=True)[:600],
+        )
 
     # Empirically the Kobo wraps the actual state in a ReadingStates
     # array: {"ReadingStates": [ { StatusInfo, CurrentBookmark, ... } ]}.
