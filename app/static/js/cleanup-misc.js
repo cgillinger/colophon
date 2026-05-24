@@ -75,7 +75,11 @@
         });
 
         var saved = JSON.parse(localStorage.getItem('colophon-col-widths') || 'null');
-        if (saved) {
+        // Airy mode has a different column set + larger covers — the old
+        // saved widths (calibrated for the dense compact layout) don't
+        // translate. Only restore saved widths in compact mode.
+        var densityNow = document.body.getAttribute('data-density') || 'compact';
+        if (saved && densityNow === 'compact') {
             ths.forEach(function (th, i) {
                 if (!saved[i]) return;
                 // Respect the template's min-width — the table uses

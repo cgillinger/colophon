@@ -1415,11 +1415,19 @@
             body[data-density="compact"] .col-wide-only { display: none !important; }
         }
 
-        /* Airy: large covers, synopsis preview rendered. */
-        body[data-density="airy"] td .cover { height: 120px; width: 80px; }
+        /* Airy: large covers + tight side columns so Bok-cellen
+           får all rest-bredd för synopsis + andning. */
+        body[data-density="airy"] td .cover { height: 150px; width: 100px; }
         body[data-density="airy"] td .cover img { object-fit: cover; }
-        body[data-density="airy"] th:nth-child(2),
-        body[data-density="airy"] td:nth-child(2) { width: 100px !important; }
+        /* Column-width plan in airy: checkbox / cover / BOOK (auto) /
+           author / rating. Side columns explicit so the table doesn't
+           waste 200px per minor column when table-layout:fixed
+           distributes remaining width. */
+        body[data-density="airy"] #bookTable th:nth-child(1) { width: 36px; }
+        body[data-density="airy"] #bookTable th:nth-child(2) { width: 116px; }
+        body[data-density="airy"] #bookTable th[data-sort="title"] { width: auto; }
+        body[data-density="airy"] #bookTable th[data-sort="author"] { width: 200px; }
+        body[data-density="airy"] #bookTable th[data-sort="rating"] { width: 110px; }
         body[data-density="airy"] .book-synopsis-preview {
             display: -webkit-box;
             -webkit-line-clamp: 2;

@@ -116,6 +116,20 @@
         localStorage.setItem('colophon-density', val);
         document.body.setAttribute('data-density', val);
         _syncDensityRadios();
+        /* When entering airy, drop any inline widths from compact-mode
+           saved column widths so the CSS-driven layout takes over.
+           Re-apply saved widths when going back to compact. */
+        var ths = document.querySelectorAll('#bookTable thead th');
+        if (val === 'airy') {
+            ths.forEach(function (th) { th.style.width = ''; });
+        } else {
+            var saved = JSON.parse(localStorage.getItem('colophon-col-widths') || 'null');
+            if (saved) {
+                ths.forEach(function (th, i) {
+                    if (saved[i]) th.style.width = saved[i];
+                });
+            }
+        }
     }
     window.setDensity = setDensity;
 
