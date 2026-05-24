@@ -21,6 +21,12 @@ config/
 # Browser profiles (Selenium/Playwright)
 browser_profiles/
 
+# Playwright MCP snapshot dumps
+.playwright-mcp/
+
+# Ad-hoc test screenshots (not part of audit docs)
+/test-*.png
+
 # Binärfiler
 tools/bookf
 

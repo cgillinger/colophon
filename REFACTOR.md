@@ -1,11 +1,8 @@
-# Refactor: bulk_metadata.html — IN PROGRESS (testing pending)
+# Refactor: bulk_metadata.html — ✅ COMPLETE AND VERIFIED
 
-**Status as of last session (2026-05-23):** All extraction work complete.
-Modules 7–11 (filters-sort-paging, batch, book-modal, bulk-result-modal,
-cleanup-misc) are committed but **NOT YET TESTED** in the running container.
-
-The next session should pick up here: rebuild on the deploy host, run the
-test plan in §6 below via **Playwright MCP**, and address any regressions.
+**Status as of 2026-05-24:** All 11 modules extracted, deployed, and verified
+in production via Playwright MCP. Full test plan (§6.1–6.20) ran with 20/20
+PASS and zero JS console errors. Refactor is finished.
 
 ---
 
@@ -365,11 +362,11 @@ cd .. && docker compose up -d --build
 | `core.js` | ✓ | ✓ | ✓ |
 | `series-view.js` | ✓ | ✓ | ✓ |
 | `selection.js` | ✓ | ✓ | ✓ |
-| `filters-sort-paging.js` | ✓ | ✓ | **NO** |
-| `batch.js` | ✓ | ✓ | **NO** |
-| `book-modal.js` | ✓ | ✓ | **NO** |
-| `bulk-result-modal.js` | ✓ | ✓ | **NO** |
-| `cleanup-misc.js` | ✓ | ✓ | **NO** |
+| `filters-sort-paging.js` | ✓ | ✓ | ✓ |
+| `batch.js` | ✓ | ✓ | ✓ |
+| `book-modal.js` | ✓ | ✓ | ✓ |
+| `bulk-result-modal.js` | ✓ | ✓ | ✓ |
+| `cleanup-misc.js` | ✓ | ✓ | ✓ |
 
 ## 10. How to continue
 
