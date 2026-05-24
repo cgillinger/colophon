@@ -523,7 +523,7 @@ msgstr "Läser"
 #: app/templates/bulk_metadata.html:2823 app/templates/bulk_metadata.html:6978
 #: app/templates/bulk_metadata.html:7016
 msgid "Finished"
-msgstr "Utläst"
+msgstr "Läst"
 
 #: app/templates/bulk_metadata.html
 msgid "authors"
@@ -873,7 +873,7 @@ msgstr "Stäng"
 
 #: app/templates/bulk_metadata.html:3181
 msgid "Mark as read manually"
-msgstr "Markera som utläst manuellt"
+msgstr "Markera som läst manuellt"
 
 #: app/templates/bulk_metadata.html:3184
 msgid "Reset reading state"
@@ -1672,7 +1672,7 @@ msgstr "Senast uppdaterad"
 
 #: app/templates/bulk_metadata.html:7035
 msgid "Marked as finished. Sync your Kobo to push the change."
-msgstr "Markerad som utläst. Synka din Kobo för att skicka ändringen."
+msgstr "Markerad som läst. Synka din Kobo för att skicka ändringen."
 
 #: app/templates/bulk_metadata.html:7046 app/templates/bulk_metadata.html:7070
 msgid "Could not update reading state."
@@ -2769,7 +2769,7 @@ msgid ""
 "Kobo. Status is one of: Unread, Reading, Finished."
 msgstr ""
 "Phase 3 håller lässtatus synkad mellan Colophon och varje ansluten Kobo. "
-"Statusen är någon av: Oläst, Läser, Utläst."
+"Statusen är någon av: Oläst, Läser, Läst."
 
 #: app/templates/settings_kobo.html:397
 msgid ""
@@ -2785,15 +2785,15 @@ msgid ""
 " shows status, percent, started/finished dates."
 msgstr ""
 "Öppna en bok i Colophon → lässtatus-rutan högst upp i modalen visar "
-"status, procent och datum för påbörjad/utläst."
+"status, procent och datum för påbörjad/läst."
 
 #: app/templates/settings_kobo.html:399
 msgid ""
 "Mark as read manually on a book → next Sync now on the Kobo flips it to "
 "Finished there as well."
 msgstr ""
-"Markera som utläst manuellt på en bok → nästa Synka nu på Kobon flippar "
-"den till Utläst där också."
+"Markera som läst manuellt på en bok → nästa Synka nu på Kobon flippar "
+"den till Läst där också."
 
 #: app/templates/settings_kobo.html:400
 msgid ""
@@ -2808,7 +2808,7 @@ msgid ""
 "Status is monotonic — once a book is Finished it stays Finished, even if "
 "a device later reports it as Reading. Use Reset to override deliberately."
 msgstr ""
-"Statusen är monoton — en bok som är Utläst förblir Utläst, även om en "
+"Statusen är monoton — en bok som är Läst förblir Läst, även om en "
 "enhet senare rapporterar Läser. Använd Nollställ för att åsidosätta "
 "medvetet."
 
@@ -2825,7 +2825,7 @@ msgid ""
 "The All / Unread / Reading / Finished tabs at the top of the library let "
 "you filter on status."
 msgstr ""
-"Flikarna Alla / Oläst / Läser / Utläst högst upp i biblioteket låter dig "
+"Flikarna Alla / Oläst / Läser / Läst högst upp i biblioteket låter dig "
 "filtrera på status."
 
 #: app/templates/settings_kobo.html:412
@@ -3010,10 +3010,10 @@ msgid "View this series in the table"
 msgstr "Visa serien i tabellen"
 
 msgid "Mark as finished"
-msgstr "Markera som utläst"
+msgstr "Markera som läst"
 
 msgid "Mark as finished manually (without Kobo sync)"
-msgstr "Markera som utläst manuellt (utan Kobo-synk)"
+msgstr "Markera som läst manuellt (utan Kobo-synk)"
 
 msgid "Saved manually"
 msgstr "Sparad manuellt"
@@ -3103,7 +3103,7 @@ msgid "Rating"
 msgstr "Betyg"
 
 msgid "Click to mark as finished"
-msgstr "Klicka för att markera som utläst"
+msgstr "Klicka för att markera som läst"
 
 msgid "Click to reset to unread"
 msgstr "Klicka för att återställa till oläst"
