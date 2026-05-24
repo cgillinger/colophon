@@ -148,6 +148,100 @@
             }
             .sidebar-toggle { display: inline-flex; }
             .topbar-inner { padding-left: 60px; }
+            /* Container loses its 4K-cap on mobile — fill the viewport. */
+            .container { padding: 12px 12px 32px; max-width: none; }
+            /* Toolbar wraps more compactly */
+            .filter-row { gap: 6px; padding: 8px 0; flex-wrap: wrap; }
+        }
+
+        /* === Mobile-specific: <=600px ====================================
+           Smaller phones. Hyllvy → 2 columns, Tabell → card layout, Modal
+           fullscreen. Bottom-tab navigation isn't added (the sidebar
+           hamburger covers primary nav cleanly enough for now). */
+        @media (max-width: 600px) {
+            /* Shelf: force 2 columns regardless of cover-width */
+            #gridView {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 14px 10px;
+                padding: 12px 0;
+            }
+            /* Series view grid */
+            .series-grid { grid-template-columns: 1fr !important; }
+
+            /* Table → cards. Hide headers; rows become rectangular cards
+               with cover thumbnail on left, title/byline/meta stacked. */
+            #bookTable, #bookTable thead, #bookTable tbody,
+            #bookTable tr, #bookTable td, #bookTable th { display: block; }
+            #bookTable thead { display: none; }
+            #bookTable tbody tr {
+                display: grid;
+                grid-template-columns: 56px 1fr;
+                gap: 10px;
+                padding: 10px;
+                margin-bottom: 8px;
+                border-radius: 8px;
+                background: var(--bg-primary);
+                border: 1px solid var(--border-light);
+            }
+            #bookTable tbody td {
+                padding: 0 !important;
+                border: none !important;
+                font-size: 12px;
+            }
+            /* Hide checkbox + cover-td (we re-render cover in grid area).
+               Keep tr clickable via existing onclick on cells. */
+            #bookTable tbody td:nth-child(1) { display: none; }
+            #bookTable tbody td:nth-child(2) {
+                grid-row: 1 / span 6;
+            }
+            #bookTable tbody td:nth-child(2) .cover {
+                width: 56px; height: 84px;
+            }
+            #bookTable tbody td:nth-child(2) .cover img {
+                width: 100%; height: 100%; object-fit: cover; border-radius: 3px;
+            }
+            #bookTable tbody td:nth-child(3) .book-title {
+                font-size: 14px; font-weight: 600;
+            }
+            #bookTable tbody td:nth-child(4),
+            #bookTable tbody td:nth-child(5),
+            #bookTable tbody td:nth-child(6) {
+                color: var(--text-secondary);
+                font-size: 11px;
+            }
+            #bookTable tbody td.ext-cell {
+                text-align: left;
+            }
+
+            /* Modals: fullscreen on small phones */
+            #bookModal, #seriesModal, #batchModal,
+            #bulkResultModal, #duplicatesModal {
+                padding: 0 !important;
+            }
+            .modal-box, .series-modal-box {
+                width: 100% !important;
+                height: 100vh !important;
+                max-width: none !important;
+                max-height: 100vh !important;
+                border-radius: 0 !important;
+                border: none !important;
+            }
+            /* Modal grid stacks vertically: cover above meta */
+            .modal-grid {
+                grid-template-columns: 1fr !important;
+            }
+            .modal-cover { max-width: 200px; margin: 0 auto; }
+            /* Modal actions stick to the bottom */
+            .modal-actions {
+                position: sticky;
+                bottom: 0;
+                background: var(--bg-primary);
+                padding: 10px;
+                border-top: 1px solid var(--border-light);
+                margin: 12px -16px -16px;
+            }
+            /* Pagination stacks */
+            #paginationBar { flex-direction: column; gap: 8px; align-items: flex-start; }
         }
 
         /* Global keyboard focus ring — visible only when reached via keyboard
