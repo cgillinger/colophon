@@ -166,6 +166,21 @@
         th.addEventListener('click', function () { sortTable(th.dataset.sort); });
     });
 
+    /* Sort-by dropdown in the filter panel — accepts "key:asc"/"key:desc"
+       and applies the sort directly (without toggling). Useful when
+       sorting from outside the table headers (e.g. shelf/series view
+       where headers don't exist). */
+    function applySortFromDropdown(value) {
+        if (!value) return;
+        var parts = value.split(':');
+        var key = parts[0];
+        var dir = parts[1] === 'desc' ? -1 : 1;
+        _currentSort.key = key;
+        _currentSort.dir = dir * -1;  /* toggle inside sortTable will flip it back */
+        sortTable(key);
+    }
+    window.applySortFromDropdown = applySortFromDropdown;
+
     /* Default sort: title A→Z */
     (function () {
         var tbody = document.getElementById('bookTableBody');

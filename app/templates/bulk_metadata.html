@@ -188,6 +188,15 @@
                 <option value="published_date">{{ _('Missing publication date') }}</option>
             </select>
 
+            <select id="filterSort" onchange="applySortFromDropdown(this.value)" title="{{ _('Sort by') }}">
+                <option value="title:asc">{{ _('Title A–Z') }}</option>
+                <option value="title:desc">{{ _('Title Z–A') }}</option>
+                <option value="author:asc">{{ _('Author A–Z') }}</option>
+                <option value="author:desc">{{ _('Author Z–A') }}</option>
+                <option value="published:desc">{{ _('Publication date (newest)') }}</option>
+                <option value="published:asc">{{ _('Publication date (oldest)') }}</option>
+            </select>
+
             <div class="filter-sep"></div>
 
             <label class="filter-check" id="dangerToggle" style="display:none;">

@@ -20,15 +20,26 @@
         }
         .sidebar-brand {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 10px;
-            padding: 0 18px 16px;
+            gap: 8px;
+            padding: 4px 12px 20px;
             color: var(--text-primary);
             text-decoration: none;
             font-size: 18px;
             font-weight: 600;
+            text-align: center;
         }
-        .sidebar-brand img { width: 32px; height: 32px; border-radius: 6px; }
+        /* Logo prominent. The PNG has a black frame — at this size the
+           rounded corners are visible and the frame reads as intentional
+           rather than truncated. */
+        .sidebar-brand img {
+            width: 96px;
+            height: 96px;
+            border-radius: 14px;
+            display: block;
+            object-fit: contain;
+        }
         [data-theme="dark"] .sidebar-brand img { filter: invert(1) hue-rotate(180deg); }
         .sidebar-section { padding: 8px 0; }
         .sidebar-section-title {
@@ -79,16 +90,19 @@
         .sidebar-nav-reading.active { border-left-color: #f59e0b; background: rgba(245,158,11,0.1); color: #f59e0b; }
         .sidebar-nav-reading.active .sidebar-count { color: #f59e0b; }
         .sidebar-nav-finished.active { border-left-color: #16a34a; }
-        .sidebar-footer {
-            margin-top: auto;
-            padding: 12px 18px;
-            border-top: 1px solid var(--border-light);
+        /* Topbar-right cluster: EN/SV + theme toggle. Moved here from
+           sidebar-footer where they were invisible until scrolled. */
+        .topbar-spacer { flex: 1; }
+        .topbar-right {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            gap: 8px;
+            gap: 6px;
         }
-        .sidebar-footer .lang-toggle button {
+        .topbar-right .lang-toggle {
+            display: flex;
+            gap: 2px;
+        }
+        .topbar-right .lang-toggle button {
             color: var(--text-tertiary);
             background: transparent;
             border: none;
@@ -97,21 +111,31 @@
             font-size: 12px;
             cursor: pointer;
             font: inherit;
+            font-weight: 500;
         }
-        .sidebar-footer .lang-toggle button.active {
+        .topbar-right .lang-toggle button:hover {
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
+        }
+        .topbar-right .lang-toggle button.active {
             color: var(--text-primary);
             background: var(--bg-tertiary);
             font-weight: 600;
         }
-        .sidebar-icon-btn {
+        .topbar-theme-btn {
             background: transparent;
             border: none;
-            color: var(--text-tertiary);
+            color: var(--text-secondary);
             cursor: pointer;
-            padding: 6px;
+            padding: 6px 8px;
             border-radius: 4px;
+            font-size: 16px;
+            display: inline-flex;
+            align-items: center;
         }
-        .sidebar-icon-btn:hover { color: var(--text-primary); background: var(--bg-tertiary); }
+        .topbar-theme-btn:hover { color: var(--text-primary); background: var(--bg-tertiary); }
+        /* Search box no longer fills the topbar — keep it readable. */
+        .topbar-search { max-width: 480px; flex: 0 1 480px; }
 
         /* Sidebar toggle and backdrop — hidden on desktop, shown <900px */
         .sidebar-toggle {

@@ -40,38 +40,11 @@
         <span>Colophon</span>
     </a>
 
-    <div class="sidebar-section">
-        <div class="sidebar-section-title">{{ _('Library') }}</div>
-        <a class="sidebar-nav-item {{ 'active' if _section == 'library' and not _read else '' }}"
-           href="{{ url_for('metadata.bulk_metadata') }}">
-            <i class="ti ti-books"></i>
-            <span>{{ _('All') }}</span>
-            <span class="sidebar-count">{{ sidebar_total }}</span>
-        </a>
-        <a class="sidebar-nav-item {{ 'active' if _section == 'library' and _read == 'unread' else '' }}"
-           href="{{ url_for('metadata.bulk_metadata', status='unread') }}">
-            <i class="ti ti-bookmark-off"></i>
-            <span>{{ _('Unread') }}</span>
-            <span class="sidebar-count">{{ sidebar_unread }}</span>
-        </a>
-        <a class="sidebar-nav-item sidebar-nav-reading {{ 'active' if _section == 'library' and _read == 'reading' else '' }}"
-           href="{{ url_for('metadata.bulk_metadata', status='reading') }}">
-            <i class="ti ti-book-2"></i>
-            <span>{{ _('Reading') }}</span>
-            <span class="sidebar-count">{{ sidebar_reading }}</span>
-        </a>
-        <a class="sidebar-nav-item sidebar-nav-finished {{ 'active' if _section == 'library' and _read == 'finished' else '' }}"
-           href="{{ url_for('metadata.bulk_metadata', status='finished') }}">
-            <i class="ti ti-check"></i>
-            <span>{{ _('Finished') }}</span>
-            <span class="sidebar-count">{{ sidebar_finished }}</span>
-        </a>
-    </div>
-
-    {# Views block is only meaningful on the library page; rendered as a
-       block so settings pages can leave it empty. #}
+    {# 1. VYER — what the user is looking at right now. Empty on settings
+       pages (the block is filled by bulk_metadata only). #}
     {% block sidebar_views %}{% endblock %}
 
+    {# 2. VERKTYG — actions/tools that work on the library or app config. #}
     <div class="sidebar-section">
         <div class="sidebar-section-title">{{ _('Tools') }}</div>
         {% if _section == 'library' %}
@@ -103,14 +76,35 @@
         </a>
     </div>
 
-    <div class="sidebar-footer">
-        <div class="lang-toggle">
-            <button type="button" onclick="setLanguage('en')" class="{{ 'active' if get_locale() == 'en' else '' }}" aria-label="English">EN</button>
-            <button type="button" onclick="setLanguage('sv')" class="{{ 'active' if get_locale() == 'sv' else '' }}" aria-label="Svenska">SV</button>
-        </div>
-        <button type="button" class="sidebar-icon-btn" onclick="toggleTheme()" aria-label="{{ _('Toggle theme') }}">
-            <i id="themeIcon" class="ti ti-sun"></i>
-        </button>
+    {# 3. LÄSNING — reading-status filters. Bottom because they're a
+       filter view, not a category of library. Old label "BIBLIOTEK" was
+       misleading — these are filtered views of the same one library. #}
+    <div class="sidebar-section">
+        <div class="sidebar-section-title">{{ _('Reading') }}</div>
+        <a class="sidebar-nav-item {{ 'active' if _section == 'library' and not _read else '' }}"
+           href="{{ url_for('metadata.bulk_metadata') }}">
+            <i class="ti ti-books"></i>
+            <span>{{ _('All') }}</span>
+            <span class="sidebar-count">{{ sidebar_total }}</span>
+        </a>
+        <a class="sidebar-nav-item {{ 'active' if _section == 'library' and _read == 'unread' else '' }}"
+           href="{{ url_for('metadata.bulk_metadata', status='unread') }}">
+            <i class="ti ti-bookmark-off"></i>
+            <span>{{ _('Unread') }}</span>
+            <span class="sidebar-count">{{ sidebar_unread }}</span>
+        </a>
+        <a class="sidebar-nav-item sidebar-nav-reading {{ 'active' if _section == 'library' and _read == 'reading' else '' }}"
+           href="{{ url_for('metadata.bulk_metadata', status='reading') }}">
+            <i class="ti ti-book-2"></i>
+            <span>{{ _('Reading') }}</span>
+            <span class="sidebar-count">{{ sidebar_reading }}</span>
+        </a>
+        <a class="sidebar-nav-item sidebar-nav-finished {{ 'active' if _section == 'library' and _read == 'finished' else '' }}"
+           href="{{ url_for('metadata.bulk_metadata', status='finished') }}">
+            <i class="ti ti-check"></i>
+            <span>{{ _('Finished') }}</span>
+            <span class="sidebar-count">{{ sidebar_finished }}</span>
+        </a>
     </div>
 </aside>
 
@@ -119,6 +113,16 @@
 <header class="topbar">
     <div class="topbar-inner">
         {% block topbar %}{% endblock %}
+        <div class="topbar-spacer"></div>
+        <div class="topbar-right">
+            <div class="lang-toggle">
+                <button type="button" onclick="setLanguage('en')" class="{{ 'active' if get_locale() == 'en' else '' }}" aria-label="English">EN</button>
+                <button type="button" onclick="setLanguage('sv')" class="{{ 'active' if get_locale() == 'sv' else '' }}" aria-label="Svenska">SV</button>
+            </div>
+            <button type="button" class="topbar-theme-btn" onclick="toggleTheme()" aria-label="{{ _('Toggle theme') }}">
+                <i id="themeIcon" class="ti ti-sun"></i>
+            </button>
+        </div>
     </div>
 </header>
 
