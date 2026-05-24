@@ -169,14 +169,16 @@
             .series-grid { grid-template-columns: 1fr !important; }
 
             /* Table → cards. Hide headers; rows become rectangular cards
-               with cover thumbnail on left, title/byline/meta stacked. */
-            #bookTable, #bookTable thead, #bookTable tbody,
-            #bookTable tr, #bookTable td, #bookTable th { display: block; }
+               with cover thumbnail on left (fixed width) and meta cells
+               stacked on the right. Implemented as flex so cells flow
+               into the right column predictably (grid auto-flow was
+               putting meta cells under the cover instead of beside it). */
+            #bookTable, #bookTable thead, #bookTable tbody { display: block; }
             #bookTable thead { display: none; }
             #bookTable tbody tr {
-                display: grid;
-                grid-template-columns: 56px 1fr;
-                gap: 10px;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px 10px;
                 padding: 10px;
                 margin-bottom: 8px;
                 border-radius: 8px;
@@ -184,15 +186,22 @@
                 border: 1px solid var(--border-light);
             }
             #bookTable tbody td {
+                display: block;
                 padding: 0 !important;
                 border: none !important;
                 font-size: 12px;
+                width: calc(100% - 66px);   /* leaves space for the cover */
+                margin-left: 66px;
             }
-            /* Hide checkbox + cover-td (we re-render cover in grid area).
-               Keep tr clickable via existing onclick on cells. */
+            /* Checkbox cell: hidden. Cover cell: 56px on the left,
+               absolutely positioned so meta cells stack to its right. */
+            #bookTable tbody tr { position: relative; padding-left: 76px; }
             #bookTable tbody td:nth-child(1) { display: none; }
             #bookTable tbody td:nth-child(2) {
-                grid-row: 1 / span 6;
+                position: absolute;
+                left: 10px; top: 10px;
+                width: 56px;
+                margin-left: 0;
             }
             #bookTable tbody td:nth-child(2) .cover {
                 width: 56px; height: 84px;
@@ -200,9 +209,12 @@
             #bookTable tbody td:nth-child(2) .cover img {
                 width: 100%; height: 100%; object-fit: cover; border-radius: 3px;
             }
-            #bookTable tbody td:nth-child(3) .book-title {
-                font-size: 14px; font-weight: 600;
+            #bookTable tbody td:nth-child(3) {
+                font-size: 14px; font-weight: 500;
+                color: var(--text-primary);
             }
+            #bookTable tbody td:nth-child(3) .book-title { font-weight: 600; }
+            #bookTable tbody td:nth-child(3) .meta { font-size: 11px; color: var(--text-tertiary); font-weight: 400; }
             #bookTable tbody td:nth-child(4),
             #bookTable tbody td:nth-child(5),
             #bookTable tbody td:nth-child(6) {
