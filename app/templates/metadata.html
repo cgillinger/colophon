@@ -401,6 +401,48 @@
 
         <section class="panel">
             {% set p = pending or {} %}
+            <div class="modal-rating" id="modalRating" data-item-id="{{ item.id }}" data-value="{{ item.user_rating or 0 }}" style="margin-bottom: 16px;">
+                <span class="modal-rating-label">{{ _('My rating') }}</span>
+                <div class="rating-stars" role="radiogroup" aria-label="{{ _('My rating') }}">
+                    <button type="button" class="rating-star {% if item.user_rating and 1 <= item.user_rating %}rating-active{% endif %}" data-value="1" aria-label="1">★</button>
+                    <button type="button" class="rating-star {% if item.user_rating and 2 <= item.user_rating %}rating-active{% endif %}" data-value="2" aria-label="2">★</button>
+                    <button type="button" class="rating-star {% if item.user_rating and 3 <= item.user_rating %}rating-active{% endif %}" data-value="3" aria-label="3">★</button>
+                    <button type="button" class="rating-star {% if item.user_rating and 4 <= item.user_rating %}rating-active{% endif %}" data-value="4" aria-label="4">★</button>
+                    <button type="button" class="rating-star {% if item.user_rating and 5 <= item.user_rating %}rating-active{% endif %}" data-value="5" aria-label="5">★</button>
+                    <button type="button" class="rating-clear" data-value="0" aria-label="{{ _('Clear rating') }}" title="{{ _('Clear rating') }}">×</button>
+                </div>
+            </div>
+            <script>
+            (function () {
+                var wrap = document.getElementById('modalRating');
+                if (!wrap || wrap._wired) return;
+                wrap._wired = true;
+                function paint(v) {
+                    wrap.querySelectorAll('.rating-star').forEach(function (s) {
+                        var sv = parseInt(s.dataset.value, 10);
+                        s.classList.toggle('rating-active', sv <= v && v > 0);
+                    });
+                }
+                wrap.querySelectorAll('.rating-star, .rating-clear').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var v = parseInt(btn.dataset.value, 10);
+                        wrap.dataset.value = v;
+                        paint(v);
+                        fetch('/metadata/' + wrap.dataset.itemId + '/rate', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ rating: v })
+                        });
+                    });
+                });
+                wrap.querySelectorAll('.rating-star').forEach(function (btn) {
+                    btn.addEventListener('mouseover', function () { paint(parseInt(btn.dataset.value, 10)); });
+                });
+                wrap.querySelector('.rating-stars').addEventListener('mouseleave', function () {
+                    paint(parseInt(wrap.dataset.value, 10) || 0);
+                });
+            })();
+            </script>
             <form method="post" enctype="multipart/form-data">
                 <label for="title">{{ _('Title') }}</label>
                 <input id="title" name="title" value="{{ p.title if pending else (item.title or '') }}" required>
