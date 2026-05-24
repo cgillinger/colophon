@@ -142,17 +142,36 @@ def _collect_authors(book):
     return ", ".join(chosen)
 
 
+def _is_image_item(item):
+    """True if the manifest item is an actual raster image, not e.g. the
+    XHTML cover page that some EPUBs incorrectly register as <meta name=
+    "cover" content="...">."""
+    if item is None:
+        return False
+    media_type = (getattr(item, "media_type", "") or "").lower()
+    if media_type.startswith("image/"):
+        return True
+    # Belt-and-suspenders: some malformed EPUBs leave media_type blank.
+    # Fall back to extension check.
+    name = (item.get_name() if hasattr(item, "get_name") else "") or ""
+    return Path(name).suffix.lower() in (".jpg", ".jpeg", ".png", ".webp", ".gif")
+
+
 def _save_epub_cover(book, file_path, cover_dir):
     cover_item = None
     try:
         cover_id = _opf_meta_by_name(book, "cover")
         if cover_id:
-            cover_item = book.get_item_with_id(cover_id)
+            candidate = book.get_item_with_id(cover_id)
+            if _is_image_item(candidate):
+                cover_item = candidate
     except Exception:
         pass
     if not cover_item:
         try:
-            cover_item = book.get_item_with_id("cover")
+            candidate = book.get_item_with_id("cover")
+            if _is_image_item(candidate):
+                cover_item = candidate
         except Exception:
             pass
     if not cover_item:
@@ -180,6 +199,20 @@ def _save_epub_cover(book, file_path, cover_dir):
         return str(cover_path.resolve())
     except Exception:
         return None
+
+
+def extract_epub_cover_to_disk(file_path, cover_dir):
+    """Public helper: open `file_path` with ebooklib and extract the cover
+    into `cover_dir`. Returns the absolute on-disk path on success or None.
+
+    Used by the cover route to self-heal when a cache file is missing or
+    corrupted — keeps the EPUB-as-source-of-truth invariant the user
+    expects ("covers live in the EPUB, they can't disappear")."""
+    try:
+        book = epub.read_epub(str(file_path))
+    except Exception:
+        return None
+    return _save_epub_cover(book, file_path, cover_dir)
 
 
 def _assess_quality(meta: dict) -> str:

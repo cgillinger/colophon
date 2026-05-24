@@ -52,9 +52,54 @@ from app.services.metadata_pipeline import (
     run_metadata_enrichment,
 )
 from app.routes.helpers import get_item_or_404, save_uploaded_cover, get_int_form_value
+from app.services.scanner import extract_epub_cover_to_disk
 
 
 metadata_bp = Blueprint("metadata", __name__)
+
+
+# Magic-byte signatures for the image formats we extract from EPUBs.
+# Used by the cover route to detect when a cached file is corrupted
+# (e.g. XHTML cover-page saved as .jpg from an older scanner version).
+_IMAGE_MAGIC_BYTES = (
+    b"\xff\xd8\xff",        # JPEG
+    b"\x89PNG\r\n\x1a\n",   # PNG
+    b"GIF87a", b"GIF89a",   # GIF
+    b"RIFF",                # WebP wraps in RIFF; close enough for sanity
+)
+
+
+def _looks_like_image_file(path):
+    """Cheap sanity check: read the first 8 bytes and match against the
+    image magic-byte table. Avoids serving XHTML/HTML masquerading as
+    .jpg from older broken scans."""
+    try:
+        with open(path, "rb") as f:
+            head = f.read(8)
+    except Exception:
+        return False
+    return any(head.startswith(sig) for sig in _IMAGE_MAGIC_BYTES)
+
+
+def _heal_cover(item):
+    """Re-extract the cover from the EPUB file and update the DB so future
+    requests hit the fast static path. Returns the on-disk path if heal
+    succeeded, otherwise None.
+
+    Only EPUB is supported — MOBI/AZW3/PDF self-heal would require
+    subprocess calls which CLAUDE.md warns against in request handlers."""
+    if not item.file_path or not os.path.exists(item.file_path):
+        return None
+    if (item.extension or "").lower() != ".epub":
+        return None
+    cover_dir = current_app.config["COVER_DIR"]
+    new_path = extract_epub_cover_to_disk(item.file_path, cover_dir)
+    if not new_path:
+        return None
+    item.cover_path = new_path
+    db.session.commit()
+    logger.info("cover_heal: re-extracted cover for item %s -> %s", item.id, new_path)
+    return new_path
 
 
 # Single-user app — one shared abort flag across SSE streams.
@@ -108,10 +153,26 @@ def index():
 @metadata_bp.route("/cover/<int:item_id>")
 def cover_item(item_id):
     item = get_item_or_404(item_id)
-    if item.cover_path and os.path.exists(item.cover_path):
+
+    # Fast path: cached file exists AND is actually an image. Older scans
+    # could save XHTML cover pages with a .jpg extension; the magic-byte
+    # check rejects those so the heal path below can replace them.
+    if (
+        item.cover_path
+        and os.path.exists(item.cover_path)
+        and _looks_like_image_file(item.cover_path)
+    ):
         return send_file(item.cover_path)
-    # Group fallback: gruppmedlemmar delar omslag men cover-filen kan saknas
-    # for individual formats. Reuse a sibling's cover file if it exists.
+
+    # Heal path: re-extract cover from the EPUB if the file is missing
+    # or corrupted. Self-heal keeps the invariant the user expects —
+    # "the cover is in the EPUB, it can't disappear" — true in practice.
+    healed = _heal_cover(item)
+    if healed:
+        return send_file(healed)
+
+    # Group fallback: format-siblings share a cover. Validate them with
+    # the same image check so we don't serve a sibling's broken file.
     if item.group_key:
         siblings = (
             LibraryItem.query
@@ -120,8 +181,15 @@ def cover_item(item_id):
             .all()
         )
         for sibling in siblings:
-            if sibling.cover_path and os.path.exists(sibling.cover_path):
+            if (
+                sibling.cover_path
+                and os.path.exists(sibling.cover_path)
+                and _looks_like_image_file(sibling.cover_path)
+            ):
                 return send_file(sibling.cover_path)
+            sibling_healed = _heal_cover(sibling)
+            if sibling_healed:
+                return send_file(sibling_healed)
     return ("", 404)
 
 

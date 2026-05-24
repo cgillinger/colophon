@@ -293,7 +293,7 @@
                         <th data-sort="title">{{ _('Book') }} <span class="sort-icon">▲</span></th>
                         <th data-sort="author">{{ _('Author') }} <span class="sort-icon"></span></th>
                         <th data-sort="genres">{{ _('Genre') }} <span class="sort-icon"></span></th>
-                        <th data-sort="published" style="width:110px;">{{ _('Published') }} <span class="sort-icon"></span></th>
+                        <th data-sort="published" style="min-width:115px;">{{ _('Published') }} <span class="sort-icon"></span></th>
                         <th data-sort="status">{{ _('Metadata') }} <span class="sort-icon"></span></th>
                         <th data-sort="ext" style="width:80px;">{{ _('File type') }} <span class="sort-icon"></span></th>
                     </tr>
@@ -373,7 +373,7 @@
                                     <span class="badge good" title="{{ _('Has metadata') }}"><i class="ti ti-check"></i> {{ _('Has metadata') }}</span>
                                 {% endif %}
                                 {% if item.manual_metadata %}
-                                    <span class="badge saved-badge" title="{{ _('Saved manually') }}"><i class="ti ti-bookmark-filled"></i> {{ _('Saved') }}</span>
+                                    <span class="badge saved-badge" title="{{ _('Saved manually') }}"><i class="ti ti-bookmark"></i> {{ _('Saved') }}</span>
                                 {% endif %}
                             </td>
                             <td class="ext-cell" onclick="openBookModal({{ item.id }})" style="cursor:pointer;"><span class="ext-chip">{{ item.extension|upper|replace(".", "") }}</span></td>

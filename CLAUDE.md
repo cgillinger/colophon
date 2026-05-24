@@ -172,3 +172,38 @@ docker exec colophon python -c "from app.services.cover_search import search_cov
 # Check a route
 curl -s http://192.168.50.8:5055/scan | python -m json.tool
 ```
+
+## Playwright MCP (UI testing)
+
+Playwright MCP is installed globally (`--scope user`) with headless Chromium bundled. The running Colophon instance lives at `http://192.168.50.8:5055` — point the browser there to verify UI changes after a rebuild.
+
+**How to invoke**: say "Använd Playwright MCP" (or "Use Playwright MCP") in the first prompt of a session that needs UI verification. The MCP tools only load when explicitly requested.
+
+**Key tools**:
+- `browser_navigate` — go to a URL
+- `browser_snapshot` — accessibility snapshot of the page (structured, fast, token-efficient — prefer this for "does element X exist / is it labelled correctly" checks)
+- `browser_screenshot` — visual PNG; can be inspected with the Read tool to see what the user actually sees (use for layout/visual regressions, dark-mode rendering, etc.)
+- `browser_click` — click an element by accessibility ref
+- `browser_type` — type into an input by ref
+
+**Snapshot vs screenshot**: accessibility snapshots are roughly an order of magnitude cheaper in tokens and faster to act on. Use snapshots to verify structure (aria-labels, headings, button states); use screenshots when the question is genuinely about pixels (alignment, color, badge styling, dark-mode contrast).
+
+### ⚠️ Production safety
+
+Colophon runs against the **real library** — every book and metadata field belongs to the user. Treat the running instance as production.
+
+**Never do** without explicit per-action user authorization:
+- Click "Radera" / "Delete" / trash icons on books, duplicates, or groups
+- Save edits to metadata fields (the bulk modal's Save button writes to the DB and optionally the file)
+- Run batch operations (the batch wizard mutates many rows at once)
+- Toggle settings in the Settings pages
+- Click "Fetch metadata" / "Ask AI" on real books (these mutate state and consume API quota)
+
+**Safe to do** during verification:
+- Navigate between views (Tabell / Hyllvy / Serie)
+- Open modals and inspect their layout (closing without saving is fine)
+- Use the search box, filters, pagination
+- Hover, scroll, take screenshots
+- Toggle theme, change language
+
+When in doubt, **ask first**. A single misclick on "Radera permanent (inkl. fil)" deletes real ebook files from disk.
