@@ -1004,8 +1004,15 @@
         }
         /* Table view caps content at a readable row length on 4K monitors.
            Shelf/series fill the full viewport since covers tolerate width
-           (more columns = better density). */
-        body:not(.shelf-active):not(.series-active) .table-wrap {
+           (more columns = better density). Toolbar + "Reading now" cards
+           share the same cap so their left/right edges line up with the
+           table — otherwise the eye notices the misalignment. */
+        body:not(.shelf-active):not(.series-active) .filter-row,
+        body:not(.shelf-active):not(.series-active) #filterPanel,
+        body:not(.shelf-active):not(.series-active) .reading-now,
+        body:not(.shelf-active):not(.series-active) .table-wrap,
+        body:not(.shelf-active):not(.series-active) #paginationBar,
+        body:not(.shelf-active):not(.series-active) #emptyState {
             max-width: 1600px;
             margin-left: auto;
             margin-right: auto;
