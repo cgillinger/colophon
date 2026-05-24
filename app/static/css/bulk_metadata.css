@@ -1422,12 +1422,13 @@
         /* Column-width plan in airy: checkbox / cover / BOOK (auto) /
            author / rating. Side columns explicit so the table doesn't
            waste 200px per minor column when table-layout:fixed
-           distributes remaining width. */
-        body[data-density="airy"] #bookTable th:nth-child(1) { width: 36px; }
-        body[data-density="airy"] #bookTable th:nth-child(2) { width: 116px; }
-        body[data-density="airy"] #bookTable th[data-sort="title"] { width: auto; }
-        body[data-density="airy"] #bookTable th[data-sort="author"] { width: 200px; }
-        body[data-density="airy"] #bookTable th[data-sort="rating"] { width: 110px; }
+           distributes remaining width. !important required because
+           the template sets style="width:96px" on the cover <th>. */
+        body[data-density="airy"] #bookTable th:nth-child(1) { width: 36px !important; }
+        body[data-density="airy"] #bookTable th:nth-child(2) { width: 124px !important; }
+        body[data-density="airy"] #bookTable th[data-sort="title"] { width: auto !important; }
+        body[data-density="airy"] #bookTable th[data-sort="author"] { width: 200px !important; }
+        body[data-density="airy"] #bookTable th[data-sort="rating"] { width: 110px !important; }
         body[data-density="airy"] .book-synopsis-preview {
             display: -webkit-box;
             -webkit-line-clamp: 2;
