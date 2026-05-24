@@ -242,10 +242,13 @@
                         <th style="width:96px;">{{ _('Cover') }}</th>
                         <th data-sort="title">{{ _('Book') }} <span class="sort-icon">▲</span></th>
                         <th data-sort="author">{{ _('Author') }} <span class="sort-icon"></span></th>
-                        <th data-sort="genres">{{ _('Genre') }} <span class="sort-icon"></span></th>
-                        <th data-sort="published" style="min-width:115px;">{{ _('Published') }} <span class="sort-icon"></span></th>
+                        <th data-sort="genres" class="col-compact-only">{{ _('Genre') }} <span class="sort-icon"></span></th>
+                        <th data-sort="publisher" class="col-compact-only col-wide-only">{{ _('Publisher') }} <span class="sort-icon"></span></th>
+                        <th data-sort="language" class="col-compact-only col-extrawide-only" style="width:80px;">{{ _('Language') }} <span class="sort-icon"></span></th>
+                        <th data-sort="isbn" class="col-compact-only col-extrawide-only" style="width:140px;">{{ _('ISBN') }} <span class="sort-icon"></span></th>
+                        <th data-sort="published" class="col-compact-only" style="min-width:115px;">{{ _('Published') }} <span class="sort-icon"></span></th>
                         <th data-sort="rating" style="width:96px;">{{ _('Rating') }} <span class="sort-icon"></span></th>
-                        <th data-sort="ext" style="width:80px;">{{ _('File type') }} <span class="sort-icon"></span></th>
+                        <th data-sort="ext" class="col-compact-only" style="width:80px;">{{ _('File type') }} <span class="sort-icon"></span></th>
                     </tr>
                 </thead>
                 <tbody id="bookTableBody">
@@ -267,6 +270,8 @@
                             data-unsynced="{{ '1' if item.file_modified_by_colophon and (not item.upstream_synced_at or item.file_modified_by_colophon > item.upstream_synced_at) else '0' }}"
                             data-rating="{{ item.user_rating or 0 }}"
                             data-user-rating="{{ item.user_rating or '' }}"
+                            data-publisher="{{ (item.publisher or '')|lower }}"
+                            data-language="{{ (item.language or '')|lower }}"
                             data-item-id="{{ item.id }}"
                             data-group-key="{{ item.group_key or '' }}"
                             data-series="{{ item.series or '' }}"
@@ -285,18 +290,23 @@
                                     {% endif %}
                                 </div>
                             </td>
-                            <td onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
+                            <td class="book-cell" onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
                                 <div class="book-title">{{ item.title }}</div>
                                 {% if item.series %}
                                     <div class="meta">{{ item.series }}{% if item.series_index %} · {{ item.series_index }}{% endif %}{% if item.publisher %} · {{ item.publisher }}{% endif %}</div>
                                 {% elif item.publisher %}
                                     <div class="meta">{{ item.publisher }}</div>
                                 {% endif %}
+                                {# Synopsis preview shown only in airy mode (CSS-gated).
+                                   Two-line truncate via line-clamp; full text in tooltip. #}
+                                {% if item.description %}
+                                    <div class="book-synopsis-preview" title="{{ item.description }}">{{ item.description }}</div>
+                                {% endif %}
                             </td>
                             <td class="author-cell" onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
                                 {% if item.author %}{{ item.author }}{% else %}<span class="meta">{{ _('Unknown') }}</span>{% endif %}
                             </td>
-                            <td class="genres-cell" onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
+                            <td class="genres-cell col-compact-only" onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
                                 {% if item.genres %}
                                     {% set _genre_parts = item.genres.split(',') %}
                                     {% set _genre_total = _genre_parts|length %}
@@ -307,7 +317,16 @@
                                     {% endif %}
                                 {% else %}<span class="meta">—</span>{% endif %}
                             </td>
-                            <td class="published-cell" onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
+                            <td class="publisher-cell col-compact-only col-wide-only" onclick="openBookModal({{ item.id }})" style="cursor:pointer;" data-publisher="{{ (item.publisher or '')|lower }}">
+                                {% if item.publisher %}<span class="meta">{{ item.publisher }}</span>{% else %}<span class="meta">—</span>{% endif %}
+                            </td>
+                            <td class="language-cell col-compact-only col-extrawide-only" onclick="openBookModal({{ item.id }})" style="cursor:pointer;" data-language="{{ (item.language or '')|lower }}">
+                                {% if item.language %}<span class="meta">{{ item.language|upper }}</span>{% else %}<span class="meta">—</span>{% endif %}
+                            </td>
+                            <td class="isbn-cell col-compact-only col-extrawide-only" onclick="openBookModal({{ item.id }})" style="cursor:pointer;" data-isbn-val="{{ item.isbn or '' }}">
+                                {% if item.isbn %}<span class="meta" style="font-variant-numeric: tabular-nums; font-size: 11px;">{{ item.isbn }}</span>{% else %}<span class="meta">—</span>{% endif %}
+                            </td>
+                            <td class="published-cell col-compact-only" onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
                                 {% if item.published_date %}
                                     <span class="meta" title="{{ item.published_date }}">{% if item.published_date|length >= 10 %}{{ item.published_date[:4] }}{% else %}{{ item.published_date }}{% endif %}</span>
                                 {% else %}
@@ -319,7 +338,7 @@
                                     <span class="table-rating">{% for _ in range(item.user_rating) %}★{% endfor %}{% for _ in range(5 - item.user_rating) %}☆{% endfor %}</span>
                                 {% endif %}
                             </td>
-                            <td class="ext-cell" onclick="openBookModal({{ item.id }})" style="cursor:pointer;"><span class="ext-chip">{{ item.extension|upper|replace(".", "") }}</span></td>
+                            <td class="ext-cell col-compact-only" onclick="openBookModal({{ item.id }})" style="cursor:pointer;"><span class="ext-chip">{{ item.extension|upper|replace(".", "") }}</span></td>
                         </tr>
                     {% endfor %}
                 </tbody>

@@ -1374,6 +1374,66 @@
         body.shelf-active .reading-now,
         body.series-active .reading-now { display: none !important; }
 
+        /* === Density modes ==============================================
+           Two densities for the table view, with substantially different
+           goals:
+
+           airy (default): Quick overview. Big covers, only Cover + Book
+           (title/author/synopsis-preview) + Rating. Synopsis is shown
+           below the title in 2 truncated lines so the row reads as a
+           book card.
+
+           compact: Maxed information density. Small covers, MORE
+           columns enabled (Genre, Publisher, Language, ISBN, Published,
+           File type) — each gated by viewport width so it doesn't push
+           cells off-screen.
+
+           The .col-compact-only / col-wide-only / col-extrawide-only
+           classes on <th>/<td> are toggled by these rules.        */
+
+        /* Default: airy mode. Show only essential columns. */
+        body[data-density="airy"] .col-compact-only { display: none !important; }
+
+        /* Compact mode: show all the compact-extra columns. */
+        body[data-density="compact"] .col-compact-only { display: table-cell; }
+
+        /* Viewport-gated columns within compact: hide on narrower screens. */
+        @media (max-width: 1500px) {
+            body[data-density="compact"] .col-extrawide-only { display: none !important; }
+        }
+        @media (max-width: 1200px) {
+            body[data-density="compact"] .col-wide-only { display: none !important; }
+        }
+
+        /* Airy: large covers, synopsis preview rendered. */
+        body[data-density="airy"] td .cover { height: 120px; width: 80px; }
+        body[data-density="airy"] td .cover img { object-fit: cover; }
+        body[data-density="airy"] th:nth-child(2),
+        body[data-density="airy"] td:nth-child(2) { width: 100px !important; }
+        body[data-density="airy"] .book-synopsis-preview {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            margin-top: 6px;
+            font-size: 12px;
+            color: var(--text-tertiary);
+            line-height: 1.4;
+            max-height: 2.8em;
+        }
+        body[data-density="airy"] tr.book-row,
+        body[data-density="airy"] #bookTable tbody tr { height: auto; }
+        body[data-density="airy"] #bookTable tbody td { padding: 12px 10px; }
+
+        /* Compact: small covers, no synopsis preview. */
+        body[data-density="compact"] td .cover { height: 60px; width: 40px; }
+        body[data-density="compact"] td .cover img { object-fit: cover; }
+        body[data-density="compact"] .book-synopsis-preview { display: none; }
+        body[data-density="compact"] #bookTable tbody td { padding: 6px 8px; }
+        body[data-density="compact"] th:nth-child(2),
+        body[data-density="compact"] td:nth-child(2) { width: 60px !important; }
+        body[data-density="compact"] .book-title { font-size: 13px; }
+
         /* Book table */
         .table-wrap {
             background: var(--bg-primary);
