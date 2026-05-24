@@ -1438,15 +1438,13 @@
         body[data-density="airy"] td .cover { height: 150px; width: 100px; }
         body[data-density="airy"] td .cover img { object-fit: cover; }
         /* Column-width plan in airy: checkbox / cover / BOOK (auto) /
-           author / rating. Side columns explicit so the table doesn't
-           waste 200px per minor column when table-layout:fixed
-           distributes remaining width. !important required because
-           the template sets style="width:96px" on the cover <th>. */
-        body[data-density="airy"] #bookTable th:nth-child(1) { width: 36px !important; }
-        body[data-density="airy"] #bookTable th:nth-child(2) { width: 124px !important; }
-        body[data-density="airy"] #bookTable th[data-sort="title"] { width: auto !important; }
-        body[data-density="airy"] #bookTable th[data-sort="author"] { width: 200px !important; }
-        body[data-density="airy"] #bookTable th[data-sort="rating"] { width: 110px !important; }
+           author / rating. Plain widths (no !important) so the user's
+           drag-resize via cleanup-misc.js can override per their taste. */
+        body[data-density="airy"] #bookTable th:nth-child(1) { width: 36px; }
+        body[data-density="airy"] #bookTable th:nth-child(2) { width: 124px; }
+        body[data-density="airy"] #bookTable th[data-sort="title"] { width: auto; }
+        body[data-density="airy"] #bookTable th[data-sort="author"] { width: 200px; }
+        body[data-density="airy"] #bookTable th[data-sort="rating"] { width: 110px; }
         body[data-density="airy"] .book-synopsis-preview {
             display: -webkit-box;
             -webkit-line-clamp: 2;
@@ -1467,8 +1465,10 @@
         body[data-density="compact"] td .cover img { object-fit: cover; }
         body[data-density="compact"] .book-synopsis-preview { display: none; }
         body[data-density="compact"] #bookTable tbody td { padding: 6px 8px; }
+        /* Compact cover column: plain width (no !important) so column
+           resize via cleanup-misc.js can override. */
         body[data-density="compact"] th:nth-child(2),
-        body[data-density="compact"] td:nth-child(2) { width: 60px !important; }
+        body[data-density="compact"] td:nth-child(2) { width: 60px; }
         body[data-density="compact"] .book-title { font-size: 13px; }
 
         /* Book table */
