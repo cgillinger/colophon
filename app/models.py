@@ -30,6 +30,10 @@ class LibraryItem(db.Model):
     size_bytes = db.Column(db.Integer, nullable=True)
     file_mtime = db.Column(db.Float, nullable=True)
 
+    # Deprecated 2026-05-24 — formerly gated scan-overwrite of text fields.
+    # No code reads or writes this anymore; kept in the schema to avoid an
+    # SQLite ALTER TABLE DROP migration. See docs/future-idea-per-field-locks.md
+    # for the replacement design (currently unimplemented).
     manual_metadata = db.Column(db.Boolean, default=False)
     cover_locked = db.Column(db.Boolean, default=False)
 

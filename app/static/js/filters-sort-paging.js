@@ -77,7 +77,7 @@
         var btn = document.getElementById('filterToggle');
         if (!btn) return;
         var anyActive = false;
-        ['filterStatus', 'filterExtension', 'filterMissingField'].forEach(function (id) {
+        ['filterExtension', 'filterMissingField'].forEach(function (id) {
             var el = document.getElementById(id);
             if (el && el.value) anyActive = true;
         });
@@ -246,7 +246,6 @@
 
     function applyFilters() {
         var search = document.getElementById('filterSearch').value.toLowerCase().trim();
-        var status = document.getElementById('filterStatus').value;
         var missingField = document.getElementById('filterMissingField').value;
         var ext = document.getElementById('filterExtension').value;
 
@@ -265,9 +264,6 @@
             }
             if (show && ext) {
                 if ((row.dataset.ext || '') !== ext) show = false;
-            }
-            if (show && status) {
-                if (row.dataset.status !== status) show = false;
             }
             if (show && missingField) {
                 var attrKey = _missingFieldAttr[missingField];
@@ -291,8 +287,6 @@
                     if (rowExt.toLowerCase() !== filterValue.toLowerCase()) show = false;
                 } else if (filterType === 'missing_cover') {
                     if ((row.dataset.hasCover || '') !== '0') show = false;
-                } else if (filterType === 'missing_metadata') {
-                    if (row.dataset.status !== 'missing') show = false;
                 } else if (filterType === 'unsynced') {
                     if ((row.dataset.unsynced || '') !== '1') show = false;
                 }

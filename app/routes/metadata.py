@@ -309,8 +309,6 @@ def metadata_item(item_id):
             item.cover_path = new_cover_path
             item.cover_locked = True
 
-        item.manual_metadata = True
-
         cover_to_embed = new_cover_path
 
         pending = session.pop(_pending_session_key(item.id), None)
@@ -431,7 +429,6 @@ def apply_cover(item_id):
 
     item.cover_path = cover_path
     item.cover_locked = True
-    item.manual_metadata = True
 
     write_result = write_metadata_to_file(item, {}, cover_path)
 
@@ -476,7 +473,6 @@ def cover_apply_json(item_id):
 
     item.cover_path = cover_path
     item.cover_locked = True
-    item.manual_metadata = True
 
     write_result = write_metadata_to_file(item, {}, cover_path)
     if write_result["ok"]:
@@ -752,16 +748,6 @@ def bulk_metadata():
         groups.setdefault(key, []).append(it)
 
     total_count = LibraryItem.query.count()
-    missing_count = LibraryItem.query.filter(
-        db.or_(
-            LibraryItem.author.is_(None),
-            LibraryItem.author == "",
-            LibraryItem.description.is_(None),
-            LibraryItem.description == "",
-            LibraryItem.cover_path.is_(None),
-            LibraryItem.cover_path == "",
-        )
-    ).count()
 
     from sqlalchemy import func
     raw_counts = (
@@ -803,7 +789,6 @@ def bulk_metadata():
         groups=groups,
         summary=summary,
         total_count=total_count,
-        missing_count=missing_count,
         format_counts=format_counts,
         missing_cover_count=missing_cover_count,
         upstream_enabled=upstream_enabled,
@@ -1671,7 +1656,6 @@ def metadata_json(item_id):
         "extension": item.extension,
         "size_bytes": item.size_bytes,
         "cover_path": bool(item.cover_path),
-        "manual_metadata": bool(item.manual_metadata),
         "ai_configured": ai_is_configured(),
         "read_status": item.read_status or "ReadyToRead",
         "read_progress": item.read_progress,
@@ -1740,7 +1724,6 @@ def save_metadata_json(item_id):
     item.description = clean_text(data.get("description") or "") or None
     item.genres = (data.get("genres") or "").strip() or None
     item.published_date = (data.get("published_date") or "").strip()[:10] or None
-    item.manual_metadata = True
     item.group_key = compute_group_key(item.title or "", item.author or "")
 
     written_text = {}

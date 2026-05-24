@@ -175,8 +175,6 @@ def apply_metadata_to_item(
     elif (cover_url or cover_local_path) and not apply_cover and had_cover_before:
         fields_skipped.append("cover")
 
-    item.manual_metadata = True
-
     if "title" in written_text or "author" in written_text:
         from app.services.grouping import compute_group_key
         item.group_key = compute_group_key(item.title or "", item.author or "")

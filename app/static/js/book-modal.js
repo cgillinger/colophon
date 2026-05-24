@@ -1144,20 +1144,6 @@
             row.dataset.published = pd;
             row.dataset.hasPublished = pd ? '1' : '0';
         }
-        // Status column — td:nth-child(7): Checkbox, Cover, Title, Author, Genre, Published, Status
-        var statusCell = row.querySelector('td:nth-child(7)');
-        if (statusCell) {
-            var alreadySaved = !!statusCell.querySelector('.badge[data-saved-badge]');
-            if (!alreadySaved) {
-                var badge = document.createElement('span');
-                badge.className = 'badge good';
-                badge.dataset.savedBadge = '1';
-                badge.textContent = _i18n.batchSaved;
-                statusCell.appendChild(document.createTextNode(' '));
-                statusCell.appendChild(badge);
-            }
-        }
-        row.dataset.manual = '1';
         row.dataset.hasSeries = data.series ? '1' : '0';
         row.dataset.hasPublisher = data.publisher ? '1' : '0';
         row.dataset.unsynced = '1';

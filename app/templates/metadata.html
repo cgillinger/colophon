@@ -396,11 +396,6 @@
                 </div>
                 <div class="small">{{ _('File:') }}<br><code>{{ item.file_name }}</code></div>
                 <div class="small">{{ _('Type:') }} {{ item.extension|upper|replace(".", "") }} · {{ item.size_text() }}</div>
-                {% if item.manual_metadata %}
-                    <div class="small">{{ _('Status: saved metadata is protected from being overwritten on scan.') }}</div>
-                {% else %}
-                    <div class="small">{{ _('Status: metadata from scan/filename.') }}</div>
-                {% endif %}
             </div>
         </aside>
 

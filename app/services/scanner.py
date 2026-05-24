@@ -509,8 +509,11 @@ def _extract_ebook_meta_metadata(file_path, warnings: list) -> dict:
 def upsert_library_item(file_path, metadata: dict, existing=None, db_session=None) -> LibraryItem:
     """Create or update a LibraryItem from a normalized metadata dict.
 
-    Respects manual_metadata (never overwrites text fields when True) and
-    cover_locked (never overwrites cover_path when True).
+    Text fields are always overwritten from the EPUB's embedded metadata
+    on re-scan. The previous manual_metadata gate was removed — manual
+    edits via the modal write back to the EPUB file (via ebook-meta), so
+    re-reading from the file picks up the curated values, not the
+    pre-edit ones. cover_locked is still honoured.
 
     Sets file_mtime and metadata_read_at on the item.
     """
@@ -535,35 +538,32 @@ def upsert_library_item(file_path, metadata: dict, existing=None, db_session=Non
         existing.metadata_read_at = now
         existing.scanned_at = now
 
-        if not existing.manual_metadata:
-            old_title = existing.title
-            old_author = existing.author
-            if metadata.get("title"):
-                existing.title = metadata["title"]
-            if metadata.get("author"):
-                existing.author = metadata["author"]
-            if metadata.get("description"):
-                existing.description = metadata["description"]
-            if metadata.get("publisher"):
-                existing.publisher = metadata["publisher"]
-            if metadata.get("language"):
-                existing.language = metadata["language"]
-            if metadata.get("isbn"):
-                existing.isbn = metadata["isbn"]
-            if metadata.get("series"):
-                existing.series = metadata["series"]
-            if metadata.get("series_index"):
-                existing.series_index = metadata["series_index"]
-            if metadata.get("genres"):
-                existing.genres = metadata["genres"]
-            if metadata.get("published_date"):
-                existing.published_date = metadata["published_date"]
-            if metadata.get("cover_path") and not existing.cover_locked:
-                existing.cover_path = metadata["cover_path"]
+        old_title = existing.title
+        old_author = existing.author
+        if metadata.get("title"):
+            existing.title = metadata["title"]
+        if metadata.get("author"):
+            existing.author = metadata["author"]
+        if metadata.get("description"):
+            existing.description = metadata["description"]
+        if metadata.get("publisher"):
+            existing.publisher = metadata["publisher"]
+        if metadata.get("language"):
+            existing.language = metadata["language"]
+        if metadata.get("isbn"):
+            existing.isbn = metadata["isbn"]
+        if metadata.get("series"):
+            existing.series = metadata["series"]
+        if metadata.get("series_index"):
+            existing.series_index = metadata["series_index"]
+        if metadata.get("genres"):
+            existing.genres = metadata["genres"]
+        if metadata.get("published_date"):
+            existing.published_date = metadata["published_date"]
+        if metadata.get("cover_path") and not existing.cover_locked:
+            existing.cover_path = metadata["cover_path"]
 
-            if existing.title != old_title or existing.author != old_author or not existing.group_key:
-                existing.group_key = compute_group_key(existing.title or "", existing.author or "")
-        elif not existing.group_key:
+        if existing.title != old_title or existing.author != old_author or not existing.group_key:
             existing.group_key = compute_group_key(existing.title or "", existing.author or "")
 
         return existing
@@ -589,7 +589,6 @@ def upsert_library_item(file_path, metadata: dict, existing=None, db_session=Non
         size_bytes=size_bytes,
         file_mtime=file_mtime,
         metadata_read_at=now,
-        manual_metadata=False,
         pipeline_status="scanned",
         scanned_at=now,
         group_key=compute_group_key(item_title or "", item_author or ""),

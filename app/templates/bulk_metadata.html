@@ -242,12 +242,6 @@
         </div>
 
         <div id="filterPanel" style="display:none;">
-            <select id="filterStatus" onchange="applyFilters()" title="{{ _('Status') }}">
-                <option value="">{{ _('All') }}</option>
-                <option value="missing">{{ _('Missing metadata') }}</option>
-                <option value="has">{{ _('Has metadata') }}</option>
-            </select>
-
             <select id="filterExtension" onchange="applyFilters()" title="{{ _('File type') }}">
                 <option value="">{{ _('File type: all') }}</option>
             </select>
@@ -294,20 +288,17 @@
                         <th data-sort="author">{{ _('Author') }} <span class="sort-icon"></span></th>
                         <th data-sort="genres">{{ _('Genre') }} <span class="sort-icon"></span></th>
                         <th data-sort="published" style="min-width:115px;">{{ _('Published') }} <span class="sort-icon"></span></th>
-                        <th data-sort="status">{{ _('Metadata') }} <span class="sort-icon"></span></th>
                         <th data-sort="ext" style="width:80px;">{{ _('File type') }} <span class="sort-icon"></span></th>
                     </tr>
                 </thead>
                 <tbody id="bookTableBody">
                     {% for item in items %}
-                        {% set is_missing = (not item.author or not item.description or not item.cover_path) %}
                         <tr data-title="{{ item.title|lower }}"
                             data-author="{{ (item.author or '')|lower }}"
                             data-isbn="{{ (item.isbn or '')|lower }}"
                             data-genres="{{ (item.genres or '')|lower }}"
                             data-published="{{ (item.published_date or '') }}"
                             data-ext="{{ item.extension|lower }}"
-                            data-status="{{ 'missing' if is_missing else 'has' }}"
                             data-has-series="{{ '1' if item.series else '0' }}"
                             data-has-description="{{ '1' if item.description else '0' }}"
                             data-has-author="{{ '1' if item.author else '0' }}"
@@ -316,8 +307,6 @@
                             data-has-publisher="{{ '1' if item.publisher else '0' }}"
                             data-has-genres="{{ '1' if item.genres else '0' }}"
                             data-has-published="{{ '1' if item.published_date else '0' }}"
-                            data-manual="{{ '1' if item.manual_metadata else '0' }}"
-                            data-missing="{{ '1' if is_missing else '0' }}"
                             data-unsynced="{{ '1' if item.file_modified_by_colophon and (not item.upstream_synced_at or item.file_modified_by_colophon > item.upstream_synced_at) else '0' }}"
                             data-item-id="{{ item.id }}"
                             data-group-key="{{ item.group_key or '' }}"
@@ -366,16 +355,6 @@
                                     <span class="meta">—</span>
                                 {% endif %}
                             </td>
-                            <td class="status-cell" onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
-                                {% if is_missing %}
-                                    <span class="badge warn" title="{{ _('Missing metadata') }}"><i class="ti ti-alert-triangle"></i> {{ _('Missing metadata') }}</span>
-                                {% else %}
-                                    <span class="badge good" title="{{ _('Has metadata') }}"><i class="ti ti-check"></i> {{ _('Has metadata') }}</span>
-                                {% endif %}
-                                {% if item.manual_metadata %}
-                                    <span class="badge saved-badge" title="{{ _('Saved manually') }}"><i class="ti ti-bookmark"></i> {{ _('Saved') }}</span>
-                                {% endif %}
-                            </td>
                             <td class="ext-cell" onclick="openBookModal({{ item.id }})" style="cursor:pointer;"><span class="ext-chip">{{ item.extension|upper|replace(".", "") }}</span></td>
                         </tr>
                     {% endfor %}
@@ -394,9 +373,6 @@
         <div id="paginationBar">
             <div id="paginationStats">
                 <span id="libraryChipTotal">{{ _('%(count)d books', count=total_count) }}</span>
-                {% if missing_count %}
-                    · <span class="stats-badge" id="libraryChipMissing" onclick="toggleBadgeFilter('missing_metadata', '1', event)">{{ _('%(count)d incomplete', count=missing_count) }}</span>
-                {% endif %}
                 {% if format_counts %}
                     {% for ext, count in format_counts.items() %}
                         · <span class="stats-badge" onclick="toggleBadgeFilter('format', '{{ ext }}', event)">{{ count }} {{ ext }}</span>
