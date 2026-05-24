@@ -64,6 +64,9 @@ class LibraryItem(db.Model):
     # book. Re-shown only if read_last_modified moves past this timestamp
     # (i.e. user picks the book up again).
     forgot_dismissed_at = db.Column(db.DateTime, nullable=True)
+    # User's own 1-5 rating. 0/NULL = unrated. No external/aggregate
+    # rating stored — Goodreads is closed and other sources are sparse.
+    user_rating = db.Column(db.Integer, nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

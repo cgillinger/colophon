@@ -99,7 +99,66 @@
 
         _populateDisplayMirror(data, size, ext);
         _populateReadingState(data);
+        _populateRating(itemId, data.user_rating || 0);
     }
+
+    /* Star rating: hovering highlights, clicking persists. Click on the
+       × clears the rating. Rating reflects user judgment only — no
+       external/community rating is fetched. */
+    function _populateRating(itemId, rating) {
+        var wrap = document.getElementById('modalRating');
+        if (!wrap) return;
+        wrap.dataset.itemId = itemId;
+        wrap.dataset.value = rating || 0;
+        _paintStars(wrap, rating || 0);
+    }
+    function _paintStars(wrap, value) {
+        var stars = wrap.querySelectorAll('.rating-star');
+        stars.forEach(function (s) {
+            var v = parseInt(s.dataset.value, 10);
+            s.classList.toggle('rating-active', v <= value && value > 0);
+        });
+    }
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest && e.target.closest('#modalRating .rating-star, #modalRating .rating-clear');
+        if (!btn) return;
+        var wrap = btn.closest('#modalRating');
+        var itemId = wrap.dataset.itemId;
+        if (!itemId) return;
+        var newVal = parseInt(btn.dataset.value, 10);
+        wrap.dataset.value = newVal;
+        _paintStars(wrap, newVal);
+        fetch('/metadata/' + itemId + '/rate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rating: newVal })
+        }).then(function (r) { return r.json(); })
+          .then(function (data) {
+              /* Mirror in the table row too if visible. */
+              var row = document.querySelector('tr[data-item-id="' + itemId + '"]');
+              if (row) row.dataset.userRating = data.rating || '';
+              var cell = row && row.querySelector('.rating-cell');
+              if (cell) cell.innerHTML = _renderTableStars(data.rating || 0);
+          });
+    });
+    function _renderTableStars(value) {
+        if (!value) return '';
+        var s = '';
+        for (var i = 1; i <= 5; i++) s += (i <= value ? '★' : '☆');
+        return '<span class="table-rating">' + s + '</span>';
+    }
+    document.addEventListener('mouseover', function (e) {
+        var btn = e.target.closest && e.target.closest('#modalRating .rating-star');
+        if (!btn) return;
+        var wrap = btn.closest('#modalRating');
+        _paintStars(wrap, parseInt(btn.dataset.value, 10));
+    });
+    document.addEventListener('mouseleave', function (e) {
+        var wrap = e.target.closest && e.target.closest('#modalRating .rating-stars');
+        if (!wrap) return;
+        var modalWrap = wrap.closest('#modalRating');
+        _paintStars(modalWrap, parseInt(modalWrap.dataset.value, 10) || 0);
+    }, true);
 
     /* Display-mode mirror: populate read-only typographic elements alongside
        the form fields. Same data source, just nicer presentation. */

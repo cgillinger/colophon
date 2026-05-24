@@ -3093,6 +3093,15 @@ msgstr "Publiceringsdatum (nyast)"
 msgid "Publication date (oldest)"
 msgstr "Publiceringsdatum (äldst)"
 
+msgid "My rating"
+msgstr "Mitt betyg"
+
+msgid "Clear rating"
+msgstr "Ta bort betyg"
+
+msgid "Rating"
+msgstr "Betyg"
+
 #~ msgid "Settings saved."
 #~ msgstr "Inställningar sparade."
 

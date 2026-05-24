@@ -244,6 +244,7 @@
                         <th data-sort="author">{{ _('Author') }} <span class="sort-icon"></span></th>
                         <th data-sort="genres">{{ _('Genre') }} <span class="sort-icon"></span></th>
                         <th data-sort="published" style="min-width:115px;">{{ _('Published') }} <span class="sort-icon"></span></th>
+                        <th data-sort="rating" style="width:96px;">{{ _('Rating') }} <span class="sort-icon"></span></th>
                         <th data-sort="ext" style="width:80px;">{{ _('File type') }} <span class="sort-icon"></span></th>
                     </tr>
                 </thead>
@@ -264,6 +265,8 @@
                             data-has-genres="{{ '1' if item.genres else '0' }}"
                             data-has-published="{{ '1' if item.published_date else '0' }}"
                             data-unsynced="{{ '1' if item.file_modified_by_colophon and (not item.upstream_synced_at or item.file_modified_by_colophon > item.upstream_synced_at) else '0' }}"
+                            data-rating="{{ item.user_rating or 0 }}"
+                            data-user-rating="{{ item.user_rating or '' }}"
                             data-item-id="{{ item.id }}"
                             data-group-key="{{ item.group_key or '' }}"
                             data-series="{{ item.series or '' }}"
@@ -309,6 +312,11 @@
                                     <span class="meta" title="{{ item.published_date }}">{% if item.published_date|length >= 10 %}{{ item.published_date[:4] }}{% else %}{{ item.published_date }}{% endif %}</span>
                                 {% else %}
                                     <span class="meta">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="rating-cell" onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
+                                {% if item.user_rating %}
+                                    <span class="table-rating">{% for _ in range(item.user_rating) %}★{% endfor %}{% for _ in range(5 - item.user_rating) %}☆{% endfor %}</span>
                                 {% endif %}
                             </td>
                             <td class="ext-cell" onclick="openBookModal({{ item.id }})" style="cursor:pointer;"><span class="ext-chip">{{ item.extension|upper|replace(".", "") }}</span></td>
@@ -372,6 +380,17 @@
         </button>
         <h2 class="modal-edit-header" id="modalEditHeaderTitle"></h2>
         <div id="modalFeedback" class="modal-feedback" style="display:none;"></div>
+        <div class="modal-rating" id="modalRating" data-item-id="">
+            <span class="modal-rating-label">{{ _('My rating') }}</span>
+            <div class="rating-stars" role="radiogroup" aria-label="{{ _('My rating') }}">
+                <button type="button" class="rating-star" data-value="1" aria-label="1">★</button>
+                <button type="button" class="rating-star" data-value="2" aria-label="2">★</button>
+                <button type="button" class="rating-star" data-value="3" aria-label="3">★</button>
+                <button type="button" class="rating-star" data-value="4" aria-label="4">★</button>
+                <button type="button" class="rating-star" data-value="5" aria-label="5">★</button>
+                <button type="button" class="rating-clear" data-value="0" aria-label="{{ _('Clear rating') }}" title="{{ _('Clear rating') }}">×</button>
+            </div>
+        </div>
         <div id="modalReadingState" class="reading-state-box" style="display:none;">
             <div class="rs-row">
                 <strong>{{ _('Reading state') }}</strong>

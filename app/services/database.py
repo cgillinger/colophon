@@ -46,6 +46,7 @@ def ensure_database_columns():
         "read_started_at": "ALTER TABLE library_items ADD COLUMN read_started_at DATETIME",
         "read_finished_at": "ALTER TABLE library_items ADD COLUMN read_finished_at DATETIME",
         "forgot_dismissed_at": "ALTER TABLE library_items ADD COLUMN forgot_dismissed_at DATETIME",
+        "user_rating": "ALTER TABLE library_items ADD COLUMN user_rating INTEGER",
         "times_started": (
             "ALTER TABLE library_items ADD COLUMN times_started "
             "INTEGER NOT NULL DEFAULT 0"

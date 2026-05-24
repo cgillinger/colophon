@@ -222,6 +222,24 @@ def dismiss_forgotten(item_id):
     return jsonify({"ok": True})
 
 
+@metadata_bp.route("/metadata/<int:item_id>/rate", methods=["POST"])
+def set_user_rating(item_id):
+    """Set the user's own 1-5 rating on an item. Pass rating=0 (or none)
+    to clear. No external rating is stored — this is the user's
+    judgment only."""
+    item = get_item_or_404(item_id)
+    raw = (request.json or {}).get("rating") if request.is_json else request.form.get("rating")
+    try:
+        rating = int(raw) if raw not in (None, "") else 0
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "invalid_rating"}), 400
+    if rating < 0 or rating > 5:
+        return jsonify({"ok": False, "error": "out_of_range"}), 400
+    item.user_rating = rating if rating > 0 else None
+    db.session.commit()
+    return jsonify({"ok": True, "rating": item.user_rating})
+
+
 @metadata_bp.route("/cover/<int:item_id>")
 def cover_item(item_id):
     item = get_item_or_404(item_id)
@@ -1735,6 +1753,7 @@ def metadata_json(item_id):
         "read_started_at": item.read_started_at.isoformat() if item.read_started_at else None,
         "read_finished_at": item.read_finished_at.isoformat() if item.read_finished_at else None,
         "times_started": int(item.times_started or 0),
+        "user_rating": item.user_rating or 0,
     })
 
 

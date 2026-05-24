@@ -1198,6 +1198,60 @@
             line-height: 1.45;
         }
 
+        /* === User rating (1-5 stars) ====================================
+           Interactive stars in the book modal. Click to set, × to clear.
+           Table cell shows a compact non-interactive copy. */
+        .modal-rating {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            margin: 12px 0 6px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+        }
+        .modal-rating-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .rating-stars {
+            display: inline-flex;
+            gap: 2px;
+            align-items: center;
+        }
+        .rating-star {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 22px;
+            line-height: 1;
+            padding: 2px 3px;
+            color: var(--text-tertiary);
+            transition: color 0.1s, transform 0.1s;
+        }
+        .rating-star:hover { color: #f59e0b; transform: scale(1.1); }
+        .rating-star.rating-active { color: #f59e0b; }
+        .rating-clear {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+            padding: 2px 6px;
+            color: var(--text-tertiary);
+            margin-left: 4px;
+        }
+        .rating-clear:hover { color: var(--accent-red); }
+        /* Table-row rendering: small, monochrome, no interaction. */
+        .table-rating {
+            color: #f59e0b;
+            font-size: 14px;
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+
         /* === Reading now / Resume? hero sections ========================
            Two stacked sections above the table:
            - .reading-now : active reads (hero card + smaller side-cards)
