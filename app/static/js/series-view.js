@@ -42,6 +42,14 @@
     /* Local state for the modal (no external readers). */
     var _seriesModalName = null;
 
+    /* Module-scope so the pill click handler can read it after a render
+       (the per-render closure goes out of scope before the user clicks). */
+    var _STATUS_LABEL = {
+        'ReadyToRead': _i18n.statusUnread,
+        'Reading':     _i18n.statusReading,
+        'Finished':    _i18n.statusFinished
+    };
+
     function _seriesEsc(s) {
         return String(s == null ? '' : s)
             .replace(/&/g, '&amp;')
@@ -299,12 +307,8 @@
         if (reading > 0) progressText += ' · ' + reading + ' ' + _i18n.seriesReading;
         document.getElementById('seriesModalProgressText').textContent = progressText;
 
-        // Book list
-        var STATUS_LABEL = {
-            'ReadyToRead': _i18n.statusUnread,
-            'Reading':     _i18n.statusReading,
-            'Finished':    _i18n.statusFinished
-        };
+        // Book list — uses module-scope _STATUS_LABEL.
+        var STATUS_LABEL = _STATUS_LABEL;
         var listEl = document.getElementById('seriesModalList');
         listEl.innerHTML = '';
         books.forEach(function (b) {
@@ -389,7 +393,7 @@
                 var newStatus = target === 'finished' ? 'Finished' : 'ReadyToRead';
                 li.setAttribute('data-read-status', newStatus);
                 pill.className = 'badge s-' + newStatus + ' series-status-clickable';
-                pill.textContent = STATUS_LABEL[newStatus] || newStatus;
+                pill.textContent = _STATUS_LABEL[newStatus] || newStatus;
                 pill.setAttribute('title',
                     newStatus === 'Finished'
                         ? (_i18n.statusResetTooltip || 'Reset reading state')
@@ -404,6 +408,8 @@
     document.addEventListener('click', function (ev) {
         var bookRow = ev.target.closest && ev.target.closest('#seriesModalList .series-modal-book');
         if (!bookRow) return;
+        // Status pill is also clickable — don't also open the book modal.
+        if (ev.target.closest('.badge.series-status-clickable')) return;
         var id = bookRow.getAttribute('data-item-id');
         if (!id) return;
         // Drop the series modal's z-index below the book modal.
