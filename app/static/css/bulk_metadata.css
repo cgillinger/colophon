@@ -345,11 +345,15 @@
         * { box-sizing: border-box; }
 
         body {
-            margin: 0 0 0 var(--sidebar-width);
+            margin: 0;
+            margin-left: var(--sidebar-width);
             background: var(--bg-secondary);
             color: var(--text-primary);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             font-size: 14px;
+        }
+        @media (max-width: 900px) {
+            body { margin-left: 0; }
         }
 
         a { color: inherit; text-decoration: none; }
