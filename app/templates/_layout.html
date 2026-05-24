@@ -62,12 +62,26 @@
             <i class="ti ti-copy"></i> <span>{{ _('Find duplicates') }}</span>
         </a>
         {% endif %}
+        {% if _section == 'library' and sidebar_unsynced and sidebar_unsynced > 0 %}
+        <button type="button" class="sidebar-nav-item sidebar-nav-sync"
+                onclick="startPushSync()"
+                title="{{ _('%(n)d files modified locally, push to upstream library', n=sidebar_unsynced) }}">
+            <i class="ti ti-cloud-upload"></i>
+            <span>{{ _('Sync to library') }}</span>
+            <span class="sidebar-count sidebar-count-warn">{{ sidebar_unsynced }}</span>
+        </button>
+        {% elif sidebar_unsynced and sidebar_unsynced > 0 %}
+        <a class="sidebar-nav-item sidebar-nav-sync"
+           href="{{ url_for('metadata.bulk_metadata') }}#sync"
+           title="{{ _('%(n)d files awaiting upstream sync (open library to start)', n=sidebar_unsynced) }}">
+            <i class="ti ti-cloud-upload"></i>
+            <span>{{ _('Sync to library') }}</span>
+            <span class="sidebar-count sidebar-count-warn">{{ sidebar_unsynced }}</span>
+        </a>
+        {% endif %}
         <a class="sidebar-nav-item {{ 'active' if _section == 'kobo' else '' }}"
            href="{{ url_for('settings.kobo_settings') }}">
             <i class="ti ti-device-tablet"></i> <span>{{ _('Kobo sync') }}</span>
-            {% if sidebar_unsynced and sidebar_unsynced > 0 %}
-            <span class="sidebar-count sidebar-count-warn" title="{{ _('%(n)d books modified locally, awaiting upstream sync', n=sidebar_unsynced) }}">{{ sidebar_unsynced }}</span>
-            {% endif %}
         </a>
         <a class="sidebar-nav-item {{ 'active' if _section == 'api' else '' }}"
            href="{{ url_for('settings.api_settings') }}">
