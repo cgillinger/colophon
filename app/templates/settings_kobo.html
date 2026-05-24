@@ -1,21 +1,10 @@
-<!doctype html>
-<html lang="{{ get_locale() }}" data-theme="light">
-<head>
-    <meta charset="utf-8">
-    <script>
-        (function(){
-            var t = localStorage.getItem('colophon-theme') || 'light';
-            document.documentElement.setAttribute('data-theme', t);
-        })();
-    </script>
-    <link rel="icon" href="{{ url_for('static', filename='icons/favicon.ico') }}" sizes="any">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32.png') }}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16.png') }}">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabler-icons/tabler-icons.min.css') }}">
-    <title>{{ _('Kobo sync') }} - Colophon</title>
-    <style>
-        :root, [data-theme="light"] {
+{% extends "_layout.html" %}
+{% set active_section = 'kobo' %}
+{% block title %}{{ _('Kobo sync') }} - Colophon{% endblock %}
+
+{% block extra_css %}
+<style>
+:root, [data-theme="light"] {
             --bg-primary: #ffffff;
             --bg-secondary: #f8fafc;
             --bg-tertiary: #ebedf0;
@@ -145,39 +134,11 @@
         details.howto .howto-body ol { padding-left: 22px; margin: 0; }
         details.howto .howto-body li { margin-bottom: 10px; }
         details.howto .howto-body code { background: var(--bg-secondary); padding: 1px 6px; border-radius: 3px; font-size: 13px; }
-    </style>
-</head>
-<body>
+</style>
+{% endblock %}
 
-<header class="topbar">
-    <div class="topbar-inner">
-        <a class="topbar-brand" href="{{ url_for('metadata.bulk_metadata') }}">
-            <img src="{{ url_for('static', filename='icons/colophon-transparent.png') }}" alt="Colophon">
-            <span>Colophon</span>
-        </a>
-        <div class="topbar-actions">
-            <a class="topbar-btn" href="{{ url_for('settings.ai_settings') }}" title="{{ _('AI stats and upstream library') }}">
-                <i class="ti ti-chart-bar"></i> {{ _('Stats') }}
-            </a>
-            <a class="topbar-btn icon-only" href="{{ url_for('settings.kobo_settings') }}" title="{{ _('Kobo sync') }}">
-                <i class="ti ti-device-tablet"></i>
-            </a>
-            <div class="lang-toggle">
-                <a href="#" onclick="setLanguage('en'); return false;" class="{{ 'active' if get_locale() == 'en' else '' }}" title="English">EN</a>
-                <a href="#" onclick="setLanguage('sv'); return false;" class="{{ 'active' if get_locale() == 'sv' else '' }}" title="Svenska">SV</a>
-            </div>
-            <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="{{ _('Toggle theme') }}">
-                <i id="themeIcon" class="ti ti-sun"></i>
-            </button>
-            <a class="topbar-btn icon-only" href="{{ url_for('settings.api_settings') }}" title="{{ _('Settings') }}">
-                <i class="ti ti-settings"></i>
-            </a>
-        </div>
-    </div>
-</header>
-
-<div class="container">
-    <h1><i class="ti ti-device-tablet"></i> {{ _('Kobo sync') }}</h1>
+{% block content %}
+<h1><i class="ti ti-device-tablet"></i> {{ _('Kobo sync') }}</h1>
     <p class="lead">
         {{ _('Let a Kobo e-reader sync EPUB books wirelessly from Colophon, as if Colophon were the Kobo store. Each device gets its own URL with a unique key.') }}
     </p>
@@ -428,8 +389,9 @@
             </div>
         </details>
     </div>
-</div>
+{% endblock %}
 
+{% block scripts %}
 <script>
 function toggleTheme() {
     var current = document.documentElement.getAttribute('data-theme');
@@ -464,5 +426,4 @@ function copyNewUrl() {
     });
 }
 </script>
-</body>
-</html>
+{% endblock %}

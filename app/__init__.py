@@ -99,6 +99,26 @@ def create_app():
         from app.version import __version__
         return {"app_version": __version__}
 
+    @app.context_processor
+    def inject_sidebar_counts():
+        """Library counts shown in the sidebar across every page.
+        Cheap queries — three COUNT(*) statements on a single-user SQLite
+        DB. Cached per request via Flask's context_processor mechanism."""
+        from app.models import LibraryItem
+        try:
+            total = LibraryItem.query.count()
+            reading = LibraryItem.query.filter(LibraryItem.read_status == "Reading").count()
+            finished = LibraryItem.query.filter(LibraryItem.read_status == "Finished").count()
+            unread = total - reading - finished
+        except Exception:
+            total = reading = finished = unread = 0
+        return {
+            "sidebar_total": total,
+            "sidebar_unread": unread,
+            "sidebar_reading": reading,
+            "sidebar_finished": finished,
+        }
+
     @app.route("/set-language/<lang>")
     def set_language(lang):
         if lang not in SUPPORTED_LANGUAGES:
