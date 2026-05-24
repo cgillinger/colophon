@@ -150,6 +150,78 @@ def index():
     return redirect(url_for("metadata.bulk_metadata"))
 
 
+# ---------------------------------------------------------------------------
+# Reading-now / "have you forgotten?" cards above the table
+# ---------------------------------------------------------------------------
+
+# Books with no progress for this many days fall out of the "Reading now"
+# hero and into the dismissible "Resume?" section instead.
+_FORGOT_THRESHOLD_DAYS = 30
+
+
+@metadata_bp.route("/reading-now")
+def reading_now():
+    """Books to surface above the library table.
+
+    Returns two lists:
+      - active: Reading-status books with progress in the last N days,
+        sorted by most-recent first. The user is genuinely engaged.
+      - forgotten: Reading-status books with no activity in N+ days that
+        the user hasn't already dismissed. The "Resume?" section.
+
+    JSON response — the table page fetches this on load and renders the
+    cards client-side. Keeps the main route's render cost flat."""
+    from datetime import datetime, timedelta
+    cutoff = datetime.utcnow() - timedelta(days=_FORGOT_THRESHOLD_DAYS)
+    reading = (
+        LibraryItem.query
+        .filter(LibraryItem.read_status == "Reading")
+        .all()
+    )
+    active, forgotten = [], []
+    for item in reading:
+        last_mod = item.read_last_modified
+        is_stale = (last_mod is None) or (last_mod < cutoff)
+        if not is_stale:
+            active.append(item)
+            continue
+        # Stale — show in "Resume?" unless dismissed AFTER the last touch.
+        if item.forgot_dismissed_at and last_mod and item.forgot_dismissed_at >= last_mod:
+            continue
+        if item.forgot_dismissed_at and not last_mod:
+            continue
+        forgotten.append(item)
+
+    def _serialize(item):
+        return {
+            "id": item.id,
+            "title": item.title or "",
+            "author": item.author or "",
+            "series": item.series or "",
+            "series_index": item.series_index or "",
+            "progress": item.read_progress,
+            "last_modified": item.read_last_modified.isoformat() if item.read_last_modified else None,
+            "cover_url": url_for("metadata.cover_item", item_id=item.id),
+        }
+
+    # Most recent first within each list.
+    active.sort(key=lambda i: i.read_last_modified or datetime.min, reverse=True)
+    forgotten.sort(key=lambda i: i.read_last_modified or datetime.min, reverse=True)
+    return jsonify({
+        "active": [_serialize(i) for i in active[:4]],
+        "forgotten": [_serialize(i) for i in forgotten[:3]],
+        "forgotten_overflow": max(0, len(forgotten) - 3),
+    })
+
+
+@metadata_bp.route("/reading-now/dismiss/<int:item_id>", methods=["POST"])
+def dismiss_forgotten(item_id):
+    item = get_item_or_404(item_id)
+    item.forgot_dismissed_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
 @metadata_bp.route("/cover/<int:item_id>")
 def cover_item(item_id):
     item = get_item_or_404(item_id)

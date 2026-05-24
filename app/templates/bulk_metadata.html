@@ -217,6 +217,23 @@
             </button>
         </div>
 
+        <!-- "Reading now" + "Resume?" hero sections. Populated by
+             reading-now.js on load via /reading-now JSON endpoint.
+             Hidden by default; shown if the endpoint returns content.
+             Only rendered in table view — switched off in shelf/series
+             via body.shelf-active / body.series-active CSS rules. -->
+        <section id="readingNowSection" class="reading-now" style="display:none;">
+            <div class="reading-now-header" id="readingNowHeader">{{ _('Reading now') }}</div>
+            <div class="reading-now-list" id="readingNowList"></div>
+        </section>
+        <section id="forgottenSection" class="reading-now reading-now-forgotten" style="display:none;">
+            <div class="reading-now-header">
+                <span>{{ _('Resume?') }}</span>
+                <span class="reading-now-sub" id="forgottenOverflow"></span>
+            </div>
+            <div class="reading-now-list" id="forgottenList"></div>
+        </section>
+
         <div class="table-wrap">
             <table id="bookTable">
                 <thead>
@@ -773,6 +790,14 @@
         deleteBooksConfirmMany: {{ _('Delete {count} books?')|tojson }},
         deletionFailed: {{ _('Deletion failed.')|tojson }},
         showShort: {{ _('Show')|tojson }},
+        dismiss: {{ _('Dismiss')|tojson }},
+        readingNoActivity: {{ _('no activity')|tojson }},
+        readingJustNow: {{ _('just now')|tojson }},
+        readingHoursAgo: {{ _('{n}h ago')|tojson }},
+        readingDaysAgo: {{ _('{n}d ago')|tojson }},
+        readingWeeksAgo: {{ _('{n}w ago')|tojson }},
+        readingMonthsAgo: {{ _('{n}mo ago')|tojson }},
+        readingMoreOnPause: {{ _('+{n} other paused')|tojson }},
         cancelLabel: {{ _('Cancel')|tojson }},
         deleting: {{ _('Deleting…')|tojson }},
         deletePermanentlyIncludeFile: {{ _('Delete permanently (incl. file)')|tojson }},
@@ -939,4 +964,5 @@
 <script src="{{ url_for('static', filename='js/scan-sync.js') }}"></script>
 <script src="{{ url_for('static', filename='js/shelf-view.js') }}"></script>
 <script src="{{ url_for('static', filename='js/cleanup-misc.js') }}"></script>
+<script src="{{ url_for('static', filename='js/reading-now.js') }}"></script>
 {% endblock %}

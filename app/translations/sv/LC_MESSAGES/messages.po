@@ -3042,6 +3042,57 @@ msgstr "Visa/dölj navigering"
 msgid "Primary navigation"
 msgstr "Huvudnavigering"
 
+msgid "Reading now"
+msgstr "Läser nu"
+
+msgid "Resume?"
+msgstr "Återuppta?"
+
+msgid "Dismiss"
+msgstr "Avfärda"
+
+msgid "no activity"
+msgstr "ingen aktivitet"
+
+msgid "just now"
+msgstr "just nu"
+
+msgid "{n}h ago"
+msgstr "{n}h sen"
+
+msgid "{n}d ago"
+msgstr "{n}d sen"
+
+msgid "{n}w ago"
+msgstr "{n}v sen"
+
+msgid "{n}mo ago"
+msgstr "{n}mån sen"
+
+msgid "+{n} other paused"
+msgstr "+{n} andra pausade"
+
+msgid "Sort by"
+msgstr "Sortera"
+
+msgid "Title A–Z"
+msgstr "Titel A–Ö"
+
+msgid "Title Z–A"
+msgstr "Titel Ö–A"
+
+msgid "Author A–Z"
+msgstr "Författare A–Ö"
+
+msgid "Author Z–A"
+msgstr "Författare Ö–A"
+
+msgid "Publication date (newest)"
+msgstr "Publiceringsdatum (nyast)"
+
+msgid "Publication date (oldest)"
+msgstr "Publiceringsdatum (äldst)"
+
 #~ msgid "Settings saved."
 #~ msgstr "Inställningar sparade."
 

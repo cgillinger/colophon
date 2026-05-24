@@ -60,6 +60,10 @@ class LibraryItem(db.Model):
     read_started_at = db.Column(db.DateTime, nullable=True)
     read_finished_at = db.Column(db.DateTime, nullable=True)
     times_started = db.Column(db.Integer, default=0, nullable=False)
+    # Set when the user dismisses an "Återuppta?" card for a stale Reading
+    # book. Re-shown only if read_last_modified moves past this timestamp
+    # (i.e. user picks the book up again).
+    forgot_dismissed_at = db.Column(db.DateTime, nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

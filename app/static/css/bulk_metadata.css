@@ -1198,6 +1198,128 @@
             line-height: 1.45;
         }
 
+        /* === Reading now / Resume? hero sections ========================
+           Two stacked sections above the table:
+           - .reading-now : active reads (hero card + smaller side-cards)
+           - .reading-now-forgotten : stale reads, dismissible per card
+           Only shown in table view (hidden in shelf/series below). */
+        .reading-now { margin-bottom: 14px; }
+        .reading-now-header {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin: 4px 6px 8px;
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+        }
+        .reading-now-sub { font-size: 11px; color: var(--text-tertiary); font-weight: 400; text-transform: none; letter-spacing: 0; }
+        .reading-now-list {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+        .reading-now-card {
+            display: grid;
+            grid-template-columns: 60px 1fr auto;
+            gap: 14px;
+            padding: 12px 16px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-light);
+            border-radius: 10px;
+            align-items: center;
+            position: relative;
+        }
+        .reading-now-card.reading-now-hero {
+            grid-template-columns: 80px 1fr;
+            padding: 16px 20px;
+            border-color: var(--accent-primary-border);
+            background: linear-gradient(180deg, var(--accent-primary-light) 0%, var(--bg-primary) 60%);
+        }
+        [data-theme="dark"] .reading-now-card.reading-now-hero {
+            background: linear-gradient(180deg, rgba(16,185,129,0.10) 0%, var(--bg-primary) 60%);
+        }
+        .reading-now-cover {
+            width: 60px;
+            height: 90px;
+            object-fit: cover;
+            border-radius: 4px;
+            cursor: pointer;
+            background: var(--bg-tertiary);
+        }
+        .reading-now-card.reading-now-hero .reading-now-cover {
+            width: 80px;
+            height: 120px;
+        }
+        .reading-now-body { min-width: 0; }
+        .reading-now-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            cursor: pointer;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .reading-now-card.reading-now-hero .reading-now-title { font-size: 18px; }
+        .reading-now-series {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-top: 2px;
+        }
+        .reading-now-author {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 1px;
+        }
+        .reading-now-progress {
+            margin-top: 8px;
+            height: 6px;
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .reading-now-progress-bar {
+            height: 100%;
+            background: var(--accent-primary);
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+        .reading-now-card.reading-now-hero .reading-now-progress { height: 8px; }
+        .reading-now-meta {
+            margin-top: 6px;
+            font-size: 11px;
+            color: var(--text-tertiary);
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .reading-now-meta .reading-now-sep { opacity: 0.5; }
+        /* Forgotten cards: muted, with dismiss-X */
+        .reading-now-forgotten .reading-now-card {
+            opacity: 0.82;
+        }
+        .reading-now-forgotten .reading-now-card:hover { opacity: 1; }
+        .reading-now-dismiss {
+            background: transparent;
+            border: none;
+            color: var(--text-tertiary);
+            font-size: 18px;
+            line-height: 1;
+            padding: 4px 10px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .reading-now-dismiss:hover {
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
+        }
+        /* Hide both sections outside table view */
+        body.shelf-active .reading-now,
+        body.series-active .reading-now { display: none !important; }
+
         /* Book table */
         .table-wrap {
             background: var(--bg-primary);
