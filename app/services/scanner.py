@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 
 from bs4 import BeautifulSoup
-from ebooklib import epub, ITEM_IMAGE
+from ebooklib import epub, ITEM_IMAGE, ITEM_COVER
 from flask_babel import gettext as _
 
 from app.models import LibraryItem, db
@@ -157,6 +157,20 @@ def _is_image_item(item):
     return Path(name).suffix.lower() in (".jpg", ".jpeg", ".png", ".webp", ".gif")
 
 
+def _iter_image_items(book):
+    """Yield every manifest item whose media_type is an image. ebooklib
+    classifies the EPUB-standard cover image as ITEM_COVER (type 10),
+    not ITEM_IMAGE (type 1), so neither type alone is enough — go by
+    media_type instead."""
+    try:
+        for item in book.get_items():
+            mt = (getattr(item, "media_type", "") or "").lower()
+            if mt.startswith("image/"):
+                yield item
+    except Exception:
+        return
+
+
 def _resolve_image_from_xhtml(book, xhtml_item):
     """Parse an XHTML cover page and return the image item it references.
     Many EPUBs register a Cover.xhtml page (id="cover") that links to the
@@ -179,7 +193,7 @@ def _resolve_image_from_xhtml(book, xhtml_item):
             normpath(xhtml_dir + "/" + src) if xhtml_dir else src
         )
         target = target.lstrip("/")
-        for item in book.get_items_of_type(ITEM_IMAGE):
+        for item in _iter_image_items(book):
             name = item.get_name() or ""
             if name == target or name.endswith("/" + target) or target.endswith("/" + name):
                 return item
@@ -190,18 +204,29 @@ def _resolve_image_from_xhtml(book, xhtml_item):
 
 def _save_epub_cover(book, file_path, cover_dir):
     cover_item = None
-    # Strategy 1: <meta name="cover" content="image-id">
-    cover_xhtml_fallback = None
+    # Strategy 0: ITEM_COVER — the EPUB-standard cover image type. When
+    # the EPUB follows the spec (most modern ones), this is the right
+    # answer in one line.
     try:
-        cover_id = _opf_meta_by_name(book, "cover")
-        if cover_id:
-            candidate = book.get_item_with_id(cover_id)
-            if _is_image_item(candidate):
-                cover_item = candidate
-            elif candidate is not None:
-                cover_xhtml_fallback = candidate
+        for item in book.get_items_of_type(ITEM_COVER):
+            if _is_image_item(item):
+                cover_item = item
+                break
     except Exception:
         pass
+    # Strategy 1: <meta name="cover" content="image-id">
+    cover_xhtml_fallback = None
+    if not cover_item:
+        try:
+            cover_id = _opf_meta_by_name(book, "cover")
+            if cover_id:
+                candidate = book.get_item_with_id(cover_id)
+                if _is_image_item(candidate):
+                    cover_item = candidate
+                elif candidate is not None:
+                    cover_xhtml_fallback = candidate
+        except Exception:
+            pass
     # Strategy 2: manifest item with id="cover"
     if not cover_item:
         try:
@@ -212,11 +237,13 @@ def _save_epub_cover(book, file_path, cover_dir):
                 cover_xhtml_fallback = candidate
         except Exception:
             pass
-    # Strategy 3: image with "cover" in filename
+    # Strategy 3: image with "cover" in filename. Iterate by media_type
+    # rather than ITEM_IMAGE so ITEM_COVER-classified images aren't
+    # accidentally excluded.
     if not cover_item:
         try:
-            for item in book.get_items_of_type(ITEM_IMAGE):
-                name = item.get_name().lower()
+            for item in _iter_image_items(book):
+                name = (item.get_name() or "").lower()
                 if "cover" in name:
                     cover_item = item
                     break
