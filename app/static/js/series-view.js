@@ -328,6 +328,20 @@
                 ? '<span class="series-modal-book-idx">#' + _esc(b.index) + '</span>'
                 : '';
 
+            /* Status pill is clickable: ReadyToRead → Finished, or
+               Finished → ReadyToRead. "Reading" stays as-is (only Kobo
+               syncs into Reading; toggling it manually from a series
+               modal would be confusing). */
+            var statusToggleTitle = b.status === 'Finished'
+                ? (_i18n.statusResetTooltip || 'Reset reading state')
+                : (b.status === 'ReadyToRead'
+                    ? (_i18n.statusMarkFinishedTooltip || 'Mark as finished')
+                    : '');
+            var pillExtraClass = (b.status === 'Reading') ? '' : 'series-status-clickable';
+            var pillExtraAttrs = (b.status === 'Reading')
+                ? ''
+                : ' role="button" tabindex="0" title="' + _esc(statusToggleTitle) + '"';
+
             li.innerHTML =
                 '<div class="series-modal-book-cover">' + coverHtml + '</div>' +
                 '<div class="series-modal-book-info">' +
@@ -339,7 +353,7 @@
                         : '') +
                 '</div>' +
                 '<div class="series-modal-book-status">' +
-                    '<span class="badge s-' + b.status + '">' +
+                    '<span class="badge s-' + b.status + ' ' + pillExtraClass + '"' + pillExtraAttrs + '>' +
                         _esc(STATUS_LABEL[b.status] || b.status) +
                     '</span>' +
                     progressHtml +
@@ -348,6 +362,42 @@
             listEl.appendChild(li);
         });
     }
+
+    /* Click handler for the status pill — toggles ReadyToRead ↔ Finished
+       via the existing /mark-read and /reset-reading-state endpoints.
+       Stops propagation so the row's openBookModal click doesn't fire. */
+    document.addEventListener('click', function (ev) {
+        var pill = ev.target.closest && ev.target.closest('#seriesModalList .badge.series-status-clickable');
+        if (!pill) return;
+        ev.stopPropagation();
+        var li = pill.closest('.series-modal-book');
+        if (!li) return;
+        var itemId = li.getAttribute('data-item-id');
+        var currentStatus = li.getAttribute('data-read-status') || 'ReadyToRead';
+        var target = currentStatus === 'Finished' ? 'reset' : 'finished';
+        var endpoint = target === 'finished'
+            ? '/metadata/' + itemId + '/mark-read'
+            : '/metadata/' + itemId + '/reset-read';
+        pill.style.opacity = '0.5';
+        fetch(endpoint, { method: 'POST' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data || data.ok === false) {
+                    pill.style.opacity = '';
+                    return;
+                }
+                var newStatus = target === 'finished' ? 'Finished' : 'ReadyToRead';
+                li.setAttribute('data-read-status', newStatus);
+                pill.className = 'badge s-' + newStatus + ' series-status-clickable';
+                pill.textContent = STATUS_LABEL[newStatus] || newStatus;
+                pill.setAttribute('title',
+                    newStatus === 'Finished'
+                        ? (_i18n.statusResetTooltip || 'Reset reading state')
+                        : (_i18n.statusMarkFinishedTooltip || 'Mark as finished'));
+                pill.style.opacity = '';
+            })
+            .catch(function () { pill.style.opacity = ''; });
+    });
 
     /* Click on a book row inside the series modal opens the book modal
        on top. Closing the book modal returns to the series spread. */

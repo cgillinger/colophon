@@ -1198,6 +1198,16 @@
             line-height: 1.45;
         }
 
+        /* Series-modal status pill: clickable to toggle reading state */
+        .series-modal-book-status .badge.series-status-clickable {
+            cursor: pointer;
+            transition: filter 0.1s, transform 0.1s;
+        }
+        .series-modal-book-status .badge.series-status-clickable:hover {
+            filter: brightness(1.1);
+            transform: scale(1.05);
+        }
+
         /* === User rating (1-5 stars) ====================================
            Interactive stars in the book modal. Click to set, × to clear.
            Table cell shows a compact non-interactive copy. */

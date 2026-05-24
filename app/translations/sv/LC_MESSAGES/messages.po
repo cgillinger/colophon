@@ -3102,6 +3102,12 @@ msgstr "Ta bort betyg"
 msgid "Rating"
 msgstr "Betyg"
 
+msgid "Click to mark as finished"
+msgstr "Klicka för att markera som utläst"
+
+msgid "Click to reset to unread"
+msgstr "Klicka för att återställa till oläst"
+
 #~ msgid "Settings saved."
 #~ msgstr "Inställningar sparade."
 
