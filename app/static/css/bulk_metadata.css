@@ -87,6 +87,17 @@
         .sidebar-nav-item.active .sidebar-count {
             color: var(--accent-primary-text);
         }
+        /* Warning-colored badge — used on the Kobo-synk row to surface
+           that there are local edits not yet pushed upstream. Subtle
+           amber so it's noticeable without screaming. */
+        .sidebar-count.sidebar-count-warn {
+            background: #f59e0b;
+            color: #1e2227;
+            padding: 1px 6px;
+            border-radius: 9px;
+            font-weight: 600;
+            font-size: 10px;
+        }
         .sidebar-nav-reading.active { border-left-color: #f59e0b; background: rgba(245,158,11,0.1); color: #f59e0b; }
         .sidebar-nav-reading.active .sidebar-count { color: #f59e0b; }
         .sidebar-nav-finished.active { border-left-color: #16a34a; }

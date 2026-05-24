@@ -65,6 +65,9 @@
         <a class="sidebar-nav-item {{ 'active' if _section == 'kobo' else '' }}"
            href="{{ url_for('settings.kobo_settings') }}">
             <i class="ti ti-device-tablet"></i> <span>{{ _('Kobo sync') }}</span>
+            {% if sidebar_unsynced and sidebar_unsynced > 0 %}
+            <span class="sidebar-count sidebar-count-warn" title="{{ _('%(n)d books modified locally, awaiting upstream sync', n=sidebar_unsynced) }}">{{ sidebar_unsynced }}</span>
+            {% endif %}
         </a>
         <a class="sidebar-nav-item {{ 'active' if _section == 'api' else '' }}"
            href="{{ url_for('settings.api_settings') }}">

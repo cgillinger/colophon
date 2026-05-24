@@ -103,7 +103,9 @@ def create_app():
     def inject_sidebar_counts():
         """Library counts shown in the sidebar across every page.
         Cheap queries — three COUNT(*) statements on a single-user SQLite
-        DB. Cached per request via Flask's context_processor mechanism."""
+        DB. Cached per request via Flask's context_processor mechanism.
+        Also pulls the unsynced count when upstream sync is configured —
+        small badge on the Kobo-synk sidebar item."""
         from app.models import LibraryItem
         try:
             total = LibraryItem.query.count()
@@ -112,11 +114,17 @@ def create_app():
             unread = total - reading - finished
         except Exception:
             total = reading = finished = unread = 0
+        try:
+            from app.services.upstream_sync import upstream_configured, get_unsynced_count
+            unsynced = get_unsynced_count() if upstream_configured() else 0
+        except Exception:
+            unsynced = 0
         return {
             "sidebar_total": total,
             "sidebar_unread": unread,
             "sidebar_reading": reading,
             "sidebar_finished": finished,
+            "sidebar_unsynced": unsynced,
         }
 
     @app.route("/set-language/<lang>")

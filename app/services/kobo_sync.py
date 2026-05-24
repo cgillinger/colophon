@@ -141,7 +141,27 @@ def compute_delta(
             row.id
             for row in epub_items_query().with_entities(LibraryItem.id).all()
         }
-        deleted_ids = sorted(seen_ids - current_ids)
+        proposed_deletes = sorted(seen_ids - current_ids)
+
+        # Safety net: refuse to emit a mass-delete that looks like a glitch
+        # rather than user intent. Anything above MASS_DELETE_THRESHOLD of
+        # the device's known set is treated as suspicious — we skip the
+        # delete signal entirely and log it so an operator can investigate.
+        # Without this, a transient DB-read failure mid-sync could tell the
+        # Kobo "every book is gone" → device withdraws downloaded copies.
+        MASS_DELETE_THRESHOLD = 0.20  # 20 %
+        if proposed_deletes and len(proposed_deletes) > max(
+            5, int(len(seen_ids) * MASS_DELETE_THRESHOLD)
+        ):
+            logger.warning(
+                "kobo_sync: refusing mass-delete signal (%d of %d seen items "
+                "would be marked deleted; >%.0f%% threshold). Treating as a "
+                "glitch — operator should verify the library before unblocking.",
+                len(proposed_deletes), len(seen_ids), MASS_DELETE_THRESHOLD * 100,
+            )
+            deleted_ids = []
+        else:
+            deleted_ids = proposed_deletes
 
     # Compute outgoing token
     if has_more:
