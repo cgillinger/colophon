@@ -18,8 +18,12 @@
         var bar = document.getElementById('syncBar');
         var text = document.getElementById('syncBarText');
         var btn = bar.querySelector('button');
+        // Force the bar visible — the sidebar entry point bypasses the
+        // pagination-filter click path that previously toggled it.
+        bar.style.display = 'flex';
         btn.disabled = true;
         text.textContent = _i18n.syncing;
+        bar.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
         var source = new EventSource('/sync/push');
         source.onmessage = function (e) {
