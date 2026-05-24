@@ -1,0 +1,155 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Bokdetalj: modal vs sida</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  body { padding: 16px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .mock { background: #1e2227; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; overflow: hidden; }
+  .mock-title { padding: 8px 16px; background: #252a30; font-size: 12px; color: #aeb7bd; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .mock-body { height: 440px; position: relative; }
+
+  /* Modal mock */
+  .modal-bg {
+    width:100%;height:100%;background:#1a1e23 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23252a30'/></svg>");
+    background-blend-mode: multiply;
+    position: relative; display: flex; align-items: center; justify-content: center;
+  }
+  .modal-bg::before { content:""; position:absolute; inset:0; background: rgba(0,0,0,0.55); }
+  .modal {
+    position: relative; background: #1e2227; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px;
+    width: 86%; height: 86%; max-width: 760px; overflow: hidden; display: grid; grid-template-rows: auto 1fr auto;
+  }
+  .modal-head { padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); display:flex; align-items:center; gap: 12px; }
+  .modal-title { font-size: 17px; font-weight: 600; flex: 1; }
+  .modal-x { color:#6c757d; cursor:pointer; }
+  .modal-body { padding: 16px 20px; display: grid; grid-template-columns: 140px 1fr; gap: 18px; overflow:auto; }
+  .modal-cover { aspect-ratio: 2/3; background: linear-gradient(135deg,#34d399,#065f46); border-radius: 4px; display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px; }
+  .field { margin-bottom: 10px; }
+  .field-label { font-size: 11px; color: #6c757d; margin-bottom: 3px; }
+  .field-input { background: #2a2f36; border: 1px solid rgba(255,255,255,0.06); padding: 6px 10px; border-radius: 4px; font-size: 12px; color: #e8ecef; }
+  .modal-foot { padding: 12px 20px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; gap: 8px; align-items:center; }
+
+  /* Full-page mock */
+  .page-topbar { padding: 10px 24px; border-bottom: 1px solid rgba(255,255,255,0.06); display:flex; align-items:center; gap:12px; font-size:13px; color:#aeb7bd; }
+  .crumb { font-size: 12px; color: #6c757d; }
+  .page-body { padding: 24px; display: grid; grid-template-columns: 180px 1fr 240px; gap: 28px; height: calc(100% - 50px); overflow: auto; }
+  .page-cover { aspect-ratio: 2/3; background: linear-gradient(135deg,#34d399,#065f46); border-radius: 4px; display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px; }
+  .page-meta-grid { display: grid; gap: 12px; }
+  .page-side { display:flex;flex-direction:column;gap:10px; }
+  .page-side .btn { width: 100%; justify-content:center; }
+  .page-title-row { display: flex; align-items: baseline; gap: 12px; }
+  .page-title { font-size: 24px; font-weight: 600; }
+  .page-byline { font-size: 14px; color: #aeb7bd; }
+
+  .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px; }
+  .pros-cons h3 { font-size: 13px; color: #aeb7bd; margin-bottom: 6px; }
+  .pros-cons ul { font-size: 12px; color: #6c757d; padding-left: 16px; line-height: 1.5; }
+  .green { color: #34d399; }
+  .red { color: #ff8b94; }
+</style></head><body>
+
+<div class="h1">Bokdetalj: A. Modal vs B. Dedikerad sida</div>
+
+<div class="row">
+  <!-- A: Modal -->
+  <div class="mock">
+    <div class="mock-title">A. Modal — overlay över listan</div>
+    <div class="mock-body">
+      <div class="modal-bg">
+        <div class="modal">
+          <div class="modal-head">
+            <div class="modal-title">Elon Musk</div>
+            <div class="modal-x">🗑  ✕</div>
+          </div>
+          <div class="modal-body">
+            <div>
+              <div class="modal-cover">cover</div>
+              <div style="font-size:10px;color:#6c757d;margin-top:6px;">EPUB · 12.4 MB</div>
+              <div class="btn btn-ghost" style="margin-top:6px;font-size:11px;">Sök omslag</div>
+            </div>
+            <div>
+              <div class="field"><div class="field-label">Titel</div><div class="field-input">Elon Musk</div></div>
+              <div class="field"><div class="field-label">Författare</div><div class="field-input">Walter Isaacson</div></div>
+              <div class="field"><div class="field-label">Serie</div><div class="field-input"></div></div>
+              <div class="field"><div class="field-label">ISBN</div><div class="field-input">9781398527492</div></div>
+              <div class="field"><div class="field-label">Synopsis</div><div class="field-input" style="height:42px;">Biography of Tesla and SpaceX founder...</div></div>
+            </div>
+          </div>
+          <div class="modal-foot">
+            <div class="btn btn-outline">🔍 Hämta metadata</div>
+            <div class="btn btn-ghost">🤖 Fråga AI</div>
+            <div style="flex:1;"></div>
+            <div class="btn btn-primary">💾 Spara</div>
+            <div class="btn btn-ghost">Stäng</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B: Full sida -->
+  <div class="mock">
+    <div class="mock-title">B. Dedikerad sida — egen URL /book/46</div>
+    <div class="mock-body">
+      <div class="page-topbar">
+        <span style="cursor:pointer;">←</span>
+        <span class="crumb">Bibliotek · Alla · </span>
+        <span style="color:#e8ecef;">Elon Musk</span>
+        <div style="margin-left:auto;font-size:12px;color:#6c757d;">↑ Föregående · Nästa ↓</div>
+      </div>
+      <div class="page-body">
+        <div>
+          <div class="page-cover">cover</div>
+          <div style="font-size:10px;color:#6c757d;margin-top:6px;">EPUB · 12.4 MB</div>
+        </div>
+        <div>
+          <div class="page-title-row">
+            <span class="page-title">Elon Musk</span>
+          </div>
+          <div class="page-byline">av Walter Isaacson</div>
+          <div style="font-size:12px;color:#6c757d;margin:6px 0 16px;">2023 · Simon &amp; Schuster · 670s</div>
+
+          <div class="page-meta-grid">
+            <div class="field"><div class="field-label">ISBN</div><div class="field-input">9781398527492</div></div>
+            <div class="field"><div class="field-label">Serie</div><div class="field-input">—</div></div>
+            <div class="field"><div class="field-label">Genre</div><div class="field-input">Biography, Technology</div></div>
+            <div class="field"><div class="field-label">Synopsis</div><div class="field-input" style="height:70px;">From the author of Steve Jobs and Leonardo da Vinci, this is the gripping story of how Musk became the world's richest man...</div></div>
+          </div>
+        </div>
+        <div class="page-side">
+          <div class="btn btn-primary">💾 Spara</div>
+          <div class="btn btn-outline">🔍 Hämta metadata</div>
+          <div class="btn btn-ghost">🤖 Fråga AI</div>
+          <div class="btn btn-ghost">🔖 Markera utläst</div>
+          <div style="height:8px;"></div>
+          <div class="btn btn-ghost">🗑 Radera</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="pros-cons">
+  <div>
+    <h3>A. Modal</h3>
+    <ul>
+      <li class="green">+ Stannar i tabellpos — du ser samma rad efteråt</li>
+      <li class="green">+ Snabbare workflow: Esc stänger, ingen browser-back</li>
+      <li class="green">+ Mindre kod-ändring, befintliga modal:s logik återanvänds</li>
+      <li class="red">– Begränsad storlek; trångt på liten skärm</li>
+      <li class="red">– Ingen URL — kan inte länka eller bokmärka</li>
+    </ul>
+  </div>
+  <div>
+    <h3>B. Dedikerad sida</h3>
+    <ul>
+      <li class="green">+ Full skärm för rik layout (3-spalt: cover/meta/actions)</li>
+      <li class="green">+ URL-bar visar /book/46 — länkbar, browser-back</li>
+      <li class="green">+ Plats för bonus: serier-länk, Föregående/Nästa, kommentarer</li>
+      <li class="red">– Routing-overhead — ny rutt, browser-history, scroll-restore</li>
+      <li class="red">– Förlorar tabell-position; tillbaka-knapp omladdar listan</li>
+    </ul>
+  </div>
+</div>
+
+</body></html>

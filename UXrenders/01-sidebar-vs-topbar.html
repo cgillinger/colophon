@@ -1,0 +1,146 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Sidebar vs Topbar</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  body { padding: 16px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .mock { background: #1e2227; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; overflow: hidden; }
+  .mock-title { padding: 8px 16px; background: #252a30; font-size: 12px; color: #aeb7bd; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .mock-body { display: grid; height: 380px; }
+
+  /* Variant A: Sidebar */
+  .va .mock-body { grid-template-columns: 180px 1fr; }
+  .va .sidebar {
+    background: #252a30; padding: 16px 0; border-right: 1px solid rgba(255,255,255,0.06);
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .va .nav-section { padding: 14px 16px 4px; font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; }
+  .va .nav-item { display: flex; align-items: center; gap: 10px; padding: 7px 16px; font-size: 13px; color: #aeb7bd; cursor: pointer; }
+  .va .nav-item.active { background: rgba(16,185,129,0.12); color: #34d399; border-left: 3px solid #10b981; padding-left: 13px; }
+  .va .nav-icon { width: 16px; height: 16px; background: currentColor; border-radius: 2px; opacity: 0.6; }
+  .va .content { padding: 16px; }
+  .va .toolbar { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; }
+  .va .search { flex: 1; background: #2a2f36; height: 32px; border-radius: 6px; padding: 0 12px; display: flex; align-items: center; font-size: 12px; color: #6c757d; }
+  .va .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 12px; }
+
+  /* Variant B: Topbar */
+  .vb .mock-body { grid-template-columns: 1fr; }
+  .vb .topbar { padding: 14px 24px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 16px; }
+  .vb .topbar .logo { width: 28px; height: 28px; background: #34d399; border-radius: 4px; }
+  .vb .topbar .brand { font-weight: 600; color: #e8ecef; font-size: 16px; }
+  .vb .topbar .search { flex: 1; background: #2a2f36; height: 32px; border-radius: 6px; padding: 0 12px; display: flex; align-items: center; font-size: 12px; color: #6c757d; max-width: 400px; }
+  .vb .tabs { display: flex; gap: 4px; padding: 12px 24px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .vb .tab { padding: 6px 14px; font-size: 13px; color: #aeb7bd; border-radius: 4px; cursor: pointer; }
+  .vb .tab.active { background: rgba(16,185,129,0.12); color: #34d399; }
+  .vb .toolbar { padding: 12px 24px; display: flex; gap: 10px; align-items: center; }
+  .vb .grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 12px; padding: 0 24px 16px; }
+
+  .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px; }
+  .pros-cons h3 { font-size: 13px; color: #aeb7bd; margin-bottom: 6px; }
+  .pros-cons ul { font-size: 12px; color: #6c757d; padding-left: 16px; line-height: 1.5; }
+  .green { color: #34d399; }
+  .red { color: #ff8b94; }
+</style></head><body>
+
+<div class="h1">A. Sidebar (Komga-mönster) vs B. Endast bredare topbar</div>
+
+<div class="row">
+  <!-- A: Sidebar -->
+  <div class="mock va">
+    <div class="mock-title">A. Sidebar — desktop 1920px</div>
+    <div class="mock-body">
+      <div class="sidebar">
+        <div style="padding: 0 16px 12px; display:flex; align-items:center; gap:8px;">
+          <div style="width:24px;height:24px;background:#34d399;border-radius:4px;"></div>
+          <span style="font-weight:600;color:#e8ecef;">Colophon</span>
+        </div>
+        <div class="nav-section">BIBLIOTEK</div>
+        <div class="nav-item active"><div class="nav-icon"></div> Alla (375)</div>
+        <div class="nav-item"><div class="nav-icon"></div> Oläst (361)</div>
+        <div class="nav-item"><div class="nav-icon"></div> Läser (1)</div>
+        <div class="nav-item"><div class="nav-icon"></div> Utläst (13)</div>
+        <div class="nav-section">VYER</div>
+        <div class="nav-item"><div class="nav-icon"></div> Tabell</div>
+        <div class="nav-item"><div class="nav-icon"></div> Hyllvy</div>
+        <div class="nav-item"><div class="nav-icon"></div> Serier</div>
+        <div class="nav-section">VERKTYG</div>
+        <div class="nav-item"><div class="nav-icon"></div> Dubbletter</div>
+        <div class="nav-item"><div class="nav-icon"></div> Skanna</div>
+        <div class="nav-item"><div class="nav-icon"></div> Kobo</div>
+      </div>
+      <div class="content">
+        <div class="toolbar">
+          <div class="search">Sök titel, författare, ISBN, genre…</div>
+          <div class="btn btn-ghost">Filter</div>
+          <div class="btn btn-ghost">Gruppera</div>
+        </div>
+        <div class="grid">
+          <div class="cover-ph"></div><div class="cover-ph"></div><div class="cover-ph"></div><div class="cover-ph"></div>
+          <div class="cover-ph"></div><div class="cover-ph"></div><div class="cover-ph"></div><div class="cover-ph"></div>
+          <div class="cover-ph"></div><div class="cover-ph"></div><div class="cover-ph"></div><div class="cover-ph"></div>
+          <div class="cover-ph"></div><div class="cover-ph"></div><div class="cover-ph"></div><div class="cover-ph"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B: Bara bredare topbar -->
+  <div class="mock vb">
+    <div class="mock-title">B. Topbar — desktop 1920px (utan sidebar)</div>
+    <div class="mock-body">
+      <div>
+        <div class="topbar">
+          <div class="logo"></div>
+          <div class="brand">Colophon</div>
+          <div class="search">Sök titel, författare, ISBN, genre…</div>
+          <div style="margin-left:auto;display:flex;gap:6px;">
+            <div style="font-size:11px;color:#6c757d;">EN SV  ☾  📱  ⚙</div>
+          </div>
+        </div>
+        <div class="tabs">
+          <div class="tab active">Alla 375</div>
+          <div class="tab">Oläst 361</div>
+          <div class="tab">Läser 1</div>
+          <div class="tab">Utläst 13</div>
+        </div>
+        <div class="toolbar">
+          <div class="btn btn-primary">Tabell</div>
+          <div class="btn btn-ghost">Hyllvy</div>
+          <div class="btn btn-ghost">Serie</div>
+          <div style="margin-left:auto;font-size:12px;color:#6c757d;">Dubbletter · Skanna · Kobo · ⋯</div>
+        </div>
+        <div class="grid">
+          <div class="cover-ph"></div><div class="cover-ph"></div><div class="cover-ph"></div><div class="cover-ph"></div><div class="cover-ph"></div>
+          <div class="cover-ph"></div><div class="cover-ph"></div><div class="cover-ph"></div><div class="cover-ph"></div><div class="cover-ph"></div>
+          <div class="cover-ph"></div><div class="cover-ph"></div><div class="cover-ph"></div><div class="cover-ph"></div><div class="cover-ph"></div>
+          <div class="cover-ph"></div><div class="cover-ph"></div><div class="cover-ph"></div><div class="cover-ph"></div><div class="cover-ph"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="pros-cons">
+  <div>
+    <h3>A. Sidebar</h3>
+    <ul>
+      <li class="green">+ Scales när primärnav växer (samlingar, smart-filter)</li>
+      <li class="green">+ Genrens etablerade mönster — Komga, Plex, Calibre Web</li>
+      <li class="green">+ Vy-toggle + lässtatus + verktyg på ett ställe</li>
+      <li class="red">– Tar 180-200px från content (ca 10% av 1920)</li>
+      <li class="red">– Större visuell omgång; mer komplex att implementera</li>
+    </ul>
+  </div>
+  <div>
+    <h3>B. Bara bredare topbar</h3>
+    <ul>
+      <li class="green">+ Mindre kod-ändring, behåller dagens topbar+toolbar-mönster</li>
+      <li class="green">+ Lite mer cover-bredd (10 kolumner vs 8)</li>
+      <li class="green">+ Lägre risk, snabbare att skeppa</li>
+      <li class="red">– Status-flikar + view-toggle + verktyg på 3 rader = visuell tyngd</li>
+      <li class="red">– Skalar dåligt om du lägger till samlingar/smart-filter senare</li>
+    </ul>
+  </div>
+</div>
+
+</body></html>

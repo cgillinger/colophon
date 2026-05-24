@@ -1,0 +1,88 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Tabell 4K-cap</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  body { padding: 16px; background: #2a2f36; }
+  .h1 { color: #fff; }
+  .mock { background: #1e2227; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; overflow: hidden; margin-bottom: 24px; }
+  .mock-title { padding: 8px 16px; background: #252a30; font-size: 12px; color: #aeb7bd; }
+  .ruler { background: #0e1014; color: #555; font-size: 10px; padding: 4px 12px; }
+  .canvas { display: grid; grid-template-columns: 180px 1fr; height: 280px; }
+  .sidebar { background: #252a30; padding: 12px; font-size: 11px; color: #6c757d; }
+  .content { padding: 12px 18px; overflow: hidden; position: relative; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; padding: 6px 8px; color: #6c757d; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  td { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .col-cover { width: 36px; }
+  .cover-tiny { width: 28px; height: 40px; background: linear-gradient(135deg,#34d399,#065f46); border-radius: 2px; }
+  .col-title { color: #e8ecef; }
+  .col-byline { color: #aeb7bd; }
+  .col-meta { color: #6c757d; }
+  .chip { display: inline-block; padding: 1px 6px; border-radius: 3px; background: #30363b; color: #aeb7bd; font-size: 10px; font-weight: 600; }
+  .v-uncapped table td.col-title { white-space: nowrap; }
+  .v-capped .content { max-width: 1600px; margin: 0 auto; }
+  .v-capped .content::after {
+    content: "Innehåll capat vid 1600px → läsbara rader. Resten av ytan whitespace."; position: absolute; top: 50%; right: -240px; transform: rotate(0); font-size: 10px; color: #555; max-width: 200px;
+  }
+  .whitespace-note { position: absolute; top: 4px; right: 4px; font-size: 9px; color: #444; }
+  .gutter-pad { background: repeating-linear-gradient(45deg, transparent, transparent 6px, rgba(255,255,255,0.02) 6px, rgba(255,255,255,0.02) 12px); }
+
+  .row-info { padding: 8px 16px; font-size: 11px; color: #6c757d; background: #181b1f; }
+</style></head><body>
+
+<div class="h1">Tabellvyn vid 4K (2560+ px) — cap eller flöda fritt?</div>
+
+<!-- Uncapped -->
+<div class="mock v-uncapped">
+  <div class="mock-title">A. Ingen cap — tabellen flödar full bredd</div>
+  <div class="ruler">|‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾ 2560px viewport ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾|</div>
+  <div class="canvas">
+    <div class="sidebar">SIDEBAR<br>~180px</div>
+    <div class="content">
+      <table>
+        <thead><tr>
+          <th class="col-cover"></th><th>BOK</th><th>FÖRFATTARE</th><th>GENRE</th><th>FÖRLAG</th><th>ÅR</th><th>FILTYP</th>
+        </tr></thead>
+        <tbody>
+          <tr><td><div class="cover-tiny"></div></td><td class="col-title">Elon Musk</td><td class="col-byline">Walter Isaacson</td><td class="col-meta">Biography, Technology</td><td class="col-meta">Simon &amp; Schuster</td><td>2023</td><td><span class="chip">EPUB</span></td></tr>
+          <tr><td><div class="cover-tiny"></div></td><td class="col-title">Barn av sin stad</td><td class="col-byline">Per Anders Fogelström</td><td class="col-meta">Historical fiction</td><td class="col-meta">Bonnier</td><td>1962</td><td><span class="chip">EPUB</span></td></tr>
+          <tr><td><div class="cover-tiny"></div></td><td class="col-title">A Fire Upon The Deep</td><td class="col-byline">Vernor Vinge</td><td class="col-meta">Speculative Fiction</td><td class="col-meta">Tom Doherty Associates</td><td>2007</td><td><span class="chip">EPUB</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="row-info">Boktitel → författare → genre = ögats span ~2000px. Författar-cellen blir nästan tom. Rader långa att skanna.</div>
+</div>
+
+<!-- Capped -->
+<div class="mock v-capped">
+  <div class="mock-title">B. Cap vid 1600px — content centrerat, whitespace till höger</div>
+  <div class="ruler">|‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾ 2560px viewport ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾|</div>
+  <div class="canvas">
+    <div class="sidebar">SIDEBAR<br>~180px</div>
+    <div class="content gutter-pad">
+      <div class="whitespace-note">whitespace →</div>
+      <div style="max-width:1100px;">
+        <table>
+          <thead><tr>
+            <th class="col-cover"></th><th>BOK</th><th>FÖRFATTARE</th><th>GENRE</th><th>FÖRLAG</th><th>ÅR</th><th>FILTYP</th>
+          </tr></thead>
+          <tbody>
+            <tr><td><div class="cover-tiny"></div></td><td class="col-title">Elon Musk</td><td class="col-byline">Walter Isaacson</td><td class="col-meta">Biography</td><td class="col-meta">S&amp;S</td><td>2023</td><td><span class="chip">EPUB</span></td></tr>
+            <tr><td><div class="cover-tiny"></div></td><td class="col-title">Barn av sin stad</td><td class="col-byline">P.A. Fogelström</td><td class="col-meta">Historical</td><td class="col-meta">Bonnier</td><td>1962</td><td><span class="chip">EPUB</span></td></tr>
+            <tr><td><div class="cover-tiny"></div></td><td class="col-title">A Fire Upon The Deep</td><td class="col-byline">Vernor Vinge</td><td class="col-meta">Speculative Fiction</td><td class="col-meta">Tor</td><td>2007</td><td><span class="chip">EPUB</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="row-info">Rader läsbara, whitespace till höger. Hyllvy/serie får fortfarande full bredd; bara tabell-vyn capas.</div>
+</div>
+
+<div style="padding:8px 16px;color:#aeb7bd;font-size:12px;max-width:1300px;line-height:1.6;">
+  <strong style="color:#fff;">Notera:</strong> capen gäller bara TABELL-vyn på 4K-skärmar.
+  Hyllvyn och serievyn flödar alltid hela ytan (covers tål bredd, fler kolumner = bättre).
+  Vid normal 1920px är tabell ändå smalare än 1600 (efter sidebar) så ingen cap behövs där.
+</div>
+
+</body></html>

@@ -3030,6 +3030,18 @@ msgstr "Försök ta bort ett filter eller töm sökrutan."
 msgid "May be slow with many books"
 msgstr "Kan vara långsamt med många böcker"
 
+msgid "Views"
+msgstr "Vyer"
+
+msgid "Tools"
+msgstr "Verktyg"
+
+msgid "Toggle navigation"
+msgstr "Visa/dölj navigering"
+
+msgid "Primary navigation"
+msgstr "Huvudnavigering"
+
 #~ msgid "Settings saved."
 #~ msgstr "Inställningar sparade."
 

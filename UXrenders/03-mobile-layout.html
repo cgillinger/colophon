@@ -1,0 +1,141 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Mobile layout</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  body { padding: 16px; background: #2a2f36; }
+  .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; max-width: 1300px; margin: 0 auto; }
+  .phone { background: #0e1014; border: 4px solid #0e1014; border-radius: 18px; overflow: hidden; width: 390px; height: 720px; box-shadow: 0 8px 30px rgba(0,0,0,0.5); margin: 0 auto; }
+  .phone .screen { width: 100%; height: 100%; background: #1e2227; display: flex; flex-direction: column; }
+  .phone-title { text-align: center; color: #aeb7bd; font-size: 12px; margin-top: 6px; margin-bottom: 8px; }
+
+  /* Topbar */
+  .m-topbar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .m-hamburger { font-size: 18px; color: #aeb7bd; }
+  .m-brand { font-weight: 600; font-size: 15px; }
+  .m-search-icon { margin-left: auto; color: #aeb7bd; font-size: 16px; }
+
+  /* Bottom tabs */
+  .m-tabs { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid rgba(255,255,255,0.06); padding: 6px 0 10px; background: #252a30; margin-top: auto; }
+  .m-tab { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10px; color: #6c757d; cursor: pointer; }
+  .m-tab.active { color: #34d399; }
+  .m-tab-icon { width: 20px; height: 20px; background: currentColor; opacity: 0.7; border-radius: 3px; }
+
+  /* Hyllvy 2-col */
+  .m-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; flex: 1; overflow: auto; }
+  .m-card { background: #252a30; border-radius: 6px; overflow: hidden; }
+  .m-cover { aspect-ratio: 2/3; background: linear-gradient(135deg,#2a2f36,#1a1e23); }
+  .m-card-meta { padding: 6px 8px; }
+  .m-card-title { font-size: 11px; font-weight: 600; }
+  .m-card-author { font-size: 10px; color: #6c757d; }
+
+  /* Tabell som kort (mobil) */
+  .m-list { padding: 8px; flex: 1; overflow: auto; }
+  .m-row { display: grid; grid-template-columns: 50px 1fr; gap: 10px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.06); align-items: center; }
+  .m-row-cover { aspect-ratio: 2/3; background: linear-gradient(135deg,#2a2f36,#1a1e23); border-radius: 3px; height: 65px; }
+  .m-row-meta { display: flex; flex-direction: column; gap: 2px; }
+  .m-row-title { font-size: 13px; font-weight: 600; }
+  .m-row-byline { font-size: 11px; color: #aeb7bd; }
+  .m-row-meta2 { font-size: 10px; color: #6c757d; }
+
+  /* Modal full-screen */
+  .m-modal-head { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); display:flex; align-items:center; gap:10px; }
+  .m-modal-title { font-size: 15px; font-weight: 600; flex:1; }
+  .m-modal-body { padding: 14px 16px; overflow: auto; flex:1; }
+  .m-modal-cover { aspect-ratio: 2/3; background: linear-gradient(135deg,#34d399,#065f46); border-radius: 4px; max-width: 180px; margin: 0 auto 16px; }
+  .m-modal-field { margin-bottom: 10px; }
+  .m-modal-field .label { font-size:10px; color:#6c757d; }
+  .m-modal-field .input { background: #2a2f36; border: 1px solid rgba(255,255,255,0.06); padding: 8px 12px; border-radius: 4px; font-size: 13px; }
+  .m-modal-foot { padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; gap: 8px; }
+  .m-modal-foot .btn { flex: 1; justify-content: center; }
+</style></head><body>
+
+<div class="h1" style="color:#fff;text-align:center;">Mobil-layout — 390×720</div>
+
+<div class="row">
+
+  <!-- Variant 1: Hyllvy med bottom-tabs -->
+  <div>
+    <div class="phone-title">Hyllvy (2 kolumner)</div>
+    <div class="phone"><div class="screen">
+      <div class="m-topbar">
+        <div class="m-hamburger">≡</div>
+        <div class="m-brand">Bibliotek</div>
+        <div class="m-search-icon">🔍</div>
+      </div>
+      <div class="m-grid">
+        <div class="m-card"><div class="m-cover"></div><div class="m-card-meta"><div class="m-card-title">12|21|12</div><div class="m-card-author">L. Enright</div></div></div>
+        <div class="m-card"><div class="m-cover"></div><div class="m-card-meta"><div class="m-card-title">1968</div><div class="m-card-author">Jan Guillou</div></div></div>
+        <div class="m-card"><div class="m-cover"></div><div class="m-card-meta"><div class="m-card-title">2012 Lunar Contact</div><div class="m-card-author">J.D. Clarke</div></div></div>
+        <div class="m-card"><div class="m-cover"></div><div class="m-card-meta"><div class="m-card-title">A Deepness in the Sky</div><div class="m-card-author">V. Vinge</div></div></div>
+        <div class="m-card"><div class="m-cover"></div><div class="m-card-meta"><div class="m-card-title">A Fire Upon The Deep</div><div class="m-card-author">V. Vinge</div></div></div>
+        <div class="m-card"><div class="m-cover"></div><div class="m-card-meta"><div class="m-card-title">A Hidden Place</div><div class="m-card-author">R.C. Wilson</div></div></div>
+      </div>
+      <div class="m-tabs">
+        <div class="m-tab"><div class="m-tab-icon"></div><div>Tabell</div></div>
+        <div class="m-tab active"><div class="m-tab-icon"></div><div>Hyllvy</div></div>
+        <div class="m-tab"><div class="m-tab-icon"></div><div>Serie</div></div>
+        <div class="m-tab"><div class="m-tab-icon"></div><div>Mer</div></div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- Variant 2: Tabell som kort -->
+  <div>
+    <div class="phone-title">Tabell → kort-layout</div>
+    <div class="phone"><div class="screen">
+      <div class="m-topbar">
+        <div class="m-hamburger">≡</div>
+        <div class="m-brand">Bibliotek</div>
+        <div class="m-search-icon">🔍</div>
+      </div>
+      <div class="m-list">
+        <div class="m-row"><div class="m-row-cover"></div><div class="m-row-meta"><div class="m-row-title">12|21|12</div><div class="m-row-byline">Lawrence P. Enright</div><div class="m-row-meta2">Fiction · 2012 · EPUB</div></div></div>
+        <div class="m-row"><div class="m-row-cover"></div><div class="m-row-meta"><div class="m-row-title">1968</div><div class="m-row-byline">Jan Guillou · Det stora… · 7</div><div class="m-row-meta2">1968, Proteströrelser… · 2017</div></div></div>
+        <div class="m-row"><div class="m-row-cover"></div><div class="m-row-meta"><div class="m-row-title">2012 Lunar Contact</div><div class="m-row-byline">J.D. Clarke, G. Hocker</div><div class="m-row-meta2">Science Fiction · 2012</div></div></div>
+        <div class="m-row"><div class="m-row-cover"></div><div class="m-row-meta"><div class="m-row-title">A Deepness in the Sky</div><div class="m-row-byline">Vernor Vinge · Zones of Thought · 2</div><div class="m-row-meta2">Speculative Fiction · 2023</div></div></div>
+        <div class="m-row"><div class="m-row-cover"></div><div class="m-row-meta"><div class="m-row-title">A Fire Upon The Deep</div><div class="m-row-byline">Vernor Vinge · Zones of Thought · 1</div><div class="m-row-meta2">2007</div></div></div>
+        <div class="m-row"><div class="m-row-cover"></div><div class="m-row-meta"><div class="m-row-title">A Hidden Place</div><div class="m-row-byline">Robert Charles Wilson · Orion</div><div class="m-row-meta2">2011</div></div></div>
+      </div>
+      <div class="m-tabs">
+        <div class="m-tab active"><div class="m-tab-icon"></div><div>Tabell</div></div>
+        <div class="m-tab"><div class="m-tab-icon"></div><div>Hyllvy</div></div>
+        <div class="m-tab"><div class="m-tab-icon"></div><div>Serie</div></div>
+        <div class="m-tab"><div class="m-tab-icon"></div><div>Mer</div></div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- Variant 3: Modal fullscreen -->
+  <div>
+    <div class="phone-title">Bok-modal (fullscreen)</div>
+    <div class="phone"><div class="screen">
+      <div class="m-modal-head">
+        <span style="color:#aeb7bd;">←</span>
+        <div class="m-modal-title">1968</div>
+        <span style="color:#6c757d;">🗑</span>
+      </div>
+      <div class="m-modal-body">
+        <div class="m-modal-cover" style="background:linear-gradient(135deg,#dc2626,#7f1d1d);"></div>
+        <div class="m-modal-field"><div class="label">TITEL</div><div class="input">1968</div></div>
+        <div class="m-modal-field"><div class="label">FÖRFATTARE</div><div class="input">Jan Guillou</div></div>
+        <div class="m-modal-field"><div class="label">SERIE · DEL</div><div class="input">Det stora århundradet · 7</div></div>
+        <div class="m-modal-field"><div class="label">FÖRLAG</div><div class="input">Piratförlaget</div></div>
+        <div class="m-modal-field"><div class="label">ÅR · ISBN</div><div class="input">2017 · 9789164243935</div></div>
+      </div>
+      <div class="m-modal-foot">
+        <div class="btn btn-outline">🔍 Hämta</div>
+        <div class="btn btn-primary">💾 Spara</div>
+      </div>
+    </div></div>
+  </div>
+
+</div>
+
+<div style="padding:16px;color:#aeb7bd;font-size:12px;max-width:1300px;margin:0 auto;line-height:1.6;">
+  <strong style="color:#fff;">Centrala mönster på mobil:</strong>
+  Hamburger för sidebar-content · Bottom tab-bar för Tabell/Hyllvy/Serie/Mer (sticky)
+  · Hyllvy ger 2 kolumner istället för ~10 · Tabell kollapsar till kort-lista (cover-thumbnail + 3 rader text), inte stack av celler
+  · Modal blir fullscreen utan overlay-marginal, header sticky med tillbaka-pil, primärknappar stickyy i botten
+</div>
+
+</body></html>

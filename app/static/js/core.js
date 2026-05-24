@@ -141,7 +141,7 @@
 
     /* ---- Render the chosen view + its chrome ---------------------- */
     function applyViewMode() {
-        document.querySelectorAll('#viewSegGroup .seg-btn').forEach(function (btn) {
+        document.querySelectorAll('#viewSegGroup .seg-btn, .sidebar-view-btn').forEach(function (btn) {
             btn.classList.toggle('active', btn.dataset.mode === window._viewMode);
         });
         document.body.classList.toggle('shelf-active',  window._viewMode === 'shelf');
@@ -205,6 +205,24 @@
         location.reload();
     }
     window.setLanguage = setLanguage;
+
+    /* ---- Sidebar (mobile drawer) ---------------------------------- *
+     * On <=900px viewports the sidebar slides in from the left over a
+     * backdrop. toggleSidebar / closeSidebar own the body class that
+     * drives the transform and the backdrop's visibility. */
+    function toggleSidebar() {
+        document.body.classList.toggle('sidebar-open');
+    }
+    window.toggleSidebar = toggleSidebar;
+    function closeSidebar() {
+        document.body.classList.remove('sidebar-open');
+    }
+    window.closeSidebar = closeSidebar;
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && document.body.classList.contains('sidebar-open')) {
+            closeSidebar();
+        }
+    });
 
     /* ---- Plural helper -------------------------------------------- *
      * Picks a singular or plural i18n key based on `count`, substitutes
