@@ -273,6 +273,12 @@ def write_metadata_to_file(item, written_text, cover_path):
         args += ["--identifier", f"isbn:{written_text['isbn']}"]
     if "language" in written_text:
         args += ["--language", written_text["language"]]
+    if "genres" in written_text:
+        # ebook-meta uses --tags for genre/category metadata. Pass as a
+        # single comma-separated string so multi-genre values round-trip.
+        genres_val = (written_text.get("genres") or "").strip()
+        if genres_val:
+            args += ["--tags", genres_val]
     # ebook-meta crashes on `--series ""` / `--index ""` (the latter raises
     # "could not convert string to float"). Drop empty values, and only pass
     # --index when numeric.
