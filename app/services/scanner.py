@@ -157,23 +157,62 @@ def _is_image_item(item):
     return Path(name).suffix.lower() in (".jpg", ".jpeg", ".png", ".webp", ".gif")
 
 
+def _resolve_image_from_xhtml(book, xhtml_item):
+    """Parse an XHTML cover page and return the image item it references.
+    Many EPUBs register a Cover.xhtml page (id="cover") that links to the
+    actual image via <img src="..."> instead of pointing the OPF cover
+    meta at the image directly. Falls back through this when no image
+    is reachable by id or filename heuristics."""
+    try:
+        from posixpath import dirname, normpath
+        from urllib.parse import unquote
+        soup = BeautifulSoup(xhtml_item.get_content(), "html.parser")
+        tag = soup.find("img") or soup.find("svg image") or soup.find("image")
+        if not tag:
+            return None
+        src = tag.get("src") or tag.get("href") or tag.get("xlink:href") or ""
+        src = unquote(src).strip()
+        if not src:
+            return None
+        xhtml_dir = dirname(xhtml_item.get_name() or "")
+        target = src if src.startswith("/") else (
+            normpath(xhtml_dir + "/" + src) if xhtml_dir else src
+        )
+        target = target.lstrip("/")
+        for item in book.get_items_of_type(ITEM_IMAGE):
+            name = item.get_name() or ""
+            if name == target or name.endswith("/" + target) or target.endswith("/" + name):
+                return item
+    except Exception:
+        pass
+    return None
+
+
 def _save_epub_cover(book, file_path, cover_dir):
     cover_item = None
+    # Strategy 1: <meta name="cover" content="image-id">
+    cover_xhtml_fallback = None
     try:
         cover_id = _opf_meta_by_name(book, "cover")
         if cover_id:
             candidate = book.get_item_with_id(cover_id)
             if _is_image_item(candidate):
                 cover_item = candidate
+            elif candidate is not None:
+                cover_xhtml_fallback = candidate
     except Exception:
         pass
+    # Strategy 2: manifest item with id="cover"
     if not cover_item:
         try:
             candidate = book.get_item_with_id("cover")
             if _is_image_item(candidate):
                 cover_item = candidate
+            elif candidate is not None and cover_xhtml_fallback is None:
+                cover_xhtml_fallback = candidate
         except Exception:
             pass
+    # Strategy 3: image with "cover" in filename
     if not cover_item:
         try:
             for item in book.get_items_of_type(ITEM_IMAGE):
@@ -183,6 +222,11 @@ def _save_epub_cover(book, file_path, cover_dir):
                     break
         except Exception:
             pass
+    # Strategy 4: parse the XHTML cover page for <img src=> and look up
+    # that image in the manifest. Catches EPUBs where the cover page
+    # links to an image with a non-cover-y filename (e.g. ISBN-named).
+    if not cover_item and cover_xhtml_fallback is not None:
+        cover_item = _resolve_image_from_xhtml(book, cover_xhtml_fallback)
     if not cover_item:
         return None
     try:

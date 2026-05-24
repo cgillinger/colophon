@@ -77,7 +77,14 @@
         var saved = JSON.parse(localStorage.getItem('colophon-col-widths') || 'null');
         if (saved) {
             ths.forEach(function (th, i) {
-                if (saved[i]) th.style.width = saved[i];
+                if (!saved[i]) return;
+                // Respect the template's min-width — the table uses
+                // table-layout:fixed which ignores CSS min-width, so we
+                // clamp here. Prevents stale localStorage widths from
+                // truncating headers (e.g. "PUBLICERAT" at 90px).
+                var minW = parseInt(getComputedStyle(th).minWidth, 10) || 0;
+                var savedW = parseInt(saved[i], 10) || 0;
+                th.style.width = (minW && savedW < minW) ? (minW + 'px') : saved[i];
             });
         }
     })();
