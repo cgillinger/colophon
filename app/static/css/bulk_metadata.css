@@ -121,8 +121,8 @@
         }
         .topbar-inner {
             width: 100%;
-            max-width: 1300px;
-            padding: 12px 20px;
+            max-width: var(--page-max-width, 1800px);
+            padding: 12px 24px;
             display: flex;
             align-items: center;
             gap: 14px;
@@ -712,9 +712,17 @@
         }
 
         .container {
-            max-width: 1300px;
+            max-width: var(--page-max-width, 1800px);
             margin: 0 auto;
-            padding: 18px 20px 40px;
+            padding: 18px 24px 40px;
+        }
+        /* Table view caps content at a readable row length on 4K monitors.
+           Shelf/series fill the full viewport since covers tolerate width
+           (more columns = better density). */
+        body:not(.shelf-active):not(.series-active) .table-wrap {
+            max-width: 1600px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         h1 { margin: 0 0 18px; font-size: 22px; font-weight: 600; }
@@ -2860,12 +2868,11 @@
            only set the gridView layout. */
         #gridView { display: none; }
 
-        /* Wider container in Hyllvy and Serievy */
+        /* Shelf and series fill the viewport. The 1800px page cap above
+           is removed for these so covers can spread across wide monitors. */
         body.shelf-active .container,
         body.series-active .container {
-            max-width: min(95vw, 1600px);
-            margin: 0 auto;
-            padding: 18px 24px 40px;
+            max-width: none;
         }
 
         #gridView {
