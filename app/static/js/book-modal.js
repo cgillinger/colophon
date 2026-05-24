@@ -115,6 +115,9 @@
         var titleEl = document.getElementById('modalTitleDisplay');
         if (titleEl) titleEl.textContent = data.title || '—';
 
+        var editHeader = document.getElementById('modalEditHeaderTitle');
+        if (editHeader) editHeader.textContent = data.title || '—';
+
         var authorEl = document.getElementById('modalAuthorDisplay');
         if (authorEl) {
             if (data.author) {

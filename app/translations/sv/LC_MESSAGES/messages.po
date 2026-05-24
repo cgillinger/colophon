@@ -1000,7 +1000,7 @@ msgstr "3. Granska"
 
 #: app/templates/bulk_metadata.html:3305 app/templates/bulk_metadata.html:4109
 msgid "4. Done"
-msgstr "4. Klart"
+msgstr "4. Klar"
 
 #: app/templates/bulk_metadata.html:3319
 msgid "Selected books:"
@@ -1617,14 +1617,12 @@ msgid "Delete file? This cannot be undone."
 msgstr "Radera filen? Detta kan inte ångras."
 
 #: app/templates/bulk_metadata.html:4354
-#, python-format
-msgid "Delete %(n)d files? This cannot be undone."
-msgstr "Radera %(n)d filer? Detta kan inte ångras."
+msgid "Delete {count} files? This cannot be undone."
+msgstr "Radera {count} filer? Detta kan inte ångras."
 
 #: app/templates/bulk_metadata.html:4392
-#, python-format
-msgid "Could not delete %(n)d file(s)."
-msgstr "Kunde inte radera %(n)d fil(er)."
+msgid "Could not delete {count} file(s)."
+msgstr "Kunde inte radera {count} fil(er)."
 
 #: app/templates/bulk_metadata.html:5610 app/templates/bulk_metadata.html:5718
 #: app/templates/bulk_metadata.html:6445 app/templates/settings_ai.html:456
@@ -2927,6 +2925,110 @@ msgstr ""
 #: app/templates/settings_kobo.html:454 app/templates/settings_kobo.html:463
 msgid "URL copied to clipboard."
 msgstr "URL kopierad till urklipp."
+
+# --- Plural / selection / batch UI strings ----------------------------------
+
+msgid "file"
+msgstr "fil"
+
+msgid "1 book selected"
+msgstr "1 bok vald"
+
+msgid "{count} books selected"
+msgstr "{count} böcker valda"
+
+msgid "1 group selected"
+msgstr "1 grupp vald"
+
+msgid "{count} groups selected"
+msgstr "{count} grupper valda"
+
+msgid "1 group ({files}) selected"
+msgstr "1 grupp ({files}) vald"
+
+msgid "{count} groups ({files}) selected"
+msgstr "{count} grupper ({files}) valda"
+
+msgid "1 book deleted."
+msgstr "1 bok raderad."
+
+msgid "{count} books deleted."
+msgstr "{count} böcker raderade."
+
+msgid "1 file could not be deleted."
+msgstr "1 fil kunde inte raderas."
+
+msgid "{count} files could not be deleted."
+msgstr "{count} filer kunde inte raderas."
+
+msgid "1 book processed"
+msgstr "1 bok bearbetad"
+
+msgid "{count} books processed"
+msgstr "{count} böcker bearbetade"
+
+msgid "1 book missing {field}"
+msgstr "1 bok saknar {field}"
+
+msgid "{count} books missing {field}"
+msgstr "{count} böcker saknar {field}"
+
+msgid "Delete 1 book?"
+msgstr "Radera 1 bok?"
+
+msgid "Delete {count} books?"
+msgstr "Radera {count} böcker?"
+
+msgid "Deletion failed."
+msgstr "Radering misslyckades."
+
+msgid "Show"
+msgstr "Visa"
+
+msgid "Deleting…"
+msgstr "Raderar…"
+
+msgid "Delete permanently (incl. file)"
+msgstr "Radera permanent (inkl. fil)"
+
+msgid "Aborted. Nothing was processed."
+msgstr "Avbruten. Inget hann bearbetas."
+
+msgid "Aborted. {parts}"
+msgstr "Avbruten. {parts}"
+
+msgid "{count} saved"
+msgstr "{count} sparade"
+
+msgid "{count} review needed"
+msgstr "{count} granskning"
+
+msgid "Edit metadata"
+msgstr "Redigera metadata"
+
+msgid "View this series in the table"
+msgstr "Visa serien i tabellen"
+
+msgid "Mark as finished"
+msgstr "Markera som utläst"
+
+msgid "Mark as finished manually (without Kobo sync)"
+msgstr "Markera som utläst manuellt (utan Kobo-synk)"
+
+msgid "Saved manually"
+msgstr "Sparad manuellt"
+
+msgid "more"
+msgstr "till"
+
+msgid "No books match the current filters."
+msgstr "Inga böcker matchar de aktuella filtren."
+
+msgid "Try removing a filter or clearing the search."
+msgstr "Försök ta bort ett filter eller töm sökrutan."
+
+msgid "May be slow with many books"
+msgstr "Kan vara långsamt med många böcker"
 
 #~ msgid "Settings saved."
 #~ msgstr "Inställningar sparade."

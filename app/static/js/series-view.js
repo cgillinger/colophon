@@ -130,8 +130,15 @@
 
         seriesNames.forEach(function (name) {
             var books = seriesMap[name];
-            var coverHtml = books[0].coverSrc
-                ? '<img src="' + _seriesEsc(books[0].coverSrc) + '" alt="">'
+            /* Use the first available cover in series order so missing #1
+               covers don't fall back to the placeholder when later volumes
+               do have covers. */
+            var coverFor = null;
+            for (var ci = 0; ci < books.length; ci++) {
+                if (books[ci].coverSrc) { coverFor = books[ci]; break; }
+            }
+            var coverHtml = coverFor
+                ? '<img src="' + _seriesEsc(coverFor.coverSrc) + '" alt="' + _seriesEsc(name) + '">'
                 : '📚';
 
             var listHtml = '';
@@ -157,7 +164,8 @@
                 + '<div class="series-card-cover">' + coverHtml + '</div>'
                 + '<div class="series-card-body">'
                 + '<div class="series-card-title">' + nameAttr + '</div>'
-                + '<div class="series-card-count">' + books.length + ' ' + _seriesEsc(_i18n.seriesBooks)
+                + '<div class="series-card-count">' + books.length + ' '
+                + _seriesEsc(books.length === 1 ? _i18n.bookSingular : _i18n.bookPlural)
                 + readBadge + '</div>'
                 + '<ul class="series-card-list">' + listHtml + '</ul>'
                 + '</div></div>';
@@ -168,7 +176,7 @@
                 + _seriesEsc(_i18n.standaloneBooks) + ' (' + standalone.length + ')</div>';
             standalone.forEach(function (b) {
                 var coverHtml = b.coverSrc
-                    ? '<img src="' + _seriesEsc(b.coverSrc) + '" alt="">'
+                    ? '<img src="' + _seriesEsc(b.coverSrc) + '" alt="' + _seriesEsc(b.title) + '">'
                     : '📖';
                 html += '<div class="series-card" data-item-id="' + _seriesEsc(b.itemId) + '">'
                     + '<div class="series-card-cover">' + coverHtml + '</div>'
@@ -260,7 +268,8 @@
         var authorSet = {};
         books.forEach(function (b) { if (b.author) authorSet[b.author] = 1; });
         var authors = Object.keys(authorSet);
-        var metaParts = [books.length + ' ' + _i18n.seriesBooks];
+        var metaParts = [books.length + ' '
+            + (books.length === 1 ? _i18n.bookSingular : _i18n.bookPlural)];
         if (authors.length === 1) {
             metaParts.unshift(authors[0]);
         } else if (authors.length > 1) {
@@ -302,9 +311,11 @@
             var li = document.createElement('li');
             li.className = 'series-modal-book';
             li.setAttribute('data-item-id', b.itemId);
+            li.setAttribute('data-read-status', b.status || 'ReadyToRead');
 
+            var altCover = b.title + (b.author ? ' — ' + b.author : '');
             var coverHtml = b.coverSrc
-                ? '<img src="' + _esc(b.coverSrc) + '" alt="" onerror="this.parentNode.innerHTML=\'📖\';">'
+                ? '<img src="' + _esc(b.coverSrc) + '" alt="' + _esc(altCover) + '" onerror="this.parentNode.innerHTML=\'📖\';">'
                 : '📖';
 
             var progressHtml = '';

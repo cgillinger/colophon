@@ -364,6 +364,11 @@
             }
         }
 
+        var emptyState = document.getElementById('emptyState');
+        if (emptyState) {
+            emptyState.style.display = (total === 0 && window._viewMode !== 'series') ? '' : 'none';
+        }
+
         document.querySelectorAll('.page-size-link').forEach(function (a) {
             var s = parseInt(a.dataset.size);
             a.classList.toggle('active', s === _pageSize);

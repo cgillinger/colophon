@@ -74,6 +74,17 @@
         return (bytes / 1024 / 1024).toFixed(1) + ' MB';
     }
 
+    /* Shorten a long file path so the dup-modal stays scannable.
+       Keeps the last two path segments (parent dir + filename), e.g.
+       "/books/Year's Best SF/2020/file.epub" → "2020/file.epub".
+       The full path lives in the title attribute for hover/inspection. */
+    function _dupShortPath(p) {
+        if (!p) return '';
+        var parts = String(p).split('/').filter(function (s) { return s.length > 0; });
+        if (parts.length <= 2) return p;
+        return '…/' + parts.slice(-2).join('/');
+    }
+
     function _renderDuplicateGroups() {
         var groupsEl = document.getElementById('dupGroups');
         var headerEl = document.getElementById('dupHeader');
@@ -113,13 +124,16 @@
                 }
                 if (it.published_date) extras.push(it.published_date);
 
+                var fullPath = it.filepath || it.filename || '';
+                var shortPath = _dupShortPath(fullPath);
+
                 html += '<div class="dup-item" data-item-id="' + it.id + '">';
                 html +=   '<input type="checkbox" class="dup-check" data-group-index="' + gi + '" data-item-id="' + it.id + '" onchange="_dupOnCheckChange(' + gi + ')">';
                 html +=   '<div class="dup-cover">' + coverHtml + '</div>';
                 html +=   '<div class="dup-meta">';
                 html +=     '<div class="dup-title">' + _escDup(it.title) + '</div>';
                 html +=     '<div class="dup-author">' + _escDup(it.author) + '</div>';
-                html +=     '<div class="dup-path">' + _escDup(it.filepath || it.filename) + '</div>';
+                html +=     '<div class="dup-path" title="' + _escDup(fullPath) + '">' + _escDup(shortPath) + '</div>';
                 html +=     '<div class="dup-extras">' + _escDup(extras.join(' · ')) + '</div>';
                 html +=   '</div>';
                 html += '</div>';
@@ -189,7 +203,7 @@
 
         var msg = toDelete.length === 1
             ? _i18n.dupConfirmDeleteOne
-            : _i18n.dupConfirmDeleteMany.replace('0', toDelete.length);
+            : _i18n.dupConfirmDeleteMany.replace('{count}', toDelete.length);
         if (!confirm(msg)) return;
 
         var btn = groupEl.querySelector('[data-dup-delete-btn]');
@@ -226,7 +240,7 @@
             if (failures.length) {
                 var feedback = document.getElementById('dupFeedback');
                 feedback.className = 'modal-feedback modal-feedback-error';
-                feedback.textContent = _i18n.dupCouldNotDelete.replace('0', failures.length);
+                feedback.textContent = _i18n.dupCouldNotDelete.replace('{count}', failures.length);
                 feedback.style.display = 'block';
             }
         });

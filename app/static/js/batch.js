@@ -111,7 +111,9 @@
         if (!subtitle) return;
         var bookCount = (_batchWizard.selectedItemIds || []).length;
         if (!bookCount) return;
-        var bookText = bookCount + ' bok' + (bookCount !== 1 ? 'er' : '') + ' valda';
+        var bookText = window._pluralize(
+            bookCount, 'nBookSelectedOne', 'nBooksSelectedMany'
+        );
         var fields = _batchWizard.selectedFields || [];
         if (_batchWizard.step >= 2 && fields.length > 0) {
             var fieldLabels = fields.map(function(f) {
@@ -140,9 +142,13 @@
                 var row = cb.closest('tr');
                 if (row && row.dataset.groupKey) groupKeys.add(row.dataset.groupKey);
             });
-            subtitle = groupKeys.size + ' grupp' + (groupKeys.size !== 1 ? 'er' : '') + ' valda';
+            subtitle = window._pluralize(
+                groupKeys.size, 'nGroupSelectedOne', 'nGroupsSelectedMany'
+            );
         } else {
-            subtitle = bookCount + ' bok' + (bookCount !== 1 ? 'er' : '') + ' valda';
+            subtitle = window._pluralize(
+                bookCount, 'nBookSelectedOne', 'nBooksSelectedMany'
+            );
         }
 
         document.getElementById('batchSubtitle').textContent = subtitle;
@@ -1379,12 +1385,17 @@
             });
             if (count > 0) {
                 var label = _BATCH_FIELD_LABELS[field] || field;
+                var missingText = window._pluralize(
+                    count,
+                    'nBookMissingFieldOne',
+                    'nBooksMissingFieldMany',
+                    { field: _esc(label.toLowerCase()) }
+                );
                 remainingItems.push(
                     '<div class="batch-summary-item batch-summary-remaining">' +
                     '<span class="count">' + count + '</span>' +
-                    '<span>' + count + ' bok' + (count !== 1 ? 'er' : '') +
-                    ' saknar ' + _esc(label.toLowerCase()) + '</span>' +
-                    '<span class="batch-summary-link" onclick="_batchFilterMissing(\'' + filterKey + '\')">[Visa]</span>' +
+                    '<span>' + missingText + '</span>' +
+                    '<span class="batch-summary-link" onclick="_batchFilterMissing(\'' + filterKey + '\')">[' + _i18n.showShort + ']</span>' +
                     '</div>'
                 );
             }
@@ -1906,14 +1917,16 @@
                 _batchSSESource = null;
                 var processed = d.processed || 0;
                 titleEl.textContent = _i18n.searchAbortedWith + ' '
-                    + processed + ' bok' + (processed !== 1 ? 'er' : '') + ' bearbetade';
+                    + window._pluralize(processed, 'nBookProcessedOne', 'nBooksProcessedMany');
                 var s = d.summary || {};
                 var parts = [];
-                if (s.updated) parts.push(s.updated + ' sparade');
-                if (s.review_needed) parts.push(s.review_needed + ' granskning');
+                if (s.updated) parts.push(_i18n.nSaved.replace('{count}', s.updated));
+                if (s.review_needed) parts.push(_i18n.nReviewNeeded.replace('{count}', s.review_needed));
                 if (s.no_match) parts.push(_i18n.sNoMatch.replace('{count}', s.no_match));
                 if (s.source_errors) parts.push(_i18n.sSourceError.replace('{count}', s.source_errors));
-                summaryEl.textContent = 'Avbruten. ' + (parts.join(' · ') || 'Inget hann bearbetas.');
+                summaryEl.textContent = parts.length
+                    ? _i18n.searchAbortedSummary.replace('{parts}', parts.join(' · '))
+                    : _i18n.searchAbortedNothing;
                 _showBatchTerminalButtons();
 
             } else if (d.type === 'error') {
@@ -1970,12 +1983,15 @@
 
         var confirmEl = document.getElementById('batchResult');
         confirmEl.style.display = 'block';
+        var confirmTitle = window._pluralize(
+            itemIds.length, 'deleteBookConfirmOne', 'deleteBooksConfirmMany'
+        );
         document.getElementById('batchResultSummary').innerHTML =
-            '<strong>Radera ' + itemIds.length + ' bok' + (itemIds.length !== 1 ? 'er' : '') + '?</strong>'
+            '<strong>' + confirmTitle + '</strong>'
             + '<div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">'
             + '<button type="button" class="btn ghost" onclick="_executeBatchDelete(false)">' + _i18n.removeFromLibrary + '</button>'
-            + '<button type="button" class="btn-danger" onclick="_executeBatchDelete(true)">Radera permanent (inkl. fil)</button>'
-            + '<button type="button" class="btn ghost" onclick="document.getElementById(\'batchResult\').style.display=\'none\'">Avbryt</button>'
+            + '<button type="button" class="btn-danger" onclick="_executeBatchDelete(true)">' + _i18n.deletePermanentlyIncludeFile + '</button>'
+            + '<button type="button" class="btn ghost" onclick="document.getElementById(\'batchResult\').style.display=\'none\'">' + _i18n.cancelLabel + '</button>'
             + '</div>';
     }
 
@@ -1988,7 +2004,7 @@
             if (confirmText !== 'RADERA') return;
         }
 
-        document.getElementById('batchResultSummary').textContent = 'Raderar…';
+        document.getElementById('batchResultSummary').textContent = _i18n.deleting;
 
         fetch('/metadata/bulk/delete', {
             method: 'POST',
@@ -2008,13 +2024,21 @@
                 renderGroupedView();
                 updateSelectedCount();
                 updateBatchBar();
-                var msg = data.deleted + ' bok' + (data.deleted !== 1 ? 'er' : '') + ' raderade.';
-                if (data.file_errors) msg += ' ' + data.file_errors + ' filer kunde inte raderas.';
+                var msg = window._pluralize(
+                    data.deleted, 'nBookDeletedOne', 'nBooksDeletedMany'
+                );
+                if (data.file_errors) {
+                    msg += ' ' + window._pluralize(
+                        data.file_errors,
+                        'nFileCouldNotBeDeletedOne',
+                        'nFilesCouldNotBeDeletedMany'
+                    );
+                }
                 document.getElementById('batchResultSummary').textContent = msg;
                 closeBatchModal();
             })
             .catch(function() {
-                document.getElementById('batchResultSummary').textContent = 'Radering misslyckades.';
+                document.getElementById('batchResultSummary').textContent = _i18n.deletionFailed;
             });
     }
 

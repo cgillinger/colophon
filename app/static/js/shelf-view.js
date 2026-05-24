@@ -68,7 +68,7 @@
     }
 
     function _readStateHtml(row) {
-        /* Cover-progress bar + check badge for Phase 3 reading-state sync.
+        /* Cover-progress bar + corner badge for Phase 3 reading-state sync.
          * Shelf view only. Reads data-read-status / data-read-progress that
          * the bulk template emits on every <tr>. */
         var status = row.dataset.readStatus || 'ReadyToRead';
@@ -80,8 +80,11 @@
         if (pct > 100) pct = 100;
         var cls = status === 'Finished' ? 'cover-progress finished' : 'cover-progress';
         html += '<div class="' + cls + '"><span class="fill" style="width:' + pct + '%"></span></div>';
+        var _i18n = (window.__colophonConfig && window.__colophonConfig.i18n) || {};
         if (status === 'Finished') {
-            html += '<span class="cover-check" title="Finished">✓</span>';
+            html += '<span class="read-corner read-corner-finished" title="' + _esc(_i18n.statusFinished || 'Finished') + '"><i class="ti ti-check"></i></span>';
+        } else if (status === 'Reading') {
+            html += '<span class="read-corner read-corner-reading" title="' + _esc(_i18n.statusReading || 'Reading') + '"><i class="ti ti-bookmark"></i></span>';
         }
         return html;
     }
@@ -120,7 +123,7 @@
             +    ' data-read-progress="' + _esc(readPct) + '"'
             +    ' data-render-seq="' + seq + '">'
             +    '<div class="grid-card-cover" onclick="openBookModal(' + _esc(itemId) + ')">'
-            +      '<img src="' + _esc(coverSrc) + '" alt="" loading="lazy" style="' + imgStyle + '"'
+            +      '<img src="' + _esc(coverSrc) + '" alt="' + _esc(title + (author ? ' — ' + author : '')) + '" loading="lazy" style="' + imgStyle + '"'
             +        ' onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';">'
             +      '<div class="grid-card-placeholder" style="' + phStyle + '">'
             +        '<i class="ti ti-book"></i>'

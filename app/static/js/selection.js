@@ -17,11 +17,15 @@
  *
  * Reads i18n strings from window.__colophonConfig.i18n:
  *   chooseAtLeastOneBook, confirmBulkDeleteHeader, confirmDeleteFiles,
- *   errorWithMsg, unknownError
+ *   errorWithMsg, unknownError, nBookSelectedOne, nBooksSelectedMany,
+ *   nGroupSelectedOne, nGroupsSelectedMany, nGroupsNFilesSelectedOne,
+ *   nGroupsNFilesSelectedMany, nBookDeletedOne, nBooksDeletedMany,
+ *   nFileCouldNotBeDeletedOne, nFilesCouldNotBeDeletedMany,
+ *   fileSingular, filePlural, deletionFailed
  *
- * Note: the count labels keep their hard-coded Swedish wording
- * (' grupp', ' bok', ' valda', etc.) — preserving exact pre-refactor
- * behaviour. Pluralisation and proper i18n of these is out of scope.
+ * Pluralisation goes through window._pluralize (defined in core.js)
+ * so Swedish irregular plurals (bok→böcker) and participle agreement
+ * (vald/valda) render correctly.
  *
  * Exposes globals consumed by the template / other modules:
  *   clearSelection, toggleSelectAll, deselectAll, updateBatchBar,
@@ -92,9 +96,13 @@
                     var row = cb.closest('tr');
                     if (row && row.dataset.groupKey) groupKeys.add(row.dataset.groupKey);
                 });
-                count.textContent = groupKeys.size + ' grupp' + (groupKeys.size !== 1 ? 'er' : '') + ' valda';
+                count.textContent = window._pluralize(
+                    groupKeys.size, 'nGroupSelectedOne', 'nGroupsSelectedMany'
+                );
             } else {
-                count.textContent = checked.length + ' bok' + (checked.length !== 1 ? 'er' : '') + ' valda';
+                count.textContent = window._pluralize(
+                    checked.length, 'nBookSelectedOne', 'nBooksSelectedMany'
+                );
             }
         } else {
             bar.style.display = 'none';
@@ -133,11 +141,16 @@
 
         var groupCount = groupKeys.size + soloItems;
         if (groupCount === 0) {
-            el.textContent = '0 valda';
+            el.textContent = window._pluralize(0, 'nBookSelectedOne', 'nBooksSelectedMany');
         } else {
-            el.textContent =
-                groupCount + ' grupp' + (groupCount !== 1 ? 'er' : '')
-                + ' (' + totalFiles + ' fil' + (totalFiles !== 1 ? 'er' : '') + ') valda';
+            var filesStr = totalFiles + ' '
+                + (totalFiles === 1 ? _i18n.fileSingular : _i18n.filePlural);
+            el.textContent = window._pluralize(
+                groupCount,
+                'nGroupsNFilesSelectedOne',
+                'nGroupsNFilesSelectedMany',
+                { files: filesStr }
+            );
         }
     }
     window.updateSelectedCount = updateSelectedCount;
@@ -244,11 +257,19 @@
                 });
                 if (typeof renderGroupedView === 'function') renderGroupedView();
                 updateSelectedCount();
-                var resultMsg = data.deleted + ' bok' + (data.deleted !== 1 ? 'er' : '') + ' raderade.';
-                if (data.file_errors) resultMsg += ' ' + data.file_errors + ' filer kunde inte raderas.';
+                var resultMsg = window._pluralize(
+                    data.deleted, 'nBookDeletedOne', 'nBooksDeletedMany'
+                );
+                if (data.file_errors) {
+                    resultMsg += ' ' + window._pluralize(
+                        data.file_errors,
+                        'nFileCouldNotBeDeletedOne',
+                        'nFilesCouldNotBeDeletedMany'
+                    );
+                }
                 alert(resultMsg);
             })
-            .catch(function () { alert('Radering misslyckades.'); });
+            .catch(function () { alert(_i18n.deletionFailed); });
     }
     window.confirmBulkDelete = confirmBulkDelete;
 })(window, document);

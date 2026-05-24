@@ -21,6 +21,8 @@
 </head>
 <body>
 
+<h1 class="visually-hidden">{{ _('Library') }}</h1>
+
 <header class="topbar">
     <div class="topbar-inner">
         <a class="topbar-brand" href="{{ url_for('metadata.bulk_metadata') }}">
@@ -33,10 +35,10 @@
         </div>
         <div class="topbar-actions">
             <div class="lang-toggle">
-                <a href="#" onclick="setLanguage('en'); return false;" class="{{ 'active' if get_locale() == 'en' else '' }}" title="English">EN</a>
-                <a href="#" onclick="setLanguage('sv'); return false;" class="{{ 'active' if get_locale() == 'sv' else '' }}" title="Svenska">SV</a>
+                <button type="button" onclick="setLanguage('en')" class="{{ 'active' if get_locale() == 'en' else '' }}" title="English" aria-label="English">EN</button>
+                <button type="button" onclick="setLanguage('sv')" class="{{ 'active' if get_locale() == 'sv' else '' }}" title="Svenska" aria-label="Svenska">SV</button>
             </div>
-            <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="{{ _('Toggle theme') }}">
+            <button type="button" class="topbar-btn icon-only" onclick="toggleTheme()" title="{{ _('Toggle theme') }}" aria-label="{{ _('Toggle theme') }}">
                 <i id="themeIcon" class="ti ti-sun"></i>
             </button>
             <a class="topbar-btn icon-only" href="{{ url_for('settings.kobo_settings') }}" title="{{ _('Kobo sync') }}">
@@ -178,7 +180,7 @@
                 </button>
             </div>
 
-            <button id="groupToggle" class="filter-btn icon-toggle" type="button" onclick="toggleGroupView()" title="{{ _('Group formats') }}">
+            <button id="groupToggle" class="filter-btn icon-toggle" type="button" onclick="toggleGroupView()" title="{{ _('Group formats') }}" aria-label="{{ _('Group formats') }}">
                 <i class="ti ti-stack-2" style="font-size:20px;"></i><span id="groupCountLabel" style="display:none; margin-left:6px; font-size:12px;"></span>
             </button>
 
@@ -192,7 +194,7 @@
                 {{ _('Group series') }}
             </label>
 
-            <button id="filterToggle" class="filter-btn icon-toggle" type="button" onclick="toggleFilterPanel()" title="{{ _('Filter') }}">
+            <button id="filterToggle" class="filter-btn icon-toggle" type="button" onclick="toggleFilterPanel()" title="{{ _('Filter') }}" aria-label="{{ _('Filter') }}">
                 <i class="ti ti-filter" style="font-size:20px;"></i>
                 <span class="filter-active-dot"></span>
             </button>
@@ -225,7 +227,7 @@
             </div>
 
             <div class="menu-wrap">
-                <button id="actionsMenuBtn" class="filter-btn icon-toggle" type="button" onclick="toggleActionsMenu(event)" title="{{ _('Actions') }}">
+                <button id="actionsMenuBtn" class="filter-btn icon-toggle" type="button" onclick="toggleActionsMenu(event)" title="{{ _('Actions') }}" aria-label="{{ _('Actions') }}" aria-haspopup="menu">
                     <i class="ti ti-dots" style="font-size:20px;"></i>
                 </button>
                 <div class="dots-menu" id="actionsMenu">
@@ -291,9 +293,9 @@
                         <th data-sort="title">{{ _('Book') }} <span class="sort-icon">▲</span></th>
                         <th data-sort="author">{{ _('Author') }} <span class="sort-icon"></span></th>
                         <th data-sort="genres">{{ _('Genre') }} <span class="sort-icon"></span></th>
-                        <th data-sort="published" style="width:90px;">{{ _('Published') }} <span class="sort-icon"></span></th>
-                        <th data-sort="status">{{ _('Status') }} <span class="sort-icon"></span></th>
-                        <th data-sort="ext">{{ _('File type') }} <span class="sort-icon"></span></th>
+                        <th data-sort="published" style="width:110px;">{{ _('Published') }} <span class="sort-icon"></span></th>
+                        <th data-sort="status">{{ _('Metadata') }} <span class="sort-icon"></span></th>
+                        <th data-sort="ext" style="width:80px;">{{ _('File type') }} <span class="sort-icon"></span></th>
                     </tr>
                 </thead>
                 <tbody id="bookTableBody">
@@ -347,7 +349,15 @@
                                 {% if item.author %}{{ item.author }}{% else %}<span class="meta">{{ _('Unknown') }}</span>{% endif %}
                             </td>
                             <td class="genres-cell" onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
-                                {% if item.genres %}<span class="meta">{{ item.genres }}</span>{% else %}<span class="meta">—</span>{% endif %}
+                                {% if item.genres %}
+                                    {% set _genre_parts = item.genres.split(',') %}
+                                    {% set _genre_total = _genre_parts|length %}
+                                    {% if _genre_total > 3 %}
+                                        <span class="meta" title="{{ item.genres|trim }}">{{ _genre_parts[:3]|map('trim')|join(', ') }} <span class="meta-more">+{{ _genre_total - 3 }} {{ _('more') }}</span></span>
+                                    {% else %}
+                                        <span class="meta">{{ item.genres|trim }}</span>
+                                    {% endif %}
+                                {% else %}<span class="meta">—</span>{% endif %}
                             </td>
                             <td class="published-cell" onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
                                 {% if item.published_date %}
@@ -356,17 +366,17 @@
                                     <span class="meta">—</span>
                                 {% endif %}
                             </td>
-                            <td>
+                            <td class="status-cell" onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
                                 {% if is_missing %}
-                                    <span class="badge warn">{{ _('Missing metadata') }}</span>
+                                    <span class="badge warn" title="{{ _('Missing metadata') }}"><i class="ti ti-alert-triangle"></i> {{ _('Missing metadata') }}</span>
                                 {% else %}
-                                    <span class="badge good">{{ _('Has metadata') }}</span>
+                                    <span class="badge good" title="{{ _('Has metadata') }}"><i class="ti ti-check"></i> {{ _('Has metadata') }}</span>
                                 {% endif %}
                                 {% if item.manual_metadata %}
-                                    <span class="badge good">{{ _('Saved') }}</span>
+                                    <span class="badge saved-badge" title="{{ _('Saved manually') }}"><i class="ti ti-bookmark-filled"></i> {{ _('Saved') }}</span>
                                 {% endif %}
                             </td>
-                            <td>{{ item.extension|upper|replace(".", "") }}</td>
+                            <td class="ext-cell" onclick="openBookModal({{ item.id }})" style="cursor:pointer;"><span class="ext-chip">{{ item.extension|upper|replace(".", "") }}</span></td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -375,6 +385,12 @@
         <div id="gridView"></div>
         <div id="seriesView" style="display:none;"></div>
 
+        <div id="emptyState" class="empty-state" style="display:none;" role="status">
+            <i class="ti ti-mood-empty"></i>
+            <div class="empty-state-title">{{ _('No books match the current filters.') }}</div>
+            <div class="empty-state-hint">{{ _('Try removing a filter or clearing the search.') }}</div>
+        </div>
+
         <div id="paginationBar">
             <div id="paginationStats">
                 <span id="libraryChipTotal">{{ _('%(count)d books', count=total_count) }}</span>
@@ -382,9 +398,8 @@
                     · <span class="stats-badge" id="libraryChipMissing" onclick="toggleBadgeFilter('missing_metadata', '1', event)">{{ _('%(count)d incomplete', count=missing_count) }}</span>
                 {% endif %}
                 {% if format_counts %}
-                    ·
                     {% for ext, count in format_counts.items() %}
-                        <span class="stats-badge" onclick="toggleBadgeFilter('format', '{{ ext }}', event)">{{ count }} {{ ext }}</span>{% if not loop.last %}, {% endif %}
+                        · <span class="stats-badge" onclick="toggleBadgeFilter('format', '{{ ext }}', event)">{{ count }} {{ ext }}</span>
                     {% endfor %}
                 {% endif %}
                 {% if missing_cover_count %}
@@ -402,7 +417,7 @@
                         <option value="20">{{ _('20 per page') }}</option>
                         <option value="50">{{ _('50 per page') }}</option>
                         <option value="100">{{ _('100 per page') }}</option>
-                        <option value="all">{{ _('All') }}</option>
+                        <option value="all" title="{{ _('May be slow with many books') }}">{{ _('All') }}</option>
                     </select>
                 </label>
                 <div id="pageButtons"></div>
@@ -418,11 +433,12 @@
                 onclick="deleteBookFromModal()" title="{{ _('Delete book') }}">
             <i class="ti ti-trash"></i>
         </button>
-        <button type="button" class="modal-close-x modal-corner-close" onclick="closeBookModal()" title="{{ _('Close') }}">&times;</button>
+        <button type="button" class="modal-close-x modal-corner-close" onclick="closeBookModal()" title="{{ _('Close') }}" aria-label="{{ _('Close') }}">&times;</button>
         <button type="button" class="modal-edit-toggle" id="modalEditToggleBtn"
-                onclick="toggleModalMode()" title="{{ _('Edit metadata') }}">
+                onclick="toggleModalMode()" title="{{ _('Edit metadata') }}" aria-label="{{ _('Edit metadata') }}">
             <i class="ti ti-pencil"></i> {{ _('Edit') }}
         </button>
+        <h2 class="modal-edit-header" id="modalEditHeaderTitle"></h2>
         <div id="modalFeedback" class="modal-feedback" style="display:none;"></div>
         <div id="modalReadingState" class="reading-state-box" style="display:none;">
             <div class="rs-row">
@@ -433,8 +449,9 @@
             </div>
             <div class="rs-row" id="modalReadDates"></div>
             <div class="rs-actions">
-                <button type="button" class="btn btn-sm outline" id="modalMarkReadBtn" onclick="markReadManually()">
-                    <i class="ti ti-check"></i> {{ _('Mark as read manually') }}
+                <button type="button" class="btn btn-sm outline" id="modalMarkReadBtn" onclick="markReadManually()"
+                        title="{{ _('Mark as finished manually (without Kobo sync)') }}">
+                    <i class="ti ti-check"></i> {{ _('Mark as finished') }}
                 </button>
                 <button type="button" class="btn btn-sm ghost" id="modalResetReadBtn" onclick="resetReadingState()">
                     <i class="ti ti-refresh"></i> {{ _('Reset reading state') }}
@@ -547,10 +564,10 @@
             </div>
         </div>
         <div class="modal-actions">
-            <button type="button" class="btn primary" id="modalFetchBtn" onclick="fetchMetadata()"><i class="ti ti-search"></i> {{ _('Fetch metadata') }}</button>
+            <button type="button" class="btn outline" id="modalFetchBtn" onclick="fetchMetadata()"><i class="ti ti-search"></i> {{ _('Fetch metadata') }}</button>
             <button type="button" class="btn ai-ghost" id="modalAiBtn" onclick="fetchAiMetadata()" style="display:none;"><i class="ti ti-sparkles"></i> {{ _('Ask AI') }}</button>
             <div class="spacer"></div>
-            <button type="button" class="btn outline" id="modalSaveBtn" onclick="saveMetadata()">{{ _('Save') }}</button>
+            <button type="button" class="btn primary" id="modalSaveBtn" onclick="saveMetadata()"><i class="ti ti-device-floppy"></i> {{ _('Save') }}</button>
             <button type="button" class="btn ghost" id="modalCloseBtn" onclick="closeBookModal()">{{ _('Close') }}</button>
         </div>
     </div>
@@ -561,9 +578,9 @@
 <div id="seriesModal" style="display:none;">
     <div class="modal-box series-modal-box">
         <button type="button" class="modal-close-x modal-corner-close"
-                onclick="closeSeriesModal()" title="{{ _('Close') }}">&times;</button>
+                onclick="closeSeriesModal()" title="{{ _('Close') }}" aria-label="{{ _('Close') }}">&times;</button>
         <button type="button" class="modal-edit-toggle" id="seriesModalTableBtn"
-                onclick="seriesModalToTable()" title="{{ _('View this series in the table') }}">
+                onclick="seriesModalToTable()" title="{{ _('View this series in the table') }}" aria-label="{{ _('View this series in the table') }}">
             <i class="ti ti-list"></i> {{ _('View in table') }}
         </button>
 
@@ -620,8 +637,8 @@
             <div style="margin-top:16px;">
                 <div class="batch-field-group-label">{{ _('Basic info') }}</div>
                 <div class="batch-field-checks">
-                    <label class="field-check"><input type="checkbox" class="bw-field" value="title"> {{ _('Title') }}</label>
-                    <label class="field-check"><input type="checkbox" class="bw-field" value="author"> {{ _('Author') }}</label>
+                    <label class="field-check"><input type="checkbox" class="bw-field" value="title" checked> {{ _('Title') }}</label>
+                    <label class="field-check"><input type="checkbox" class="bw-field" value="author" checked> {{ _('Author') }}</label>
                     <label class="field-check"><input type="checkbox" class="bw-field" value="series" checked> {{ _('Series') }}</label>
                     <label class="field-check"><input type="checkbox" class="bw-field" value="isbn" checked> {{ _('ISBN') }}</label>
                     <label class="field-check"><input type="checkbox" class="bw-field" value="publisher" checked> {{ _('Publisher') }}</label>
@@ -647,7 +664,7 @@
 
             <div class="modal-actions">
                 <button class="btn primary" type="button" onclick="batchWizardStartSearch()">
-                    <i class="ti ti-search"></i> {{ _('Search') }}
+                    <i class="ti ti-search"></i> {{ _('Fetch metadata') }}
                 </button>
                 <button class="btn ghost" type="button" onclick="closeBatchModal()">{{ _('Cancel') }}</button>
             </div>
@@ -819,6 +836,33 @@
         syncedFields: {{ _('↔ Synced {count} fields within group ({formats} formats)')|tojson }},
         bookSingular: {{ _('book')|tojson }},
         bookPlural: {{ _('books')|tojson }},
+        fileSingular: {{ _('file')|tojson }},
+        filePlural: {{ _('files')|tojson }},
+        nBookSelectedOne: {{ _('1 book selected')|tojson }},
+        nBooksSelectedMany: {{ _('{count} books selected')|tojson }},
+        nGroupSelectedOne: {{ _('1 group selected')|tojson }},
+        nGroupsSelectedMany: {{ _('{count} groups selected')|tojson }},
+        nGroupsNFilesSelectedOne: {{ _('1 group ({files}) selected')|tojson }},
+        nGroupsNFilesSelectedMany: {{ _('{count} groups ({files}) selected')|tojson }},
+        nBookDeletedOne: {{ _('1 book deleted.')|tojson }},
+        nBooksDeletedMany: {{ _('{count} books deleted.')|tojson }},
+        nFileCouldNotBeDeletedOne: {{ _('1 file could not be deleted.')|tojson }},
+        nFilesCouldNotBeDeletedMany: {{ _('{count} files could not be deleted.')|tojson }},
+        nBookProcessedOne: {{ _('1 book processed')|tojson }},
+        nBooksProcessedMany: {{ _('{count} books processed')|tojson }},
+        nBookMissingFieldOne: {{ _('1 book missing {field}')|tojson }},
+        nBooksMissingFieldMany: {{ _('{count} books missing {field}')|tojson }},
+        deleteBookConfirmOne: {{ _('Delete 1 book?')|tojson }},
+        deleteBooksConfirmMany: {{ _('Delete {count} books?')|tojson }},
+        deletionFailed: {{ _('Deletion failed.')|tojson }},
+        showShort: {{ _('Show')|tojson }},
+        cancelLabel: {{ _('Cancel')|tojson }},
+        deleting: {{ _('Deleting…')|tojson }},
+        deletePermanentlyIncludeFile: {{ _('Delete permanently (incl. file)')|tojson }},
+        searchAbortedNothing: {{ _('Aborted. Nothing was processed.')|tojson }},
+        searchAbortedSummary: {{ _('Aborted. {parts}')|tojson }},
+        nSaved: {{ _('{count} saved')|tojson }},
+        nReviewNeeded: {{ _('{count} review needed')|tojson }},
         likelyMatch: {{ _('Likely match – please review')|tojson }},
         uncertainMatch: {{ _('Uncertain match')|tojson }},
         weakMatch: {{ _('Weak match')|tojson }},
@@ -899,8 +943,8 @@
         dupDeleteSelected: {{ _('Delete selected')|tojson }},
         dupAtLeastOneKept: {{ _('At least one book must be kept')|tojson }},
         dupConfirmDeleteOne: {{ _('Delete file? This cannot be undone.')|tojson }},
-        dupConfirmDeleteMany: {{ _('Delete %(n)d files? This cannot be undone.', n=0)|tojson }},
-        dupCouldNotDelete: {{ _('Could not delete %(n)d file(s).', n=0)|tojson }},
+        dupConfirmDeleteMany: {{ _('Delete {count} files? This cannot be undone.')|tojson }},
+        dupCouldNotDelete: {{ _('Could not delete {count} file(s).')|tojson }},
         seriesAuthors: {{ _('authors')|tojson }},
         seriesReading: {{ _('reading')|tojson }},
         statusUnread: {{ _('Unread')|tojson }},

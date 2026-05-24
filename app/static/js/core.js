@@ -168,6 +168,9 @@
             el.classList.toggle('toolbar-dim', !!on);
         }
 
+        if (groupToggle)   groupToggle.style.display   = '';
+        if (densityRadios) densityRadios.style.display = '';
+
         if (window._viewMode === 'table') {
             if (tableWrap)     tableWrap.style.display     = '';
             if (paginationBar) paginationBar.style.display = '';
@@ -183,8 +186,10 @@
             if (seriesView)     seriesView.style.display    = '';
             if (seriesControls) seriesControls.style.display = 'inline-flex';
             if (paginationBar)  paginationBar.style.display  = 'none';
-            dim(groupToggle,   true);
-            dim(densityRadios, true);
+            /* Hide rather than dim — density/grouping have no meaning in
+               series view, and a dimmed-but-visible control invites clicks. */
+            if (groupToggle)   groupToggle.style.display   = 'none';
+            if (densityRadios) densityRadios.style.display = 'none';
             if (typeof renderSeriesView === 'function') renderSeriesView();
         }
 
@@ -200,4 +205,24 @@
         location.reload();
     }
     window.setLanguage = setLanguage;
+
+    /* ---- Plural helper -------------------------------------------- *
+     * Picks a singular or plural i18n key based on `count`, substitutes
+     * {count} with the number, and any extra placeholders from `extras`.
+     * Used to avoid string-concat plurals like "1 boker" — Swedish has
+     * irregular plurals (bok→böcker) and participle agreement
+     * (vald/valda) that hand-built concat cannot express.
+     */
+    function _pluralize(count, singularKey, pluralKey, extras) {
+        var _i18n = (window.__colophonConfig && window.__colophonConfig.i18n) || {};
+        var tpl = (count === 1 ? _i18n[singularKey] : _i18n[pluralKey]) || '';
+        var out = tpl.split('{count}').join(count);
+        if (extras) {
+            Object.keys(extras).forEach(function (k) {
+                out = out.split('{' + k + '}').join(extras[k]);
+            });
+        }
+        return out;
+    }
+    window._pluralize = _pluralize;
 })(window, document);
