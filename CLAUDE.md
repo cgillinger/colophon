@@ -157,6 +157,42 @@ Tests mock external services (Google Books, Calibre subprocess). No integration 
 
 Push directly to `main`. No branches or PRs — single-developer project. If local edits conflict with remote changes: `git reset --hard origin/main`.
 
+## Versioning
+
+Semantic versioning (`MAJOR.MINOR.PATCH`). The canonical version lives in `app/version.py`; templates render it via the `app_version` context processor in `app/__init__.py`.
+
+### When to bump
+
+Bump in the same commit as the change that triggers it, before pushing:
+
+- **PATCH** (1.0.0 → 1.0.1) — bug fix, copy/i18n tweak, dependency bump, docs-only release. Routine fixes ship as patches.
+- **MINOR** (1.0.0 → 1.1.0) — new user-visible feature, new setting, new integration, new metadata source, automatic schema migration.
+- **MAJOR** (1.0.0 → 2.0.0) — breaking change the user has to act on: renamed/removed env var, changed config file format, schema migration that needs manual steps, removed feature, Kobo `.conf` lines that must be rewritten.
+
+Don't bump for pure refactors, internal renames, test-only commits, or edits to `CLAUDE.md` / `docs/`. Multiple small commits between bumps is fine — version is per release, not per commit.
+
+### Files to update on a bump
+
+Three places, always together. They're the only hand-maintained copies:
+
+1. `app/version.py` — `__version__ = "X.Y.Z"`
+2. `README.md` — the `version-X.Y.Z` segment in the version badge URL
+3. `CLAUDE.md` — the "Version X.Y.Z" line in the intro paragraph
+
+Templates (`settings_api.html`, `settings_ai.html`) read from `app_version` and need no edit.
+
+After bumping, tag the commit so the Releases page lines up with the badge:
+
+```bash
+git tag v1.0.1 && git push --tags
+```
+
+One-liner for the three-file bump (run from repo root, replace versions):
+
+```bash
+OLD=1.0.0 NEW=1.0.1 && sed -i "s/$OLD/$NEW/" app/version.py README.md CLAUDE.md
+```
+
 ## Debugging
 
 ```bash
