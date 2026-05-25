@@ -33,7 +33,7 @@ Use `--no-cache` every time. Docker layer cache has caused silent regressions be
 wsgi.py                         # Gunicorn entry: from app import create_app
 app/
   __init__.py                   # create_app(), blueprint registration, Babel, DB init
-  models.py                     # LibraryItem (single model, SQLite)
+  models.py                     # LibraryItem + KoboDevice + KoboBookState
   version.py                    # __version__ = "1.0.0"
   paths.py                      # Central path constants
   config.py                     # Flask Config class (reads env vars)
@@ -42,6 +42,7 @@ app/
     metadata.py                 # metadata_bp — bulk view, single-book modal, SSE streams
     scan.py                     # scan_bp — /scan endpoint (JSON + SSE)
     settings.py                 # settings_bp — API keys, AI config, upstream sync settings
+    kobo.py                     # kobo_bp — /kobo/<token>/* sync endpoints for Kobo devices
     helpers.py                  # Shared route helpers
   services/
     __init__.py
@@ -49,39 +50,75 @@ app/
     metadata_pipeline.py        # Orchestrates enrichment: build_search_input → sources → scoring
     metadata_sources.py         # Google Books search, scoring, deduplication
     metadata_calibre.py         # Calibre fetch-ebook-metadata subprocess wrapper
+    metadata_wikipedia.py       # Wikipedia/Wikidata metadata lookup
+    swedish_web_sources.py      # Swedish-specific sources (Bokus, AdLibris etc.)
     metadata_writer.py          # Write metadata back to files (ebook-meta), group sync
     ai_metadata.py              # Provider-agnostic AI enrichment (series detection etc.)
     cover_search.py             # 5 sources: Open Library, Google Books, Hardcover, Wikidata, DDG
+    quality.py                  # is_better_* heuristics for field-by-field replacement
+    duplicate_detector.py       # Fuzzy duplicate detection for the cleanup UI
     app_settings.py             # DB+env hybrid settings (DB wins, env fallback)
     upstream_sync.py            # rsync-based pull/push to upstream library (e.g. Komga NFS)
     grouping.py                 # Format grouping: SHA256 of normalized title
     text_utils.py               # Title cleaning, series extraction from title strings
     language_detect.py          # langdetect-based language identification for EPUBs
-    database.py                 # DB migrations (ensure_*_table, backfill_language)
+    database.py                 # DB migrations (ensure_*_table, backfill_*)
+    kobo_auth.py                # Per-device token generation, lookup, revoke
+    kobo_sync.py                # Kobo sync protocol: catalogue, state, deltas
+    kobo_kepub.py               # On-the-fly EPUB→KEPUB conversion via kepubify
+    kobo_conf.py                # Render Kobo .conf snippets for the setup UI
   templates/
-    bulk_metadata.html          # Main library view (large file, ~6000 lines, JS-heavy)
+    _layout.html                # Base template — sidebar, topbar, theme bootstrap
+    bulk_metadata.html          # Main library view (~1000 lines; JS/CSS extracted to static/)
     metadata.html               # Single book detail (rarely used standalone)
     metadata_ai_preview.html    # AI suggestion review UI
     metadata_enrichment_preview.html  # Source enrichment review UI
+    cover_lookup.html           # Standalone cover picker
     settings_api.html           # API keys + cover source toggles
     settings_ai.html            # AI config + usage stats + upstream library
+    settings_kobo.html          # Kobo device list + per-device URL + .conf snippet
   translations/
     sv/LC_MESSAGES/messages.po  # Swedish translation
   static/
+    css/bulk_metadata.css       # Extracted styles for the main view
+    js/                         # Extracted frontend modules (12 files, see below)
+    icons/                      # Favicons, apple-touch-icon
     vendor/tabler-icons/        # Icon font
-tests/
-  test_metadata_pipeline.py
-  test_calibre_metadata.py
-  test_bookf.py
+tests/                          # 13 pytest files: metadata_pipeline, calibre_metadata,
+                                # bookf, grouping, kobo_conf, kobo_sync, language,
+                                # quality, scanner, scoring, source_status, title_clean,
+                                # wikipedia
 tools/
   install_calibre_plugins.sh    # Dockerfile build step: Goodreads, FF, FictionDB plugins
+  install_kepubify.sh           # Dockerfile build step: kepubify binary for Kobo conversion
 ```
+
+### Frontend assets
+
+`bulk_metadata.html` used to hold ~6000 lines of inline JS. It's now ~1000 lines of Jinja markup. Styles live in `app/static/css/bulk_metadata.css`; behaviour is split across `app/static/js/`:
+
+```
+core.js                  # Bootstrap, shared state, i18n string map
+filters-sort-paging.js   # Search, filters, sort, pagination
+selection.js             # Row selection + multi-select helpers
+shelf-view.js            # Gallery/shelf layout
+series-view.js           # Series grouping layout
+book-modal.js            # Single-book edit modal (large)
+batch.js                 # Batch wizard (large — bulk enrichment, AI, covers)
+bulk-result-modal.js     # Post-batch summary modal
+duplicates.js            # Duplicate cleanup UI
+reading-now.js           # "Currently reading" widget
+scan-sync.js             # Scan trigger + SSE handling for live progress
+cleanup-misc.js          # Misc cleanup actions
+```
+
+When editing the main view, look in the relevant JS module first — most logic lives there, not in the template.
 
 ## Architecture decisions
 
 ### Blueprints
 
-Only three: `metadata_bp`, `scan_bp`, `settings_bp`. No `library`, `bookstores`, or `reader` blueprints — those were removed during the fork from Bookstation.
+Four: `metadata_bp`, `scan_bp`, `settings_bp`, `kobo_bp`. No `library`, `bookstores`, or `reader` blueprints — those were removed during the fork from Bookstation. `kobo_bp` is mounted at `/kobo` and only serves authenticated Kobo devices via per-device path tokens.
 
 ### Metadata extraction
 
@@ -107,14 +144,20 @@ Multiple formats of the same book (EPUB + MOBI + AZW3) share a `group_key` = SHA
 
 Both scan and bulk metadata use Server-Sent Events with background threads + `queue.SimpleQueue`. Single shared `_abort_event` for cancellation.
 
-## Key model: LibraryItem
+## Models
 
-Single table `library_items`. Important fields:
+Three tables in `app/models.py`:
+
+**`library_items` (LibraryItem)** — the catalogue. Important fields:
 - `manual_metadata` (bool) — locks text fields from auto-overwrite
 - `cover_locked` (bool) — locks cover from auto-overwrite
 - `group_key` — format grouping hash
 - `pipeline_status` — scanned / enriched / polished
 - `file_modified_by_colophon` / `upstream_synced_at` — upstream sync tracking
+
+**`kobo_devices` (KoboDevice)** — registered Kobo e-readers. Each row has a path token used in the device's sync URL (`/kobo/<token>/...`). Revokable from the settings UI.
+
+**`kobo_book_states` (KoboBookState)** — per-device record of which `library_items` the device has been told about, plus reading progress / finished state that the Kobo sends back on sync.
 
 ## Tech stack
 
@@ -148,8 +191,8 @@ Tests mock external services (Google Books, Calibre subprocess). No integration 
 
 1. **Never spawn subprocesses per-file for reading metadata** — use ebooklib. Subprocesses + Gunicorn sync workers = timeouts.
 2. **Docker cache** — always `--no-cache` on rebuild. Cached layers have hidden stale code.
-3. **Blueprint references** — only `metadata.*`, `scan.*`, `settings.*` exist. Any `url_for('library.*')` etc. will crash.
-4. **`bulk_metadata.html` is massive** (~6000 lines, inline JS). Be surgical with edits. The template contains a full i18n string map in JS.
+3. **Blueprint references** — only `metadata.*`, `scan.*`, `settings.*`, `kobo.*` exist. Any `url_for('library.*')` etc. will crash.
+4. **Main view is split** — `bulk_metadata.html` is the Jinja shell (~1000 lines); behaviour lives in `app/static/js/*.js` and styling in `app/static/css/bulk_metadata.css`. The i18n string map for JS lives in `core.js`. Edit the right file — don't add new logic back into the template.
 5. **Settings priority**: DB value > `COLOPHON_*` env > legacy `COLOPHON_MISTRAL_*` env > default.
 6. **Gunicorn timeout**: 300s. Long operations (bulk enrichment) use SSE streaming, not blocking requests.
 
