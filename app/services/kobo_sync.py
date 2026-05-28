@@ -82,6 +82,7 @@ class SyncDelta:
     """Result of one page of delta computation."""
     new_items: list[LibraryItem] = field(default_factory=list)
     changed_items: list[LibraryItem] = field(default_factory=list)
+    reading_state_items: list[LibraryItem] = field(default_factory=list)
     deleted_item_ids: list[int] = field(default_factory=list)
     next_token: SyncToken = field(default_factory=SyncToken)
     has_more: bool = False
@@ -127,11 +128,26 @@ def compute_delta(
 
     new_items: list[LibraryItem] = []
     changed_items: list[LibraryItem] = []
+    reading_state_items: list[LibraryItem] = []
     for item in items_this_page:
-        if item.id in seen_ids:
+        if item.id not in seen_ids:
+            new_items.append(item)
+            continue
+        # Already on the device. Distinguish a content/file change (must
+        # re-ship the whole entitlement, device may re-download) from a
+        # reading-progress-only change (must NOT, or the Kobo archives the
+        # local file and re-downloads on next open). content_updated_at
+        # advances only on content changes and is kept <= updated_at, so an
+        # item that landed in this page purely because reading progress
+        # bumped updated_at has content_updated_at <= effective_since.
+        content_at = item.content_updated_at or item.updated_at
+        content_changed = effective_since is None or (
+            content_at is not None and content_at > effective_since
+        )
+        if content_changed:
             changed_items.append(item)
         else:
-            new_items.append(item)
+            reading_state_items.append(item)
 
     # Deletion detection only on the first page of a paginated sync —
     # otherwise we'd emit deletes once per page.
@@ -184,6 +200,7 @@ def compute_delta(
     return SyncDelta(
         new_items=new_items,
         changed_items=changed_items,
+        reading_state_items=reading_state_items,
         deleted_item_ids=deleted_ids,
         next_token=next_token,
         has_more=has_more,

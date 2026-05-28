@@ -71,6 +71,14 @@ class LibraryItem(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    # Advances only when device-visible content/metadata or the file
+    # changes — NOT on reading-progress writes. The Kobo sync delta keys
+    # on this (not updated_at) to decide ChangedEntitlement vs
+    # ChangedReadingState: re-shipping a full entitlement on every page
+    # turn makes the Kobo archive the local file and re-download on next
+    # open. Stamped by the before_flush listener below; kept <= updated_at.
+    content_updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+
     def size_text(self):
         if not self.size_bytes:
             return "0 MB"
@@ -132,3 +140,47 @@ class KoboBookState(db.Model):
     __table_args__ = (
         db.UniqueConstraint("device_id", "library_item_id", name="uq_kobo_book_state_device_item"),
     )
+
+
+# ---------------------------------------------------------------------------
+# content_updated_at stamping
+# ---------------------------------------------------------------------------
+#
+# A synced Kobo treats a ChangedEntitlement (which carries DownloadUrls) as
+# "the book's content changed on the server" and archives + re-downloads its
+# local copy. We must therefore only emit ChangedEntitlement when the file or
+# device-visible metadata actually changed — reading-progress writes (which
+# happen on every page turn) must NOT. content_updated_at is the timestamp the
+# sync delta keys on; the listener below advances it only when a content
+# column changes, and keeps it == updated_at for those writes so the invariant
+# content_updated_at <= updated_at always holds (the delta logic relies on it).
+
+from sqlalchemy import event as _sa_event, inspect as _sa_inspect  # noqa: E402
+from sqlalchemy.orm import Session as _SASession  # noqa: E402
+
+_DEVICE_CONTENT_COLUMNS = frozenset({
+    "title", "author", "description", "series", "series_index", "isbn",
+    "publisher", "language", "genres", "published_date",
+    "file_path", "file_name", "extension", "cover_path", "size_bytes",
+})
+
+
+@_sa_event.listens_for(_SASession, "before_flush")
+def _stamp_content_updated_at(session, flush_context, instances):
+    # New rows: seed content_updated_at so it never exceeds updated_at.
+    for obj in session.new:
+        if isinstance(obj, LibraryItem) and obj.content_updated_at is None:
+            obj.content_updated_at = obj.updated_at or datetime.utcnow()
+
+    # Updates: only stamp when a device-visible content column changed.
+    for obj in session.dirty:
+        if not isinstance(obj, LibraryItem):
+            continue
+        state = _sa_inspect(obj)
+        if any(
+            state.attrs[col].history.has_changes()
+            for col in _DEVICE_CONTENT_COLUMNS
+        ):
+            now = datetime.utcnow()
+            obj.content_updated_at = now
+            obj.updated_at = now

@@ -51,6 +51,9 @@ def ensure_database_columns():
             "ALTER TABLE library_items ADD COLUMN times_started "
             "INTEGER NOT NULL DEFAULT 0"
         ),
+        # Drives the Kobo sync delta — advances only on content/file
+        # changes, never on reading progress. See models.py.
+        "content_updated_at": "ALTER TABLE library_items ADD COLUMN content_updated_at DATETIME",
     }
 
     changed = False
@@ -76,6 +79,7 @@ def ensure_database_columns():
         db.session.rollback()
 
     backfill_group_keys(force=group_key_added)
+    backfill_content_updated_at()
     sanitize_html_descriptions()
     backfill_language_detection()
     normalize_series_index_values()
@@ -130,6 +134,26 @@ def backfill_group_keys(force=False):
             )
 
     db.session.commit()
+
+
+def backfill_content_updated_at():
+    """Seed content_updated_at = updated_at for rows that predate the column.
+
+    Existing books were last synced under the old logic, where the device's
+    sync token `since` >= the book's updated_at. Setting content_updated_at to
+    updated_at keeps content_updated_at <= since for those books, so the first
+    sync after upgrade does NOT re-ship them as ChangedEntitlement (which would
+    trigger a one-time mass re-download). Idempotent — only touches NULLs.
+    """
+    result = db.session.execute(text(
+        "UPDATE library_items SET content_updated_at = updated_at "
+        "WHERE content_updated_at IS NULL"
+    ))
+    if result.rowcount:
+        db.session.commit()
+        logger.info("Backfilled content_updated_at for %d rows", result.rowcount)
+    else:
+        db.session.rollback()
 
 
 def backfill_language_detection():

@@ -580,6 +580,15 @@ def _changed_entitlement_wrapper(item: LibraryItem, base_url: str, token: str) -
     return {"ChangedEntitlement": _entitlement_dtos(item, base_url, token)}
 
 
+def _changed_reading_state_wrapper(item: LibraryItem, base_url: str, token: str) -> dict:
+    """Progress-only update. Carries just the ReadingState, so the device
+    advances its bookmark without discarding the downloaded file. Sending a
+    full ChangedEntitlement here (which has DownloadUrls) makes the Kobo
+    archive and re-download the book on every sync — the bug this avoids."""
+    dtos = _entitlement_dtos(item, base_url, token)
+    return {"ChangedReadingState": {"ReadingState": dtos["ReadingState"]}}
+
+
 def _deleted_entitlement_wrapper(library_item_id: int) -> dict:
     """The Kobo expects a minimal BookEntitlement for deletions."""
     book_uuid = _book_uuid(library_item_id)
@@ -638,18 +647,24 @@ def library_sync(device):
     payload = (
         [_new_entitlement_wrapper(item, base_url, token) for item in delta.new_items]
         + [_changed_entitlement_wrapper(item, base_url, token) for item in delta.changed_items]
+        + [_changed_reading_state_wrapper(item, base_url, token) for item in delta.reading_state_items]
         + [_deleted_entitlement_wrapper(item_id) for item_id in delta.deleted_item_ids]
     )
 
     # Persist what we just sent so the next sync knows
-    record_sync(device.id, delta.new_items + delta.changed_items, _book_uuid)
+    record_sync(
+        device.id,
+        delta.new_items + delta.changed_items + delta.reading_state_items,
+        _book_uuid,
+    )
     forget_items(device.id, delta.deleted_item_ids)
 
     logger.info(
-        "Kobo sync: device=%s new=%d changed=%d deleted=%d more=%s",
+        "Kobo sync: device=%s new=%d changed=%d reading=%d deleted=%d more=%s",
         device.name,
         len(delta.new_items),
         len(delta.changed_items),
+        len(delta.reading_state_items),
         len(delta.deleted_item_ids),
         delta.has_more,
     )

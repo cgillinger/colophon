@@ -309,6 +309,104 @@ def test_changed_book_appears_as_ChangedEntitlement(app, client):
     assert payload[0]["ChangedEntitlement"]["BookMetadata"]["Title"] == "Updated"
 
 
+def test_reading_progress_change_emits_ChangedReadingState(app, client):
+    """A progress-only change must come back as ChangedReadingState, never a
+    full ChangedEntitlement — the latter makes the Kobo archive and
+    re-download the book on every sync."""
+    from datetime import datetime
+    from app.models import LibraryItem, db
+    from app.services.kobo_auth import create_device
+
+    with app.app_context():
+        _, token = create_device("Reading state test")
+        item = LibraryItem(
+            title="Progress Book",
+            file_path="/books/progress.epub",
+            file_name="progress.epub",
+            extension=".epub",
+        )
+        db.session.add(item)
+        db.session.commit()
+        item_id = item.id
+
+    # First sync — appears as NewEntitlement
+    r1 = client.get(f"/kobo/{token}/v1/library/sync")
+    token1 = r1.headers["x-kobo-synctoken"]
+    assert "NewEntitlement" in r1.get_json()[0]
+
+    # Reading progress moves; content does not.
+    with app.app_context():
+        item = LibraryItem.query.get(item_id)
+        item.read_status = "Reading"
+        item.read_progress = 42.0
+        item.read_last_modified = datetime.utcnow()
+        db.session.commit()
+        # content_updated_at must be left behind (<= updated_at)
+        assert item.content_updated_at <= item.updated_at
+
+    r2 = client.get(
+        f"/kobo/{token}/v1/library/sync",
+        headers={"x-kobo-synctoken": token1},
+    )
+    payload = r2.get_json()
+    assert len(payload) == 1
+    assert "ChangedReadingState" in payload[0]
+    assert "ChangedEntitlement" not in payload[0]
+    rs = payload[0]["ChangedReadingState"]["ReadingState"]
+    assert rs["CurrentBookmark"]["ProgressPercent"] == 42.0
+    # Must not leak download info — that is what triggers re-download.
+    assert "DownloadUrls" not in rs
+
+
+def test_reading_state_put_does_not_trigger_redownload(app, client):
+    """End-to-end: a state PUT from the device (the real page-turn path)
+    must not cause the book to come back as a ChangedEntitlement."""
+    from app.models import LibraryItem, db
+    from app.routes.kobo import _book_uuid
+    from app.services.kobo_auth import create_device
+
+    with app.app_context():
+        _, token = create_device("PUT roundtrip test")
+        item = LibraryItem(
+            title="PUT Book",
+            file_path="/books/put.epub",
+            file_name="put.epub",
+            extension=".epub",
+        )
+        db.session.add(item)
+        db.session.commit()
+        item_id = item.id
+        book_uuid = _book_uuid(item_id)
+
+    r1 = client.get(f"/kobo/{token}/v1/library/sync")
+    token1 = r1.headers["x-kobo-synctoken"]
+    assert "NewEntitlement" in r1.get_json()[0]
+
+    # Device reports progress exactly like firmware does.
+    put = client.put(
+        f"/kobo/{token}/v1/library/{book_uuid}/state",
+        json={"ReadingStates": [{
+            "StatusInfo": {"Status": "Reading", "LastModified": "2026-05-28T10:00:00.000Z"},
+            "CurrentBookmark": {
+                "ProgressPercent": 33.0,
+                "Location": {"Value": "span", "Type": "KoboSpan"},
+                "LastModified": "2026-05-28T10:00:00.000Z",
+            },
+            "LastModified": "2026-05-28T10:00:00.000Z",
+        }]},
+    )
+    assert put.status_code == 200
+
+    r2 = client.get(
+        f"/kobo/{token}/v1/library/sync",
+        headers={"x-kobo-synctoken": token1},
+    )
+    payload = r2.get_json()
+    assert len(payload) == 1
+    assert "ChangedReadingState" in payload[0]
+    assert "ChangedEntitlement" not in payload[0]
+
+
 def test_deleted_book_emits_DeletedEntitlement(app, client):
     from app.models import LibraryItem, db
     from app.services.kobo_auth import create_device
