@@ -179,8 +179,28 @@
 
         var authorEl = document.getElementById('modalAuthorDisplay');
         if (authorEl) {
+            authorEl.innerHTML = '';
             if (data.author) {
-                authorEl.innerHTML = '<span class="by">' + _i18n.modalBy + '</span>' + _esc(data.author);
+                var bySpan = document.createElement('span');
+                bySpan.className = 'by';
+                bySpan.textContent = _i18n.modalBy;
+                authorEl.appendChild(bySpan);
+                // One link per author (names are comma-separated). Clicking
+                // filters the library to that author's books.
+                String(data.author).split(',').map(function (n) {
+                    return n.trim();
+                }).filter(Boolean).forEach(function (name, i) {
+                    if (i > 0) authorEl.appendChild(document.createTextNode(', '));
+                    var a = document.createElement('a');
+                    a.className = 'author-link';
+                    a.href = '#';
+                    a.textContent = name;
+                    a.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        filterByAuthor(name);
+                    });
+                    authorEl.appendChild(a);
+                });
             }
             _setDisplayHidden(authorEl, !data.author);
         }
@@ -1231,6 +1251,19 @@
             pill.textContent = newCount + ' osynkade';
         }
     }
+
+    function filterByAuthor(name) {
+        // Close the book view, then drive the existing library search so the
+        // current view (shelf/table/series) refreshes to this author's books.
+        closeBookModal();
+        var el = document.getElementById('filterSearch');
+        if (el) {
+            el.value = name;
+            if (window.applyFilters) window.applyFilters();
+        }
+        window.scrollTo(0, 0);
+    }
+    window.filterByAuthor = filterByAuthor;
 
     function closeBookModal() {
         if (_modalSSESource) {
