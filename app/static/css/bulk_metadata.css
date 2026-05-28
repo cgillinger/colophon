@@ -2699,7 +2699,6 @@
             font-size: 15px;
             line-height: 1.7;
             color: var(--text-primary);
-            max-width: 65ch;
             white-space: pre-wrap;
         }
         .display-synopsis-body.empty {
