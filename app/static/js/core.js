@@ -106,6 +106,7 @@
         applyViewMode();
         if (prev === 'shelf' && typeof destroyShelfView === 'function') destroyShelfView();
         if (mode === 'shelf' && typeof initShelfView   === 'function') initShelfView();
+        if (window._writeUrlState) window._writeUrlState(true);
     }
     window.setViewMode = setViewMode;
 

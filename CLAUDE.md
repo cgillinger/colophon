@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.2.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.3.0.
 
 ## Quick reference
 
@@ -34,7 +34,7 @@ wsgi.py                         # Gunicorn entry: from app import create_app
 app/
   __init__.py                   # create_app(), blueprint registration, Babel, DB init
   models.py                     # LibraryItem + KoboDevice + KoboBookState
-  version.py                    # __version__ = "1.2.0"
+  version.py                    # __version__ = "1.3.0"
   paths.py                      # Central path constants
   config.py                     # Flask Config class (reads env vars)
   routes/
@@ -81,7 +81,7 @@ app/
     sv/LC_MESSAGES/messages.po  # Swedish translation
   static/
     css/bulk_metadata.css       # Extracted styles for the main view
-    js/                         # Extracted frontend modules (12 files, see below)
+    js/                         # Extracted frontend modules (13 files, see below)
     icons/                      # Favicons, apple-touch-icon
     vendor/tabler-icons/        # Icon font
 tests/                          # 13 pytest files: metadata_pipeline, calibre_metadata,
@@ -110,6 +110,7 @@ duplicates.js            # Duplicate cleanup UI
 reading-now.js           # "Currently reading" widget
 scan-sync.js             # Scan trigger + SSE handling for live progress
 cleanup-misc.js          # Misc cleanup actions
+url-state.js             # Mirrors view/search/filters/sort/page to the URL (back + deep links)
 ```
 
 When editing the main view, look in the relevant JS module first — most logic lives there, not in the template.

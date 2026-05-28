@@ -428,12 +428,14 @@
         var sel = document.getElementById('pageSizeSelect');
         if (sel) sel.value = size === 0 ? 'all' : size.toString();
         renderPagination();
+        if (window._writeUrlState) window._writeUrlState(false);
     }
     window.setPageSize = setPageSize;
 
     function goToPage(page) {
         _currentPage = page;
         renderPagination();
+        if (window._writeUrlState) window._writeUrlState(true);
     }
     window.goToPage = goToPage;
 
@@ -623,11 +625,13 @@
         _updateFilterActiveDot();
         if (window._viewMode === 'shelf' && typeof refreshShelfView === 'function') refreshShelfView();
         if (window._viewMode === 'series' && typeof renderSeriesView === 'function') renderSeriesView();
+        if (window._writeUrlState) window._writeUrlState(false);
     };
     var _origSortTable2 = sortTable;
     sortTable = function (key) {
         _origSortTable2.apply(this, arguments);
         if (window._viewMode === 'shelf' && typeof refreshShelfView === 'function') refreshShelfView();
+        if (window._writeUrlState) window._writeUrlState(false);
     };
     /* Re-bind sort handlers AGAIN to point at the latest sortTable */
     document.querySelectorAll('#bookTable th[data-sort]').forEach(function (th) {
@@ -647,6 +651,9 @@
     window.renderPagination = renderPagination;
     window.renderGroupedView = renderGroupedView;
     window.getFilteredRows  = getFilteredRows;
+    /* Exposed so url-state.js can serialize sort + page into the URL. */
+    window._currentSort     = _currentSort;
+    window._getCurrentPage  = function () { return _currentPage; };
 
     /* ============================================================ *
      * Bottom-of-script initial paint
