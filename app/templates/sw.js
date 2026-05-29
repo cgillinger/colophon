@@ -1,5 +1,17 @@
 /* Colophon service worker — version-driven caching.
  *
+ * WHY THIS EXISTS (read before removing): Colophon is desktop-first and has no
+ * offline use case today — the app is useless without the server. This worker
+ * is deliberate groundwork for a possible future in-browser reader, where
+ * offline reading of a downloaded book WOULD be a real feature (see
+ * docs/TODO.md "In-browser reader + offline"). What it provides now is the
+ * reusable plumbing: installability and a reliable update mechanism. It does
+ * NOT cache book content — that is net-new work (explicit "download for
+ * offline" into Cache Storage/IndexedDB + quota/eviction) to be built with the
+ * reader, not something this file gives for free. It is intentionally
+ * conservative (navigations are network-first, so an always-online LAN/Tailscale
+ * client can never get stuck on a stale shell), so keeping it dormant is safe.
+ *
  * Rendered by Flask (see /sw.js route) so {{ app_version }} is baked into
  * the file body. That matters twice over:
  *   1. The cache name is tied to the app version, so a version bump means a
