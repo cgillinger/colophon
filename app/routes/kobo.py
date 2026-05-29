@@ -28,6 +28,7 @@ from sqlalchemy import or_
 from app.models import LibraryItem
 from app.services.kobo_auth import find_device_by_token, touch_device
 from app.services.kobo_kepub import convert_epub_to_kepub
+from app.services.reading_state import apply_reading_state
 from app.services.kobo_sync import (
     SyncToken,
     compute_delta,
@@ -76,10 +77,6 @@ def _parse_iso(raw) -> datetime | None:
     if dt.tzinfo is not None:
         dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
     return dt
-
-
-# Monotonic ranking for reading status — finished books stay finished.
-_READ_STATUS_RANK = {"ReadyToRead": 0, "Reading": 1, "Finished": 2}
 
 
 def require_device(f):
@@ -894,55 +891,27 @@ def update_reading_state(device, book_id):
         or _parse_iso(bookmark.get("LastModified"))
     )
 
-    current_rank = _READ_STATUS_RANK.get(item.read_status or "ReadyToRead", 0)
-    incoming_rank = _READ_STATUS_RANK.get(incoming_status, 0)
-
-    # Monotonic — finished books stay finished, etc.
-    if incoming_rank < current_rank:
-        logger.info(
-            "Kobo state PUT: dropped (monotonic) book_id=%s device=%s "
-            "current=%s incoming=%s",
-            book_id, device.name, item.read_status, incoming_status,
-        )
-        return jsonify({}), 200
-
-    # Last-write-wins on the timeline (only when status doesn't escalate).
-    if (
-        incoming_rank == current_rank
-        and item.read_last_modified
-        and incoming_mod
-        and incoming_mod <= item.read_last_modified
-    ):
-        logger.info(
-            "Kobo state PUT: dropped (older timestamp) book_id=%s device=%s",
-            book_id, device.name,
-        )
-        return jsonify({}), 200
-
     progress = bookmark.get("ProgressPercent")
     if progress is None:
         progress = bookmark.get("ContentSourceProgressPercent")
     location_value = location.get("Value") if isinstance(location, dict) else None
 
-    item.read_status = incoming_status
-    if progress is not None:
-        try:
-            item.read_progress = float(progress)
-        except (TypeError, ValueError):
-            pass
-    if location_value:
-        item.read_location = location_value
-    item.read_last_modified = incoming_mod or datetime.utcnow()
-
-    if incoming_status == "Reading" and not item.read_started_at:
-        item.read_started_at = item.read_last_modified
-        item.times_started = (item.times_started or 0) + 1
-    if incoming_status == "Finished":
-        if not item.read_finished_at:
-            item.read_finished_at = item.read_last_modified
-        # The device sometimes reports 99.x on finished books; coerce to 100.
-        if item.read_progress is None or item.read_progress < 100:
-            item.read_progress = 100.0
+    # Monotonic / last-write-wins rules live in the shared helper so the
+    # in-browser reader enforces them identically (services/reading_state.py).
+    applied = apply_reading_state(
+        item,
+        incoming_status,
+        progress=progress,
+        location=location_value,
+        modified_at=incoming_mod,
+    )
+    if not applied:
+        logger.info(
+            "Kobo state PUT: dropped (monotonic/older) book_id=%s device=%s "
+            "current=%s incoming=%s",
+            book_id, device.name, item.read_status, incoming_status,
+        )
+        return jsonify({}), 200
 
     db.session.commit()
     logger.info(

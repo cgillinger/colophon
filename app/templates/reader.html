@@ -1,0 +1,95 @@
+<!doctype html>
+{# Standalone in-browser reader page. Deliberately does NOT extend _layout.html:
+   a reader wants the whole viewport with no sidebar/topbar chrome. It still
+   reuses the app's theme bootstrap (colophon-theme) and CSS variables so dark
+   mode matches, and the Tabler icon font for the back button. #}
+<html lang="{{ get_locale() }}" data-theme="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <script>
+        (function () {
+            var t = localStorage.getItem('colophon-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+    <title>{{ item.title or _('Reader') }} — {{ _('Colophon') }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabler-icons/tabler-icons.min.css') }}">
+    {# bulk_metadata.css carries the theme CSS variables (--bg-primary etc.). #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bulk_metadata.css') }}?v={{ app_version }}">
+    <style>
+        html, body { height: 100%; margin: 0; overscroll-behavior: none; }
+        body {
+            display: flex; flex-direction: column;
+            background: var(--bg-primary); color: var(--text-primary);
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .reader-topbar {
+            flex: 0 0 auto; display: flex; align-items: center; gap: .6rem;
+            height: 48px; padding: 0 .6rem;
+            padding-top: env(safe-area-inset-top, 0);
+            border-bottom: 1px solid var(--border-light);
+            background: var(--bg-secondary);
+        }
+        .reader-topbar .reader-back {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 38px; height: 38px; border: none; border-radius: 8px;
+            background: transparent; color: var(--text-primary);
+            font-size: 1.3rem; cursor: pointer;
+        }
+        .reader-topbar .reader-back:hover { background: var(--bg-tertiary); }
+        .reader-title {
+            flex: 1 1 auto; min-width: 0; font-size: .95rem; font-weight: 600;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .reader-percent {
+            flex: 0 0 auto; font-variant-numeric: tabular-nums;
+            font-size: .85rem; color: var(--text-secondary); min-width: 42px; text-align: right;
+        }
+        .reader-main { flex: 1 1 auto; position: relative; min-height: 0; }
+        foliate-view { position: absolute; inset: 0; }
+        /* Edge tap zones for page turns (keyboard arrows also work). */
+        .reader-tap {
+            position: absolute; top: 0; bottom: 0; width: 22%;
+            z-index: 5; cursor: pointer; -webkit-tap-highlight-color: transparent;
+        }
+        .reader-tap.prev { left: 0; }
+        .reader-tap.next { right: 0; }
+        .reader-overlay {
+            position: absolute; inset: 0; z-index: 10;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--bg-primary); color: var(--text-secondary);
+            font-size: .95rem; text-align: center; padding: 2rem;
+        }
+        .reader-overlay[hidden] { display: none; }
+    </style>
+</head>
+<body>
+    <div class="reader-topbar">
+        <button type="button" class="reader-back" id="readerBack" aria-label="{{ _('Back') }}" title="{{ _('Back') }}">
+            <i class="ti ti-arrow-left"></i>
+        </button>
+        <div class="reader-title">{{ item.title or item.file_name or _('Reader') }}</div>
+        <div class="reader-percent" id="readerPercent">—</div>
+    </div>
+    <div class="reader-main">
+        <div class="reader-tap prev" id="readerPrev" aria-label="{{ _('Previous page') }}"></div>
+        <div class="reader-tap next" id="readerNext" aria-label="{{ _('Next page') }}"></div>
+        <div class="reader-overlay" id="readerOverlay">{{ _('Loading book…') }}</div>
+    </div>
+
+    <script>
+        window.__readerConfig = {
+            fileUrl: {{ file_url|tojson }},
+            progressUrl: {{ progress_url|tojson }},
+            initialProgress: {{ initial_progress|tojson }},
+            readStatus: {{ read_status|tojson }},
+            homeUrl: {{ url_for('metadata.index')|tojson }},
+            i18n: {
+                loadError: {{ _('Could not open this book.')|tojson }}
+            }
+        };
+    </script>
+    <script type="module" src="{{ url_for('static', filename='js/reader.js') }}?v={{ app_version }}"></script>
+</body>
+</html>

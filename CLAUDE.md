@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.4.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.5.0.
 
 ## Quick reference
 
@@ -34,7 +34,7 @@ wsgi.py                         # Gunicorn entry: from app import create_app
 app/
   __init__.py                   # create_app(), blueprint registration, Babel, DB init
   models.py                     # LibraryItem + KoboDevice + KoboBookState
-  version.py                    # __version__ = "1.4.0"
+  version.py                    # __version__ = "1.5.0"
   paths.py                      # Central path constants
   config.py                     # Flask Config class (reads env vars)
   routes/
@@ -43,6 +43,7 @@ app/
     scan.py                     # scan_bp — /scan endpoint (JSON + SSE)
     settings.py                 # settings_bp — API keys, AI config, upstream sync settings
     kobo.py                     # kobo_bp — /kobo/<token>/* sync endpoints for Kobo devices
+    reader.py                   # reader_bp — /reader/<id> in-browser EPUB reader + progress
     helpers.py                  # Shared route helpers
   services/
     __init__.py
@@ -67,6 +68,7 @@ app/
     kobo_sync.py                # Kobo sync protocol: catalogue, state, deltas
     kobo_kepub.py               # On-the-fly EPUB→KEPUB conversion via kepubify
     kobo_conf.py                # Render Kobo .conf snippets for the setup UI
+    reading_state.py            # Shared monotonic reading-state writer (Kobo + reader)
   templates/
     _layout.html                # Base template — sidebar, topbar, theme bootstrap
     bulk_metadata.html          # Main library view (~1000 lines; JS/CSS extracted to static/)
@@ -77,17 +79,19 @@ app/
     settings_api.html           # API keys + cover source toggles
     settings_ai.html            # AI config + usage stats + upstream library
     settings_kobo.html          # Kobo device list + per-device URL + .conf snippet
+    reader.html                 # Standalone in-browser reader page (no _layout chrome)
   translations/
     sv/LC_MESSAGES/messages.po  # Swedish translation
   static/
     css/bulk_metadata.css       # Extracted styles for the main view
-    js/                         # Extracted frontend modules (13 files, see below)
+    js/                         # Extracted frontend modules (14 files, see below)
     icons/                      # Favicons, apple-touch-icon
     vendor/tabler-icons/        # Icon font
-tests/                          # 13 pytest files: metadata_pipeline, calibre_metadata,
+    vendor/foliate-js/          # Vendored EPUB renderer (MIT) for the reader
+tests/                          # 14 pytest files: metadata_pipeline, calibre_metadata,
                                 # bookf, grouping, kobo_conf, kobo_sync, language,
-                                # quality, scanner, scoring, source_status, title_clean,
-                                # wikipedia
+                                # quality, reading_state, scanner, scoring,
+                                # source_status, title_clean, wikipedia
 tools/
   install_calibre_plugins.sh    # Dockerfile build step: Goodreads, FF, FictionDB plugins
   install_kepubify.sh           # Dockerfile build step: kepubify binary for Kobo conversion
@@ -111,6 +115,7 @@ reading-now.js           # "Currently reading" widget
 scan-sync.js             # Scan trigger + SSE handling for live progress
 cleanup-misc.js          # Misc cleanup actions
 url-state.js             # Mirrors view/search/filters/sort/page to the URL (back + deep links)
+reader.js                # In-browser reader controller (standalone /reader page, not the bulk view; ES module, loads foliate-js)
 ```
 
 When editing the main view, look in the relevant JS module first — most logic lives there, not in the template.
@@ -119,7 +124,7 @@ When editing the main view, look in the relevant JS module first — most logic 
 
 ### Blueprints
 
-Four: `metadata_bp`, `scan_bp`, `settings_bp`, `kobo_bp`. No `library`, `bookstores`, or `reader` blueprints — those were removed during the fork from Bookstation. `kobo_bp` is mounted at `/kobo` and only serves authenticated Kobo devices via per-device path tokens.
+Five: `metadata_bp`, `scan_bp`, `settings_bp`, `kobo_bp`, `reader_bp`. No `library` or `bookstores` blueprints — those were removed during the fork from Bookstation. `kobo_bp` is mounted at `/kobo` and only serves authenticated Kobo devices via per-device path tokens. `reader_bp` is mounted at `/reader` (added v1.5.0 — the fork's original `reader` blueprint was a different, removed thing; this is a fresh in-browser EPUB reader, see below).
 
 ### Metadata extraction
 
@@ -144,6 +149,13 @@ Multiple formats of the same book (EPUB + MOBI + AZW3) share a `group_key` = SHA
 ### SSE streaming
 
 Both scan and bulk metadata use Server-Sent Events with background threads + `queue.SimpleQueue`. Single shared `_abort_event` for cancellation.
+
+### In-browser reader + reading-state sync (v1.5.0)
+
+`reader_bp` (`/reader/<id>`) renders an EPUB in the browser with vendored
+foliate-js (`static/vendor/foliate-js/`, an ES module, no build step). `/reader/<id>/file` serves the **raw** EPUB (not the kepubified Kobo variant); the URL is stable and token-free so a future "download for offline" step can cache it. Step 1 is **online-only** — offline caching of book content is still deferred (see `docs/TODO.md`).
+
+Reading progress is **not** a separate store: the reader writes to the same canonical `LibraryItem` reading-state fields the Kobo sync uses (`read_status`, `read_progress`, …) via the shared `services/reading_state.py:apply_reading_state()`, which both the Kobo PUT handler and `/reader/<id>/progress` call. Because it bumps `read_last_modified`, progress made in the browser rides the existing Kobo delta to the device, and vice versa — no new sync infra. The browser resumes by **percent** (`goToFraction`); it never writes `read_location`, because Kobo's KEPUB-span locations and foliate's EPUB CFIs are different coordinate systems (exact cross-device position is intentionally out of scope). The "Läs" button is a `display-only` element gated to EPUB, so it appears only in the shelf view's passive modal, not the table view's edit modal.
 
 ## Models
 

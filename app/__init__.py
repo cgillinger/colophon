@@ -16,6 +16,7 @@ from app.models import db
 from app.paths import LOG_DIR
 from app.routes.kobo import kobo_bp
 from app.routes.metadata import metadata_bp
+from app.routes.reader import reader_bp
 from app.routes.scan import scan_bp
 from app.routes.settings import settings_bp
 from app.services.database import (
@@ -202,6 +203,7 @@ def create_app():
     app.register_blueprint(scan_bp)
     app.register_blueprint(settings_bp)
     app.register_blueprint(kobo_bp)
+    app.register_blueprint(reader_bp)
 
     @app.after_request
     def no_cache_html(response):

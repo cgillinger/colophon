@@ -2751,6 +2751,36 @@
            in the modal markup alongside the form, but is display-only). */
         .modal-box:not(.display-mode) .display-synopsis-block { display: none; }
 
+        /* "Read in browser" CTA. Hidden by default; shown only in display
+           mode (shelf view's passive modal) AND when JS has marked the book
+           as a readable format (the `readable` class). Vertical icon-over-
+           label, sits under the cover as the primary passive-view action. */
+        .modal-read-btn { display: none; }
+        .modal-box.display-mode .modal-read-btn.readable {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            width: 100%;
+            margin: 14px 0 4px;
+            padding: 12px;
+            border: 1px solid var(--accent-primary-border);
+            border-radius: 12px;
+            background: var(--accent-primary-light);
+            color: var(--accent-primary-text);
+            font-size: .9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background .12s ease, transform .12s ease;
+        }
+        .modal-box.display-mode .modal-read-btn.readable:hover {
+            background: var(--accent-primary);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+        .modal-box.display-mode .modal-read-btn.readable i { font-size: 1.7rem; }
+
         /* In display mode the cover doesn't need the giant placeholder icon
            shrink; keep current sizing but allow it to be a touch larger on
            wide screens for that "spread" feel. */

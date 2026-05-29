@@ -82,6 +82,12 @@
         var ext = (data.extension || '').replace('.', '').toUpperCase();
         document.getElementById('modalFileInfo').innerHTML = (data.file_name || '—') + '<br>' + ext + ' · ' + size;
 
+        // Gate the "Read in browser" button to readable formats (EPUB in
+        // step 1). The CSS only shows it in display-mode, so a `readable`
+        // class here is the second half of the gate.
+        var readBtn = document.getElementById('modalReadBtn');
+        if (readBtn) readBtn.classList.toggle('readable', (data.extension || '').toLowerCase() === '.epub');
+
         document.getElementById('modalTitle').value         = data.title          || '';
         document.getElementById('modalAuthor').value        = data.author         || '';
         document.getElementById('modalSeries').value        = data.series         || '';
@@ -385,6 +391,15 @@
             .finally(function() { if (btn) btn.disabled = false; });
     }
     window.markReadManually = markReadManually;
+
+    // Open the in-browser reader for the book currently in the modal. The
+    // reader page handles progress sync back to the same reading-state the
+    // Kobo uses, so reading here and on a Kobo stay in lock-step.
+    function openReader() {
+        if (!window._modalItemId) return;
+        window.location.href = '/reader/' + window._modalItemId;
+    }
+    window.openReader = openReader;
 
     function resetReadingState() {
         if (!window._modalItemId) return;

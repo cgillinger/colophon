@@ -3137,6 +3137,31 @@ msgstr ""
 msgid "URL copied to clipboard."
 msgstr "URL kopierad till urklipp."
 
+# In-browser reader (reader.html, bulk_metadata.html book modal)
+msgid "Read"
+msgstr "Läs"
+
+msgid "Read in browser"
+msgstr "Läs i webbläsaren"
+
+msgid "Reader"
+msgstr "Läsare"
+
+msgid "Back"
+msgstr "Tillbaka"
+
+msgid "Previous page"
+msgstr "Föregående sida"
+
+msgid "Next page"
+msgstr "Nästa sida"
+
+msgid "Loading book…"
+msgstr "Laddar bok…"
+
+msgid "Could not open this book."
+msgstr "Kunde inte öppna boken."
+
 #~ msgid "Settings saved."
 #~ msgstr "Inställningar sparade."
 

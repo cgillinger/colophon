@@ -431,6 +431,15 @@
         <div class="modal-grid">
             <div>
                 <div id="modalCover" class="modal-cover">📖</div>
+                {# Read action. Shown only in display-mode (the passive
+                   shelf-view modal, not the table-view edit modal) AND only
+                   when the format is readable — JS adds the `readable` class.
+                   See .modal-read-btn rules in bulk_metadata.css. #}
+                <button type="button" class="modal-read-btn" id="modalReadBtn"
+                        onclick="openReader()" title="{{ _('Read in browser') }}">
+                    <i class="ti ti-book-2"></i>
+                    <span>{{ _('Read') }}</span>
+                </button>
                 <div id="modalFileInfo" class="modal-fileinfo"></div>
                 <button type="button" class="btn btn-sm ghost modal-cover-search-btn"
                         id="modalCoverSearchBtn" onclick="searchCovers()">

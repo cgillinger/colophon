@@ -3,35 +3,41 @@
 Deferred ideas and planned work. Implemented items get removed (the code/git
 history is the record).
 
-## In-browser reader + offline (the reason the PWA exists)
+## Offline reading for the in-browser reader
 
-**What:** An in-browser EPUB reader inside Colophon. The mobile-consumption need
-this serves is today met by Kobo sync (read on the e-reader); a browser reader
-would be "Kobo sync for any phone/tablet browser" — read a book offline on a
-device that isn't a Kobo.
+**Done (v1.5.0):** the online in-browser EPUB reader itself — `reader_bp`
+(`/reader/<id>`), foliate-js rendering, percent-based resume, and progress that
+syncs with Kobo through the shared `services/reading_state.py`. See the
+"In-browser reader" section in CLAUDE.md. What remains is **offline**.
+
+**What:** Let a book read in the browser work with no network — "Kobo sync for
+any phone/tablet browser, offline too". The reader works online today; this adds
+the ability to download a book into the browser and read it on a plane.
 
 **Why the PWA scaffolding is already in place (v1.4.0):** installability
 (`/manifest.json`) and a reliable update mechanism (version-tied cache,
 `?v=<version>` on assets, "new version" reload prompt) are the reusable
-foundation. They were added now because they're low-risk and the service worker
-is conservative (network-first navigations — see `app/templates/sw.js`). Keep
-them; don't re-litigate the PWA each time.
+foundation. The service worker is conservative (network-first navigations — see
+`app/templates/sw.js`). Keep it; don't re-litigate the PWA each time.
 
-**What is NOT done (net-new when the reader lands):**
-- Caching actual book content for offline. The current SW caches the app shell
-  and versioned static assets only — NOT books. Offline reading needs an
-  explicit "download for offline" flow writing to Cache Storage / IndexedDB,
-  plus quota + eviction handling and a "downloaded books" UI.
-- The reader UI itself (rendering EPUB, pagination, progress, theming).
+**What is NOT done (net-new for offline):**
+- Caching actual book content. The current SW caches the app shell and versioned
+  static assets only — NOT books. Offline reading needs an explicit "download
+  for offline" flow writing the EPUB (from the stable `/reader/<id>/file` URL)
+  into Cache Storage / IndexedDB, plus quota + eviction handling and a
+  "downloaded books" UI.
+- Offline progress buffering: today progress POSTs straight to the server. While
+  offline it must queue locally and flush on reconnect (the reader's percent
+  model makes this straightforward — no location coordinate to reconcile).
 
-**Where it would hook in:** new reader blueprint/route serving book content to
-the browser; extend `app/templates/sw.js` to cache explicitly-downloaded books
-(a separate cache from `colophon-v<version>`, NOT purged on version bump — book
-data must survive app updates); a "download for offline" action in the book
-modal. Reuse the existing Kobo download/kepub path (`kobo_kepub.py`,
-`kobo_sync.py`) for serving file bytes.
+**Where it hooks in:** extend `app/templates/sw.js` to (a) intercept
+`/reader/<id>/file` cache-first when the book is downloaded, and (b) cache books
+in a **separate** cache (NOT `colophon-v<version>`, which `activate` purges on
+every version bump — book data must survive app updates); a "download for
+offline" action in the book modal; HTTPS required (mobile must reach the app via
+Tailscale Serve, not the raw LAN IP, for the SW to run).
 
-**Scope:** large (multi-part feature). New user-visible feature → MINOR bump.
+**Scope:** medium-large. New user-visible feature → MINOR bump.
 
 ## Deep-link to an open book modal (`?book=<id>`)
 

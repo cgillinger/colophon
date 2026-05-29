@@ -1,0 +1,4 @@
+johnfactotum/foliate-js
+Pinned commit: 78914aef4466eb960965702401634c2cb348e9b1
+License: MIT (see LICENSE)
+Vendored for the Colophon in-browser reader. Do not edit in place.
