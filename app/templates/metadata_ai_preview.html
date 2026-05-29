@@ -93,8 +93,11 @@
             gap: 14px;
         }
         .topbar-brand { display: flex; align-items: center; gap: 12px; font-size: 20px; font-weight: 500; color: var(--text-primary); }
-        .topbar-brand img { width: 96px; height: 96px; border-radius: 14px; display: block; object-fit: contain; }
-        .topbar-brand span { font-size: 28px; font-weight: 500; }
+        /* Horizontal logo (symbol + wordmark); swapped on the app's theme. */
+        .topbar-brand .brand-logo { height: 40px; width: auto; max-width: 260px; display: block; }
+        .brand-logo-dark { display: none; }
+        [data-theme="dark"] .brand-logo-light { display: none; }
+        [data-theme="dark"] .brand-logo-dark { display: block; }
         .topbar-actions { display: flex; align-items: center; gap: 8px; }
         .lang-toggle { display: flex; gap: 4px; font-size: 12px; margin-right: 4px; }
         .lang-toggle a { color: var(--text-tertiary); text-decoration: none; padding: 2px 6px; border-radius: 4px; }
@@ -255,8 +258,8 @@
 <header class="topbar">
     <div class="topbar-inner">
         <a class="topbar-brand" href="{{ url_for('metadata.bulk_metadata') }}">
-            <img src="{{ url_for('static', filename='icons/colophon-transparent.png') }}" alt="Colophon">
-            <span>Colophon</span>
+            <img class="brand-logo brand-logo-light" src="{{ url_for('static', filename='icons/logo-horizontal.svg') }}" alt="Colophon">
+            <img class="brand-logo brand-logo-dark" src="{{ url_for('static', filename='icons/logo-horizontal-dark.svg') }}" alt="Colophon">
         </a>
         <form class="topbar-search" action="{{ url_for('metadata.bulk_metadata') }}" method="get">
             <i class="ti ti-search search-icon"></i>
