@@ -98,3 +98,31 @@ v1.5.8).
 
 **Scope:** small. UI cleanup → PATCH (or MINOR if the bar is removed as a
 visible feature). Verify on iPad viewport.
+
+## Make scroll restore after edit-reload pixel-accurate (v1.6.0 follow-up)
+
+**What:** After an edit, `closeBookModal()` reloads the list and `core.js`
+restores the stashed scroll position (`colophonRestoreScroll`,
+`history.scrollRestoration = 'manual'`). The *data* refresh works, but the
+restored scroll drifts on long, cover-heavy lists — it lands a few hundred px
+off, not at the exact spot.
+
+**Root cause:** browser **scroll anchoring**. The restore runs on `load`, but
+the table's cover images load lazily *after* that; as rows above the viewport
+gain height, the browser shifts `scrollY` to keep visible content stable,
+moving it off the restored pixel. Verified on prod (375 rows): stashed 400 →
+landed 588.
+
+**Options:**
+- **(recommended) Anchor to a row, not a pixel.** Before reload, stash the
+  `data-item-id` of the topmost visible row (+ its offset within the row).
+  After reload, `scrollIntoView()` that row. Immune to height changes above it.
+- Cheaper stopgap: re-apply `scrollTo` after covers settle (a short delay, or
+  after the near-top `img` load events fire), or set `overflow-anchor: none`
+  on the scroll container during restore (has its own side effects).
+
+**Where it hooks in:** `app/static/js/book-modal.js` (`closeBookModal` stash) +
+`app/static/js/core.js` (the `load` restore handler).
+
+**Scope:** small. Polish → PATCH. Not blocking — the reported "stale data after
+edit" bug is already fixed (v1.6.0); this is just exact scroll position.
