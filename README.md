@@ -8,6 +8,28 @@ This is a personal project I built for my own library. I've published it in case
 
 ---
 
+## Screenshots
+
+> Sample library — the books, covers and authors shown are fictional placeholders.
+
+**Shelf view** — the library as a cover wall, with a "Reading now" band that picks up where you left off.
+
+![Shelf view](docs/screenshots/library-shelf.png)
+
+**Table view** — a sortable, filterable metadata table.
+
+![Table view](docs/screenshots/library-table.png)
+
+**Book details** — metadata, reading state, rating, and a one-tap reader.
+
+![Book detail](docs/screenshots/book-detail.png)
+
+**In-browser reader** — read EPUBs in any browser; progress syncs back to your Kobo.
+
+![In-browser reader](docs/screenshots/reader.png)
+
+---
+
 ## What it does
 
 - Scans a book folder and builds a catalogue
@@ -17,11 +39,11 @@ This is a personal project I built for my own library. I've published it in case
 - Writes metadata back into the files so other tools see the same data
 - Groups multiple formats of the same book as one entry
 - Syncs to a Kobo over WiFi — covers, downloads, reading progress
+- Reads EPUBs in the browser, with progress synced to your Kobo
 - UI in English and Swedish
 
 ## What it doesn't do
 
-- Read books in the browser
 - Render comics page by page (Komga and Kavita do that well)
 - Multi-user accounts
 - OPDS
