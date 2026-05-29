@@ -1435,9 +1435,20 @@
             color: var(--text-primary);
             background: var(--bg-tertiary);
         }
-        /* Hide both sections outside table view */
-        body.shelf-active .reading-now,
+        /* "Reading now" / "Resume?" are consumption/continuation affordances,
+           so they belong in the contemplative views. Shown in table view
+           (default) AND shelf view (the "reading home", where the reader is
+           launched from the book modal). Hidden only in series view — a
+           structural grouping view, not a reading surface. */
         body.series-active .reading-now { display: none !important; }
+        /* Shelf view has no 1600px table cap (the container is full-bleed for
+           the gallery), so centre the band and give it a comfortable width
+           above the covers. */
+        body.shelf-active .reading-now {
+            max-width: 1100px;
+            margin-left: auto;
+            margin-right: auto;
+        }
 
         /* === Density modes ==============================================
            Two densities for the table view, with substantially different

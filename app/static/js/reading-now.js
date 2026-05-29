@@ -57,9 +57,9 @@
             '<div class="reading-now-card ' + (options.hero ? 'reading-now-hero' : '') +
             '" data-item-id="' + book.id + '">' +
                 '<img class="reading-now-cover" src="' + _esc(book.cover_url) + '" alt="' + _esc(book.title) + '" ' +
-                     'onclick="openBookModal(' + book.id + ')">' +
+                     'onclick="openBookModal(' + book.id + ', true)">' +
                 '<div class="reading-now-body">' +
-                    '<div class="reading-now-title" onclick="openBookModal(' + book.id + ')">' + _esc(book.title) + '</div>' +
+                    '<div class="reading-now-title" onclick="openBookModal(' + book.id + ', true)">' + _esc(book.title) + '</div>' +
                     (seriesLine ? '<div class="reading-now-series">' + seriesLine + '</div>' : '') +
                     '<div class="reading-now-author">' + _esc(book.author) + '</div>' +
                     '<div class="reading-now-progress"><div class="reading-now-progress-bar" style="width:' + pct + '%"></div></div>' +

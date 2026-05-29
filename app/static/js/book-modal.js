@@ -36,15 +36,18 @@
     window._modalAllCandidates = [];
     var _modalSSESource = null;
     var _coverUrlBase = window.__colophonConfig.urls.coverItemBase;
-    function openBookModal(itemId) {
+    function openBookModal(itemId, forceDisplay) {
         window._modalItemId = itemId;
         window._modalDirty = false;
         window._modalAllCandidates = [];
         var modalEl = document.getElementById('bookModal');
         var box = modalEl.querySelector('.modal-box');
-        // Shelf-view opens in display mode by default. Other views open in edit.
+        // Shelf-view opens in display mode by default. Other views open in
+        // edit. forceDisplay overrides that (used by the "Reading now" cards
+        // so a "continue reading" click always lands in the contemplative
+        // display modal — with the "Läs" button — regardless of the view).
         if (box) {
-            if (typeof _viewMode !== 'undefined' && _viewMode === 'shelf') {
+            if (forceDisplay || (typeof _viewMode !== 'undefined' && _viewMode === 'shelf')) {
                 box.classList.add('display-mode');
             } else {
                 box.classList.remove('display-mode');
