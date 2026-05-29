@@ -68,3 +68,33 @@ were the ones who pushed the book entry.
 **Scope:** small-to-medium. New user-visible feature → MINOR version bump.
 Verify with Playwright: open→Back closes; direct `?book=` load opens; close via X
 returns to the list URL.
+
+## Consolidate the duplicate "Sync to library" affordances
+
+**What:** There are two separate "Sync to library" controls and they overlap.
+Clicking **Sync to library** in the left sidebar starts the push sync directly
+— but the *old* sync bar (`#syncBar`) still shows above the list with its own
+**Sync to library** button. Two buttons, same action, shown at once → confusing.
+Pick one model and make the other consistent.
+
+**Where it hooks in:**
+- Sidebar trigger: `app/templates/_layout.html` (`.sidebar-nav-sync`,
+  `onclick="startPushSync()"`; on non-library pages it's a `#sync` link instead).
+- Old bar: `app/templates/bulk_metadata.html` `#syncBar` / `#syncBarText` with a
+  second `startPushSync()` button; shown/hidden in
+  `app/static/js/filters-sort-paging.js` (~L313) based on unsynced rows.
+- Both call `startPushSync()` in `app/static/js/scan-sync.js`.
+
+**Decision to make:** either (a) drop `#syncBar` and let the sidebar item be the
+single trigger (it already shows the unsynced count badge), or (b) keep the bar
+as the in-context trigger and remove the sidebar duplication. Whichever — only
+one "Sync" affordance should be visible at a time, and the visible one should
+reflect sync progress/state.
+
+**Drive-by while in there:** `filters-sort-paging.js:~318` builds the bar text
+by concat in hardcoded Swedish (`' filer redo att synka till bibliotek'`) — it
+never switches to English. Route it through i18n (same class of bug fixed in
+v1.5.8).
+
+**Scope:** small. UI cleanup → PATCH (or MINOR if the bar is removed as a
+visible feature). Verify on iPad viewport.
