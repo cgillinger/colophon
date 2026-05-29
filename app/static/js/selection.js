@@ -117,7 +117,10 @@
         var checked = document.querySelectorAll('.book-checkbox:checked');
 
         if (!window._grouped) {
-            el.textContent = checked.length + ' valda';
+            // Reuse the existing i18n "N book(s) selected" keys — the grouped
+            // branch below already uses them, but this path had a hardcoded
+            // Swedish " valda" that never switched to English.
+            el.textContent = window._pluralize(checked.length, 'nBookSelectedOne', 'nBooksSelectedMany');
             return;
         }
 

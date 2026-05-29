@@ -1073,7 +1073,7 @@
         });
 
         var saveBtn = document.getElementById('brmSaveBtn');
-        saveBtn.textContent = 'Applicera valda';
+        saveBtn.textContent = _i18n.applySelected || 'Apply selected';
         saveBtn.onclick = function() { _applyAiReviewSelections(rows); };
 
         modal.style.display = 'flex';
@@ -1100,7 +1100,7 @@
         document.getElementById('bulkResultModal').style.display = 'none';
 
         var saveBtn = document.getElementById('brmSaveBtn');
-        saveBtn.textContent = 'Spara valda';
+        saveBtn.textContent = _i18n.saveSelected || 'Save selected';
         saveBtn.onclick = saveBulkResult;
 
         setModalFeedback('success', _i18n.aiFieldsApplied.replace('{count}', applied));
