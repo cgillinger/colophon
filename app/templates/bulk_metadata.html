@@ -5,7 +5,9 @@
 {% block topbar %}
 <div class="topbar-search">
     <i class="ti ti-search search-icon"></i>
-    <input type="text" id="filterSearch" placeholder="{{ _('Search title, author, ISBN, genre...') }}" oninput="applyFilters()">
+    <input type="text" id="filterSearch" placeholder="{{ _('Search title, author, ISBN, genre...') }}" oninput="applyFilters(); _toggleSearchClear()">
+    <button type="button" id="searchClear" class="search-clear" onclick="clearSearch()"
+            aria-label="{{ _('Clear search') }}" title="{{ _('Clear search') }}"><i class="ti ti-x"></i></button>
 </div>
 {% endblock %}
 

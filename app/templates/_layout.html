@@ -35,11 +35,6 @@
 
 <h1 class="visually-hidden">{{ _('Library') }}</h1>
 
-<button type="button" id="sidebarToggle" class="sidebar-toggle" onclick="toggleSidebar()"
-        aria-label="{{ _('Toggle navigation') }}" aria-controls="appSidebar">
-    <i class="ti ti-menu-2"></i>
-</button>
-
 {# active_section: 'library' | 'tools' | 'kobo' | 'api' | 'ai' (or none) #}
 {% set _section = active_section|default('') %}
 {% set _read = read_filter|default('') %}
@@ -154,6 +149,13 @@
             </div>
             <button type="button" class="topbar-theme-btn" onclick="toggleTheme()" aria-label="{{ _('Toggle theme') }}">
                 <i id="themeIcon" class="ti ti-sun"></i>
+            </button>
+            {# Sidebar toggle lives in the top-right corner (mobile/tablet only)
+               so it sits inline with the other icons instead of floating over
+               the content top-left. #}
+            <button type="button" id="sidebarToggle" class="sidebar-toggle" onclick="toggleSidebar()"
+                    aria-label="{{ _('Toggle navigation') }}" aria-controls="appSidebar">
+                <i class="ti ti-menu-2"></i>
             </button>
         </div>
     </div>

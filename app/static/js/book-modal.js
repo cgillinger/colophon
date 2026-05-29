@@ -1292,20 +1292,20 @@
         _setFetchingState(false);
         _setModalBusy(false);
         if (window._modalDirty) {
-            var scrollY = window.scrollY;
-
-            // Cache-bust the cover image for the edited book in the table
-            var row = document.querySelector('#bookTableBody tr[data-item-id="' + window._modalItemId + '"]');
-            if (row) {
-                var img = row.querySelector('.cover img');
-                if (img) img.src = _coverUrlBase + '/' + window._modalItemId + '?t=' + Date.now();
-            }
-
-            // Re-render grid view (it reads from the table DOM, which _updateTableRow already patched)
-            renderGroupedView();
-
-            // Restore scroll after grid re-render
-            requestAnimationFrame(function() { window.scrollTo(0, scrollY); });
+            // A structural edit (e.g. renaming a series) needs a fresh server
+            // render to re-group / re-sort / re-filter and refresh the sidebar
+            // counts — something the in-place row patch can't guarantee (that
+            // was the iPad bug: edit a series, leave the modal, stale data).
+            // The URL already encodes view/filters/search, so the reload
+            // returns to the same context; stash the scroll so it's not lost.
+            // Especially important on iPad, where there's no easy manual reload.
+            try { sessionStorage.setItem('colophonRestoreScroll', String(window.scrollY)); } catch (e) {}
+            // Take over scroll restoration so the browser's own doesn't fight
+            // ours after the reload (core.js restores, then flips back to auto).
+            try { history.scrollRestoration = 'manual'; } catch (e) {}
+            window._modalDirty = false;
+            window.location.reload();
+            return;
         }
         window._modalDirty = false;
         document.getElementById('bookModal').style.display = 'none';

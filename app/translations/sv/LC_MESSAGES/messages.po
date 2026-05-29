@@ -3140,6 +3140,9 @@ msgstr "URL kopierad till urklipp."
 msgid "Apply selected"
 msgstr "Applicera valda"
 
+msgid "Clear search"
+msgstr "Rensa sökning"
+
 # In-browser reader (reader.html, bulk_metadata.html book modal)
 msgid "Read"
 msgstr "Läs"

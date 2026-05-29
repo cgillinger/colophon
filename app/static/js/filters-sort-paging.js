@@ -645,6 +645,24 @@
         if (window._viewMode === 'shelf' && typeof refreshShelfView === 'function') refreshShelfView();
     };
 
+    /* Clear-X in the search box: show it only when there's text; clear the
+       field, re-run the filter, and refocus. */
+    function _toggleSearchClear() {
+        var el = document.getElementById('filterSearch');
+        var btn = document.getElementById('searchClear');
+        if (el && btn) btn.style.display = el.value ? 'flex' : 'none';
+    }
+    function clearSearch() {
+        var el = document.getElementById('filterSearch');
+        if (!el) return;
+        el.value = '';
+        applyFilters();
+        _toggleSearchClear();
+        el.focus();
+    }
+    window.clearSearch = clearSearch;
+    window._toggleSearchClear = _toggleSearchClear;
+
     /* Publish FINAL versions of the patched functions on window. */
     window.sortTable        = sortTable;
     window.applyFilters     = applyFilters;
@@ -665,5 +683,6 @@
     if (typeof updateBatchBar       === 'function') updateBatchBar();
     if (typeof applyViewMode        === 'function') applyViewMode();
     _updateFilterActiveDot();
+    _toggleSearchClear();
     if (window._viewMode === 'shelf' && typeof initShelfView === 'function') initShelfView();
 })(window, document);

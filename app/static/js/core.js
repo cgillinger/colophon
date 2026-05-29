@@ -258,4 +258,71 @@
         return out;
     }
     window._pluralize = _pluralize;
+
+    /* After an edit, closeBookModal() reloads the list to guarantee fresh,
+       correctly grouped/sorted data. Restore the scroll position it stashed
+       so the reload doesn't jump to the top. */
+    window.addEventListener('load', function () {
+        var y = null;
+        try { y = sessionStorage.getItem('colophonRestoreScroll'); } catch (e) {}
+        if (y !== null) {
+            try { sessionStorage.removeItem('colophonRestoreScroll'); } catch (e) {}
+            // Restore on the next frame, then hand scroll restoration back to
+            // the browser so normal back/forward navigation is unaffected.
+            requestAnimationFrame(function () {
+                window.scrollTo(0, parseInt(y, 10) || 0);
+                try { history.scrollRestoration = 'auto'; } catch (e) {}
+            });
+        }
+    });
+
+    /* Pull-to-refresh for touch devices. On an installed PWA (iPad) the
+       browser's own pull-to-refresh isn't available, so this is the manual
+       refresh path. Pull down from the very top past a threshold to reload.
+       Passive listeners only — the indicator is purely visual and we never
+       block native scrolling. */
+    (function () {
+        var startY = null, pulling = false, ind = null;
+        var THRESHOLD = 70;
+        function indicator() {
+            if (ind) return ind;
+            ind = document.createElement('div');
+            ind.className = 'ptr-indicator';
+            ind.innerHTML = '<i class="ti ti-refresh"></i>';
+            document.body.appendChild(ind);
+            return ind;
+        }
+        function reset() {
+            pulling = false; startY = null;
+            if (ind) {
+                ind.style.opacity = '0';
+                ind.style.transform = 'translateX(-50%) translateY(-50px)';
+                ind.classList.remove('ptr-ready');
+            }
+        }
+        window.addEventListener('touchstart', function (e) {
+            pulling = (window.scrollY === 0 && e.touches.length === 1);
+            startY = pulling ? e.touches[0].clientY : null;
+        }, { passive: true });
+        window.addEventListener('touchmove', function (e) {
+            if (!pulling || startY === null) return;
+            var dy = e.touches[0].clientY - startY;
+            if (dy > 0 && window.scrollY === 0) {
+                var d = Math.min(dy, 120), el = indicator();
+                el.style.transform = 'translateX(-50%) translateY(' + (d - 50) + 'px)';
+                el.style.opacity = Math.min(d / THRESHOLD, 1);
+                el.classList.toggle('ptr-ready', dy > THRESHOLD);
+            }
+        }, { passive: true });
+        window.addEventListener('touchend', function (e) {
+            if (!pulling || startY === null) { reset(); return; }
+            var endY = e.changedTouches[0] ? e.changedTouches[0].clientY : startY;
+            if (endY - startY > THRESHOLD && window.scrollY === 0) {
+                if (ind) ind.classList.add('ptr-spin');
+                window.location.reload();
+            } else {
+                reset();
+            }
+        }, { passive: true });
+    })();
 })(window, document);
