@@ -13,12 +13,19 @@
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+    {# PWA: installable web app. theme-color is updated live by toggleTheme(). #}
+    <link rel="manifest" href="{{ url_for('manifest') }}">
+    <meta name="theme-color" content="#ffffff" id="themeColorMeta">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Colophon">
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabler-icons/tabler-icons.min.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,400;1,500&display=swap" rel="stylesheet">
     <title>{% block title %}{{ _('Colophon') }}{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/bulk_metadata.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bulk_metadata.css') }}?v={{ app_version }}">
     {% block extra_css %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
@@ -160,12 +167,17 @@
 
 {# Minimal core JS for sidebar + theme + lang — every page needs these. #}
 <script>
+    function applyThemeColor(t) {
+        var meta = document.getElementById('themeColorMeta');
+        if (meta) meta.setAttribute('content', t === 'dark' ? '#1a1a1a' : '#ffffff');
+    }
     function toggleTheme() {
         var t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
         document.documentElement.setAttribute('data-theme', t);
         localStorage.setItem('colophon-theme', t);
         var icon = document.getElementById('themeIcon');
         if (icon) icon.className = t === 'dark' ? 'ti ti-moon' : 'ti ti-sun';
+        applyThemeColor(t);
     }
     function setLanguage(lang) {
         document.cookie = 'colophon_lang=' + lang + ';path=/;max-age=31536000;SameSite=Lax';
@@ -180,6 +192,54 @@
         var t = document.documentElement.getAttribute('data-theme');
         var icon = document.getElementById('themeIcon');
         if (icon) icon.className = t === 'dark' ? 'ti ti-moon' : 'ti ti-sun';
+        applyThemeColor(t);
+    })();
+</script>
+
+{# PWA: register the service worker and surface a non-disruptive prompt when a
+   new version is installed and waiting. Clicking it activates the new worker
+   (skipWaiting) and the controllerchange handler reloads once — so the user
+   always lands on the fresh version, but never mid-edit by surprise. #}
+<script>
+    (function () {
+        if (!('serviceWorker' in navigator)) return;
+        function showUpdateToast(reg) {
+            if (document.getElementById('pwaUpdateToast')) return;
+            var bar = document.createElement('div');
+            bar.id = 'pwaUpdateToast';
+            bar.className = 'pwa-toast';
+            var msg = document.createElement('span');
+            msg.textContent = {{ _('New version available') | tojson }};
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = {{ _('Reload') | tojson }};
+            btn.onclick = function () {
+                if (reg.waiting) reg.waiting.postMessage('skipWaiting');
+            };
+            bar.appendChild(msg);
+            bar.appendChild(btn);
+            document.body.appendChild(bar);
+        }
+        window.addEventListener('load', function () {
+            navigator.serviceWorker.register('/sw.js').then(function (reg) {
+                if (reg.waiting && navigator.serviceWorker.controller) showUpdateToast(reg);
+                reg.addEventListener('updatefound', function () {
+                    var nw = reg.installing;
+                    if (!nw) return;
+                    nw.addEventListener('statechange', function () {
+                        if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+                            showUpdateToast(reg);
+                        }
+                    });
+                });
+            }).catch(function () { /* SW unavailable (e.g. insecure context) — app still works */ });
+            var reloading = false;
+            navigator.serviceWorker.addEventListener('controllerchange', function () {
+                if (reloading) return;
+                reloading = true;
+                window.location.reload();
+            });
+        });
     })();
 </script>
 

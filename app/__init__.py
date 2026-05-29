@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from flask import Flask, redirect, request, url_for
+from flask import Flask, Response, jsonify, redirect, render_template, request, url_for
 from flask_babel import Babel
 from flask_session import Session
 
@@ -135,6 +135,56 @@ def create_app():
         response = redirect(target)
         response.set_cookie("colophon_lang", lang, max_age=365 * 24 * 60 * 60)
         return response
+
+    # --- PWA: manifest + service worker -------------------------------
+    # Both are served from the origin root (not /static) so the service
+    # worker's scope covers the whole app. Paths inside are root-relative
+    # so the same files work whether the app is reached via LAN IP or a
+    # Tailscale Serve HTTPS hostname.
+    @app.route("/manifest.json")
+    def manifest():
+        from app.version import __version__
+        data = {
+            "name": "Colophon",
+            "short_name": "Colophon",
+            "description": "Self-hosted e-book metadata manager",
+            "start_url": "/",
+            "scope": "/",
+            "display": "standalone",
+            "orientation": "any",
+            "background_color": "#ffffff",
+            "theme_color": "#ffffff",
+            "lang": "en",
+            "version": __version__,
+            "icons": [
+                {
+                    "src": url_for("static", filename="icons/icon-192.png"),
+                    "sizes": "192x192",
+                    "type": "image/png",
+                    "purpose": "any",
+                },
+                {
+                    "src": url_for("static", filename="icons/icon-512.png"),
+                    "sizes": "512x512",
+                    "type": "image/png",
+                    "purpose": "any",
+                },
+            ],
+        }
+        resp = jsonify(data)
+        resp.headers["Content-Type"] = "application/manifest+json"
+        return resp
+
+    @app.route("/sw.js")
+    def service_worker():
+        # Rendered (not static) so the version is baked into the body, and
+        # served no-cache so the controlling file is always revalidated —
+        # the two things that make updates propagate reliably.
+        body = render_template("sw.js")
+        resp = Response(body, mimetype="application/javascript")
+        resp.headers["Cache-Control"] = "no-cache"
+        resp.headers["Service-Worker-Allowed"] = "/"
+        return resp
 
     _configure_logging(app)
 

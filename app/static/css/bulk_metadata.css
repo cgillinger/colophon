@@ -301,6 +301,38 @@
         }
         button:focus:not(:focus-visible),
         a:focus:not(:focus-visible) { outline: none; }
+
+        /* PWA "new version available" prompt. Fixed bottom-center, above
+           modals, so a waiting service worker is never missed. */
+        .pwa-toast {
+            position: fixed;
+            left: 50%;
+            bottom: 20px;
+            transform: translateX(-50%);
+            z-index: 100000;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            background: var(--bg-primary, #fff);
+            color: var(--text-primary, #1a1a1a);
+            border: 1px solid var(--border-light, #e5e5e5);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+            font-size: 14px;
+            max-width: calc(100vw - 32px);
+        }
+        .pwa-toast button {
+            border: none;
+            border-radius: 7px;
+            padding: 7px 14px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            background: var(--accent-primary, #059669);
+            color: #fff;
+        }
+        .pwa-toast button:hover { filter: brightness(1.08); }
         /* Hide empty heading placeholders so they don't pollute the a11y
            tree or reserve visual space before JS populates them (book modal
            title, bulk-result modal title, series modal title). */
