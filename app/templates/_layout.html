@@ -10,8 +10,11 @@
         })();
     </script>
     <link rel="icon" href="{{ url_for('static', filename='icons/favicon.ico') }}" sizes="any">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32.png') }}">
+    <link rel="icon" type="image/png" sizes="48x48" href="{{ url_for('static', filename='icons/favicon-48.png') }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+    <link rel="icon" type="image/png" sizes="512x512" href="{{ url_for('static', filename='icons/icon-512.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
     {# PWA: installable web app. theme-color is updated live by toggleTheme(). #}
     <link rel="manifest" href="{{ url_for('manifest') }}">
@@ -43,8 +46,14 @@
 
 <aside id="appSidebar" class="app-sidebar" aria-label="{{ _('Primary navigation') }}">
     <a class="sidebar-brand" href="{{ url_for('metadata.bulk_metadata') }}">
-        <img src="{{ url_for('static', filename='icons/colophon-transparent.png') }}" alt="Colophon">
-        <span>Colophon</span>
+        {# The horizontal logo already contains the "Colophon" wordmark, so no
+           text label here. Light/dark variants are swapped on the app's
+           data-theme (the manual theme toggle), not prefers-color-scheme —
+           the logo must match the sidebar background it sits on. #}
+        <img class="brand-logo brand-logo-light"
+             src="{{ url_for('static', filename='icons/logo-horizontal.svg') }}" alt="Colophon">
+        <img class="brand-logo brand-logo-dark"
+             src="{{ url_for('static', filename='icons/logo-horizontal-dark.svg') }}" alt="Colophon">
     </a>
 
     {# 1. VYER — what the user is looking at right now. Empty on settings

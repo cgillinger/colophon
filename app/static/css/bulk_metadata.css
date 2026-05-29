@@ -30,17 +30,18 @@
             font-weight: 600;
             text-align: center;
         }
-        /* Logo prominent. The PNG has a black frame — at this size the
-           rounded corners are visible and the frame reads as intentional
-           rather than truncated. */
-        .sidebar-brand img {
-            width: 96px;
-            height: 96px;
-            border-radius: 14px;
+        /* Horizontal logo (symbol + wordmark, ~7.2:1). Scales to the sidebar
+           width with a sensible cap; height follows from the aspect ratio. */
+        .sidebar-brand .brand-logo {
+            width: 100%;
+            max-width: 180px;
+            height: auto;
             display: block;
-            object-fit: contain;
         }
-        [data-theme="dark"] .sidebar-brand img { filter: invert(1) hue-rotate(180deg); }
+        /* Swap light/dark logo on the app's theme (matches the sidebar bg). */
+        .brand-logo-dark { display: none; }
+        [data-theme="dark"] .brand-logo-light { display: none; }
+        [data-theme="dark"] .brand-logo-dark { display: block; }
         .sidebar-section { padding: 8px 0; }
         .sidebar-section-title {
             padding: 6px 18px;
