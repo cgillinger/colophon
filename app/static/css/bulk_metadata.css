@@ -36,12 +36,16 @@
             width: 100%;
             max-width: 180px;
             height: auto;
-            display: block;
         }
-        /* Swap light/dark logo on the app's theme (matches the sidebar bg). */
-        .brand-logo-dark { display: none; }
-        [data-theme="dark"] .brand-logo-light { display: none; }
-        [data-theme="dark"] .brand-logo-dark { display: block; }
+        /* Swap light/dark logo on the app's theme (matches the sidebar bg).
+           Visibility rules are scoped under .sidebar-brand and the dark
+           overrides carry an extra selector, so they outrank the base — a
+           bare .brand-logo-dark would lose to ".sidebar-brand .brand-logo"
+           and leave BOTH logos visible. */
+        .sidebar-brand .brand-logo-light { display: block; }
+        .sidebar-brand .brand-logo-dark { display: none; }
+        [data-theme="dark"] .sidebar-brand .brand-logo-light { display: none; }
+        [data-theme="dark"] .sidebar-brand .brand-logo-dark { display: block; }
         .sidebar-section { padding: 8px 0; }
         .sidebar-section-title {
             padding: 6px 18px;

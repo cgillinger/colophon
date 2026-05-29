@@ -93,11 +93,14 @@
             gap: 14px;
         }
         .topbar-brand { display: flex; align-items: center; gap: 12px; font-size: 20px; font-weight: 500; color: var(--text-primary); }
-        /* Horizontal logo (symbol + wordmark); swapped on the app's theme. */
-        .topbar-brand .brand-logo { height: 40px; width: auto; max-width: 260px; display: block; }
-        .brand-logo-dark { display: none; }
-        [data-theme="dark"] .brand-logo-light { display: none; }
-        [data-theme="dark"] .brand-logo-dark { display: block; }
+        /* Horizontal logo (symbol + wordmark); swapped on the app's theme.
+           Visibility scoped under .topbar-brand so the dark overrides outrank
+           the base sizing rule — otherwise both logos stay visible. */
+        .topbar-brand .brand-logo { height: 40px; width: auto; max-width: 260px; }
+        .topbar-brand .brand-logo-light { display: block; }
+        .topbar-brand .brand-logo-dark { display: none; }
+        [data-theme="dark"] .topbar-brand .brand-logo-light { display: none; }
+        [data-theme="dark"] .topbar-brand .brand-logo-dark { display: block; }
         .topbar-actions { display: flex; align-items: center; gap: 8px; }
         .lang-toggle { display: flex; gap: 4px; font-size: 12px; margin-right: 4px; }
         .lang-toggle a { color: var(--text-tertiary); text-decoration: none; padding: 2px 6px; border-radius: 4px; }
