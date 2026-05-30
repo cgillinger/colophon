@@ -26,7 +26,7 @@
     // The view at first paint (localStorage-hydrated). Used as the fallback
     // when a history entry has no view param, so "back" to the initial,
     // param-less URL restores the user's saved view rather than forcing table.
-    var _initialView = (VIEWS[window._viewMode] ? window._viewMode : 'table');
+    var _initialView = (VIEWS[window._viewMode] ? window._viewMode : 'shelf');
 
     function _params() { return new URLSearchParams(window.location.search); }
     function _val(id) { var el = document.getElementById(id); return el ? el.value : ''; }

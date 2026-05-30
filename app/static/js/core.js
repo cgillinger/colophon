@@ -24,7 +24,7 @@
     'use strict';
 
     /* ---- View state (window-mirrored; see header comment) ---------- */
-    window._viewMode          = 'table';
+    window._viewMode          = 'shelf';   // default landing view for a fresh client (no saved pref)
     window._density           = 'compact';
     window._skriptorium       = false;
     window._seriesSort        = 'alpha';
