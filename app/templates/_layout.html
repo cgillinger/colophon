@@ -24,9 +24,11 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Colophon">
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabler-icons/tabler-icons.min.css') }}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,400;1,500&display=swap" rel="stylesheet">
+    {# Self-hosted Cormorant Garamond (see tools/install_fonts.sh). Served
+       same-origin so first paint never blocks on an external fonts.googleapis.com
+       request — that render-blocking <link> used to stall a LAN/iPad home-screen
+       launch for ~60s when the device couldn't quickly reach the public internet. #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='fonts/cormorant.css') }}?v={{ app_version }}">
     <title>{% block title %}{{ _('Colophon') }}{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/bulk_metadata.css') }}?v={{ app_version }}">
     {% block extra_css %}{% endblock %}

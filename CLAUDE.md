@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.6.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.6.1.
 
 ## Quick reference
 
@@ -34,7 +34,7 @@ wsgi.py                         # Gunicorn entry: from app import create_app
 app/
   __init__.py                   # create_app(), blueprint registration, Babel, DB init
   models.py                     # LibraryItem + KoboDevice + KoboBookState
-  version.py                    # __version__ = "1.6.0"
+  version.py                    # __version__ = "1.6.1"
   paths.py                      # Central path constants
   config.py                     # Flask Config class (reads env vars)
   routes/
@@ -95,6 +95,9 @@ tests/                          # 14 pytest files: metadata_pipeline, calibre_me
 tools/
   install_calibre_plugins.sh    # Dockerfile build step: Goodreads, FF, FictionDB plugins
   install_kepubify.sh           # Dockerfile build step: kepubify binary for Kobo conversion
+  install_fonts.sh              # Dockerfile build step: self-host Cormorant Garamond
+                                #   woff2 into static/fonts/ (no render-blocking
+                                #   fonts.googleapis.com <link> → fast first paint on LAN/iPad)
 logo/                           # Brand source: master SVGs + export specs. Favicons
                                 # (transparent) come from colophon-mark-flat.svg; the
                                 # apple-touch / PWA icons (solid creme bg, so iOS doesn't

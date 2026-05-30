@@ -31,6 +31,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Self-host the webfont so the app shell never blocks first paint on an
+# external fonts.googleapis.com request. Must run after `COPY . .` (writes into
+# app/static/fonts). Never fails the build — falls back to the vendored copy /
+# Georgia. Runs after COPY so a fresh build always refreshes the woff2.
+RUN bash tools/install_fonts.sh
+
 RUN pybabel compile -d app/translations
 
 RUN mkdir -p /books /data
