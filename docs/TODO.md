@@ -126,3 +126,65 @@ landed 588.
 
 **Scope:** small. Polish → PATCH. Not blocking — the reported "stale data after
 edit" bug is already fixed (v1.6.0); this is just exact scroll position.
+
+## Remove the Calibre dependency
+
+**Why:** Calibre is the heaviest, least robust, hardest-to-maintain dependency
+(see the investigation around v1.11.0). It pulls in Qt/X11 (`libxcb-*`), needs
+`QT_QPA_PLATFORM=offscreen`, is the slowest part of every `--no-cache` build, and
+its value as a *metadata source* has largely been replaced by the native sources
+added in v1.8.0–v1.11.0 (Hardcover, Wikidata, LIBRIS, Open Library + the
+embedded-file OPF candidate). It is already gated to the on-demand "Deep" tier.
+
+**Two Calibre CLI tools are used — handle them separately:**
+
+1. **`fetch-ebook-metadata`** — the metadata *source* (`metadata_calibre.py`,
+   wired in `metadata_pipeline.py` as tier-2, plus legacy
+   `metadata_sources.search_all_sources`). The easy half.
+2. **`ebook-meta`** — piggybacked for TWO things:
+   - **Writing** metadata back to files (`metadata_writer.py:write_metadata_to_file`
+     — `--title/--authors/--comments/--publisher/--identifier/--language/--tags/
+     --series/--index/--date/--cover`).
+   - **Reading** MOBI/AZW3/kepub metadata (`scanner.py:_extract_ebook_meta_metadata`
+     → `metadata_calibre.read_all_ebook_meta_fields`); EPUB already uses ebooklib.
+
+`ebook-meta` ships *inside* the `calibre` package, so the image dependency can
+only be dropped once both the write path and the MOBI/AZW3 read path stop needing
+it.
+
+**Key fact that shrinks the work:** the live library is **371 EPUB + 4 PDF — zero
+MOBI/AZW3/kepub**. PDFs aren't writable by `ebook-meta` anyway. So in practice the
+write path is EPUB-only and the MOBI/AZW3 read path is unexercised. `kepubify`
+(Kobo conversion) is a *separate* binary, NOT Calibre — unaffected.
+
+**Phase A — drop Calibre as a metadata source (low risk, do first):**
+- Remove the tier-2 Calibre step from `metadata_pipeline.py`; drop
+  `include_calibre`, `METADATA_SOURCE_CALIBRE_ENABLED`, the settings toggle +
+  `calibre_available`, and the Calibre column/skipped-dash handling in
+  `book-modal.js`/`batch.js` (or leave the columns, just never populated).
+- Net loss of sources: **Amazon.com + FictionDB + Fantastic Fiction** only
+  (Google / Open Library / Goodreads are already covered natively — Goodreads via
+  Hardcover). Keep `metadata_calibre.py`'s `ebook-meta` *read* helpers for now.
+- Keeps `calibre` in the image, so trivially reversible.
+
+**Phase B — replace the `ebook-meta` piggyback, then drop the package:**
+- **EPUB writing** → reimplement `write_metadata_to_file` with `ebooklib`
+  (`read_epub` → set DC fields + `calibre:series`/`series_index` OPF meta +
+  cover → `write_epub`; `epub.write_epub` is available). The real work — preserve
+  the file and round-trip series.
+- **MOBI/AZW3** → none in the library: drop write support (DB-only, return
+  `unsupported_format`) and read via a tiny pure-Python EXTH parser or the `mobi`
+  package, OR accept reduced MOBI support. Degrade gracefully rather than add a
+  dependency.
+- Once nothing calls `ebook-meta`/`fetch-ebook-metadata`, remove `calibre` from
+  the `Dockerfile` and delete `tools/install_calibre_plugins.sh` + its build
+  step. Win: smaller image, faster `--no-cache` builds, fewer fragile scraper
+  plugins to maintain.
+
+**Verify:** save metadata to a real EPUB and confirm fields + cover + series
+round-trip (read back with ebooklib AND open in a reader). Test on the prod lab
+book "12|21|12".
+
+**Scope:** Phase A small (MINOR — removed source/setting). Phase B medium
+(rewrites the file-write path; MINOR, or MAJOR if MOBI/AZW3 write support is
+formally dropped as a breaking change).
