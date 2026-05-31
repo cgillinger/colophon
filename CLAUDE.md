@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.9.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.10.0.
 
 ## Quick reference
 
@@ -34,7 +34,7 @@ wsgi.py                         # Gunicorn entry: from app import create_app
 app/
   __init__.py                   # create_app(), blueprint registration, Babel, DB init
   models.py                     # LibraryItem + KoboDevice + KoboBookState
-  version.py                    # __version__ = "1.9.0"
+  version.py                    # __version__ = "1.10.0"
   paths.py                      # Central path constants
   config.py                     # Flask Config class (reads env vars)
   routes/
@@ -55,6 +55,7 @@ app/
     metadata_wikipedia.py       # Wikipedia/Wikidata metadata lookup
     metadata_hardcover.py       # Hardcover GraphQL metadata source (series/genre/synopsis)
     metadata_wikidata.py        # Wikidata source: structured series + ordinal (P179/P1545)
+    metadata_libris.py          # LIBRIS Xsearch — Swedish national bibliography (KB)
     swedish_web_sources.py      # Swedish-specific sources (Bokus, AdLibris etc.)
     metadata_writer.py          # Write metadata back to files (ebook-meta), group sync
     ai_metadata.py              # Provider-agnostic AI enrichment (series detection etc.)

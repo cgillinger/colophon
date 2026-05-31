@@ -666,6 +666,12 @@
                 <span class="source-hint">{{ _('Strong for series, genre and synopsis on popular/English titles. Requires an API token (set below) — Hardcover rejects anonymous requests.') }}</span>
             </div>
             <div class="toggle-row">
+                <input type="checkbox" id="METADATA_SOURCE_LIBRIS_ENABLED" name="METADATA_SOURCE_LIBRIS_ENABLED"
+                       {% if source_libris_enabled %}checked{% endif %}>
+                <label for="METADATA_SOURCE_LIBRIS_ENABLED" style="margin:0; font-weight:500;">LIBRIS</label>
+                <span class="source-hint">{{ _('Sweden\'s national bibliography (KB) — authoritative title, author, publisher, date and language for Swedish books. No key.') }}</span>
+            </div>
+            <div class="toggle-row">
                 <input type="checkbox" id="METADATA_SOURCE_WIKIPEDIA_ENABLED" name="METADATA_SOURCE_WIKIPEDIA_ENABLED"
                        {% if source_wikipedia_enabled %}checked{% endif %}>
                 <label for="METADATA_SOURCE_WIKIPEDIA_ENABLED" style="margin:0; font-weight:500;">{{ _('Wikipedia') }}</label>

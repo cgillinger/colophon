@@ -58,6 +58,10 @@ def _wikidata(**kw):
     return _cand("Wikidata", **kw)
 
 
+def _libris(**kw):
+    return _cand("LIBRIS", **kw)
+
+
 # ---------------------------------------------------------------------------
 # Source bucketing
 # ---------------------------------------------------------------------------
@@ -203,6 +207,20 @@ def test_embedded_series_beats_calibre_by_precedence():
 # ---------------------------------------------------------------------------
 # Trust gate
 # ---------------------------------------------------------------------------
+
+def test_libris_publisher_beats_embedded_junk():
+    """The embedded file's publisher is often junk (e.g. the author's name);
+    LIBRIS, the Swedish authority, outranks it for publisher."""
+    item = _item(title="Det svenska hatet", author="Gellert Tamas", isbn="9789127148963")
+    anchor = _google(title="Det svenska hatet", author="Gellert Tamas", isbn="9789127148963")
+    embedded = _embedded(title="Det svenska hatet", author="Gellert Tamas",
+                         publisher="Gellert Tamas")  # junk: author as publisher
+    libris = _libris(title="Det svenska hatet", author="Gellert Tamas",
+                     isbn="9789127148963", publisher="Natur & kultur", language="sv")
+    payload, prov = merge_candidates(item, [anchor, embedded, libris], anchor)
+    assert payload["publisher"] == "Natur & kultur"
+    assert prov["publisher"] == "LIBRIS"
+
 
 def test_wrong_book_is_gated_out():
     """A candidate describing a different book must not pollute the record."""
