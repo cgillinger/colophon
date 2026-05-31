@@ -97,6 +97,24 @@ def test_query_prefers_title_author_over_isbn(monkeypatch):
     assert captured["query"] == "A Fire Upon the Deep Vernor Vinge"
 
 
+def test_results_as_json_string_is_decoded(monkeypatch):
+    """Hardcover sometimes returns `results` as a JSON string, not an object."""
+    import json as _json
+    import app.services.app_settings as app_settings
+    monkeypatch.setattr(app_settings, "get_setting", lambda *a, **k: "tok")
+
+    class _Resp:
+        status_code = 200
+        ok = True
+        def json(self):
+            return {"data": {"search": {"results": _json.dumps({"hits": [{"document": _DOC}]})}}}
+
+    monkeypatch.setattr(hc.requests, "post", lambda *a, **k: _Resp())
+    sr = hc.hardcover_search_with_status(title="A Fire Upon the Deep")
+    assert sr["ok"] is True
+    assert sr["candidates"][0]["series"] == "Zones of Thought"
+
+
 def test_search_with_status_no_hits(monkeypatch):
     import app.services.app_settings as app_settings
     monkeypatch.setattr(app_settings, "get_setting", lambda *a, **k: "tok")

@@ -293,6 +293,17 @@ def run_metadata_enrichment(
     include_file = _resolve_flag(include_file, "METADATA_SOURCE_FILE_ENABLED")
     mode = resolve_fetch_mode(mode)
 
+    # Fast sources run in worker threads, which don't inherit the Flask app
+    # context — so get_setting()'s DB read fails there and falls back to env,
+    # silently blanking DB-stored keys (e.g. the Hardcover token, the Google
+    # key). Capture the app here (main thread) and push its context inside each
+    # worker. None when there's no context (e.g. unit tests).
+    try:
+        from flask import current_app
+        _flask_app = current_app._get_current_object()
+    except RuntimeError:
+        _flask_app = None
+
     item_id = getattr(item, "id", None)
     item_title = getattr(item, "title", "") or ""
 
@@ -371,7 +382,7 @@ def run_metadata_enrichment(
             warnings=[],
         )
 
-    fast_results = _run_fast_sources(fast_jobs)
+    fast_results = _run_fast_sources(fast_jobs, app=_flask_app)
 
     if "google_books" in fast_results:
         google_sr = fast_results["google_books"]
@@ -386,6 +397,8 @@ def run_metadata_enrichment(
                 if google_candidates_list else []
             ),
             "ok": bool(google_sr["ok"]),
+            "status": google_sr.get("status", ""),
+            "message": google_sr.get("message", ""),
         }]
         _emit(
             "google_books",
@@ -410,6 +423,8 @@ def run_metadata_enrichment(
                 if wiki_candidates_list else []
             ),
             "ok": bool(wiki_sr["ok"]),
+            "status": wiki_sr.get("status", ""),
+            "message": wiki_sr.get("message", ""),
         }]
         _emit(
             "wikipedia",
@@ -434,6 +449,8 @@ def run_metadata_enrichment(
                 if hc_candidates_list else []
             ),
             "ok": bool(hc_sr["ok"]),
+            "status": hc_sr.get("status", ""),
+            "message": hc_sr.get("message", ""),
         }]
         _emit(
             "hardcover",
@@ -670,19 +687,31 @@ def run_metadata_enrichment(
     }
 
 
-def _run_fast_sources(jobs):
+def _run_fast_sources(jobs, app=None):
     """Run zero-arg callables in parallel and collect their results.
 
     `jobs` is a {name: callable} mapping. Returns {name: result_or_error_dict}.
     Each callable is expected to never raise — on exception we synthesise the
     same shape as a `network_or_plugin_error` result.
+
+    When `app` is given, each callable runs inside a pushed Flask app context so
+    that get_setting()'s DB reads work from the worker thread (otherwise
+    DB-stored API keys read as empty).
     """
     if not jobs:
         return {}
 
+    def _wrap(fn):
+        if app is None:
+            return fn
+        def _run_in_ctx():
+            with app.app_context():
+                return fn()
+        return _run_in_ctx
+
     results = {}
     with ThreadPoolExecutor(max_workers=max(2, len(jobs))) as pool:
-        future_to_name = {pool.submit(fn): name for name, fn in jobs.items()}
+        future_to_name = {pool.submit(_wrap(fn)): name for name, fn in jobs.items()}
         for future in as_completed(future_to_name):
             name = future_to_name[future]
             try:

@@ -530,7 +530,10 @@
                     }
                 });
             } else {
-                html += '<span class="bp-field-tag bp-field-missing">' + _i18n.noMatches + '</span>';
+                // Show the source's own message (e.g. an auth/rate-limit error)
+                // rather than a generic "no matches" — makes failures diagnosable.
+                var failMsg = (!sd.ok && sd.message) ? _esc(sd.message) : _i18n.noMatches;
+                html += '<span class="bp-field-tag bp-field-missing">' + failMsg + '</span>';
             }
 
             html += '</div></div>';

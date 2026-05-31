@@ -12,6 +12,7 @@ limits but the API also answers anonymously. The cover-only client already
 lives in services/cover_search.py:_search_hardcover; this module parses the
 *full* document into the standard candidate schema for the field-level merge.
 """
+import json
 import logging
 import time
 
@@ -23,10 +24,12 @@ logger = logging.getLogger(__name__)
 _TIMEOUT = 8
 _ENDPOINT = "https://api.hardcover.app/v1/graphql"
 
-# Whole Typesense result blob; we parse the document fields ourselves.
+# Whole Typesense result blob; we parse the document fields ourselves. We pull
+# a few extra hits (per_page 5) because Hardcover often ranks junk editions
+# (reversed "Author - Title" records, study guides) above the canonical book.
 _QUERY = """
 query SearchBooks($query: String!) {
-  search(query: $query, query_type: "books", per_page: 3) {
+  search(query: $query, query_type: "books", per_page: 5) {
     results
   }
 }
@@ -174,11 +177,15 @@ def hardcover_search_with_status(query_text="", title="", author="", isbn="") ->
     if isinstance(data, dict) and data.get("error"):
         return _result(False, "auth_error", _("Hardcover: %(err)s.", err=str(data["error"])))
 
-    try:
-        results_data = (data.get("data") or {}).get("search", {}).get("results", {})
-        hits = results_data.get("hits", []) if isinstance(results_data, dict) else []
-    except AttributeError:
-        hits = []
+    results_data = (data.get("data") or {}).get("search", {}).get("results", {}) if isinstance(data, dict) else {}
+    # Hardcover returns `results` as a JSON scalar that some responses deliver
+    # as a STRING (the whole Typesense blob) rather than a parsed object.
+    if isinstance(results_data, str):
+        try:
+            results_data = json.loads(results_data)
+        except ValueError:
+            results_data = {}
+    hits = results_data.get("hits", []) if isinstance(results_data, dict) else []
 
     candidates = []
     for hit in hits:
