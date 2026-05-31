@@ -493,9 +493,20 @@
     //          saveMetadata, fetchAiMetadata, _populateModal,
     //          _cleanDate (lib/util, definierad i batch-sektionen)
     // ============================================================
+    // Field list + labels for the per-source coverage breakdown. Defined
+    // locally here (bulk-result-modal.js keeps its own IIFE-scoped copies);
+    // the label map is built at call time so _i18n is guaranteed populated.
+    var _bpAllFields = ['title', 'author', 'description', 'isbn', 'publisher', 'series', 'genres', 'published_date', 'cover'];
+
     function _renderModalSourceDetail(container, sourceDetails) {
         if (!container) return;
         if (!sourceDetails || sourceDetails.length === 0) return;
+
+        var _bpFieldLabels = {
+            title: _i18n.batchFieldTitle, author: _i18n.batchFieldAuthor, description: _i18n.batchFieldSynopsis,
+            isbn: 'ISBN', publisher: _i18n.batchFieldPublisher, series: _i18n.batchFieldSeries,
+            genres: _i18n.batchFieldGenre, published_date: _i18n.modalFieldPublished, cover: _i18n.batchFieldCover
+        };
 
         var html = '';
         sourceDetails.forEach(function(sd) {
