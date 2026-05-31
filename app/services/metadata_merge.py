@@ -50,6 +50,8 @@ def _source_key(label):
         return "hardcover"
     if "libris" in s:
         return "libris"
+    if "open library" in s or "openlibrary" in s:
+        return "openlibrary"
     if "google" in s:
         return "google"
     if "wikipedia" in s:
@@ -70,16 +72,16 @@ SERIES_PRECEDENCE = ["embedded", "wikidata", "hardcover", "calibre", "google", "
 # whose OPF value is often junk, e.g. the author's name). It returns nothing for
 # non-Swedish books, so it simply doesn't contribute there.
 FIELD_PRECEDENCE = {
-    "title":          ["anchor", "embedded", "libris", "calibre", "hardcover", "wikidata", "google", "wikipedia"],
-    "author":         ["anchor", "embedded", "libris", "calibre", "hardcover", "wikidata", "google", "wikipedia"],
-    "publisher":      ["libris", "embedded", "calibre", "google", "hardcover", "wikipedia"],
-    "published_date": ["libris", "embedded", "google", "calibre", "hardcover", "wikidata", "wikipedia"],
+    "title":          ["anchor", "embedded", "libris", "calibre", "hardcover", "wikidata", "google", "openlibrary", "wikipedia"],
+    "author":         ["anchor", "embedded", "libris", "calibre", "hardcover", "wikidata", "google", "openlibrary", "wikipedia"],
+    "publisher":      ["libris", "embedded", "calibre", "google", "openlibrary", "hardcover", "wikipedia"],
+    "published_date": ["libris", "embedded", "google", "calibre", "openlibrary", "hardcover", "wikidata", "wikipedia"],
     "language":       ["embedded", "libris", "google", "calibre", "wikipedia"],
-    "isbn":           ["embedded", "libris", "google", "calibre", "hardcover", "wikipedia"],
-    "cover_url":      ["google", "hardcover", "wikidata", "calibre", "wikipedia", "embedded"],
+    "isbn":           ["embedded", "libris", "google", "calibre", "hardcover", "openlibrary", "wikipedia"],
+    "cover_url":      ["google", "hardcover", "openlibrary", "wikidata", "calibre", "wikipedia", "embedded"],
 }
 
-DEFAULT_PRECEDENCE = ["anchor", "embedded", "wikidata", "hardcover", "libris", "calibre", "google", "wikipedia", "other"]
+DEFAULT_PRECEDENCE = ["anchor", "embedded", "wikidata", "hardcover", "libris", "calibre", "google", "openlibrary", "wikipedia", "other"]
 
 # Fields filled by the generic first-by-precedence pass (series, description and
 # genres have their own strategies and are handled separately).

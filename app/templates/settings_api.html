@@ -672,6 +672,12 @@
                 <span class="source-hint">{{ _('Sweden\'s national bibliography (KB) — authoritative title, author, publisher, date and language for Swedish books. No key.') }}</span>
             </div>
             <div class="toggle-row">
+                <input type="checkbox" id="METADATA_SOURCE_OPENLIBRARY_ENABLED" name="METADATA_SOURCE_OPENLIBRARY_ENABLED"
+                       {% if source_openlibrary_enabled %}checked{% endif %}>
+                <label for="METADATA_SOURCE_OPENLIBRARY_ENABLED" style="margin:0; font-weight:500;">Open Library</label>
+                <span class="source-hint">{{ _('Internet Archive\'s open catalogue — synopsis, subjects, publisher and cover, strong for older/obscure books. No key.') }}</span>
+            </div>
+            <div class="toggle-row">
                 <input type="checkbox" id="METADATA_SOURCE_WIKIPEDIA_ENABLED" name="METADATA_SOURCE_WIKIPEDIA_ENABLED"
                        {% if source_wikipedia_enabled %}checked{% endif %}>
                 <label for="METADATA_SOURCE_WIKIPEDIA_ENABLED" style="margin:0; font-weight:500;">{{ _('Wikipedia') }}</label>
@@ -749,19 +755,19 @@
                 {% if hardcover_token_set %}
                     <span class="badge ok">&#10003; {{ _('Connected') }}</span>
                 {% else %}
-                    <span class="badge info">{{ _('Optional token') }}</span>
+                    <span class="badge warn">{{ _('Token required') }}</span>
                 {% endif %}
             </div>
             <p class="panel-desc">
-                {{ _('Modern book database with good coverage for newer books and series. Works without a key, but an API token gives better rate limits.') }}
+                {{ _('Modern book database with good coverage for newer books and series. Requires a free API token — Hardcover rejects anonymous requests.') }}
             </p>
 
             <div class="field">
-                <label for="HARDCOVER_API_TOKEN">{{ _('API token (optional)') }}</label>
+                <label for="HARDCOVER_API_TOKEN">{{ _('API token') }}</label>
                 <div class="key-row">
                     <input type="password" id="HARDCOVER_API_TOKEN" name="HARDCOVER_API_TOKEN"
                            value=""
-                           placeholder="{% if hardcover_token_set %}{{ hardcover_token_masked }}{% else %}{{ _('Leave empty for anonymous access') }}{% endif %}"
+                           placeholder="{% if hardcover_token_set %}{{ hardcover_token_masked }}{% else %}{{ _('Paste your hardcover.app API token') }}{% endif %}"
                            autocomplete="new-password">
                     <button type="button" class="icon-btn" onclick="toggleVisibility('HARDCOVER_API_TOKEN', this)" title="{{ _('Show/hide') }}">
                         <i class="ti ti-eye"></i>

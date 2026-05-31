@@ -251,6 +251,7 @@ def run_metadata_enrichment(
     include_hardcover=None,
     include_wikidata=None,
     include_libris=None,
+    include_openlibrary=None,
     include_file=None,
     mode=None,
     local_metadata=None,
@@ -288,6 +289,7 @@ def run_metadata_enrichment(
     from app.services.metadata_hardcover import hardcover_search_with_status
     from app.services.metadata_wikidata import wikidata_search_with_status
     from app.services.metadata_libris import libris_search_with_status
+    from app.services.metadata_openlibrary import openlibrary_search_with_status
     from app.services.metadata_merge import merge_candidates
 
     include_google = _resolve_flag(include_google, "METADATA_SOURCE_GOOGLE_ENABLED")
@@ -295,6 +297,7 @@ def run_metadata_enrichment(
     include_hardcover = _resolve_flag(include_hardcover, "METADATA_SOURCE_HARDCOVER_ENABLED")
     include_wikidata = _resolve_flag(include_wikidata, "METADATA_SOURCE_WIKIDATA_ENABLED")
     include_libris = _resolve_flag(include_libris, "METADATA_SOURCE_LIBRIS_ENABLED")
+    include_openlibrary = _resolve_flag(include_openlibrary, "METADATA_SOURCE_OPENLIBRARY_ENABLED")
     include_calibre = _resolve_flag(include_calibre, "METADATA_SOURCE_CALIBRE_ENABLED")
     include_file = _resolve_flag(include_file, "METADATA_SOURCE_FILE_ENABLED")
     mode = resolve_fetch_mode(mode)
@@ -380,6 +383,13 @@ def run_metadata_enrichment(
         )
     if include_libris:
         fast_jobs["libris"] = lambda: libris_search_with_status(
+            query_text=search_input["query_text"],
+            title=search_input["title"],
+            author=search_input["author"],
+            isbn=search_input["isbn"],
+        )
+    if include_openlibrary:
+        fast_jobs["openlibrary"] = lambda: openlibrary_search_with_status(
             query_text=search_input["query_text"],
             title=search_input["title"],
             author=search_input["author"],
@@ -498,6 +508,32 @@ def run_metadata_enrichment(
             message=lb_sr["message"],
             candidates_found=len(lb_candidates_list),
             source_details=lb_source_details,
+            warnings=[],
+        )
+
+    if "openlibrary" in fast_results:
+        ol_sr = fast_results["openlibrary"]
+        source_results.append(ol_sr)
+        ol_candidates_list = ol_sr.get("candidates", [])
+        all_candidates.extend(ol_candidates_list)
+        external_candidates.extend(ol_candidates_list)
+        ol_source_details = [{
+            "source": "Open Library",
+            "fields_found": (
+                ol_candidates_list[0].get("fields_found", [])
+                if ol_candidates_list else []
+            ),
+            "ok": bool(ol_sr["ok"]),
+            "status": ol_sr.get("status", ""),
+            "message": ol_sr.get("message", ""),
+        }]
+        _emit(
+            "openlibrary",
+            source="openlibrary",
+            status="ok" if ol_sr["ok"] else ol_sr["status"],
+            message=ol_sr["message"],
+            candidates_found=len(ol_candidates_list),
+            source_details=ol_source_details,
             warnings=[],
         )
 
