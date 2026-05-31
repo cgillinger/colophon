@@ -47,6 +47,7 @@ _API_TOGGLE_KEYS = [
     "METADATA_SOURCE_GOOGLE_ENABLED",
     "METADATA_SOURCE_HARDCOVER_ENABLED",
     "METADATA_SOURCE_WIKIPEDIA_ENABLED",
+    "METADATA_SOURCE_WIKIDATA_ENABLED",
     "METADATA_SOURCE_CALIBRE_ENABLED",
 ]
 
@@ -224,6 +225,7 @@ def _settings_view_context():
         "source_google_enabled": (get_setting("METADATA_SOURCE_GOOGLE_ENABLED", "true") or "true").lower() == "true",
         "source_hardcover_enabled": (get_setting("METADATA_SOURCE_HARDCOVER_ENABLED", "true") or "true").lower() == "true",
         "source_wikipedia_enabled": (get_setting("METADATA_SOURCE_WIKIPEDIA_ENABLED", "true") or "true").lower() == "true",
+        "source_wikidata_enabled": (get_setting("METADATA_SOURCE_WIKIDATA_ENABLED", "true") or "true").lower() == "true",
         "source_calibre_enabled": (get_setting("METADATA_SOURCE_CALIBRE_ENABLED", "true") or "true").lower() == "true",
         "calibre_available": bool(shutil.which("fetch-ebook-metadata")),
         "library_container_path": library_container_path,

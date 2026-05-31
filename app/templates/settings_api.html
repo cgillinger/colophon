@@ -675,6 +675,12 @@
             <h3 class="source-tier-title">{{ _('Deep (run on demand)') }}</h3>
 
             <div class="toggle-row">
+                <input type="checkbox" id="METADATA_SOURCE_WIKIDATA_ENABLED" name="METADATA_SOURCE_WIKIDATA_ENABLED"
+                       {% if source_wikidata_enabled %}checked{% endif %}>
+                <label for="METADATA_SOURCE_WIKIDATA_ENABLED" style="margin:0; font-weight:500;">Wikidata</label>
+                <span class="source-hint">{{ _('Structured series + number (the index Hardcover lacks) for notable works. Runs only when the series or its number is still missing.') }}</span>
+            </div>
+            <div class="toggle-row">
                 <input type="checkbox" id="METADATA_SOURCE_CALIBRE_ENABLED" name="METADATA_SOURCE_CALIBRE_ENABLED"
                        {% if source_calibre_enabled %}checked{% endif %}>
                 <label for="METADATA_SOURCE_CALIBRE_ENABLED" style="margin:0; font-weight:500;">{{ _('Calibre') }}</label>

@@ -54,6 +54,10 @@ def _hardcover(**kw):
     return _cand("Hardcover", **kw)
 
 
+def _wikidata(**kw):
+    return _cand("Wikidata", **kw)
+
+
 # ---------------------------------------------------------------------------
 # Source bucketing
 # ---------------------------------------------------------------------------
@@ -62,10 +66,40 @@ def test_source_key_buckets():
     assert _source_key("Google Books API") == "google"
     assert _source_key("Calibre: Goodreads, FictionDB") == "calibre"
     assert _source_key("Hardcover") == "hardcover"
+    assert _source_key("Wikidata") == "wikidata"
     assert _source_key("Wikipedia") == "wikipedia"
     assert _source_key("Embedded file") == "embedded"
     assert _source_key("Inbäddad fil") == "embedded"
     assert _source_key("Something else") == "other"
+
+
+def test_wikidata_supplies_index_for_hardcover_series():
+    """Hardcover names the series; Wikidata fills the missing ordinal — coupled,
+    and only because both name the SAME series."""
+    item = _item(title="A Fire Upon the Deep", author="Vernor Vinge")
+    anchor = _google(title="A Fire Upon the Deep", author="Vernor Vinge", description="d")
+    hard = _hardcover(title="A Fire Upon the Deep", author="Vernor Vinge",
+                      series="Zones of Thought")  # name, no index
+    wiki = _wikidata(title="A Fire Upon the Deep", author="Vernor Vinge",
+                     series="Zones of Thought", series_index="1")  # structured ordinal
+    payload, prov = merge_candidates(item, [anchor, hard, wiki], anchor)
+    assert payload["series"] == "Zones of Thought"
+    assert payload["series_index"] == "1"
+    # Wikidata outranks Hardcover for the series name too.
+    assert prov["series"] == "Wikidata"
+    assert prov["series_index"] == "Wikidata"
+
+
+def test_index_not_borrowed_from_different_series():
+    """A different series must never lend its number."""
+    item = _item(title="Some Book", author="An Author")
+    anchor = _google(title="Some Book", author="An Author")
+    emb = _embedded(title="Some Book", author="An Author", series="Real Series")  # no index
+    other = _hardcover(title="Some Book", author="An Author",
+                       series="Unrelated Series", series_index="7")
+    payload, prov = merge_candidates(item, [anchor, emb, other], anchor)
+    assert payload["series"] == "Real Series"
+    assert payload.get("series_index", "") == ""  # 7 belonged to a different series
 
 
 def test_hardcover_series_beats_google_but_loses_to_embedded():

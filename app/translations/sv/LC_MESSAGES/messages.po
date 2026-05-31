@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Colophon 1.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-05-31 16:51+0200\n"
+"POT-Creation-Date: 2026-05-31 20:39+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: sv\n"
@@ -160,7 +160,7 @@ msgstr "AI-tjänsten nekade anropet. Kontrollera API-nyckeln."
 msgid "The AI request took too long. Try again."
 msgstr "AI-anropet tog för lång tid. Försök igen."
 
-#: app/routes/metadata.py:1645 app/routes/settings.py:182
+#: app/routes/metadata.py:1645 app/routes/settings.py:183
 msgid "The AI rate limit appears to have been reached. Try again later."
 msgstr "Gränsen för AI-anrop verkar vara nådd. Försök igen senare."
 
@@ -185,80 +185,80 @@ msgstr "Metadata sparad (%(count)d fält uppdaterade)."
 msgid "No books selected."
 msgstr "Inga böcker valda."
 
-#: app/routes/settings.py:148
+#: app/routes/settings.py:149
 msgid "The upstream library is configured via an environment variable."
 msgstr "Huvudbiblioteket konfigureras via miljövariabel."
 
-#: app/routes/settings.py:153 app/routes/settings.py:163
+#: app/routes/settings.py:154 app/routes/settings.py:164
 msgid "Upstream library removed."
 msgstr "Huvudbibliotek borttaget."
 
-#: app/routes/settings.py:157
+#: app/routes/settings.py:158
 #, python-format
 msgid "Path \"%(path)s\" was not found."
 msgstr "Sökvägen \"%(path)s\" hittades inte."
 
-#: app/routes/settings.py:161
+#: app/routes/settings.py:162
 msgid "Upstream library saved."
 msgstr "Huvudbibliotek sparat."
 
-#: app/routes/settings.py:174
+#: app/routes/settings.py:175
 #, python-format
 msgid "AI connection works (model: %(model)s)."
 msgstr "AI-anslutningen fungerar (modell: %(model)s)."
 
-#: app/routes/settings.py:178
+#: app/routes/settings.py:179
 msgid "Invalid API key. Check AI_API_KEY."
 msgstr "Ogiltig API-nyckel. Kontrollera AI_API_KEY."
 
-#: app/routes/settings.py:180
+#: app/routes/settings.py:181
 msgid "The AI connection took too long. Check the network."
 msgstr "AI-anslutningen tog för lång tid. Kontrollera nätverket."
 
-#: app/routes/settings.py:184
+#: app/routes/settings.py:185
 #, python-format
 msgid "AI connection test failed (%(error)s)."
 msgstr "AI-anslutningstest misslyckades (%(error)s)."
 
-#: app/routes/settings.py:257
+#: app/routes/settings.py:259
 msgid "API settings saved."
 msgstr "API-inställningar sparade."
 
-#: app/routes/settings.py:351
+#: app/routes/settings.py:353
 #, python-format
 msgid "Cleared %(n)d cached KEPUB files."
 msgstr ""
 
-#: app/routes/settings.py:371
+#: app/routes/settings.py:373
 msgid "Device revoked."
 msgstr ""
 
-#: app/routes/settings.py:373
+#: app/routes/settings.py:375
 #, fuzzy
 msgid "Device not found."
 msgstr "Sökvägen hittades inte"
 
-#: app/routes/settings.py:401
+#: app/routes/settings.py:403
 msgid "Invalid or missing device token."
 msgstr "Ogiltig eller saknad enhetstoken."
 
-#: app/routes/settings.py:406
+#: app/routes/settings.py:408
 msgid "Device not found — was it revoked?"
 msgstr "Enheten hittades inte — har den återkallats?"
 
-#: app/routes/settings.py:411
+#: app/routes/settings.py:413
 msgid "No file uploaded."
 msgstr "Ingen fil uppladdad."
 
-#: app/routes/settings.py:416
+#: app/routes/settings.py:418
 msgid "Uploaded file was empty."
 msgstr "Den uppladdade filen var tom."
 
-#: app/routes/settings.py:419
+#: app/routes/settings.py:421
 msgid "Uploaded file is too large to be a Kobo conf (max 200 KB)."
 msgstr "Den uppladdade filen är för stor för att vara en Kobo-conf (max 200 KB)."
 
-#: app/routes/settings.py:427
+#: app/routes/settings.py:429
 #, python-format
 msgid "Could not patch the file: %(msg)s"
 msgstr "Kunde inte patcha filen: %(msg)s"
@@ -299,47 +299,47 @@ msgstr "Calibre returnerade ogiltig XML: %(exc)s"
 msgid "Calibre: 1 hit (%(source)s)."
 msgstr "Calibre: 1 träff (%(source)s)."
 
-#: app/services/metadata_hardcover.py:137
+#: app/services/metadata_hardcover.py:140
 msgid "Hardcover: no search input."
 msgstr "Hardcover: ingen sökinput."
 
-#: app/services/metadata_hardcover.py:147
+#: app/services/metadata_hardcover.py:150
 msgid "Hardcover: an API token is required (set one in Settings)."
 msgstr "Hardcover: en API-token krävs (ange en i Inställningar)."
 
-#: app/services/metadata_hardcover.py:159
+#: app/services/metadata_hardcover.py:162
 #, python-format
 msgid "Hardcover: network error (%(exc)s)."
 msgstr "Hardcover: nätverksfel (%(exc)s)."
 
-#: app/services/metadata_hardcover.py:162
+#: app/services/metadata_hardcover.py:165
 msgid "Hardcover: invalid or expired API token."
 msgstr "Hardcover: ogiltig eller utgången API-token."
 
-#: app/services/metadata_hardcover.py:164
+#: app/services/metadata_hardcover.py:167
 msgid "Hardcover: rate limit reached."
 msgstr "Hardcover: kvotgräns nådd."
 
-#: app/services/metadata_hardcover.py:166
+#: app/services/metadata_hardcover.py:169
 #, python-format
 msgid "Hardcover: HTTP %(code)s."
 msgstr "Hardcover: HTTP %(code)s."
 
-#: app/services/metadata_hardcover.py:171
+#: app/services/metadata_hardcover.py:174
 msgid "Hardcover: invalid response."
 msgstr "Hardcover: ogiltigt svar."
 
-#: app/services/metadata_hardcover.py:175
+#: app/services/metadata_hardcover.py:178
 #, python-format
 msgid "Hardcover: %(err)s."
 msgstr "Hardcover: %(err)s."
 
-#: app/services/metadata_hardcover.py:191
+#: app/services/metadata_hardcover.py:198
 #, python-format
 msgid "Hardcover: %(count)d hits."
 msgstr "Hardcover: %(count)d träffar."
 
-#: app/services/metadata_hardcover.py:192
+#: app/services/metadata_hardcover.py:199
 msgid "Hardcover: no hits."
 msgstr "Hardcover: inga träffar."
 
@@ -351,54 +351,58 @@ msgstr "Söker på filnamn — metadata saknas i databasen."
 msgid "Embedded file"
 msgstr "Inbäddad fil"
 
-#: app/services/metadata_pipeline.py:316
+#: app/services/metadata_pipeline.py:330
 msgid "Reading existing metadata from file..."
 msgstr "Läser befintlig metadata från fil..."
 
-#: app/services/metadata_pipeline.py:369
+#: app/services/metadata_pipeline.py:383
 #, fuzzy
 msgid "Searching fast sources (Wikipedia + Google Books)..."
 msgstr "Söker Google Books..."
 
-#: app/services/metadata_pipeline.py:457
+#: app/services/metadata_pipeline.py:477
 #, fuzzy
 msgid "Fast sources done."
 msgstr "Inga källdetaljer."
 
-#: app/services/metadata_pipeline.py:480 app/templates/metadata.html:540
+#: app/services/metadata_pipeline.py:502
+msgid "Searching Wikidata for series..."
+msgstr "Söker serie i Wikidata..."
+
+#: app/services/metadata_pipeline.py:552 app/templates/metadata.html:540
 msgid "Searching Calibre sources..."
 msgstr "Söker Calibre-källor..."
 
-#: app/services/metadata_pipeline.py:532
+#: app/services/metadata_pipeline.py:604
 msgid "Calibre is turned off in settings."
 msgstr "Calibre är avstängt i inställningarna."
 
-#: app/services/metadata_pipeline.py:534
+#: app/services/metadata_pipeline.py:606
 msgid "Calibre skipped (Fast mode)."
 msgstr "Calibre hoppades över (Snabbläge)."
 
-#: app/services/metadata_pipeline.py:536
+#: app/services/metadata_pipeline.py:608
 msgid "Calibre skipped — fast sources already covered the essentials."
 msgstr "Calibre hoppades över – de snabba källorna täckte redan det väsentliga."
 
-#: app/services/metadata_pipeline.py:561
+#: app/services/metadata_pipeline.py:633
 msgid "Comparing candidates..."
 msgstr "Jämför kandidater..."
 
-#: app/services/metadata_pipeline.py:576
+#: app/services/metadata_pipeline.py:648
 #, python-format
 msgid "Found %(count)d possible matches. Best match: %(score)d points, %(source)s."
 msgstr "Hittade %(count)d möjliga träffar. Bästa träff: %(score)d poäng, %(source)s."
 
-#: app/services/metadata_pipeline.py:586 app/templates/bulk_metadata.html:885
+#: app/services/metadata_pipeline.py:658 app/templates/bulk_metadata.html:885
 msgid "No secure matches found."
 msgstr "Inga säkra träffar hittades."
 
-#: app/services/metadata_pipeline.py:609
+#: app/services/metadata_pipeline.py:681
 msgid "No secure metadata matches were found."
 msgstr "Inga säkra metadataträffar hittades."
 
-#: app/services/metadata_pipeline.py:643
+#: app/services/metadata_pipeline.py:715
 #, fuzzy
 msgid "Final metadata ready."
 msgstr "Hämtar metadata…"
@@ -436,6 +440,32 @@ msgstr "Google Books: %(count)d träffar."
 #: app/services/metadata_sources.py:802
 msgid "Google Books: no hits."
 msgstr "Google Books: inga träffar."
+
+#: app/services/metadata_wikidata.py:177
+msgid "Wikidata: no title to search."
+msgstr "Wikidata: ingen titel att söka på."
+
+#: app/services/metadata_wikidata.py:181
+msgid "Wikidata: no entities found."
+msgstr "Wikidata: inga entiteter hittades."
+
+#: app/services/metadata_wikidata.py:186
+#, python-format
+msgid "Wikidata: SPARQL error (%(exc)s)."
+msgstr "Wikidata: SPARQL-fel (%(exc)s)."
+
+#: app/services/metadata_wikidata.py:188
+msgid "Wikidata: invalid SPARQL response."
+msgstr "Wikidata: ogiltigt SPARQL-svar."
+
+#: app/services/metadata_wikidata.py:192
+msgid "Wikidata: no matching book found."
+msgstr "Wikidata: ingen matchande bok hittades."
+
+#: app/services/metadata_wikidata.py:218
+#, python-format
+msgid "Wikidata: 1 match (%(title)s)."
+msgstr "Wikidata: 1 träff (%(title)s)."
 
 #: app/services/metadata_wikipedia.py:152
 msgid "Wikipedia: no title to search."
@@ -2075,7 +2105,7 @@ msgstr "Hämta omslag"
 msgid "Settings"
 msgstr "Inställningar"
 
-#: app/templates/cover_lookup.html:283 app/templates/settings_api.html:690
+#: app/templates/cover_lookup.html:283 app/templates/settings_api.html:696
 msgid "Cover search"
 msgstr "Omslagssökning"
 
@@ -2248,7 +2278,7 @@ msgid "Could not open this book."
 msgstr "Kunde inte öppna boken."
 
 #: app/templates/settings_ai.html:307 app/templates/settings_api.html:462
-#: app/templates/settings_api.html:850
+#: app/templates/settings_api.html:856
 msgid "AI metadata"
 msgstr "AI-metadata"
 
@@ -2381,7 +2411,7 @@ msgid "To display the physical host path, set COLOPHON_LIBRARY_HOST in your .env
 msgstr "För att visa den fysiska sökvägen, sätt COLOPHON_LIBRARY_HOST i din .env-fil."
 
 #: app/templates/settings_api.html:465 app/templates/settings_api.html:549
-#: app/templates/settings_api.html:738
+#: app/templates/settings_api.html:744
 msgid "Connected"
 msgstr "Ansluten"
 
@@ -2398,7 +2428,7 @@ msgid "API key"
 msgstr "API-nyckel"
 
 #: app/templates/settings_api.html:489 app/templates/settings_api.html:565
-#: app/templates/settings_api.html:754
+#: app/templates/settings_api.html:760
 msgid "Show/hide"
 msgstr "Visa/dölj"
 
@@ -2464,7 +2494,7 @@ msgstr "Ta bort sparad Google Books-nyckel?"
 msgid "How do I get a key?"
 msgstr "Hur skaffar jag en token?"
 
-#: app/templates/settings_api.html:582 app/templates/settings_api.html:772
+#: app/templates/settings_api.html:582 app/templates/settings_api.html:778
 msgid "Go to"
 msgstr "Gå till"
 
@@ -2573,157 +2603,161 @@ msgstr "Reservsynopsis och omslag för kända böcker."
 msgid "Deep (run on demand)"
 msgstr "Djupa (körs vid behov)"
 
-#: app/templates/settings_api.html:680
+#: app/templates/settings_api.html:681
+msgid "Structured series + number (the index Hardcover lacks) for notable works. Runs only when the series or its number is still missing."
+msgstr "Strukturerad serie + nummer (indexet Hardcover saknar) för kända verk. Körs bara när serien eller dess nummer fortfarande saknas."
+
+#: app/templates/settings_api.html:686
 msgid "Calibre"
 msgstr "Calibre"
 
-#: app/templates/settings_api.html:682
+#: app/templates/settings_api.html:688
 msgid "Installed"
 msgstr "Installerat"
 
-#: app/templates/settings_api.html:684 app/templates/settings_kobo.html:271
+#: app/templates/settings_api.html:690 app/templates/settings_kobo.html:271
 msgid "Not installed"
 msgstr "Inte installerat"
 
-#: app/templates/settings_api.html:686
+#: app/templates/settings_api.html:692
 msgid "Queries Goodreads, Fantastic Fiction and others via fetch-ebook-metadata. Slow subprocess — gated by the fetch depth above."
 msgstr "Frågar Goodreads, Fantastic Fiction med flera via fetch-ebook-metadata. Långsam delprocess – styrs av sökdjupet ovan."
 
-#: app/templates/settings_api.html:699 app/templates/settings_api.html:718
-#: app/templates/settings_api.html:791 app/templates/settings_api.html:810
+#: app/templates/settings_api.html:705 app/templates/settings_api.html:724
+#: app/templates/settings_api.html:797 app/templates/settings_api.html:816
 msgid "No key required"
 msgstr "Ingen nyckel krävs"
 
-#: app/templates/settings_api.html:702
+#: app/templates/settings_api.html:708
 msgid "Fetches book covers directly via ISBN from the Internet Archive's open library. Works best for books that already have an ISBN filled in. Completely free, no configuration."
 msgstr "Hämtar bokomslag direkt via ISBN från Internet Archives öppna bibliotek. Fungerar bäst för böcker som redan har ISBN ifyllt. Helt gratis, ingen konfiguration."
 
-#: app/templates/settings_api.html:707 app/templates/settings_api.html:726
-#: app/templates/settings_api.html:799 app/templates/settings_api.html:818
+#: app/templates/settings_api.html:713 app/templates/settings_api.html:732
+#: app/templates/settings_api.html:805 app/templates/settings_api.html:824
 msgid "Enabled"
 msgstr "Aktiverad"
 
-#: app/templates/settings_api.html:716
+#: app/templates/settings_api.html:722
 msgid "Google Books — high-resolution cover"
 msgstr "Google Books — högupplöst omslag"
 
-#: app/templates/settings_api.html:721
+#: app/templates/settings_api.html:727
 msgid "Automatically upgrades thumbnails from Google Books to full size. Uses the same data as \"Fetch metadata\" but requests higher resolution. Zero extra API calls."
 msgstr "Uppgraderar automatiskt thumbnails från Google Books till fullstorlek. Använder samma data som \"Hämta metadata\" men begär högre upplösning. Noll extra API-anrop."
 
-#: app/templates/settings_api.html:740
+#: app/templates/settings_api.html:746
 msgid "Optional token"
 msgstr "Valfri token"
 
-#: app/templates/settings_api.html:744
+#: app/templates/settings_api.html:750
 msgid "Modern book database with good coverage for newer books and series. Works without a key, but an API token gives better rate limits."
 msgstr "Modern bokdatabas med bra täckning för nyare böcker och serier. Fungerar utan nyckel men en API-token ger bättre rate limits."
 
-#: app/templates/settings_api.html:748
+#: app/templates/settings_api.html:754
 msgid "API token (optional)"
 msgstr "API-token (valfritt)"
 
-#: app/templates/settings_api.html:752
+#: app/templates/settings_api.html:758
 msgid "Leave empty for anonymous access"
 msgstr "Lämna tomt för anonym åtkomst"
 
-#: app/templates/settings_api.html:759
+#: app/templates/settings_api.html:765
 msgid "Remove token"
 msgstr "Ta bort token"
 
-#: app/templates/settings_api.html:760
+#: app/templates/settings_api.html:766
 msgid "Remove saved Hardcover token?"
 msgstr "Ta bort sparad Hardcover-token?"
 
-#: app/templates/settings_api.html:769
+#: app/templates/settings_api.html:775
 msgid "How do I get a token?"
 msgstr "Hur skaffar jag en token?"
 
-#: app/templates/settings_api.html:773
+#: app/templates/settings_api.html:779
 msgid "Create an account (free)"
 msgstr "Skapa konto (gratis)"
 
-#: app/templates/settings_api.html:774
+#: app/templates/settings_api.html:780
 msgid "Copy your API token"
 msgstr "Kopiera din API-token"
 
-#: app/templates/settings_api.html:776
+#: app/templates/settings_api.html:782
 msgid "Free beta — optional, works without a token."
 msgstr "Gratis beta — valfritt, fungerar utan token."
 
-#: app/templates/settings_api.html:778
+#: app/templates/settings_api.html:784
 msgid "Beta API — may change without notice. Token is valid for 1 year."
 msgstr "Beta-API — kan ändras utan förvarning. Token gäller 1 år."
 
-#: app/templates/settings_api.html:794
+#: app/templates/settings_api.html:800
 msgid "Searches book covers via Wikidata and Wikimedia Commons. Best for classics, well-known works and public domain books. Requires ISBN."
 msgstr "Söker bokomslag via Wikidata och Wikimedia Commons. Bäst för klassiker, kända verk och public domain-böcker. Kräver ISBN."
 
-#: app/templates/settings_api.html:808
+#: app/templates/settings_api.html:814
 msgid "DuckDuckGo image search"
 msgstr "DuckDuckGo bildsökning"
 
-#: app/templates/settings_api.html:813
+#: app/templates/settings_api.html:819
 msgid "Last fallback — searches for book covers via DuckDuckGo. Unofficial API that may stop working. Good as a last resort for books not found in book databases. Respects rate limiting."
 msgstr "Sista fallback — söker bokomslag via DuckDuckGo. Inofficiellt API som kan sluta fungera. Bra som sista utväg för böcker som inte hittas i bokdatabaser. Respekterar rate limiting."
 
-#: app/templates/settings_api.html:824
+#: app/templates/settings_api.html:830
 msgid "Save settings"
 msgstr "Spara inställningar"
 
-#: app/templates/settings_api.html:827
+#: app/templates/settings_api.html:833
 msgid "Test connections"
 msgstr "Testa anslutningar"
 
-#: app/templates/settings_api.html:835
+#: app/templates/settings_api.html:841
 msgid "Connection tests"
 msgstr "Anslutningstester"
 
-#: app/templates/settings_api.html:843
+#: app/templates/settings_api.html:849
 msgid "All keys are stored in a local database on your server. Alternatively they can be set as environment variables — UI values take precedence."
 msgstr "Alla nycklar sparas i lokal databas på din server. Alternativt kan de sättas som miljövariabler — UI-värden har prioritet."
 
-#: app/templates/settings_api.html:851
+#: app/templates/settings_api.html:857
 msgid "Testing..."
 msgstr "Testar..."
 
-#: app/templates/settings_api.html:852
+#: app/templates/settings_api.html:858
 msgid "Nothing to test — no services configured."
 msgstr "Inget att testa — inga tjänster konfigurerade."
 
-#: app/templates/settings_api.html:853
+#: app/templates/settings_api.html:859
 msgid "Test failed"
 msgstr "Test misslyckades"
 
-#: app/templates/settings_api.html:854
+#: app/templates/settings_api.html:860
 msgid "Works"
 msgstr "Fungerar"
 
-#: app/templates/settings_api.html:855
+#: app/templates/settings_api.html:861
 msgid "unknown error"
 msgstr "okänt fel"
 
-#: app/templates/settings_api.html:856
+#: app/templates/settings_api.html:862
 msgid "authentication failed"
 msgstr "autentisering misslyckades"
 
-#: app/templates/settings_api.html:857
+#: app/templates/settings_api.html:863
 msgid "timeout"
 msgstr "timeout"
 
-#: app/templates/settings_api.html:858
+#: app/templates/settings_api.html:864
 msgid "rate limit reached"
 msgstr "kvot uppnådd"
 
-#: app/templates/settings_api.html:859
+#: app/templates/settings_api.html:865
 msgid "network error"
 msgstr "nätverksfel"
 
-#: app/templates/settings_api.html:860
+#: app/templates/settings_api.html:866
 msgid "no key"
 msgstr "ingen nyckel"
 
-#: app/templates/settings_api.html:861
+#: app/templates/settings_api.html:867
 msgid "error"
 msgstr "fel"
 

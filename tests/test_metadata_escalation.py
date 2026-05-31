@@ -82,6 +82,7 @@ def _run(mode, google_candidate, monkeypatch):
         include_google=True,
         include_wikipedia=False,
         include_hardcover=False,
+        include_wikidata=False,
         include_calibre=True,
         include_file=False,
         mode=mode,
@@ -118,7 +119,7 @@ def test_disabled_calibre_is_never_run(monkeypatch):
     pipeline.run_metadata_enrichment(
         _item(), cover_dir=None,
         include_google=True, include_wikipedia=False, include_hardcover=False,
-        include_calibre=False, include_file=False, mode="deep",
+        include_wikidata=False, include_calibre=False, include_file=False, mode="deep",
     )
     assert calls["calibre"] == 0
 

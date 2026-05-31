@@ -44,6 +44,8 @@ def _source_key(label):
         return "embedded"
     if "calibre" in s:
         return "calibre"
+    if "wikidata" in s:
+        return "wikidata"
     if "hardcover" in s:
         return "hardcover"
     if "google" in s:
@@ -57,21 +59,21 @@ def _source_key(label):
 # special token "anchor" means the anchor candidate specifically. Only sources
 # that exist in the current pipeline are listed; unknown sources ("other") are
 # always considered last via DEFAULT_PRECEDENCE.
-# Hardcover carries clean structured series/genre data, so it ranks high for
-# series — just below the embedded file (which is the file itself).
-SERIES_PRECEDENCE = ["embedded", "hardcover", "calibre", "google", "wikipedia"]
+# Wikidata gives the cleanest *structured* series (name + ordinal P1545), so it
+# ranks highest after the embedded file; Hardcover next (series name, no index).
+SERIES_PRECEDENCE = ["embedded", "wikidata", "hardcover", "calibre", "google", "wikipedia"]
 
 FIELD_PRECEDENCE = {
-    "title":          ["anchor", "embedded", "calibre", "hardcover", "google", "wikipedia"],
-    "author":         ["anchor", "embedded", "calibre", "hardcover", "google", "wikipedia"],
+    "title":          ["anchor", "embedded", "calibre", "hardcover", "wikidata", "google", "wikipedia"],
+    "author":         ["anchor", "embedded", "calibre", "hardcover", "wikidata", "google", "wikipedia"],
     "publisher":      ["embedded", "calibre", "google", "hardcover", "wikipedia"],
-    "published_date": ["embedded", "google", "calibre", "hardcover", "wikipedia"],
+    "published_date": ["embedded", "google", "calibre", "hardcover", "wikidata", "wikipedia"],
     "language":       ["embedded", "google", "calibre", "wikipedia"],
     "isbn":           ["embedded", "google", "calibre", "hardcover", "wikipedia"],
-    "cover_url":      ["google", "hardcover", "calibre", "wikipedia", "embedded"],
+    "cover_url":      ["google", "hardcover", "wikidata", "calibre", "wikipedia", "embedded"],
 }
 
-DEFAULT_PRECEDENCE = ["anchor", "embedded", "hardcover", "calibre", "google", "wikipedia", "other"]
+DEFAULT_PRECEDENCE = ["anchor", "embedded", "wikidata", "hardcover", "calibre", "google", "wikipedia", "other"]
 
 # Fields filled by the generic first-by-precedence pass (series, description and
 # genres have their own strategies and are handled separately).
@@ -136,14 +138,35 @@ def _coalesce_first(field, precedence, anchor, trusted):
 
 
 def _coalesce_series(anchor, trusted):
-    """Series name + index taken together from the first naming source."""
+    """Series name + index, coupled so the index never comes from a different book.
+
+    The name is taken from the first source (by precedence) that names a series,
+    together with that source's own index. If that source gave a name but no
+    index, the index is borrowed only from another trusted source naming the
+    *same* series (e.g. Wikidata's structured ordinal) — never from an unrelated
+    series. Returns (name, index, name_source, index_source).
+    """
+    name, idx, name_src, idx_src = "", "", "", ""
     for key in SERIES_PRECEDENCE:
         for c in _ordered_pool(trusted, key, anchor):
-            name = (c.get("series") or "").strip()
-            if name:
+            s = (c.get("series") or "").strip()
+            if s:
+                name, name_src = s, c.get("source", "")
                 idx = (c.get("series_index") or "").strip()
-                return name, idx, c.get("source", "")
-    return "", "", ""
+                idx_src = name_src if idx else ""
+                break
+        if name:
+            break
+
+    if name and not idx:
+        for c in trusted:
+            if (c.get("series") or "").strip().lower() == name.lower():
+                candidate_idx = (c.get("series_index") or "").strip()
+                if candidate_idx:
+                    idx, idx_src = candidate_idx, c.get("source", "")
+                    break
+
+    return name, idx, name_src, idx_src
 
 
 def _coalesce_longest(field, anchor, trusted):
@@ -197,13 +220,13 @@ def merge_candidates(item, candidates, anchor=None):
 
     payload, provenance = {}, {}
 
-    name, idx, s_src = _coalesce_series(anchor, trusted)
+    name, idx, name_src, idx_src = _coalesce_series(anchor, trusted)
     if name:
         payload["series"] = name
-        provenance["series"] = s_src
+        provenance["series"] = name_src
         if idx:
             payload["series_index"] = idx
-            provenance["series_index"] = s_src
+            provenance["series_index"] = idx_src or name_src
 
     desc, d_src = _coalesce_longest("description", anchor, trusted)
     if desc:

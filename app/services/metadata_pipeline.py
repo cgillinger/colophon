@@ -249,6 +249,7 @@ def run_metadata_enrichment(
     include_calibre=None,
     include_wikipedia=None,
     include_hardcover=None,
+    include_wikidata=None,
     include_file=None,
     mode=None,
     local_metadata=None,
@@ -284,11 +285,13 @@ def run_metadata_enrichment(
     from app.services.metadata_calibre import fetch_calibre_metadata_with_status
     from app.services.metadata_wikipedia import search_wikipedia_with_status
     from app.services.metadata_hardcover import hardcover_search_with_status
+    from app.services.metadata_wikidata import wikidata_search_with_status
     from app.services.metadata_merge import merge_candidates
 
     include_google = _resolve_flag(include_google, "METADATA_SOURCE_GOOGLE_ENABLED")
     include_wikipedia = _resolve_flag(include_wikipedia, "METADATA_SOURCE_WIKIPEDIA_ENABLED")
     include_hardcover = _resolve_flag(include_hardcover, "METADATA_SOURCE_HARDCOVER_ENABLED")
+    include_wikidata = _resolve_flag(include_wikidata, "METADATA_SOURCE_WIKIDATA_ENABLED")
     include_calibre = _resolve_flag(include_calibre, "METADATA_SOURCE_CALIBRE_ENABLED")
     include_file = _resolve_flag(include_file, "METADATA_SOURCE_FILE_ENABLED")
     mode = resolve_fetch_mode(mode)
@@ -480,6 +483,58 @@ def run_metadata_enrichment(
         source=(fast_anchor or {}).get("source", "") if fast_anchor else "",
         warnings=[],
     )
+
+    # -- Tier 1.5: Wikidata — targeted escalation for structured series + ordinal.
+    # Only run when the fast tier left the series name or its index unfilled, so
+    # complete books pay nothing for it. Runs in the main thread (no key needed).
+    need_series = (
+        include_wikidata
+        and not _aborted()
+        and mode in ("more", "deep")
+        and (
+            not (fast_merged.get("series") or "").strip()
+            or not (fast_merged.get("series_index") or "").strip()
+        )
+    )
+    if need_series:
+        _emit(
+            "wikidata", source="wikidata", status="searching",
+            message=_("Searching Wikidata for series..."),
+            candidates_found=0, warnings=[],
+        )
+        wd_sr = wikidata_search_with_status(
+            query_text=search_input["query_text"],
+            title=search_input["title"],
+            author=search_input["author"],
+            isbn=search_input["isbn"],
+        )
+        source_results.append(wd_sr)
+        wd_candidates_list = wd_sr.get("candidates", [])
+        all_candidates.extend(wd_candidates_list)
+        external_candidates.extend(wd_candidates_list)
+        wd_source_details = [{
+            "source": "Wikidata",
+            "fields_found": (
+                wd_candidates_list[0].get("fields_found", [])
+                if wd_candidates_list else []
+            ),
+            "ok": bool(wd_sr["ok"]),
+            "status": wd_sr.get("status", ""),
+            "message": wd_sr.get("message", ""),
+        }]
+        _emit(
+            "wikidata", source="wikidata",
+            status="ok" if wd_sr["ok"] else wd_sr["status"],
+            message=wd_sr["message"],
+            candidates_found=len(wd_candidates_list),
+            source_details=wd_source_details,
+            warnings=[],
+        )
+        # Re-merge so the Calibre decision and final preview see Wikidata's data.
+        fast_scoring = choose_best_metadata_explained(item, list(external_candidates))
+        fast_anchor = fast_scoring.get("best")
+        fast_merged, fast_provenance = _merge_now(fast_anchor)
+        missing = _missing_essentials(fast_merged)
 
     # -- Tier 2: Calibre, gated by mode + completeness -----------------------
     if _aborted():
