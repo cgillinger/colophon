@@ -848,6 +848,8 @@
                     if (cell) {
                         if (d.status === 'searching') {
                             cell.innerHTML = '<span class="bp-spinner"></span>';
+                        } else if (d.status === 'skipped') {
+                            cell.innerHTML = '<span class="bp-skip" title="' + _esc(d.message || '') + '">–</span>';
                         } else {
                             var n = d.candidates_found || 0;
                             cell.innerHTML = d.status === 'ok'

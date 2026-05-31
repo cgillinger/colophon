@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.6.2.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.7.0.
 
 ## Quick reference
 
@@ -34,7 +34,7 @@ wsgi.py                         # Gunicorn entry: from app import create_app
 app/
   __init__.py                   # create_app(), blueprint registration, Babel, DB init
   models.py                     # LibraryItem + KoboDevice + KoboBookState
-  version.py                    # __version__ = "1.6.2"
+  version.py                    # __version__ = "1.7.0"
   paths.py                      # Central path constants
   config.py                     # Flask Config class (reads env vars)
   routes/
@@ -48,7 +48,8 @@ app/
   services/
     __init__.py
     scanner.py                  # File discovery + ebooklib-based metadata extraction + upsert
-    metadata_pipeline.py        # Orchestrates enrichment: build_search_input → sources → scoring
+    metadata_pipeline.py        # Orchestrates enrichment: tiers + completeness escalation + fetch modes
+    metadata_merge.py           # Field-level merge: anchor + trust-gate + per-field precedence + provenance
     metadata_sources.py         # Google Books search, scoring, deduplication
     metadata_calibre.py         # Calibre fetch-ebook-metadata subprocess wrapper
     metadata_wikipedia.py       # Wikipedia/Wikidata metadata lookup
@@ -88,10 +89,11 @@ app/
     icons/                      # Favicons, app/PWA icons, header logo SVGs (light+dark)
     vendor/tabler-icons/        # Icon font
     vendor/foliate-js/          # Vendored EPUB renderer (MIT) for the reader
-tests/                          # 14 pytest files: metadata_pipeline, calibre_metadata,
+tests/                          # 16 pytest files: metadata_pipeline, calibre_metadata,
                                 # bookf, grouping, kobo_conf, kobo_sync, language,
                                 # quality, reading_state, scanner, scoring,
-                                # source_status, title_clean, wikipedia
+                                # source_status, title_clean, wikipedia,
+                                # metadata_merge, metadata_escalation
 tools/
   install_calibre_plugins.sh    # Dockerfile build step: Goodreads, FF, FictionDB plugins
   install_kepubify.sh           # Dockerfile build step: kepubify binary for Kobo conversion

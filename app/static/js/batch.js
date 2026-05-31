@@ -1760,6 +1760,8 @@
                     if (cell) {
                         if (d.status === 'searching') {
                             cell.innerHTML = '<span class="bp-spinner"></span>';
+                        } else if (d.status === 'skipped') {
+                            cell.innerHTML = '<span class="bp-skip" title="' + _esc(d.message || '') + '">–</span>';
                         } else {
                             var n = d.candidates_found || 0;
                             cell.innerHTML = d.status === 'ok'
@@ -1832,9 +1834,13 @@
                 }
                 var cCell = document.getElementById('bp-calibre-' + d.item_id);
                 if (cCell && !cCell.textContent.trim()) {
-                    cCell.innerHTML = (d.calibre_ok === null || d.calibre_ok === undefined)
-                        ? '—'
-                        : (d.calibre_ok ? '<span class="bp-ok">✓ ' + (d.calibre_candidates || 0) + '</span>' : '<span class="bp-fail">✗</span>');
+                    if (d.calibre_status === 'skipped') {
+                        cCell.innerHTML = '<span class="bp-skip" title="' + _esc(d.fetch_mode || '') + '">–</span>';
+                    } else {
+                        cCell.innerHTML = (d.calibre_ok === null || d.calibre_ok === undefined)
+                            ? '—'
+                            : (d.calibre_ok ? '<span class="bp-ok">✓ ' + (d.calibre_candidates || 0) + '</span>' : '<span class="bp-fail">✗</span>');
+                    }
                 }
 
                 var scoreCell = document.getElementById('bp-score-' + d.item_id);

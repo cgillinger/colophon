@@ -245,6 +245,27 @@
 
         .sources { margin-top: 16px; font-size: 12px; color: var(--text-tertiary); }
 
+        /* Per-field provenance chip — shows which source supplied the value. */
+        .source-chip {
+            display: inline-block;
+            margin-top: 6px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 500;
+            line-height: 1.5;
+            color: var(--text-secondary);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-light);
+            white-space: nowrap;
+        }
+        .source-chip::before {
+            content: "\2713";
+            margin-right: 4px;
+            color: var(--accent-green);
+            font-weight: 700;
+        }
+
         @media (max-width: 720px) {
             table.diff, table.diff thead, table.diff tbody, table.diff tr, table.diff th, table.diff td { display: block; }
             table.diff thead { display: none; }
@@ -320,7 +341,7 @@
                             </td>
                             <td class="label">{{ row.label }}</td>
                             <td class="value{% if not row.current %} empty{% endif %}">{{ row.current or _('(missing)') }}</td>
-                            <td class="value {{ row.status if row.status in ('new', 'changed') else '' }}{% if not row.fetched %} empty{% endif %}">{{ row.fetched or _('(nothing found)') }}</td>
+                            <td class="value {{ row.status if row.status in ('new', 'changed') else '' }}{% if not row.fetched %} empty{% endif %}">{{ row.fetched or _('(nothing found)') }}{% if row.source %}<br><span class="source-chip">{{ row.source }}</span>{% endif %}</td>
                         </tr>
                     {% endfor %}
 
@@ -339,6 +360,7 @@
                         <td class="value {{ cover_status if cover_status in ('new', 'changed') else '' }}{% if not has_fetched_cover %} empty{% endif %}">
                             {% if has_fetched_cover %}
                                 <div class="cover-thumb"><img src="{{ url_for('metadata.enrichment_preview_cover', item_id=item.id) }}" alt="{{ _('Fetched cover') }}"></div>
+                                {% if cover_source %}<div><span class="source-chip">{{ cover_source }}</span></div>{% endif %}
                                 {% if item.cover_locked %}
                                     <div class="legend" style="margin-top:6px;">{{ _('Cover is locked — uncheck the lock to replace it.') }}</div>
                                 {% endif %}

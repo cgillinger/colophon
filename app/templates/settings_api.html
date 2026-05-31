@@ -268,6 +268,32 @@
             height: 18px;
             accent-color: var(--accent-primary);
         }
+        .source-hint { font-size: 12px; color: var(--text-tertiary); }
+        .source-tier-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-tertiary);
+            margin: 18px 0 4px;
+        }
+
+        /* Fetch-depth mode selector */
+        .mode-group { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+        .mode-option {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px 14px;
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .mode-option:hover { background: var(--bg-secondary); }
+        .mode-option.selected { border-color: var(--accent-primary); background: var(--bg-secondary); }
+        .mode-option input[type="radio"] { margin-top: 3px; accent-color: var(--accent-primary); }
+        .mode-text { display: flex; flex-direction: column; gap: 3px; }
+        .mode-name { font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .mode-desc { font-size: 12px; color: var(--text-secondary); }
 
         details.howto {
             margin-top: 12px;
@@ -564,6 +590,94 @@
             </details>
         </div>
 
+        <h2>{{ _('Metadata sources') }}</h2>
+
+        <!-- ============ Fetch depth (mode) ============ -->
+        <div class="panel">
+            <div class="panel-title">
+                <span class="panel-title-left">
+                    <i class="ti ti-adjustments-alt" style="color:var(--accent-primary); font-size:20px;"></i>
+                    {{ _('Fetch depth') }}
+                </span>
+            </div>
+            <p class="panel-desc">
+                {{ _('Controls how hard Colophon looks when fetching metadata. Cheap, fast sources always run first; the slow Calibre lookup is only used when the fast sources leave an essential field (title, author, synopsis, cover, series) missing.') }}
+            </p>
+
+            <div class="mode-group">
+                <label class="mode-option {% if fetch_mode == 'fast' %}selected{% endif %}">
+                    <input type="radio" name="METADATA_FETCH_MODE" value="fast" {% if fetch_mode == 'fast' %}checked{% endif %}>
+                    <span class="mode-text">
+                        <span class="mode-name">⚡ {{ _('Fast') }}</span>
+                        <span class="mode-desc">{{ _('Only fast sources (file + Google Books + Wikipedia). Never runs Calibre. Quickest.') }}</span>
+                    </span>
+                </label>
+                <label class="mode-option {% if fetch_mode == 'more' %}selected{% endif %}">
+                    <input type="radio" name="METADATA_FETCH_MODE" value="more" {% if fetch_mode == 'more' %}checked{% endif %}>
+                    <span class="mode-text">
+                        <span class="mode-name">➕ {{ _('More sources') }} <span class="badge info">{{ _('Default') }}</span></span>
+                        <span class="mode-desc">{{ _('Fast sources first, then Calibre only when an essential field is still missing. Best balance.') }}</span>
+                    </span>
+                </label>
+                <label class="mode-option {% if fetch_mode == 'deep' %}selected{% endif %}">
+                    <input type="radio" name="METADATA_FETCH_MODE" value="deep" {% if fetch_mode == 'deep' %}checked{% endif %}>
+                    <span class="mode-text">
+                        <span class="mode-name">🔎 {{ _('Deep') }}</span>
+                        <span class="mode-desc">{{ _('Always runs Calibre too. Most thorough, but slower for every book.') }}</span>
+                    </span>
+                </label>
+            </div>
+            <div class="env-hint">Env: COLOPHON_METADATA_FETCH_MODE</div>
+        </div>
+
+        <!-- ============ Source toggles ============ -->
+        <div class="panel">
+            <div class="panel-title">
+                <span class="panel-title-left">
+                    <i class="ti ti-database" style="color:var(--accent-primary); font-size:20px;"></i>
+                    {{ _('Sources') }}
+                </span>
+            </div>
+            <p class="panel-desc">
+                {{ _('Turn individual metadata sources on or off. Values are merged field by field across every enabled source, so leaving them all on gives the densest result.') }}
+            </p>
+
+            <h3 class="source-tier-title">{{ _('Fast (always run)') }}</h3>
+
+            <div class="toggle-row">
+                <input type="checkbox" id="METADATA_SOURCE_FILE_ENABLED" name="METADATA_SOURCE_FILE_ENABLED"
+                       {% if source_file_enabled %}checked{% endif %}>
+                <label for="METADATA_SOURCE_FILE_ENABLED" style="margin:0; font-weight:500;">{{ _('Embedded file (OPF)') }}</label>
+                <span class="source-hint">{{ _('The ebook\'s own metadata — most reliable for series, no network.') }}</span>
+            </div>
+            <div class="toggle-row">
+                <input type="checkbox" id="METADATA_SOURCE_GOOGLE_ENABLED" name="METADATA_SOURCE_GOOGLE_ENABLED"
+                       {% if source_google_enabled %}checked{% endif %}>
+                <label for="METADATA_SOURCE_GOOGLE_ENABLED" style="margin:0; font-weight:500;">{{ _('Google Books') }}</label>
+                <span class="source-hint">{{ _('Synopsis, cover, publisher, date, categories.') }}</span>
+            </div>
+            <div class="toggle-row">
+                <input type="checkbox" id="METADATA_SOURCE_WIKIPEDIA_ENABLED" name="METADATA_SOURCE_WIKIPEDIA_ENABLED"
+                       {% if source_wikipedia_enabled %}checked{% endif %}>
+                <label for="METADATA_SOURCE_WIKIPEDIA_ENABLED" style="margin:0; font-weight:500;">{{ _('Wikipedia') }}</label>
+                <span class="source-hint">{{ _('Fallback synopsis and cover for notable books.') }}</span>
+            </div>
+
+            <h3 class="source-tier-title">{{ _('Deep (run on demand)') }}</h3>
+
+            <div class="toggle-row">
+                <input type="checkbox" id="METADATA_SOURCE_CALIBRE_ENABLED" name="METADATA_SOURCE_CALIBRE_ENABLED"
+                       {% if source_calibre_enabled %}checked{% endif %}>
+                <label for="METADATA_SOURCE_CALIBRE_ENABLED" style="margin:0; font-weight:500;">{{ _('Calibre') }}</label>
+                {% if calibre_available %}
+                    <span class="badge ok">&#10003; {{ _('Installed') }}</span>
+                {% else %}
+                    <span class="badge warn">{{ _('Not installed') }}</span>
+                {% endif %}
+                <span class="source-hint">{{ _('Queries Goodreads, Fantastic Fiction and others via fetch-ebook-metadata. Slow subprocess — gated by the fetch depth above.') }}</span>
+            </div>
+        </div>
+
         <h2>{{ _('Cover search') }}</h2>
 
         <!-- ============ Open Library Covers ============ -->
@@ -750,6 +864,15 @@
         var icon = document.getElementById('themeIcon');
         if (icon) icon.className = t === 'dark' ? 'ti ti-moon' : 'ti ti-sun';
     })();
+
+    // Live highlight for the fetch-depth selector (server re-renders on save).
+    document.querySelectorAll('input[name="METADATA_FETCH_MODE"]').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            document.querySelectorAll('input[name="METADATA_FETCH_MODE"]').forEach(function(r) {
+                r.closest('.mode-option').classList.toggle('selected', r.checked);
+            });
+        });
+    });
 
     function toggleVisibility(inputId, btn) {
         var input = document.getElementById(inputId);

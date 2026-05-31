@@ -321,7 +321,8 @@ _ENRICHMENT_FIELDS = [
 ]
 
 
-def _build_enrichment_diff(item, fetched):
+def _build_enrichment_diff(item, fetched, provenance=None):
+    provenance = provenance or {}
     rows = []
     for key, label in _ENRICHMENT_FIELDS:
         current_raw = getattr(item, key, None)
@@ -354,6 +355,7 @@ def _build_enrichment_diff(item, fetched):
             "status": status,
             "default_check": default_check,
             "disabled": status == "missing" or status == "same",
+            "source": provenance.get(key, "") if fetched_val else "",
         })
     return rows
 
@@ -1100,6 +1102,7 @@ def bulk_stream():
                 google_candidates = None
                 calibre_ok = None
                 calibre_candidates = None
+                calibre_status = None
                 for sr in result.get("source_results", []):
                     if sr.get("source") == "google_books":
                         google_ok = sr.get("ok", False)
@@ -1107,6 +1110,7 @@ def bulk_stream():
                     elif sr.get("source") == "calibre":
                         calibre_ok = sr.get("ok", False)
                         calibre_candidates = len(sr.get("candidates", []))
+                        calibre_status = sr.get("status")
 
                 score = result.get("score")
                 classification = result.get("classification", "no_match")
@@ -1118,7 +1122,7 @@ def bulk_stream():
                 # Detect source_error: all sources errored (not just no results)
                 source_results = result.get("source_results", [])
                 all_errored = bool(source_results) and all(
-                    not sr.get("ok") and sr.get("status") not in ("no_result",)
+                    not sr.get("ok") and sr.get("status") not in ("no_result", "skipped")
                     for sr in source_results
                 )
 
@@ -1134,10 +1138,11 @@ def bulk_stream():
                 else:
                     # auto_apply: apply same metadata to every group member
                     classification = "auto_apply"
+                    merged_payload = result.get("fetched_payload") or best
                     for member in group_items:
                         apply_result = _apply(
                             item=member,
-                            result=best,
+                            result=merged_payload,
                             cover_dir=cover_dir,
                             overwrite=overwrite,
                             write_to_file=True,
@@ -1242,6 +1247,8 @@ def bulk_stream():
                     "google_candidates": google_candidates,
                     "calibre_ok": calibre_ok,
                     "calibre_candidates": calibre_candidates,
+                    "calibre_status": calibre_status,
+                    "fetch_mode": result.get("fetch_mode"),
                     "source_details": all_source_details,
                     "file_write_error": file_write_error,
                     "apply_details": apply_details,
@@ -1358,6 +1365,7 @@ def enrich_stream(item_id):
                 if result["ok"]:
                     _enrichment_cache[item_id] = {
                         "fetched": result["fetched_payload"],
+                        "provenance": result.get("provenance") or {},
                         "sources_used": result["sources_used"],
                         "validation_warning": result["validation_warning"],
                         "score": result["score"],
@@ -1432,6 +1440,7 @@ def enrich_item_metadata(item_id):
 
         session[_enrichment_preview_key(item.id)] = {
             "fetched": result["fetched_payload"],
+            "provenance": result.get("provenance") or {},
             "sources_used": result["sources_used"],
             "validation_warning": result["validation_warning"],
             "score": result["score"],
@@ -1467,7 +1476,7 @@ def enrichment_preview(item_id):
         return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
     fetched = preview.get("fetched") or {}
-    rows = _build_enrichment_diff(item, fetched)
+    rows = _build_enrichment_diff(item, fetched, preview.get("provenance") or {})
 
     cover_path = fetched.get("cover_path") or ""
     has_fetched_cover = bool(cover_path) and os.path.exists(cover_path)
@@ -1490,6 +1499,7 @@ def enrichment_preview(item_id):
         cover_default_check=cover_default_check,
         has_fetched_cover=has_fetched_cover,
         sources_used=preview.get("sources_used") or [],
+        cover_source=(preview.get("provenance") or {}).get("cover_url", ""),
         validation_warning=preview.get("validation_warning"),
     )
 

@@ -1,6 +1,7 @@
 # Colophon – e-book metadata manager
 import logging
 import os
+import shutil
 from datetime import date
 from pathlib import Path
 
@@ -41,7 +42,14 @@ _API_TOGGLE_KEYS = [
     "COVER_GOOGLE_ZOOM_ENABLED",
     "COVER_WIKIDATA_ENABLED",
     "COVER_DDGS_ENABLED",
+    # Metadata sources (used by the enrichment pipeline; default on).
+    "METADATA_SOURCE_FILE_ENABLED",
+    "METADATA_SOURCE_GOOGLE_ENABLED",
+    "METADATA_SOURCE_WIKIPEDIA_ENABLED",
+    "METADATA_SOURCE_CALIBRE_ENABLED",
 ]
+
+_FETCH_MODES = ("fast", "more", "deep")
 
 
 def _get_ai_stats():
@@ -209,6 +217,13 @@ def _settings_view_context():
         "google_zoom_enabled": (get_setting("COVER_GOOGLE_ZOOM_ENABLED", "true") or "true").lower() == "true",
         "wikidata_enabled": (get_setting("COVER_WIKIDATA_ENABLED", "true") or "true").lower() == "true",
         "ddgs_enabled": (get_setting("COVER_DDGS_ENABLED", "true") or "true").lower() == "true",
+        # Metadata sources + fetch mode (enrichment pipeline).
+        "fetch_mode": (get_setting("METADATA_FETCH_MODE", "more") or "more").lower(),
+        "source_file_enabled": (get_setting("METADATA_SOURCE_FILE_ENABLED", "true") or "true").lower() == "true",
+        "source_google_enabled": (get_setting("METADATA_SOURCE_GOOGLE_ENABLED", "true") or "true").lower() == "true",
+        "source_wikipedia_enabled": (get_setting("METADATA_SOURCE_WIKIPEDIA_ENABLED", "true") or "true").lower() == "true",
+        "source_calibre_enabled": (get_setting("METADATA_SOURCE_CALIBRE_ENABLED", "true") or "true").lower() == "true",
+        "calibre_available": bool(shutil.which("fetch-ebook-metadata")),
         "library_container_path": library_container_path,
         "library_host_path": library_host_path,
     }
@@ -232,6 +247,10 @@ def api_settings():
 
         for toggle in _API_TOGGLE_KEYS:
             set_setting(toggle, "true" if request.form.get(toggle) else "false")
+
+        fetch_mode = (request.form.get("METADATA_FETCH_MODE") or "").strip().lower()
+        if fetch_mode in _FETCH_MODES:
+            set_setting("METADATA_FETCH_MODE", fetch_mode)
 
         flash(_("API settings saved."), "success")
         return redirect(url_for("settings.api_settings"))

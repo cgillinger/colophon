@@ -2,6 +2,21 @@
 """Shared metadata pipeline for single-book and batch enrichment flows.
 
 Orchestration lives here; routes stay thin (receive → call → render/redirect).
+
+Sources are merged **field by field** (see services/metadata_merge.py) rather
+than picking a single winning row, and run in cost tiers with completeness-
+driven escalation:
+
+    Tier 1 (fast)   — embedded file (OPF) + Google Books + Wikipedia, run in
+                      parallel. ~1s, no expensive subprocess.
+    Tier 2 (deep)   — Calibre's fetch-ebook-metadata (a slow subprocess that
+                      queries many plugins). Only run when needed.
+
+The fetch mode caps the escalation:
+    fast  — tier 1 only, never Calibre.
+    more  — tier 1, then Calibre only if essential fields are still missing
+            (the default; cheap books stay fast, hard books get help).
+    deep  — tier 1, then Calibre always.
 """
 import logging
 import os
@@ -35,6 +50,14 @@ QUALITY_THRESHOLDS = {
     "genres":      lambda v: (v or "").strip().lower() in {"fiction", "unknown", ""},
 }
 
+# Essential fields used by the escalation gate: if the merged payload is missing
+# any of these after the fast tier, "more" mode escalates to Calibre.
+ESSENTIAL_FIELDS = ("title", "author", "description", "cover", "series")
+
+# Valid fetch modes and their human order. Stored as METADATA_FETCH_MODE.
+FETCH_MODES = ("fast", "more", "deep")
+DEFAULT_FETCH_MODE = "more"
+
 
 def _cover_is_placeholder(item):
     """Treat very small cover files as placeholders (e.g. 1px tracking pixels)."""
@@ -65,6 +88,41 @@ def completeness_score(item):
         if not str(value).strip() or (threshold and threshold(value)):
             score += weight
     return score
+
+
+def _missing_essentials(payload):
+    """Return the essential fields the merged payload does not yet cover."""
+    missing = []
+    for field in ESSENTIAL_FIELDS:
+        if field == "cover":
+            if not (payload.get("cover_url") or "").strip():
+                missing.append("cover")
+        elif not str(payload.get(field) or "").strip():
+            missing.append(field)
+    return missing
+
+
+# ---------------------------------------------------------------------------
+# Settings resolution (DB > env > default), overridable per call
+# ---------------------------------------------------------------------------
+
+def _resolve_flag(explicit, setting_key, default=True):
+    """Return explicit when given, else the DB/env setting, else default."""
+    if explicit is not None:
+        return bool(explicit)
+    from app.services.app_settings import get_setting
+    raw = get_setting(setting_key, "true" if default else "false")
+    return (raw or "").strip().lower() == "true"
+
+
+def resolve_fetch_mode(explicit=None):
+    """Return the active fetch mode (fast|more|deep)."""
+    if explicit:
+        mode = str(explicit).strip().lower()
+    else:
+        from app.services.app_settings import get_setting
+        mode = (get_setting("METADATA_FETCH_MODE", DEFAULT_FETCH_MODE) or "").strip().lower()
+    return mode if mode in FETCH_MODES else DEFAULT_FETCH_MODE
 
 
 # ---------------------------------------------------------------------------
@@ -153,6 +211,33 @@ def build_search_input(item, local_metadata=None):
     }
 
 
+def _file_candidate(local_metadata):
+    """Build a merge candidate from the ebook file's own embedded metadata.
+
+    The embedded file is the single most trustworthy source for series, and is
+    free (no network). It only earns a candidate when it carries something
+    beyond title/author — those merely seed the search query and add nothing to
+    the merge on their own.
+    """
+    if not local_metadata:
+        return None
+
+    contributing = (
+        "description", "isbn", "publisher", "language",
+        "series", "series_index", "genres", "published_date",
+    )
+    candidate = {"source": _("Embedded file"), "cover_url": ""}
+    for field in ("title", "author", *contributing):
+        value = local_metadata.get(field) or ""
+        candidate[field] = value.strip() if isinstance(value, str) else str(value)
+
+    if not any(candidate.get(f) for f in contributing):
+        return None
+
+    candidate["fields_found"] = [f for f in candidate if f not in ("source", "fields_found") and candidate.get(f)]
+    return candidate
+
+
 # ---------------------------------------------------------------------------
 # Main enrichment orchestration
 # ---------------------------------------------------------------------------
@@ -160,49 +245,34 @@ def build_search_input(item, local_metadata=None):
 def run_metadata_enrichment(
     item,
     cover_dir=None,
-    include_google=True,
-    include_calibre=True,
-    include_wikipedia=True,
+    include_google=None,
+    include_calibre=None,
+    include_wikipedia=None,
+    include_file=None,
+    mode=None,
     local_metadata=None,
     on_progress=None,
     abort_check=None,
 ):
-    """Search external sources for the best metadata candidate.
+    """Search external sources for the best metadata and merge them field by field.
 
     Emits stage-level progress events via on_progress when provided.
 
-    Progressive stages (new flow):
+    Stages:
         read_file_metadata
-        fast_sources       — Wikipedia + Google Books started in parallel
-        google_books       — Google Books finished (per-source detail)
-        wikipedia          — Wikipedia finished (per-source detail)
-        fast_preview       — best candidate from fast sources (~1s)
-        calibre            — Calibre finished
-        final_preview      — best candidate after Calibre
-        scoring            — legacy alias, kept for back-compat
-        preview_ready      — legacy alias, kept for back-compat
+        fast_sources       — tier 1 (Google + Wikipedia) started in parallel
+        google_books       — Google Books finished
+        wikipedia          — Wikipedia finished
+        fast_preview       — merged candidate from tier 1 (~1s)
+        calibre            — tier 2 finished, skipped, or disabled
+        scoring            — comparing candidates
+        final_preview      — merged candidate after escalation
+        preview_ready      — terminal summary
 
-    Always reads fresh metadata from the ebook file before building the
-    search input, so ISBN or title/author embedded in the file takes
-    priority over potentially weak DB data (e.g. from a filename-only
-    initial scan).  Pass local_metadata explicitly to override.
+    include_* and mode default to the saved settings (METADATA_SOURCE_*_ENABLED,
+    METADATA_FETCH_MODE) when not passed explicitly.
 
-    Returns a result dict:
-        ok                 bool
-        best               dict | None  — best raw candidate from sources
-        score              float
-        signals            dict
-        warnings           list[str]
-        classification     str
-        all_scored         list[dict]
-        sources_used       list[str]
-        source_results     list[dict]   — per-source status objects
-        search_input       dict         — what was sent to external sources
-        local_metadata     dict | None  — metadata read from file
-        validation_warning str | None
-        fetched_payload    dict         — cleaned payload ready for preview
-        cover_path         str | None   — local path to downloaded cover
-        error              str | None   — human-readable error when ok=False
+    Returns a result dict (see keys assembled at the end).
     """
     from app.services.metadata_sources import (
         choose_best_metadata_explained,
@@ -212,6 +282,13 @@ def run_metadata_enrichment(
     )
     from app.services.metadata_calibre import fetch_calibre_metadata_with_status
     from app.services.metadata_wikipedia import search_wikipedia_with_status
+    from app.services.metadata_merge import merge_candidates
+
+    include_google = _resolve_flag(include_google, "METADATA_SOURCE_GOOGLE_ENABLED")
+    include_wikipedia = _resolve_flag(include_wikipedia, "METADATA_SOURCE_WIKIPEDIA_ENABLED")
+    include_calibre = _resolve_flag(include_calibre, "METADATA_SOURCE_CALIBRE_ENABLED")
+    include_file = _resolve_flag(include_file, "METADATA_SOURCE_FILE_ENABLED")
+    mode = resolve_fetch_mode(mode)
 
     item_id = getattr(item, "id", None)
     item_title = getattr(item, "title", "") or ""
@@ -247,9 +324,19 @@ def run_metadata_enrichment(
     search_input = build_search_input(item, local_metadata)
 
     source_results = []
-    all_candidates = []
+    all_candidates = []          # everything, incl. the embedded file
+    external_candidates = []     # only network sources — used for identity scoring
 
-    # Stage 2: fast sources (Wikipedia + Google Books in parallel)
+    # Embedded file becomes a high-trust candidate (best source for series).
+    file_candidate = _file_candidate(local_metadata) if include_file else None
+    if file_candidate:
+        all_candidates.append(file_candidate)
+
+    def _merge_now(anchor):
+        merged, provenance = merge_candidates(item, all_candidates, anchor)
+        return merged, provenance
+
+    # -- Tier 1: fast sources (Wikipedia + Google Books in parallel) ---------
     fast_jobs = {}
     if include_wikipedia:
         fast_jobs["wikipedia"] = lambda: search_wikipedia_with_status(
@@ -276,13 +363,12 @@ def run_metadata_enrichment(
 
     fast_results = _run_fast_sources(fast_jobs)
 
-    # Emit per-source completion events in a stable order so UIs that
-    # listen for stage="google_books" (existing batch UI) keep working.
     if "google_books" in fast_results:
         google_sr = fast_results["google_books"]
         source_results.append(google_sr)
         google_candidates_list = google_sr.get("candidates", [])
         all_candidates.extend(google_candidates_list)
+        external_candidates.extend(google_candidates_list)
         google_source_details = [{
             "source": "Google Books",
             "fields_found": (
@@ -306,6 +392,7 @@ def run_metadata_enrichment(
         source_results.append(wiki_sr)
         wiki_candidates_list = wiki_sr.get("candidates", [])
         all_candidates.extend(wiki_candidates_list)
+        external_candidates.extend(wiki_candidates_list)
         wiki_source_details = [{
             "source": "Wikipedia",
             "fields_found": (
@@ -324,28 +411,34 @@ def run_metadata_enrichment(
             warnings=[],
         )
 
-    # Emit fast_preview with the best candidate so far so the UI can fill
-    # fields before Calibre finishes.
-    if all_candidates:
-        fast_scoring = choose_best_metadata_explained(item, list(all_candidates))
-        fast_best = fast_scoring.get("best")
-        fast_payload = _build_fetched_payload(fast_best) if fast_best else {}
-        _emit(
-            "fast_preview",
-            status="ok" if fast_best else "no_match",
-            message=_("Fast sources done."),
-            candidates_found=len(fast_scoring.get("all_scored") or []),
-            score=fast_scoring.get("score"),
-            payload=fast_payload,
-            source=(fast_best or {}).get("source", "") if fast_best else "",
-            warnings=[],
-        )
+    # Merged preview after tier 1 so the UI fills before Calibre runs.
+    fast_scoring = choose_best_metadata_explained(item, list(external_candidates))
+    fast_anchor = fast_scoring.get("best")
+    fast_merged, fast_provenance = _merge_now(fast_anchor)
+    fast_payload = _build_fetched_payload(fast_merged) if fast_merged else {}
+    missing = _missing_essentials(fast_merged)
+    _emit(
+        "fast_preview",
+        status="ok" if fast_merged else "no_match",
+        message=_("Fast sources done."),
+        candidates_found=len(fast_scoring.get("all_scored") or []),
+        score=fast_scoring.get("score"),
+        payload=fast_payload,
+        provenance=fast_provenance,
+        missing_essentials=missing,
+        source=(fast_anchor or {}).get("source", "") if fast_anchor else "",
+        warnings=[],
+    )
 
-    # Stage 3: Calibre (skipped on abort to bail out faster)
+    # -- Tier 2: Calibre, gated by mode + completeness -----------------------
     if _aborted():
         include_calibre = False
 
-    if include_calibre:
+    run_calibre = include_calibre and (
+        mode == "deep" or (mode == "more" and bool(missing))
+    )
+
+    if run_calibre:
         _emit(
             "calibre",
             source="calibre",
@@ -361,10 +454,10 @@ def run_metadata_enrichment(
         source_results.append(calibre_sr)
         calibre_candidates_list = calibre_sr.get("candidates", [])
         all_candidates.extend(calibre_candidates_list)
+        external_candidates.extend(calibre_candidates_list)
 
-        # One source_details entry per Calibre plugin (Goodreads, Fantastic
-        # Fiction, etc.) so the UI can show per-plugin coverage. All plugins
-        # share the same fields_found because Calibre returns merged data.
+        # One source_details entry per Calibre plugin so the UI can show
+        # per-plugin coverage. Plugins share fields_found (Calibre merges).
         calibre_source_details = []
         for c in calibre_candidates_list:
             plugins = c.get("plugins_used") or []
@@ -398,32 +491,56 @@ def run_metadata_enrichment(
             source_details=calibre_source_details,
             warnings=[],
         )
+    else:
+        # Emit a terminal calibre event so the UI's spinner resolves, and record
+        # a skipped source_result so downstream consumers see a stable shape.
+        if not include_calibre:
+            skip_msg = _("Calibre is turned off in settings.")
+        elif mode == "fast":
+            skip_msg = _("Calibre skipped (Fast mode).")
+        else:
+            skip_msg = _("Calibre skipped — fast sources already covered the essentials.")
+        source_results.append({
+            "source": "calibre", "ok": False, "status": "skipped",
+            "duration_ms": 0, "message": skip_msg, "candidates": [],
+            "raw_debug": {"returncode": None, "stderr_excerpt": ""},
+        })
+        _emit(
+            "calibre",
+            source="calibre",
+            status="skipped",
+            message=skip_msg,
+            candidates_found=0,
+            source_details=[],
+            warnings=[],
+        )
 
     all_candidates = deduplicate_results(all_candidates)
+    external_candidates = deduplicate_results(external_candidates)
 
-    # Stage 4: scoring
+    # Stage: scoring (identity/classification over external candidates only —
+    # the embedded file is always trusted in the merge but should not decide
+    # the match confidence on its own).
     _emit(
         "scoring",
         status="scoring",
         message=_("Comparing candidates..."),
-        candidates_found=len(all_candidates),
+        candidates_found=len(external_candidates),
         warnings=[],
     )
 
-    scoring = choose_best_metadata_explained(item, all_candidates)
+    scoring = choose_best_metadata_explained(item, external_candidates)
     best = scoring["best"]
     best_score = scoring["score"]
 
-    # Stage 5: preview_ready
     n_candidates = len(scoring["all_scored"])
     if best:
-        best_source = best.get("source", "")
         _emit(
             "preview_ready",
             status="ok",
             message=_(
                 "Found %(count)d possible matches. Best match: %(score)d points, %(source)s.",
-                count=n_candidates, score=round(best_score), source=best_source,
+                count=n_candidates, score=round(best_score), source=best.get("source", ""),
             ),
             candidates_found=n_candidates,
             warnings=scoring["warnings"],
@@ -452,15 +569,21 @@ def run_metadata_enrichment(
             "local_metadata": local_metadata,
             "validation_warning": None,
             "fetched_payload": {},
+            "provenance": {},
+            "fetch_mode": mode,
             "cover_path": None,
-            "error": _("No secure metadata matches were found from Google Books or Calibre."),
+            "error": _("No secure metadata matches were found."),
         }
 
+    # Field-level merge over every trusted candidate (external + embedded file).
+    merged, provenance = merge_candidates(item, all_candidates, best)
+
     cover_path_for_preview = None
-    if cover_dir and best.get("cover_url"):
+    cover_url = merged.get("cover_url")
+    if cover_dir and cover_url:
         os.makedirs(cover_dir, exist_ok=True)
         downloaded = download_cover_to_file(
-            cover_url=best["cover_url"],
+            cover_url=cover_url,
             cover_dir=cover_dir,
             item_id=item.id,
         )
@@ -473,12 +596,13 @@ def run_metadata_enrichment(
             except OSError:
                 cover_path_for_preview = downloaded
 
-    fetched_payload = _build_fetched_payload(best, cover_path=cover_path_for_preview)
+    fetched_payload = _build_fetched_payload(merged, cover_path=cover_path_for_preview)
 
     validation_warning = _build_validation_warning(item, fetched_payload)
 
-    # Emit final_preview after scoring + cover download so the UI can replace
-    # any placeholder values shown after fast_preview with the final ones.
+    # Sources that actually contributed at least one field (for the UI summary).
+    sources_used = list(dict.fromkeys(v for v in provenance.values() if v))
+
     _emit(
         "final_preview",
         status="ok",
@@ -486,6 +610,7 @@ def run_metadata_enrichment(
         candidates_found=len(scoring["all_scored"]),
         score=best_score,
         payload=fetched_payload,
+        provenance=provenance,
         source=best.get("source", "") if best else "",
         warnings=scoring["warnings"],
     )
@@ -498,12 +623,14 @@ def run_metadata_enrichment(
         "warnings": scoring["warnings"],
         "classification": scoring["classification"],
         "all_scored": scoring["all_scored"],
-        "sources_used": [best["source"]] if best.get("source") else [],
+        "sources_used": sources_used,
         "source_results": source_results,
         "search_input": search_input,
         "local_metadata": local_metadata,
         "validation_warning": validation_warning,
         "fetched_payload": fetched_payload,
+        "provenance": provenance,
+        "fetch_mode": mode,
         "cover_path": cover_path_for_preview,
         "error": None,
     }
@@ -541,7 +668,7 @@ def _run_fast_sources(jobs):
 
 
 def _build_fetched_payload(best, cover_path=None):
-    """Produce the standard fetched_payload dict from a candidate."""
+    """Produce the standard fetched_payload dict from a (merged) candidate."""
     if not best:
         return {}
 
