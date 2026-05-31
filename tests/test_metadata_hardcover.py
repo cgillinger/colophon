@@ -76,6 +76,27 @@ def test_search_with_status_ok(monkeypatch):
     assert sr["candidates"][0]["series"] == "Zones of Thought"
 
 
+def test_query_prefers_title_author_over_isbn(monkeypatch):
+    """Hardcover search is keyword-based; a raw ISBN matches nothing."""
+    import app.services.app_settings as app_settings
+    monkeypatch.setattr(app_settings, "get_setting", lambda *a, **k: "")
+    captured = {}
+
+    class _Resp:
+        status_code = 200
+        ok = True
+        def json(self):
+            return {"data": {"search": {"results": {"hits": []}}}}
+
+    def _fake_post(url, json=None, headers=None, timeout=None):
+        captured["query"] = json["variables"]["query"]
+        return _Resp()
+
+    monkeypatch.setattr(hc.requests, "post", _fake_post)
+    hc.hardcover_search_with_status(title="A Fire Upon the Deep", author="Vernor Vinge", isbn="9780575128811")
+    assert captured["query"] == "A Fire Upon the Deep Vernor Vinge"
+
+
 def test_search_with_status_no_hits(monkeypatch):
     import app.services.app_settings as app_settings
     monkeypatch.setattr(app_settings, "get_setting", lambda *a, **k: "")

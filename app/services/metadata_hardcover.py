@@ -123,10 +123,15 @@ def hardcover_search_with_status(query_text="", title="", author="", isbn="") ->
             "raw_debug": {"returncode": None, "stderr_excerpt": ""},
         }
 
-    if isbn:
-        query_str = "".join(ch for ch in isbn if ch.isdigit() or ch in "Xx")
-    else:
-        query_str = " ".join(p for p in [title, author] if p).strip() or query_text.strip()
+    # Hardcover's `search` is a Typesense keyword search, NOT an ISBN lookup —
+    # a raw ISBN string matches nothing. Prefer title+author; fall back to ISBN
+    # only when there's no title/author to go on. The merge's trust-gate filters
+    # any wrong-book hit this looser query might return.
+    query_str = " ".join(p for p in [title, author] if p).strip()
+    if not query_str:
+        query_str = "".join(ch for ch in (isbn or "") if ch.isdigit() or ch in "Xx")
+    if not query_str:
+        query_str = (query_text or "").strip()
 
     if not query_str:
         return _result(False, "no_result", _("Hardcover: no search input."))
