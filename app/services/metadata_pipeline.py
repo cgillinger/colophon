@@ -248,6 +248,7 @@ def run_metadata_enrichment(
     include_google=None,
     include_calibre=None,
     include_wikipedia=None,
+    include_hardcover=None,
     include_file=None,
     mode=None,
     local_metadata=None,
@@ -282,10 +283,12 @@ def run_metadata_enrichment(
     )
     from app.services.metadata_calibre import fetch_calibre_metadata_with_status
     from app.services.metadata_wikipedia import search_wikipedia_with_status
+    from app.services.metadata_hardcover import hardcover_search_with_status
     from app.services.metadata_merge import merge_candidates
 
     include_google = _resolve_flag(include_google, "METADATA_SOURCE_GOOGLE_ENABLED")
     include_wikipedia = _resolve_flag(include_wikipedia, "METADATA_SOURCE_WIKIPEDIA_ENABLED")
+    include_hardcover = _resolve_flag(include_hardcover, "METADATA_SOURCE_HARDCOVER_ENABLED")
     include_calibre = _resolve_flag(include_calibre, "METADATA_SOURCE_CALIBRE_ENABLED")
     include_file = _resolve_flag(include_file, "METADATA_SOURCE_FILE_ENABLED")
     mode = resolve_fetch_mode(mode)
@@ -351,6 +354,13 @@ def run_metadata_enrichment(
             author=search_input["author"],
             isbn=search_input["isbn"],
         )
+    if include_hardcover:
+        fast_jobs["hardcover"] = lambda: hardcover_search_with_status(
+            query_text=search_input["query_text"],
+            title=search_input["title"],
+            author=search_input["author"],
+            isbn=search_input["isbn"],
+        )
 
     if fast_jobs:
         _emit(
@@ -408,6 +418,30 @@ def run_metadata_enrichment(
             message=wiki_sr["message"],
             candidates_found=len(wiki_candidates_list),
             source_details=wiki_source_details,
+            warnings=[],
+        )
+
+    if "hardcover" in fast_results:
+        hc_sr = fast_results["hardcover"]
+        source_results.append(hc_sr)
+        hc_candidates_list = hc_sr.get("candidates", [])
+        all_candidates.extend(hc_candidates_list)
+        external_candidates.extend(hc_candidates_list)
+        hc_source_details = [{
+            "source": "Hardcover",
+            "fields_found": (
+                hc_candidates_list[0].get("fields_found", [])
+                if hc_candidates_list else []
+            ),
+            "ok": bool(hc_sr["ok"]),
+        }]
+        _emit(
+            "hardcover",
+            source="hardcover",
+            status="ok" if hc_sr["ok"] else hc_sr["status"],
+            message=hc_sr["message"],
+            candidates_found=len(hc_candidates_list),
+            source_details=hc_source_details,
             warnings=[],
         )
 

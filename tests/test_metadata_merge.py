@@ -50,6 +50,10 @@ def _embedded(**kw):
     return _cand("Embedded file", **kw)
 
 
+def _hardcover(**kw):
+    return _cand("Hardcover", **kw)
+
+
 # ---------------------------------------------------------------------------
 # Source bucketing
 # ---------------------------------------------------------------------------
@@ -57,10 +61,30 @@ def _embedded(**kw):
 def test_source_key_buckets():
     assert _source_key("Google Books API") == "google"
     assert _source_key("Calibre: Goodreads, FictionDB") == "calibre"
+    assert _source_key("Hardcover") == "hardcover"
     assert _source_key("Wikipedia") == "wikipedia"
     assert _source_key("Embedded file") == "embedded"
     assert _source_key("Inbäddad fil") == "embedded"
     assert _source_key("Something else") == "other"
+
+
+def test_hardcover_series_beats_google_but_loses_to_embedded():
+    item = _item(title="A Fire Upon the Deep", author="Vernor Vinge")
+    google = _google(title="A Fire Upon the Deep", author="Vernor Vinge",
+                     description="long desc", series="Wrong Series", series_index="9")
+    hard = _hardcover(title="A Fire Upon the Deep", author="Vernor Vinge",
+                      series="Zones of Thought", genres="Science Fiction, Space Opera")
+    # Hardcover outranks Google for series.
+    payload, prov = merge_candidates(item, [google, hard], google)
+    assert payload["series"] == "Zones of Thought"
+    assert prov["series"] == "Hardcover"
+
+    # ...but the embedded file still wins over Hardcover.
+    embedded = _embedded(title="A Fire Upon the Deep", author="Vernor Vinge",
+                         series="From The File", series_index="1")
+    payload2, prov2 = merge_candidates(item, [google, hard, embedded], google)
+    assert payload2["series"] == "From The File"
+    assert prov2["series"] == "Embedded file"
 
 
 # ---------------------------------------------------------------------------

@@ -45,6 +45,7 @@ _API_TOGGLE_KEYS = [
     # Metadata sources (used by the enrichment pipeline; default on).
     "METADATA_SOURCE_FILE_ENABLED",
     "METADATA_SOURCE_GOOGLE_ENABLED",
+    "METADATA_SOURCE_HARDCOVER_ENABLED",
     "METADATA_SOURCE_WIKIPEDIA_ENABLED",
     "METADATA_SOURCE_CALIBRE_ENABLED",
 ]
@@ -221,6 +222,7 @@ def _settings_view_context():
         "fetch_mode": (get_setting("METADATA_FETCH_MODE", "more") or "more").lower(),
         "source_file_enabled": (get_setting("METADATA_SOURCE_FILE_ENABLED", "true") or "true").lower() == "true",
         "source_google_enabled": (get_setting("METADATA_SOURCE_GOOGLE_ENABLED", "true") or "true").lower() == "true",
+        "source_hardcover_enabled": (get_setting("METADATA_SOURCE_HARDCOVER_ENABLED", "true") or "true").lower() == "true",
         "source_wikipedia_enabled": (get_setting("METADATA_SOURCE_WIKIPEDIA_ENABLED", "true") or "true").lower() == "true",
         "source_calibre_enabled": (get_setting("METADATA_SOURCE_CALIBRE_ENABLED", "true") or "true").lower() == "true",
         "calibre_available": bool(shutil.which("fetch-ebook-metadata")),

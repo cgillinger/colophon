@@ -655,6 +655,15 @@
                 <span class="source-hint">{{ _('Synopsis, cover, publisher, date, categories.') }}</span>
             </div>
             <div class="toggle-row">
+                <input type="checkbox" id="METADATA_SOURCE_HARDCOVER_ENABLED" name="METADATA_SOURCE_HARDCOVER_ENABLED"
+                       {% if source_hardcover_enabled %}checked{% endif %}>
+                <label for="METADATA_SOURCE_HARDCOVER_ENABLED" style="margin:0; font-weight:500;">Hardcover</label>
+                {% if hardcover_token_set %}
+                    <span class="badge ok">&#10003; {{ _('Token set') }}</span>
+                {% endif %}
+                <span class="source-hint">{{ _('Strong for series, genre and synopsis on popular/English titles. Token below (optional) raises rate limits.') }}</span>
+            </div>
+            <div class="toggle-row">
                 <input type="checkbox" id="METADATA_SOURCE_WIKIPEDIA_ENABLED" name="METADATA_SOURCE_WIKIPEDIA_ENABLED"
                        {% if source_wikipedia_enabled %}checked{% endif %}>
                 <label for="METADATA_SOURCE_WIKIPEDIA_ENABLED" style="margin:0; font-weight:500;">{{ _('Wikipedia') }}</label>

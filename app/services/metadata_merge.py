@@ -44,6 +44,8 @@ def _source_key(label):
         return "embedded"
     if "calibre" in s:
         return "calibre"
+    if "hardcover" in s:
+        return "hardcover"
     if "google" in s:
         return "google"
     if "wikipedia" in s:
@@ -55,19 +57,21 @@ def _source_key(label):
 # special token "anchor" means the anchor candidate specifically. Only sources
 # that exist in the current pipeline are listed; unknown sources ("other") are
 # always considered last via DEFAULT_PRECEDENCE.
-SERIES_PRECEDENCE = ["embedded", "calibre", "google", "wikipedia"]
+# Hardcover carries clean structured series/genre data, so it ranks high for
+# series — just below the embedded file (which is the file itself).
+SERIES_PRECEDENCE = ["embedded", "hardcover", "calibre", "google", "wikipedia"]
 
 FIELD_PRECEDENCE = {
-    "title":          ["anchor", "embedded", "calibre", "google", "wikipedia"],
-    "author":         ["anchor", "embedded", "calibre", "google", "wikipedia"],
-    "publisher":      ["embedded", "calibre", "google", "wikipedia"],
-    "published_date": ["embedded", "google", "calibre", "wikipedia"],
+    "title":          ["anchor", "embedded", "calibre", "hardcover", "google", "wikipedia"],
+    "author":         ["anchor", "embedded", "calibre", "hardcover", "google", "wikipedia"],
+    "publisher":      ["embedded", "calibre", "google", "hardcover", "wikipedia"],
+    "published_date": ["embedded", "google", "calibre", "hardcover", "wikipedia"],
     "language":       ["embedded", "google", "calibre", "wikipedia"],
-    "isbn":           ["embedded", "google", "calibre", "wikipedia"],
-    "cover_url":      ["google", "calibre", "wikipedia", "embedded"],
+    "isbn":           ["embedded", "google", "calibre", "hardcover", "wikipedia"],
+    "cover_url":      ["google", "hardcover", "calibre", "wikipedia", "embedded"],
 }
 
-DEFAULT_PRECEDENCE = ["anchor", "embedded", "calibre", "google", "wikipedia", "other"]
+DEFAULT_PRECEDENCE = ["anchor", "embedded", "hardcover", "calibre", "google", "wikipedia", "other"]
 
 # Fields filled by the generic first-by-precedence pass (series, description and
 # genres have their own strategies and are handled separately).
