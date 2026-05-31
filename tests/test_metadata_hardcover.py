@@ -59,7 +59,7 @@ def test_candidate_handles_missing_optionals():
 
 def test_search_with_status_ok(monkeypatch):
     import app.services.app_settings as app_settings
-    monkeypatch.setattr(app_settings, "get_setting", lambda *a, **k: "")
+    monkeypatch.setattr(app_settings, "get_setting", lambda *a, **k: "tok")
 
     class _Resp:
         status_code = 200
@@ -79,7 +79,7 @@ def test_search_with_status_ok(monkeypatch):
 def test_query_prefers_title_author_over_isbn(monkeypatch):
     """Hardcover search is keyword-based; a raw ISBN matches nothing."""
     import app.services.app_settings as app_settings
-    monkeypatch.setattr(app_settings, "get_setting", lambda *a, **k: "")
+    monkeypatch.setattr(app_settings, "get_setting", lambda *a, **k: "tok")
     captured = {}
 
     class _Resp:
@@ -99,7 +99,7 @@ def test_query_prefers_title_author_over_isbn(monkeypatch):
 
 def test_search_with_status_no_hits(monkeypatch):
     import app.services.app_settings as app_settings
-    monkeypatch.setattr(app_settings, "get_setting", lambda *a, **k: "")
+    monkeypatch.setattr(app_settings, "get_setting", lambda *a, **k: "tok")
 
     class _Resp:
         status_code = 200
@@ -113,9 +113,69 @@ def test_search_with_status_no_hits(monkeypatch):
     assert sr["status"] == "no_result"
 
 
-def test_search_with_status_rate_limited(monkeypatch):
+def test_no_token_is_not_configured(monkeypatch):
     import app.services.app_settings as app_settings
     monkeypatch.setattr(app_settings, "get_setting", lambda *a, **k: "")
+    # requests.post must not even be called without a token.
+    def _boom(*a, **k):
+        raise AssertionError("should not hit the network without a token")
+    monkeypatch.setattr(hc.requests, "post", _boom)
+    sr = hc.hardcover_search_with_status(title="x", author="y")
+    assert sr["status"] == "not_configured"
+    assert sr["ok"] is False
+
+
+def test_bearer_prefix_is_stripped(monkeypatch):
+    import app.services.app_settings as app_settings
+    monkeypatch.setattr(app_settings, "get_setting", lambda *a, **k: "Bearer abc123")
+    captured = {}
+
+    class _Resp:
+        status_code = 200
+        ok = True
+        def json(self):
+            return {"data": {"search": {"results": {"hits": []}}}}
+
+    def _fake_post(url, json=None, headers=None, timeout=None):
+        captured["auth"] = headers.get("Authorization")
+        return _Resp()
+
+    monkeypatch.setattr(hc.requests, "post", _fake_post)
+    hc.hardcover_search_with_status(title="x")
+    assert captured["auth"] == "Bearer abc123"  # not "Bearer Bearer abc123"
+
+
+def test_401_is_auth_error(monkeypatch):
+    import app.services.app_settings as app_settings
+    monkeypatch.setattr(app_settings, "get_setting", lambda *a, **k: "tok")
+
+    class _Resp:
+        status_code = 401
+        ok = False
+
+    monkeypatch.setattr(hc.requests, "post", lambda *a, **k: _Resp())
+    sr = hc.hardcover_search_with_status(title="x")
+    assert sr["status"] == "auth_error"
+
+
+def test_error_body_with_200_is_auth_error(monkeypatch):
+    import app.services.app_settings as app_settings
+    monkeypatch.setattr(app_settings, "get_setting", lambda *a, **k: "tok")
+
+    class _Resp:
+        status_code = 200
+        ok = True
+        def json(self):
+            return {"error": "Unable to verify token"}
+
+    monkeypatch.setattr(hc.requests, "post", lambda *a, **k: _Resp())
+    sr = hc.hardcover_search_with_status(title="x")
+    assert sr["status"] == "auth_error"
+
+
+def test_search_with_status_rate_limited(monkeypatch):
+    import app.services.app_settings as app_settings
+    monkeypatch.setattr(app_settings, "get_setting", lambda *a, **k: "tok")
 
     class _Resp:
         status_code = 429

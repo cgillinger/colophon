@@ -137,9 +137,16 @@ def hardcover_search_with_status(query_text="", title="", author="", isbn="") ->
         return _result(False, "no_result", _("Hardcover: no search input."))
 
     token = (get_setting("HARDCOVER_API_TOKEN") or "").strip()
-    headers = {"Content-Type": "application/json"}
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
+    # Tokens copied from hardcover.app/account/api sometimes already include the
+    # "Bearer " scheme; strip it so we don't send "Bearer Bearer …".
+    if token.lower().startswith("bearer "):
+        token = token[7:].strip()
+    # Hardcover's API now rejects anonymous requests (HTTP 401), so a token is
+    # required — not merely a rate-limit nicety. Skip cleanly when absent.
+    if not token:
+        return _result(False, "not_configured", _("Hardcover: an API token is required (set one in Settings)."))
+
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
 
     try:
         resp = requests.post(
@@ -151,6 +158,8 @@ def hardcover_search_with_status(query_text="", title="", author="", isbn="") ->
     except requests.RequestException as exc:
         return _result(False, "network_or_plugin_error", _("Hardcover: network error (%(exc)s).", exc=exc))
 
+    if resp.status_code in (401, 403):
+        return _result(False, "auth_error", _("Hardcover: invalid or expired API token."))
     if resp.status_code == 429:
         return _result(False, "rate_limited", _("Hardcover: rate limit reached."))
     if not resp.ok:
@@ -160,6 +169,10 @@ def hardcover_search_with_status(query_text="", title="", author="", isbn="") ->
         data = resp.json()
     except ValueError:
         return _result(False, "network_or_plugin_error", _("Hardcover: invalid response."))
+
+    # Some auth/validation failures come back as HTTP 200 with an error body.
+    if isinstance(data, dict) and data.get("error"):
+        return _result(False, "auth_error", _("Hardcover: %(err)s.", err=str(data["error"])))
 
     try:
         results_data = (data.get("data") or {}).get("search", {}).get("results", {})
