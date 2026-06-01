@@ -69,35 +69,121 @@ were the ones who pushed the book entry.
 Verify with Playwright: open→Back closes; direct `?book=` load opens; close via X
 returns to the list URL.
 
-## Consolidate the duplicate "Sync to library" affordances
+## Sync to library: add a preview→confirm step + consolidate the duplicate affordances
 
-**What:** There are two separate "Sync to library" controls and they overlap.
-Clicking **Sync to library** in the left sidebar starts the push sync directly
-— but the *old* sync bar (`#syncBar`) still shows above the list with its own
-**Sync to library** button. Two buttons, same action, shown at once → confusing.
-Pick one model and make the other consistent.
+**Two things, one change.** (a) Today clicking **Sync to library** fires
+`/sync/push` immediately — no chance to see what's about to be written upstream.
+The user wants the old Bookstation-style two-step: click → see the list of books
+that will be pushed → click again to confirm. Better control. (b) While in here,
+fix the long-standing duplicate-affordance bug below.
 
-**Where it hooks in:**
-- Sidebar trigger: `app/templates/_layout.html` (`.sidebar-nav-sync`,
-  `onclick="startPushSync()"`; on non-library pages it's a `#sync` link instead).
-- Old bar: `app/templates/bulk_metadata.html` `#syncBar` / `#syncBarText` with a
-  second `startPushSync()` button; shown/hidden in
-  `app/static/js/filters-sort-paging.js` (~L313) based on unsynced rows.
-- Both call `startPushSync()` in `app/static/js/scan-sync.js`.
+**Decision (made 2026-06-01):** the sidebar item is the **single** trigger;
+**drop `#syncBar`**. Clicking it opens a **preview modal** (not an immediate
+sync); the confirm button inside the modal starts the SSE push.
 
-**Decision to make:** either (a) drop `#syncBar` and let the sidebar item be the
-single trigger (it already shows the unsynced count badge), or (b) keep the bar
-as the in-context trigger and remove the sidebar duplication. Whichever — only
-one "Sync" affordance should be visible at a time, and the visible one should
-reflect sync progress/state.
+**Backend — net-new (no list-pending capability exists today, only a count):**
+- Add `list_pending_items()` to `app/services/upstream_sync.py` — same filter as
+  `get_unsynced_count()` (`file_modified_by_colophon` newer than
+  `upstream_synced_at`) but returns `[{id, title, author, file_modified,
+  last_synced}]`, **no side effects**.
+- Add a JSON route `GET /sync/pending` in `app/routes/metadata.py` →
+  `{ok, items, count}`. The existing `/sync/push` SSE endpoint stays as the
+  confirm action, unchanged.
 
-**Drive-by while in there:** `filters-sort-paging.js:~318` builds the bar text
-by concat in hardcoded Swedish (`' filer redo att synka till bibliotek'`) — it
-never switches to English. Route it through i18n (same class of bug fixed in
-v1.5.8).
+**Frontend — `app/static/js/scan-sync.js`:**
+- Split `startPushSync()`: the sidebar now calls `openSyncPreview()` →
+  `fetch('/sync/pending')` → render a modal listing the books (title + author +
+  "modified" time). Confirm button calls the existing push-SSE logic
+  (rename current body to `confirmPushSync()`).
+- **Pattern to copy:** `app/static/js/duplicates.js` already does exactly this
+  (GET a JSON list → render modal → act). Mirror its modal shell.
+- **Bonus (cheap, high-value):** per-row checkboxes in the modal so the user can
+  exclude individual books from this push. Requires `/sync/push` to accept an
+  optional `ids` filter; skip if it balloons scope.
 
-**Scope:** small. UI cleanup → PATCH (or MINOR if the bar is removed as a
-visible feature). Verify on iPad viewport.
+**Drop `#syncBar`:** remove the `#syncBar`/`#syncBarText` markup from
+`bulk_metadata.html`, its second `startPushSync()` button, and the show/hide in
+`app/static/js/filters-sort-paging.js` (~L313). That also retires the hardcoded
+Swedish bar text (`' filer redo att synka till bibliotek'`, ~L318) that never
+switched to English — no i18n fix needed if the bar is gone. Sync progress now
+lives in the modal instead of the bar.
+
+**Scope:** small-to-medium. New user-visible behaviour (preview step) + removed
+visible bar → MINOR. Verify on iPad viewport with the prod lab book "12|21|12":
+preview lists it, confirm pushes, cancel does nothing.
+
+## Metadata fetching: make depth + transparency first-class (the "feel" rework)
+
+**The problem (user, 2026-06-01):** clicking "Hämta metadata" feels like the
+system "just runs off". You can't choose how deep to search, you get poor
+feedback on *what* was fetched and *what will be replaced*, and it feels like
+there's little room to cherry-pick. Investigation showed most of the machinery
+already exists — it's **hidden and inconsistent**, not missing. Bookstation (the
+fork parent, `../bookstation`) already shipped the good version of this; bring it
+back. Three layers, cheap → large.
+
+**Key finding — two divergent code paths.** Single-book enrichment uses the full
+tiered pipeline (`run_metadata_enrichment` → `metadata_pipeline.py`) and already
+has a **per-field diff preview with checkboxes + per-field source chips**
+(`metadata_enrichment_preview.html`) — i.e. cherry-pick already works there. The
+**batch wizard runs a different, older path** (`search_all_sources_with_status`
++ `choose_best_metadata_explained`) with no tier logic and an inconsistent review
+UI. The felt "can't pick raisins" almost certainly comes from batch (or from the
+single-book preview being under-discovered). Unifying the two paths is the real
+debt.
+
+### Layer 1 — surface the fetch tiers at the fetch button (small)
+
+The three modes already exist internally (`metadata_pipeline.py:58-60`:
+`fast`/`more`/`deep`) but are buried as a global DB setting
+(`METADATA_FETCH_MODE`). Bookstation surfaced them as three toggle buttons right
+next to the fetch button (`bookstation/app/templates/metadata.html:610-616`).
+Bring that back as a per-fetch override.
+
+- **User-facing names (decided): Snabb / Normal / Djup.**
+  - ⚡ **Snabb** — local + fastest sources only (tier 1)
+  - ✓ **Normal** (recommended default) — escalates to tier 2 if essentials missing
+  - 🔎 **Djup** — all sources incl. Calibre/AI, slowest (tier 3)
+- The pipeline already accepts an explicit mode (`resolve_fetch_mode(explicit=…)`,
+  `pipeline.py:303`); this is mostly UI + passing `?mode=` on the SSE stream.
+- Keep the global setting as the default the toggle initialises from.
+- **Note:** once the Calibre removal (above) lands, "Djup" loses Calibre — reword
+  its hint to "alla källor inkl. AI".
+
+### Layer 2 — live coverage banner during fetch (small)
+
+Bookstation showed a banner that updated per tier as it searched
+(`bookstation/app/templates/metadata.html:742-757`): "Nivå 2/3 · källor: …  ✓
+Titel ✓ Författare ✗ Omslag ✗ Serie". Colophon already emits per-source SSE
+events; this just renders them as a running ✓/✗ over the essential fields
+(`title, author, description, cover, series` — `pipeline.py:55`) plus which
+sources contributed. Makes the wait legible and shows *why* a deeper tier kicked
+in. Hooks into the single-book enrichment SSE handler.
+
+### Layer 3 — unify batch onto the tiered pipeline + per-field diff (large)
+
+The biggest piece and the one that actually delivers "cherry-pick in bulk". Move
+the batch wizard's step 3 onto the same `run_metadata_enrichment` + per-field
+diff + source-chip UI the single-book path already has, so depth selection,
+provenance, and field-level accept/reject are **consistent** whether you enrich
+one book or a hundred.
+- Batch search path: `app/routes/metadata.py` `/metadata/bulk/stream` (~L916)
+  currently calls `search_all_sources_with_status`; repoint at the pipeline.
+- Batch review UI: `app/static/js/batch.js` step 3 — already has an "alt-panel"
+  per-field source picker; align it with the single-book diff semantics
+  (status colours new/changed/same/missing, default-check only "new").
+
+**Adjacent, separate — do NOT fold in:** per-field locks
+(`docs/future-idea-per-field-locks.md`). Cherry-pick is one-shot ("take this
+now"); locks are persistent ("never touch my title again"). Complementary, but a
+different feature — keep it out of this rework.
+
+**Recommended order:** Layer 1 + 2 together (most "feel" change for least code),
+then Layer 3 once the pattern is settled.
+
+**Scope:** Layer 1 small (MINOR — new per-fetch control), Layer 2 small (PATCH —
+richer progress feedback), Layer 3 medium-large (MINOR — batch gains per-field
+cherry-pick + provenance). Verify each on the prod lab book "12|21|12".
 
 ## Make scroll restore after edit-reload pixel-accurate (v1.6.0 follow-up)
 
@@ -162,9 +248,27 @@ write path is EPUB-only and the MOBI/AZW3 read path is unexercised. `kepubify`
   `include_calibre`, `METADATA_SOURCE_CALIBRE_ENABLED`, the settings toggle +
   `calibre_available`, and the Calibre column/skipped-dash handling in
   `book-modal.js`/`batch.js` (or leave the columns, just never populated).
-- Net loss of sources: **Amazon.com + FictionDB + Fantastic Fiction** only
-  (Google / Open Library / Goodreads are already covered natively — Goodreads via
-  Hardcover). Keep `metadata_calibre.py`'s `ebook-meta` *read* helpers for now.
+- Net loss of sources (verified 2026-06-01 against the Calibre manual + the
+  installed kiwidude plugins): **four**, not three — **Amazon.com, Edelweiss,
+  Fantastic Fiction, FictionDB**. Calibre's built-in set in this install is
+  Google / Google Images / Amazon.com / Edelweiss / Open Library, plus the three
+  kiwidude plugins (Goodreads / Fantastic Fiction / FictionDB). Of those:
+  - **No real loss:** Google (native Google Books), Open Library (native since
+    v1.11.0), Google Images (cover-only — Google Books already in `cover_search.py`),
+    Goodreads (~covered via Hardcover — not 1:1; Hardcover is its own DB).
+  - **Amazon — loss is largely theoretical.** The Calibre Amazon source is broadly
+    broken in 2025 (captcha / 503 / bot-detection); it often returns nothing.
+  - **Edelweiss** — the earlier "three sources" figure missed this built-in. B2B
+    bookseller catalogue, not covered natively, but thin value over the native stack.
+  - **Fantastic Fiction + FictionDB — the only loss with real substance**: both are
+    strong on *series + genre + synopsis*, which overlaps heavily with what
+    Wikidata/Hardcover/Open Library already cover natively. Neither has a public
+    API — FF uses an undocumented JSON/CloudSearch endpoint, FictionDB is HTML
+    scraping, and both kiwidude plugins are GPL + tightly coupled to Calibre's
+    `Source` base class. **Recommendation: accept the loss; do NOT reimplement
+    them as native scrapers** — that keeps exactly the fragility this whole task
+    exists to remove. Lean on Hardcover / Wikidata / Open Library for series+genre.
+- Keep `metadata_calibre.py`'s `ebook-meta` *read* helpers for now.
 - Keeps `calibre` in the image, so trivially reversible.
 
 **Phase B — replace the `ebook-meta` piggyback, then drop the package:**
