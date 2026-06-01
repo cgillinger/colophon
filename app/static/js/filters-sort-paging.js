@@ -46,8 +46,8 @@
  *
  * Reads i18n strings from window.__colophonConfig.i18n:
  *   noBooksMatch, showingNBooks
- *   (Hard-coded Swedish " grupper" / "filer redo att synka till
- *   bibliotek" preserved verbatim — pre-existing un-i18n'd labels.)
+ *   (Hard-coded Swedish " grupper" preserved verbatim — pre-existing
+ *   un-i18n'd label.)
  *
  * Exposes globals consumed by the template (onclick / oninput / onchange):
  *   toggleFilterPanel, _updateFilterActiveDot, toggleActionsMenu,
@@ -309,18 +309,6 @@
 
             row.dataset.filterHidden = show ? '' : '1';
         });
-
-        var syncBar = document.getElementById('syncBar');
-        var syncBarText = document.getElementById('syncBarText');
-        if (syncBar) {
-            if (_activeBadgeFilter === 'unsynced:1') {
-                var unsyncedRows = document.querySelectorAll('#bookTableBody tr[data-unsynced="1"]');
-                syncBarText.textContent = unsyncedRows.length + ' filer redo att synka till bibliotek';
-                syncBar.style.display = 'flex';
-            } else {
-                syncBar.style.display = 'none';
-            }
-        }
 
         renderPagination();
     }

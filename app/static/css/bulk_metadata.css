@@ -3549,6 +3549,47 @@
             color: var(--text-secondary);
         }
 
+        /* === Sync-to-library preview modal ===
+           Mirrors the duplicates modal list styling. */
+        .sync-items {
+            max-height: 50vh;
+            overflow-y: auto;
+        }
+        .sync-item {
+            display: flex;
+            gap: 12px;
+            align-items: baseline;
+            padding: 10px 0;
+            border-top: 0.5px solid var(--border-light);
+        }
+        .sync-item:first-of-type { border-top: none; }
+        .sync-item-meta { flex: 1; min-width: 0; }
+        .sync-item-title {
+            font-weight: 500;
+            font-size: 14px;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+        .sync-item-author {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .sync-item-time {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            white-space: nowrap;
+        }
+        .sync-empty {
+            padding: 24px;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+        .sync-progress {
+            padding: 16px 0;
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
         /* === Grid view ===
            Display switching is handled by applyViewMode() (JS). These rules
            only set the gridView layout. */
@@ -4039,3 +4080,60 @@
             border-top: 1px solid var(--border-light);
             margin-top: 8px;
         }
+
+/* --- Single-book fetch-tier chooser (Snabb / Normal / Djup) --------------- */
+.fetch-mode {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+.fetch-mode-btn {
+    flex: 1;
+    padding: 6px 4px;
+    font-size: 12px;
+    line-height: 1.2;
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.fetch-mode-btn:hover {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+.fetch-mode-btn.active {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+    color: #fff;
+    font-weight: 600;
+}
+
+/* --- Live coverage banner during single-book fetch ----------------------- */
+.fetch-coverage-banner {
+    margin: 4px 0;
+    padding: 8px 10px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.5;
+}
+.fetch-coverage-banner .cov-line {
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+.fetch-coverage-banner .cov-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.fetch-coverage-banner .cov-ok {
+    color: var(--accent-green, #2e7d32);
+    font-weight: 500;
+}
+.fetch-coverage-banner .cov-miss {
+    color: var(--text-tertiary);
+}

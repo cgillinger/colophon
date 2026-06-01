@@ -77,7 +77,7 @@
         {% endif %}
         {% if _section == 'library' and sidebar_unsynced and sidebar_unsynced > 0 %}
         <button type="button" class="sidebar-nav-item sidebar-nav-sync"
-                onclick="startPushSync()"
+                onclick="openSyncPreview()"
                 title="{{ _('%(n)d files modified locally, push to upstream library', n=sidebar_unsynced) }}">
             <i class="ti ti-cloud-upload"></i>
             <span>{{ _('Sync to library') }}</span>

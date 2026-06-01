@@ -212,13 +212,6 @@
             </span>
         </div>
 
-        <div id="syncBar" class="sync-bar" style="display:none;">
-            <span id="syncBarText"></span>
-            <button type="button" class="btn primary" onclick="startPushSync()">
-                <i class="ti ti-upload"></i> {{ _('Sync to library') }}
-            </button>
-        </div>
-
         <!-- "Reading now" + "Resume?" hero sections. Populated by
              reading-now.js on load via /reading-now JSON endpoint.
              Hidden by default; shown if the endpoint returns content.
@@ -740,6 +733,27 @@
     </div>
 </div>
 
+<!-- Sync-to-library preview / confirm modal -->
+<div id="syncModal" style="display:none; position:fixed; inset:0; z-index:1000; background:var(--modal-overlay); align-items:center; justify-content:center;">
+    <div class="modal-box" style="max-width:640px;">
+        <div class="modal-header-row">
+            <div class="spacer"></div>
+            <button type="button" class="modal-close-x" onclick="closeSyncPreview()" title="{{ _('Close') }}">&times;</button>
+        </div>
+        <h2 style="margin-top:0;">{{ _('Sync to library') }}</h2>
+        <div id="syncFeedback" class="modal-feedback" style="display:none;"></div>
+        <div id="syncHeader" style="font-size:13px; color:var(--text-secondary); margin-bottom:16px;"></div>
+        <div id="syncProgress" class="sync-progress" style="display:none;"></div>
+        <div id="syncItems" class="sync-items"></div>
+        <div class="modal-actions">
+            <button type="button" class="btn ghost" id="syncCancelBtn" onclick="closeSyncPreview()">{{ _('Cancel') }}</button>
+            <button type="button" class="btn primary" id="syncConfirmBtn" style="display:none;" onclick="confirmPushSync()">
+                <i class="ti ti-cloud-upload"></i> <span id="syncConfirmLabel"></span>
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Sticky batch bar -->
 <div id="batchBar" class="batch-bar" style="display:none;">
     <span id="batchBarCount">{{ _('%(count)d books selected', count=0) }}</span>
@@ -778,6 +792,13 @@
         syncDone: {{ _('{synced} files synced.')|tojson }},
         syncErrors: {{ _('{errors} errors.')|tojson }},
         zeroUnsynced: {{ _('0 unsynced')|tojson }},
+        syncLoading: {{ _('Checking what needs syncing...')|tojson }},
+        syncNothing: {{ _('Everything is already in sync.')|tojson }},
+        syncPreviewHeader: {{ _('{count} books will be pushed to the upstream library:')|tojson }},
+        syncConfirmLabel: {{ _('Sync {count} books')|tojson }},
+        syncErrorLoading: {{ _('Could not load pending changes:')|tojson }},
+        syncModifiedAt: {{ _('modified {time}')|tojson }},
+        syncUnknownAuthor: {{ _('Unknown author')|tojson }},
         chooseAtLeastOneField: {{ _('Choose at least one field to fetch.')|tojson }},
         chooseAtLeastOneFieldShort: {{ _('Choose at least one field.')|tojson }},
         chooseAtLeastOneBook: {{ _('Choose at least one book.')|tojson }},
@@ -797,6 +818,7 @@
         noChanges: {{ _('No changes')|tojson }},
         oneChange: {{ _('1 change')|tojson }},
         nChanges: {{ _('{count} changes')|tojson }},
+        brcClickToApply: {{ _('Click to apply the fetched value')|tojson }},
         bookHeader: {{ _('Book')|tojson }},
         currentHeader: {{ _('📄 Current')|tojson }},
         fetchedHeader: {{ _('🔍 Fetched')|tojson }},

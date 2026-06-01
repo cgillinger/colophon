@@ -13,6 +13,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16.png') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabler-icons/tabler-icons.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bulk_metadata.css') }}">
     <title>{{ _('Metadata') }} - {{ item.title }} - Colophon</title>
     <style>
         :root, [data-theme="light"] {
@@ -519,9 +520,15 @@
     <div id="enrich-progress" style="display:none; margin: 4px 0; padding: 8px; background: var(--bg-info); color: var(--text-info); border-radius: 4px; font-size: 13px;">
         <span id="enrich-status-text">{{ _('Searching...') }}</span>
     </div>
+    <div class="fetch-mode" id="fetchMode" data-default="{{ fetch_mode }}" role="group" aria-label="{{ _('Search depth') }}">
+        <button type="button" class="fetch-mode-btn" data-mode="fast" title="{{ _('Only local + the fastest sources') }}">⚡ {{ _('Quick') }}</button>
+        <button type="button" class="fetch-mode-btn" data-mode="more" title="{{ _('Escalates to more sources when needed') }}">✓ {{ _('Normal') }}</button>
+        <button type="button" class="fetch-mode-btn" data-mode="deep" title="{{ _('All sources, slowest') }}">🔎 {{ _('Deep') }}</button>
+    </div>
     <form id="enrichForm" action="{{ url_for('metadata.enrich_item_metadata', item_id=item.id) }}" method="post">
         <button id="enrichBtn" class="btn primary" type="submit">🔍 {{ _('Fetch metadata') }}</button>
     </form>
+    <div class="fetch-coverage-banner" id="fetchCoverageBanner" style="display:none;"></div>
     {% if ai_configured %}
     <form action="{{ url_for('metadata.run_ai_for_item', item_id=item.id) }}" method="post">
         <button class="btn ghost" type="submit">🤖 {{ _('Ask AI about metadata') }}</button>
@@ -542,6 +549,13 @@
         done: {{ _('Done! Opening preview...')|tojson }},
         noMatchesFound: {{ _('No matches found.')|tojson }},
         somethingWentWrong: {{ _('Something went wrong.')|tojson }},
+        coverageTier: {{ _('Tier')|tojson }},
+        coverageSources: {{ _('sources')|tojson }},
+        fieldTitle: {{ _('Title')|tojson }},
+        fieldAuthor: {{ _('Author')|tojson }},
+        fieldDescription: {{ _('Synopsis')|tojson }},
+        fieldCover: {{ _('Cover')|tojson }},
+        fieldSeries: {{ _('Series')|tojson }},
     };
     function toggleTheme() {
         var current = document.documentElement.getAttribute('data-theme');
@@ -564,6 +578,48 @@
         var statusText = document.getElementById('enrich-status-text');
         var streamUrl = '{{ url_for("metadata.enrich_stream", item_id=item.id) }}';
         var previewUrl = '{{ url_for("metadata.enrichment_preview", item_id=item.id) }}';
+        var modeBox = document.getElementById('fetchMode');
+        var banner = document.getElementById('fetchCoverageBanner');
+
+        // --- Fetch-tier chooser (Snabb / Normal / Djup → fast / more / deep) ---
+        var selectedMode = (modeBox && modeBox.getAttribute('data-default')) || 'more';
+        function setMode(mode) {
+            if (!modeBox) return;
+            modeBox.querySelectorAll('.fetch-mode-btn').forEach(function (b) {
+                var on = b.getAttribute('data-mode') === mode;
+                b.classList.toggle('active', on);
+                if (on) selectedMode = mode;
+            });
+        }
+        if (modeBox) {
+            setMode(selectedMode);
+            modeBox.querySelectorAll('.fetch-mode-btn').forEach(function (b) {
+                b.addEventListener('click', function () { setMode(b.getAttribute('data-mode')); });
+            });
+        }
+
+        var FIELD_LABELS = {
+            title: _i18n.fieldTitle, author: _i18n.fieldAuthor,
+            description: _i18n.fieldDescription, cover: _i18n.fieldCover,
+            series: _i18n.fieldSeries,
+        };
+        function renderCoverage(data) {
+            if (!banner) return;
+            var cov = data.coverage || {};
+            var fields = data.essential_fields || Object.keys(cov);
+            var chips = fields.map(function (f) {
+                var ok = !!cov[f];
+                var cls = ok ? 'cov-ok' : 'cov-miss';
+                var mark = ok ? '✓' : '✗';
+                return '<span class="' + cls + '">' + mark + ' ' + (FIELD_LABELS[f] || f) + '</span>';
+            }).join(' ');
+            var line = _i18n.coverageTier + ' ' + (data.tier_index || 1) + '/' + (data.tier_total || 1);
+            if (data.sources && data.sources.length) {
+                line += ' · ' + _i18n.coverageSources + ': ' + data.sources.join(', ');
+            }
+            banner.innerHTML = '<div class="cov-line">' + line + '</div><div class="cov-fields">' + chips + '</div>';
+            banner.style.display = 'block';
+        }
 
         if (!window.EventSource) return;
 
@@ -573,14 +629,16 @@
             btn.textContent = '⏳ ' + _i18n.searching;
             progressDiv.style.display = 'block';
             statusText.textContent = _i18n.searchingExternalSources;
+            if (banner) { banner.style.display = 'none'; banner.innerHTML = ''; }
 
-            var es = new EventSource(streamUrl);
+            var es = new EventSource(streamUrl + '?mode=' + encodeURIComponent(selectedMode));
             es.onmessage = function (event) {
                 var data;
                 try { data = JSON.parse(event.data); } catch (_) { return; }
                 if (data.type === 'progress') {
-                    // Override stage messages with friendlier progressive text.
-                    if (data.stage === 'fast_sources') {
+                    if (data.stage === 'coverage') {
+                        renderCoverage(data);
+                    } else if (data.stage === 'fast_sources') {
                         statusText.textContent = _i18n.searchingFastSources;
                     } else if (data.stage === 'fast_preview') {
                         statusText.textContent = _i18n.fastPreviewReady;

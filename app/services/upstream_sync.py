@@ -128,13 +128,7 @@ def push_to_upstream():
         logger.warning("upstream_sync: upstream directory appears empty, skipping push")
         return
 
-    items = LibraryItem.query.filter(
-        LibraryItem.file_modified_by_colophon.isnot(None),
-        db.or_(
-            LibraryItem.upstream_synced_at.is_(None),
-            LibraryItem.file_modified_by_colophon > LibraryItem.upstream_synced_at,
-        ),
-    ).all()
+    items = _pending_query().all()
 
     total = len(items)
     synced = 0
@@ -174,12 +168,13 @@ def push_to_upstream():
     yield {"type": "done", "synced": synced, "errors": errors}
 
 
-def get_unsynced_count() -> int:
-    """Return number of items modified by Colophon but not yet pushed upstream."""
-    from app.models import db, LibraryItem
+def _pending_query():
+    """Shared query for items modified by Colophon but not yet pushed upstream.
 
-    if not upstream_configured():
-        return 0
+    Single source of truth so get_unsynced_count() and list_pending_items()
+    can never drift apart.
+    """
+    from app.models import db, LibraryItem
 
     return LibraryItem.query.filter(
         LibraryItem.file_modified_by_colophon.isnot(None),
@@ -187,4 +182,38 @@ def get_unsynced_count() -> int:
             LibraryItem.upstream_synced_at.is_(None),
             LibraryItem.file_modified_by_colophon > LibraryItem.upstream_synced_at,
         ),
-    ).count()
+    )
+
+
+def get_unsynced_count() -> int:
+    """Return number of items modified by Colophon but not yet pushed upstream."""
+    if not upstream_configured():
+        return 0
+
+    return _pending_query().count()
+
+
+def list_pending_items() -> list:
+    """Return the items pending upstream push as a list of dicts. No side effects.
+
+    Each dict: {"id", "title", "author", "file_modified" (isoformat),
+    "last_synced" (isoformat or None)}.
+    """
+    if not upstream_configured():
+        return []
+
+    items = _pending_query().all()
+    return [
+        {
+            "id": item.id,
+            "title": item.title,
+            "author": item.author,
+            "file_modified": item.file_modified_by_colophon.isoformat()
+            if item.file_modified_by_colophon
+            else None,
+            "last_synced": item.upstream_synced_at.isoformat()
+            if item.upstream_synced_at
+            else None,
+        }
+        for item in items
+    ]

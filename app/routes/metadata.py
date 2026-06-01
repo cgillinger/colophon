@@ -321,11 +321,25 @@ _ENRICHMENT_FIELDS = [
 ]
 
 
-def _build_enrichment_diff(item, fetched, provenance=None):
+def _enrichment_diff_rows(get_current, fetched, provenance=None):
+    """Build the per-field enrichment diff.
+
+    `get_current(key)` returns the current value for a field. The single-book
+    path resolves it from the live LibraryItem; the batch path resolves it from
+    a "before" snapshot dict (so the diff reflects pre-apply state even though
+    auto_apply has already mutated the row).
+
+    Status / default-check semantics are shared by both paths:
+        missing  — nothing fetched (disabled)
+        same     — fetched equals current (disabled)
+        new      — current empty, value found (default-checked)
+        changed  — current differs from fetched (not checked)
+    Language is never auto-checked — the user must opt in explicitly.
+    """
     provenance = provenance or {}
     rows = []
     for key, label in _ENRICHMENT_FIELDS:
-        current_raw = getattr(item, key, None)
+        current_raw = get_current(key)
         current = (str(current_raw).strip() if current_raw not in (None, "") else "")
         fetched_raw = fetched.get(key)
         fetched_val = (str(fetched_raw).strip() if fetched_raw not in (None, "") else "")
@@ -358,6 +372,13 @@ def _build_enrichment_diff(item, fetched, provenance=None):
             "source": provenance.get(key, "") if fetched_val else "",
         })
     return rows
+
+
+def _build_enrichment_diff(item, fetched, provenance=None):
+    """Single-book diff — current values come from the live LibraryItem."""
+    return _enrichment_diff_rows(
+        lambda key: getattr(item, key, None), fetched, provenance,
+    )
 
 
 @metadata_bp.route("/metadata/<int:item_id>", methods=["GET", "POST"])
@@ -454,6 +475,7 @@ def metadata_item(item_id):
 
     pending = session.get(_pending_session_key(item.id))
     current_lang = (item.language or "en").strip() or "en"
+    from app.services.metadata_pipeline import resolve_fetch_mode
     return render_template(
         "metadata.html",
         item=item,
@@ -461,6 +483,7 @@ def metadata_item(item_id):
         languages=SUPPORTED_LANGUAGES,
         current_lang=current_lang,
         ai_configured=ai_is_configured(),
+        fetch_mode=resolve_fetch_mode(),
     )
 
 
@@ -892,6 +915,14 @@ def bulk_metadata():
     )
 
 
+@metadata_bp.route("/sync/pending")
+def sync_pending():
+    """JSON endpoint: list items that would be pushed upstream (no side effects)."""
+    from app.services.upstream_sync import list_pending_items
+    items = list_pending_items()
+    return jsonify({"ok": True, "items": items, "count": len(items)})
+
+
 @metadata_bp.route("/sync/push")
 def sync_push():
     """SSE endpoint: push locally-modified files to upstream."""
@@ -926,6 +957,11 @@ def bulk_stream():
     raw_ids = request.args.get("item_ids", "")
     overwrite = request.args.get("overwrite", "0") == "1"
     max_items = _parse_int(request.args.get("max_items"), 25, 1, 100)
+
+    # Optional fetch-mode override (fast|more|deep). When absent the pipeline
+    # resolves the saved default (METADATA_FETCH_MODE) on its own — batch
+    # honours the same mode as the single-book path either way.
+    fetch_mode = (request.args.get("mode") or "").strip().lower() or None
 
     smart_replace_raw = request.args.get("smart_replace", "")
     smart_replace_fields = {
@@ -1061,6 +1097,7 @@ def bulk_stream():
                     result = _enrich(
                         representative,
                         cover_dir=cover_dir,
+                        mode=fetch_mode,
                         on_progress=_progress_cb,
                         abort_check=_abort_event.is_set,
                     )
@@ -1157,8 +1194,18 @@ def bulk_stream():
                     summary["updated"] += 1
 
                 fetched_payload = result.get("fetched_payload") or {}
+                provenance = result.get("provenance") or {}
                 warnings = result.get("warnings") or []
                 rep_before = before_snapshots.get(representative.id, {})
+
+                # Per-field diff against the pre-apply snapshot — same
+                # new/changed/same/missing + default-check semantics the
+                # single-book preview uses, so cherry-pick is consistent.
+                diff_rows = _enrichment_diff_rows(
+                    lambda key, _b=rep_before: _b.get(key, ""),
+                    fetched_payload,
+                    provenance,
+                )
 
                 # Per-field quality notes ("why is the fetched value better?")
                 # — shown beneath each row in the comparison modal.
@@ -1238,6 +1285,8 @@ def bulk_stream():
                     "source": source or "",
                     "before": rep_before,
                     "candidate": fetched_payload,
+                    "provenance": provenance,
+                    "diff": diff_rows,
                     "warnings": warnings,
                     "quality_notes": quality_notes,
                     "has_cover_before": bool(rep_before.get("cover_path")),
@@ -1320,6 +1369,12 @@ def enrich_stream(item_id):
     if Path(item.file_path).suffix.lower() not in {".epub", ".mobi", ".azw3", ".kepub"}:
         return _error_stream(_("Metadata fetch only supports EPUB, MOBI, AZW3 and KEPUB."))
 
+    # Per-fetch mode override from the UI tier chooser (Snabb/Normal/Djup).
+    # Maps directly to the pipeline's fast/more/deep; falls back to the saved
+    # METADATA_FETCH_MODE setting when absent or invalid (resolve_fetch_mode).
+    requested_mode = (request.args.get("mode") or "").strip().lower()
+    enrich_mode = requested_mode if requested_mode in {"fast", "more", "deep"} else None
+
     app = current_app._get_current_object()
     ev_queue = queue.SimpleQueue()
     _abort_event.clear()
@@ -1359,6 +1414,7 @@ def enrich_stream(item_id):
                 result = _enrich(
                     fresh_item,
                     cover_dir=app.config["COVER_DIR"],
+                    mode=enrich_mode,
                     on_progress=ev_queue.put,
                     abort_check=_abort_event.is_set,
                 )

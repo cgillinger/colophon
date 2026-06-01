@@ -102,6 +102,26 @@ def _missing_essentials(payload):
     return missing
 
 
+def _coverage_map(payload):
+    """Return {field: bool} over ESSENTIAL_FIELDS for the merged payload.
+
+    True means the field is currently covered. `cover` maps to the presence
+    of a cover URL (or local cover path) on the merged candidate; the rest map
+    to a non-empty trimmed value. Used by the live coverage banner.
+    """
+    payload = payload or {}
+    coverage = {}
+    for field in ESSENTIAL_FIELDS:
+        if field == "cover":
+            coverage[field] = bool(
+                (payload.get("cover_url") or "").strip()
+                or (payload.get("cover_path") or "")
+            )
+        else:
+            coverage[field] = bool(str(payload.get(field) or "").strip())
+    return coverage
+
+
 # ---------------------------------------------------------------------------
 # Settings resolution (DB > env > default), overridable per call
 # ---------------------------------------------------------------------------
@@ -328,6 +348,29 @@ def run_metadata_enrichment(
 
     def _aborted():
         return abort_check is not None and abort_check()
+
+    def _emit_coverage(tier, tier_index, tier_total, payload, sources=None):
+        """Emit a backward-compatible coverage event for the live banner.
+
+        tier         — short label for the current tier ("fast"/"deep"/etc.)
+        tier_index   — 1-based ordinal of the tier reached so far
+        tier_total   — how many tiers may run given the active mode
+        payload      — the merged fetched_payload at this point
+        sources      — names of sources that have reported so far
+        """
+        _emit(
+            "coverage",
+            tier=tier,
+            tier_index=tier_index,
+            tier_total=tier_total,
+            coverage=_coverage_map(payload),
+            essential_fields=list(ESSENTIAL_FIELDS),
+            sources=list(sources or []),
+        )
+
+    # How many tiers may run for the active mode (drives "Tier N/M" in the
+    # banner). fast = tier 1 only; more/deep can escalate to Calibre (tier 2).
+    tier_total = 1 if mode == "fast" else 2
 
     # Stage 1: read file metadata
     _emit(
@@ -556,6 +599,14 @@ def run_metadata_enrichment(
         warnings=[],
     )
 
+    # Names of sources that have reported so far (for the coverage banner).
+    reported_sources = [
+        sr.get("source", "")
+        for sr in source_results
+        if sr.get("source") and sr.get("ok")
+    ]
+    _emit_coverage("fast", 1, tier_total, fast_payload, sources=reported_sources)
+
     # -- Tier 1.5: Wikidata — targeted escalation for structured series + ordinal.
     # Only run when the fast tier left the series name or its index unfilled, so
     # complete books pay nothing for it. Runs in the main thread (no key needed).
@@ -607,6 +658,13 @@ def run_metadata_enrichment(
         fast_anchor = fast_scoring.get("best")
         fast_merged, fast_provenance = _merge_now(fast_anchor)
         missing = _missing_essentials(fast_merged)
+        if wd_sr["ok"]:
+            reported_sources.append(wd_sr.get("source", "wikidata"))
+        _emit_coverage(
+            "fast", 1, tier_total,
+            _build_fetched_payload(fast_merged) if fast_merged else {},
+            sources=reported_sources,
+        )
 
     # -- Tier 2: Calibre, gated by mode + completeness -----------------------
     if _aborted():
@@ -791,6 +849,19 @@ def run_metadata_enrichment(
         provenance=provenance,
         source=best.get("source", "") if best else "",
         warnings=scoring["warnings"],
+    )
+
+    final_reported = [
+        sr.get("source", "")
+        for sr in source_results
+        if sr.get("source") and sr.get("ok")
+    ]
+    _emit_coverage(
+        "deep" if run_calibre else "fast",
+        2 if run_calibre else 1,
+        tier_total,
+        fetched_payload,
+        sources=final_reported,
     )
 
     return {

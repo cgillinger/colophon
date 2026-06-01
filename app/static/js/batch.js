@@ -588,36 +588,66 @@
         return html;
     }
 
-    function _brcRenderField(field, current, fetched, sourceName, sourceColor) {
+    // Per-item, per-field diff rows from the server ({field: row}).
+    var _brcDiffByItem = {};
+
+    function _brcSourceChipHtml(sourceName, color) {
+        if (!sourceName) return '';
+        return '<span class="brc-from" style="color:' + color.text + '">' +
+            _esc(sourceName) + '</span>';
+    }
+
+    /* Render one field row, driven by the server-side diff status.
+     *   missing       — nothing fetched
+     *   same          — fetched equals current
+     *   new           — current empty, value found (applied by default)
+     *   changed       — current differs (NOT applied by default; click to opt in)
+     * `applied` overrides the visual state when the user has cherry-picked /
+     * toggled a value. */
+    function _brcRenderField(field, current, fetched, status, sourceName, sourceColor, applied) {
         var labelHtml = '<span class="brc-label">' + _esc(_brcFieldLabels[field] || field) + '</span>';
-        if (!fetched && !current) {
-            return '<div class="brc-field" data-field="' + _esc(field) + '">' +
+        if (status === 'missing' || (!fetched && !current)) {
+            return '<div class="brc-field" data-field="' + _esc(field) + '" data-status="missing">' +
                 '<div class="brc-marker brc-marker-none"></div>' + labelHtml +
                 '<span class="brc-nomatch">' + _i18n.noMatches + '</span>' +
                 '</div>';
         }
-        if (!fetched || fetched === current) {
+        if (status === 'same' || (!fetched || fetched === current)) {
             var shownVal = fetched || current;
-            return '<div class="brc-field" data-field="' + _esc(field) + '">' +
+            return '<div class="brc-field" data-field="' + _esc(field) + '" data-status="same">' +
                 '<div class="brc-marker brc-marker-none"></div>' + labelHtml +
                 '<span class="brc-same">' + _esc(shownVal) + ' ✓</span>' +
                 '</div>';
         }
         var color = sourceColor || _BRC_SOURCE_COLORS[0];
         var invalid = (field === 'language' && !_isValidLanguageCode(fetched));
+        // "changed" fields default to NOT applied (only "new" is auto-checked) —
+        // render the opt-out state via the shared rejected renderer so the
+        // existing click-to-restore toggle picks them up.
+        if (!applied) {
+            return _brcRejectedFieldHtml(field, current, fetched, sourceName, color);
+        }
         var newCls = 'brc-new' + (invalid ? ' brc-invalid' : '');
         var newAttr = invalid ? ' title="' + _i18n.invalidLanguageCode + '"' : '';
         var newPrefix = invalid ? '⚠ ' : '';
-        return '<div class="brc-field" data-field="' + _esc(field) + '">' +
+        return '<div class="brc-field" data-field="' + _esc(field) + '" data-status="' + _esc(status) + '">' +
             '<div class="brc-marker brc-marker-changed" style="background:' + color.text + '"></div>' +
             labelHtml +
             '<span class="brc-cur">' + _esc(current || '(tomt)') + '</span>' +
             '<span class="brc-arrow" style="color:' + color.text + '">→</span>' +
             '<span class="' + newCls + '"' + newAttr + ' style="color:' + color.text + '">' +
             newPrefix + _esc(fetched) + '</span>' +
-            (sourceName ? '<span class="brc-from" style="color:' + color.text + '">' +
-                _esc(sourceName) + '</span>' : '') +
+            _brcSourceChipHtml(sourceName, color) +
             '</div>';
+    }
+
+    function _brcDiffMap(data) {
+        // Index the server diff rows by field for O(1) lookup.
+        var map = {};
+        (data.diff || []).forEach(function(row) {
+            if (row && row.key) map[row.key] = row;
+        });
+        return map;
     }
 
     function _batchRenderTextFieldReview(container) {
@@ -626,6 +656,7 @@
         _brcCols = cols;
         _brcFieldChoices = {};
         _brcSourcesByItem = {};
+        _brcDiffByItem = {};
 
         var cards = [];
         _batchWizard.selectedItemIds.forEach(function(itemId) {
@@ -633,6 +664,9 @@
             if (!data) return;
             var before = data.before || {};
             var candidate = data.candidate || {};
+            var diff = _brcDiffMap(data);
+            _brcDiffByItem[itemId] = diff;
+            var provenance = data.provenance || {};
 
             var sources = _brcBuildSourceList(data, cols);
             _brcSourcesByItem[itemId] = sources;
@@ -643,20 +677,45 @@
                 srcColors[c.source || ''] = _BRC_SOURCE_COLORS[idx % _BRC_SOURCE_COLORS.length];
             });
 
-            var changeCount = 0;
+            // Seed per-field choices so the diff's default-check decides what is
+            // applied: only "new" (current empty) starts applied; "changed" and
+            // language start rejected (opt-in), matching the single-book preview.
+            _brcFieldChoices[itemId] = {};
+            var appliedCount = 0;
             var fieldsHtml = cols.map(function(field) {
+                var row = diff[field] || {};
+                var status = row.status || '';
                 var current = _brcFieldValue(before, field);
                 var fetched = _brcFieldValue(candidate, field);
-                var sourceName = '';
-                var sourceColor = null;
-                if (fetched && fetched !== current) {
-                    changeCount++;
-                    sourceName = data.source || '';
-                    sourceColor = srcColors[sourceName] || _BRC_SOURCE_COLORS[0];
+                if (!status) {
+                    // Field not in server diff (e.g. added later) — infer.
+                    if (!fetched) status = 'missing';
+                    else if (fetched === current) status = 'same';
+                    else if (!current) status = 'new';
+                    else status = 'changed';
                 }
-                return _brcRenderField(field, current, fetched, sourceName, sourceColor);
+                var sourceName = (fetched && (provenance[field] || data.source)) || '';
+                var sourceColor = srcColors[sourceName] || _BRC_SOURCE_COLORS[0];
+                var applied = false;
+                if (status === 'new' || status === 'changed') {
+                    applied = !!row.default_check;  // only "new" is pre-checked
+                    if (applied) {
+                        appliedCount++;
+                    } else {
+                        // Record as rejected so save skips it until opted in.
+                        _brcFieldChoices[itemId][field] = {
+                            value: current,
+                            rejected: true,
+                            originalFetched: fetched,
+                            originalSourceName: sourceName,
+                            originalColor: sourceColor
+                        };
+                    }
+                }
+                return _brcRenderField(field, current, fetched, status, sourceName, sourceColor, applied);
             }).join('');
 
+            var changeCount = appliedCount;
             var noChanges = (changeCount === 0);
             var hasSources = sources.length > 0;
             var srcCount = sources.length;
@@ -953,17 +1012,22 @@
         _brcUpdateBadge(cardEl);
     }
 
-    function _brcRenderRejectedField(cardEl, field, current, rejectedFetched) {
-        var fieldEl = cardEl.querySelector('.brc-body .brc-field[data-field="' + field + '"]');
-        if (!fieldEl) return;
+    function _brcRejectedFieldHtml(field, current, rejectedFetched, sourceName, color) {
         var label = _brcFieldLabels[field] || field;
-        fieldEl.outerHTML =
-            '<div class="brc-field brc-field-rejected" data-field="' + field + '" data-rejected="1" title="Klicka för att återställa hämtat värde">' +
+        var chip = (sourceName && color) ? _brcSourceChipHtml(sourceName, color) : '';
+        return '<div class="brc-field brc-field-rejected" data-field="' + _esc(field) + '" data-rejected="1" data-status="changed" title="' + _i18n.brcClickToApply + '">' +
                 '<div class="brc-marker brc-marker-none"></div>' +
                 '<span class="brc-label">' + _esc(label) + '</span>' +
                 '<span class="brc-same">' + _esc(current || '(tomt)') + ' ✓</span>' +
-                '<span class="brc-rejected-hint">(' + _esc(rejectedFetched) + ')</span>' +
+                '<span class="brc-rejected-hint">(→ ' + _esc(rejectedFetched) + ')</span>' +
+                chip +
             '</div>';
+    }
+
+    function _brcRenderRejectedField(cardEl, field, current, rejectedFetched) {
+        var fieldEl = cardEl.querySelector('.brc-body .brc-field[data-field="' + field + '"]');
+        if (!fieldEl) return;
+        fieldEl.outerHTML = _brcRejectedFieldHtml(field, current, rejectedFetched);
     }
 
     function _brcUpdateBadge(cardEl) {
@@ -1782,6 +1846,8 @@
                     title: d.title || '',
                     before: d.before || {},
                     candidate: d.candidate || {},
+                    provenance: d.provenance || {},
+                    diff: d.diff || [],
                     classification: d.classification,
                     score: d.score,
                     source: d.source || '',
@@ -2084,6 +2150,9 @@
     window._brcBuildSourceList = _brcBuildSourceList;
     window._brcRenderSourcePanel = _brcRenderSourcePanel;
     window._brcRenderField = _brcRenderField;
+    window._brcSourceChipHtml = _brcSourceChipHtml;
+    window._brcDiffMap = _brcDiffMap;
+    window._brcRejectedFieldHtml = _brcRejectedFieldHtml;
     window._batchRenderTextFieldReview = _batchRenderTextFieldReview;
     window._brcBindDelegation = _brcBindDelegation;
     window._brcOnClick = _brcOnClick;
