@@ -3,6 +3,31 @@
 Deferred ideas and planned work. Implemented items get removed (the code/git
 history is the record).
 
+## Surface the fetch-depth selector in the bulk modal + batch wizard (v1.12.0 follow-up)
+
+**What:** v1.12.0 added the Snabb/Normal/Djup fetch-depth chooser, but only on the
+standalone single-book page (`/metadata/<id>`, `metadata.html`) — the one CLAUDE.md
+calls "rarely used standalone". The user's actual workflow goes through the bulk
+modal (`book-modal.js`) and the batch wizard, neither of which exposes a per-fetch
+depth selector. The batch path *honours* the resolved `METADATA_FETCH_MODE` default
+(v1.12.0, Layer 3) but gives no per-run choice.
+
+**What to do:**
+- Add the same three-button chooser (`fast`/`more`/`deep` → ⚡ Snabb / ✓ Normal /
+  🔎 Djup, default from `METADATA_FETCH_MODE`) to:
+  - the bulk single-book modal's fetch action (`app/static/js/book-modal.js` —
+    note it currently hits `/metadata/bulk/stream`, the batch path, not the
+    single-book `/enrich/stream`), and/or
+  - the batch wizard step 1 (`app/static/js/batch.js`), passing the chosen mode as
+    `?mode=` on the bulk stream (the route already accepts it, v1.12.0).
+- Reuse the markup/CSS already built for `metadata.html` (`.fetch-mode` /
+  `.fetch-mode-btn` in `bulk_metadata.css`) so it stays visually consistent.
+- Consider also surfacing the live coverage banner (Layer 2) in the bulk modal, not
+  just the standalone page.
+
+**Scope:** small-to-medium. UI plumbing on top of existing backend support → MINOR.
+Verify with Playwright on the prod lab book "12|21|12".
+
 ## Offline reading for the in-browser reader
 
 **Done (v1.5.0):** the online in-browser EPUB reader itself — `reader_bp`
