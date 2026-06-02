@@ -3744,17 +3744,19 @@
         /* === Skriptorium (wrapper, fixed column width, no subgrid) === */
         #gridView.series-grouping-active {
             grid-auto-flow: dense;
+            /* Slightly larger row gap ONLY in series mode. The floating series
+               title overhangs ~10px above its frame's top border; the default
+               24px gap leaves only ~8px between two stacked frames' borders, so
+               the title masked the frame above. A 30px gap clears it. This is a
+               UNIFORM change (every row), so it does NOT break cover alignment —
+               unlike a per-frame margin, which offsets framed covers from
+               standalone ones (they must always line up). */
+            row-gap: 30px;
         }
 
         .series-frame {
             position: relative;
             padding: 14px 0 10px;
-            /* Clearance above each frame so the floating title (which overhangs
-               ~10px above its own top border) never reaches the bottom border of
-               a series frame stacked directly above it. Without this, at narrow
-               widths where two frames stack, the page-coloured title band masked
-               a segment of the upper frame's border line. */
-            margin-top: 16px;
             border: none;
             box-shadow: none;
             background: none;
