@@ -90,11 +90,12 @@
         // still honour the other filters (search/status/ext).
         var rows = Array.from(document.querySelectorAll('#bookTableBody tr'))
             .filter(function (r) { return r.dataset.filterHiddenSansSeries !== '1'; });
-        var seriesMap = {};
+        var seriesMap = {};      /* key -> books */
+        var seriesDisplay = {};  /* key -> nicest display spelling */
         var standalone = [];
 
         rows.forEach(function (row) {
-            var seriesName = (row.dataset.series || '').trim();
+            var seriesRaw = (row.dataset.series || '').trim();
             var titleEl = row.querySelector('.book-title');
             var title = titleEl ? titleEl.textContent.trim() : (row.dataset.title || '');
             var coverImg = row.querySelector('.cover img');
@@ -102,12 +103,15 @@
             var itemId = row.dataset.itemId || '';
             var idx = row.dataset.seriesIndex || '';
 
-            if (!seriesName) {
+            if (!seriesRaw) {
                 standalone.push({ title: title, coverSrc: coverSrc, itemId: itemId });
                 return;
             }
 
+            // Group case/whitespace-insensitively so "Gone"/"gone" are one series.
+            var seriesName = window.seriesKey(seriesRaw);
             if (!seriesMap[seriesName]) seriesMap[seriesName] = [];
+            seriesDisplay[seriesName] = window.seriesBetterName(seriesDisplay[seriesName], seriesRaw);
             seriesMap[seriesName].push({
                 index:      idx,
                 indexNum:   parseFloat(idx) || 9999,
@@ -130,14 +134,15 @@
             seriesNames.sort(function (a, b) { return seriesMap[b].length - seriesMap[a].length; });
         } else {
             seriesNames.sort(function (a, b) {
-                return a.toLowerCase().localeCompare(b.toLowerCase());
+                return (seriesDisplay[a] || a).toLowerCase().localeCompare((seriesDisplay[b] || b).toLowerCase());
             });
         }
 
         var html = '';
 
-        seriesNames.forEach(function (name) {
-            var books = seriesMap[name];
+        seriesNames.forEach(function (key) {
+            var books = seriesMap[key];
+            var name = seriesDisplay[key] || key;   /* display spelling */
             /* Use the first available cover in series order so missing #1
                covers don't fall back to the placeholder when later volumes
                do have covers. */
@@ -245,8 +250,9 @@
         // Collect every row whose series matches (exact). Deliberately reads
         // ALL rows here, not just filtered ones — the series modal is a
         // detail view; other filters shouldn't subset it.
+        var wantKey = window.seriesKey(seriesName);
         var rows = Array.from(document.querySelectorAll('#bookTableBody tr'))
-            .filter(function (r) { return (r.dataset.series || '') === seriesName; });
+            .filter(function (r) { return window.seriesKey(r.dataset.series) === wantKey; });
 
         var books = rows.map(function (row) {
             var titleEl  = row.querySelector('.book-title');

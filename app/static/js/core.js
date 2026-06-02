@@ -259,6 +259,29 @@
     }
     window._pluralize = _pluralize;
 
+    /* ---- Series name normalisation -------------------------------- *
+     * Series are grouped/compared by this key so case- and whitespace-
+     * only variants ("Yesterday's Gone" vs "Yesterday's gone") collapse
+     * into one shelf/series. Display still uses a real spelling — pick the
+     * "nicest" variant with seriesBetterName (most capitals = proper title
+     * case, then longest). Used by shelf-view, series-view and the series
+     * filter so grouping stays consistent everywhere. NOTE: intentionally
+     * case/whitespace only — it does NOT merge different wordings like
+     * "Star Force" vs "Star Force Series".
+     */
+    window.seriesKey = function (s) {
+        return (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    };
+    window.seriesBetterName = function (current, candidate) {
+        if (!current) return candidate || '';
+        if (!candidate) return current;
+        var caps = function (s) { return (s.match(/[A-ZÅÄÖÉÈÜ]/g) || []).length; };
+        var cc = caps(candidate), rc = caps(current);
+        if (cc !== rc) return cc > rc ? candidate : current;
+        if (candidate.length !== current.length) return candidate.length > current.length ? candidate : current;
+        return current;
+    };
+
     /* After an edit, closeBookModal() reloads the list to guarantee fresh,
        correctly grouped/sorted data. Restore the scroll position it stashed
        so the reload doesn't jump to the top. */

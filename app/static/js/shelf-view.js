@@ -287,22 +287,27 @@
 
         removeSkriptorium();
 
-        /* Collect groups in DOM order. */
+        /* Collect groups in DOM order, keyed case/whitespace-insensitively
+         * (window.seriesKey) so variants like "Yesterday's Gone" /
+         * "Yesterday's gone" form ONE shelf. Each group keeps the nicest
+         * display spelling (window.seriesBetterName). */
         var allCards = Array.from(grid.querySelectorAll('.grid-card'));
-        var groups   = Object.create(null);
+        var groups   = Object.create(null);   /* key -> { cards: [], display: '' } */
         var order    = [];
         for (var i = 0; i < allCards.length; i++) {
             var card = allCards[i];
-            var name = (card.dataset.series || '').trim();
-            if (!name) continue;
-            if (!groups[name]) { groups[name] = []; order.push(name); }
-            groups[name].push(card);
+            var raw  = (card.dataset.series || '').trim();
+            if (!raw) continue;
+            var key = window.seriesKey(raw);
+            if (!groups[key]) { groups[key] = { cards: [], display: '' }; order.push(key); }
+            groups[key].cards.push(card);
+            groups[key].display = window.seriesBetterName(groups[key].display, raw);
         }
 
         /* Drop singletons. */
         var validGroups = [];
         for (var g = 0; g < order.length; g++) {
-            if (groups[order[g]].length >= 2) validGroups.push(order[g]);
+            if (groups[order[g]].cards.length >= 2) validGroups.push(order[g]);
         }
 
         grid.classList.add('series-grouping-active');
@@ -314,7 +319,7 @@
         /* Sort each group by series_index (numeric, ascending). Index-less last,
          * alphabetically by title. */
         for (var sg = 0; sg < validGroups.length; sg++) {
-            groups[validGroups[sg]].sort(function (a, b) {
+            groups[validGroups[sg]].cards.sort(function (a, b) {
                 var ai = parseFloat(a.dataset.seriesIndex);
                 var bi = parseFloat(b.dataset.seriesIndex);
                 var aHas = !isNaN(ai), bHas = !isNaN(bi);
@@ -334,18 +339,19 @@
         for (var oi = 0; oi < allCards.length; oi++) {
             var ca = allCards[oi];
             if (ca.parentNode !== grid) continue; /* already moved by earlier group */
-            var gnm = (ca.dataset.series || '').trim();
-            if (!gnm || !groups[gnm] || groups[gnm].length < 2) continue;
-            if (wrappedSeries[gnm]) continue;
-            wrappedSeries[gnm] = true;
+            var key = window.seriesKey(ca.dataset.series);
+            if (!key || !groups[key] || groups[key].cards.length < 2) continue;
+            if (wrappedSeries[key]) continue;
+            wrappedSeries[key] = true;
 
-            var members = groups[gnm];
+            var members = groups[key].cards;
+            var display = groups[key].display;
             var span    = _calcSeriesSpan(members.length, cols);
             var rowSpan = Math.ceil(members.length / span);
 
             var frame = document.createElement('div');
             frame.className        = 'series-frame';
-            frame.dataset.series   = gnm;
+            frame.dataset.series   = display;
             frame.style.gridColumn = 'span ' + span;
             if (rowSpan > 1) frame.style.gridRow = 'span ' + rowSpan;
 
@@ -356,7 +362,7 @@
             tag.className = 'series-tag';
             tag.innerHTML =
                 '<span class="series-flourish">' + FLOURISH_SVG + '</span>' +
-                '<span class="series-name">' + _esc(gnm) + '</span>' +
+                '<span class="series-name">' + _esc(display) + '</span>' +
                 '<span class="series-flourish" style="transform: scaleX(-1)">' + FLOURISH_SVG + '</span>';
 
             frame.appendChild(tag);

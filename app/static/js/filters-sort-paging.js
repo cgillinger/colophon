@@ -290,7 +290,9 @@
             row.dataset.filterHiddenSansSeries = show ? '' : '1';
 
             if (show && window._activeSeriesFilter) {
-                if ((row.dataset.series || '') !== window._activeSeriesFilter) show = false;
+                // Case/whitespace-insensitive so a filtered series catches all
+                // spelling variants (matches how series are grouped).
+                if (window.seriesKey(row.dataset.series) !== window.seriesKey(window._activeSeriesFilter)) show = false;
             }
 
             if (show && _activeBadgeFilter) {
