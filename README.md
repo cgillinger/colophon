@@ -2,9 +2,11 @@
 
 [![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.16.3-brightgreen)](https://github.com/cgillinger/colophon/releases) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#setting-up-kobo-sync)
 
+**Colophon — the e-book manager.** A self-hosted web app that turns a messy folder of e-book files into a clean, browsable library and syncs it to a Kobo e-reader over WiFi. (Not the printing/publishing term — this is the software.)
+
 Colophon scans a folder of e-book files (EPUB, MOBI, AZW3, KEPUB, PDF, CBZ, CBR), fetches metadata from Google Books and Calibre, uses AI to detect series, finds cover art, and lets a Kobo e-reader sync the whole library over WiFi.
 
-This is a personal project I built for my own library. I've published it in case someone else has the same problem and can use it as a head start. Runs in one Docker container, MIT-licensed, no telemetry. Plays nicely with Komga, Kavita and other servers that read embedded metadata.
+This is a personal project I built for my own library. I've published it in case someone else has the same problem and can use it as a head start. Runs in one Docker container, MIT-licensed, no telemetry. Think of it as a lightweight, metadata-focused alternative to Calibre and Calibre-Web that plays nicely with Komga, Kavita and other servers that read embedded metadata.
 
 ---
 
@@ -49,6 +51,19 @@ This is a personal project I built for my own library. I've published it in case
 - OPDS
 - Internet-facing auth (it's a LAN tool; Kobo sync uses path tokens)
 - Backups — it writes to your files, so keep your own
+
+---
+
+## How it compares
+
+If you've searched for any of these, Colophon is aimed at you:
+
+- **A Calibre / Calibre-Web alternative** when you mainly want clean metadata, covers and a nice library view, without running the full Calibre desktop stack.
+- **Wireless Kobo sync for a self-hosted library** — point a Kobo at your own catalogue instead of the Kobo store, and get covers, downloads and reading-progress sync over WiFi. No cable after setup.
+- **A metadata front-end for Komga or Kavita** — Colophon writes metadata *back into the files*, so the server you already run picks up the same titles, authors, series and covers.
+- **An in-browser EPUB reader** with reading progress that syncs to and from your Kobo.
+
+It is *not* a comics page-reader, a multi-user server, or an internet-facing app — see [What it doesn't do](#what-it-doesnt-do).
 
 ---
 
