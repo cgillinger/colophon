@@ -3749,6 +3749,12 @@
         .series-frame {
             position: relative;
             padding: 14px 0 10px;
+            /* Clearance above each frame so the floating title (which overhangs
+               ~10px above its own top border) never reaches the bottom border of
+               a series frame stacked directly above it. Without this, at narrow
+               widths where two frames stack, the page-coloured title band masked
+               a segment of the upper frame's border line. */
+            margin-top: 16px;
             border: none;
             box-shadow: none;
             background: none;
