@@ -4,7 +4,7 @@
 
 **Colophon — the e-book manager.** A self-hosted web app that turns a messy folder of e-book files into a clean, browsable library and syncs it to a Kobo e-reader over WiFi. (Not the printing/publishing term — this is the software.)
 
-Colophon scans a folder of e-book files (EPUB, MOBI, AZW3, KEPUB, PDF, CBZ, CBR), fetches metadata from Google Books and Calibre, uses AI to detect series, finds cover art, and lets a Kobo e-reader sync the whole library over WiFi.
+Colophon scans a folder of e-book files (EPUB, MOBI, AZW3, KEPUB, PDF, CBZ, CBR), fetches and merges metadata from several sources (Google Books, Hardcover, Open Library, Wikidata, Wikipedia, LIBRIS, Calibre), uses AI to detect series, finds cover art, and lets a Kobo e-reader sync the whole library over WiFi.
 
 This is a personal project I built for my own library. I've published it in case someone else has the same problem and can use it as a head start. Runs in one Docker container, MIT-licensed, no telemetry. Think of it as a lightweight, metadata-focused alternative to Calibre and Calibre-Web that plays nicely with Komga, Kavita and other servers that read embedded metadata.
 
@@ -35,7 +35,7 @@ This is a personal project I built for my own library. I've published it in case
 ## What it does
 
 - Scans a book folder and builds a catalogue
-- Fetches metadata from Google Books and Calibre's metadata sources
+- Fetches metadata from seven sources (Google Books, Hardcover, Open Library, Wikidata, Wikipedia, LIBRIS, Calibre) and merges them field by field
 - Detects series with AI (Mistral, OpenAI, DeepSeek, or local Ollama)
 - Finds covers from Open Library, Google Books, Hardcover, Wikidata, DuckDuckGo
 - Writes metadata back into the files so other tools see the same data
@@ -103,6 +103,21 @@ All variables are read from `.env` (loaded via `env_file` in `docker-compose.yml
 All API keys can also be set in the web UI under **Settings → API settings**. UI values take priority over environment variables.
 
 ---
+
+## Metadata sources
+
+Colophon queries these in a progressive flow and merges the results **field by field** (the best value per field wins, with provenance kept). Each can be toggled in **Settings → API settings**.
+
+| Source | Key required | What it adds |
+|---|---|---|
+| Embedded file | No | Title, author and series already inside the e-book — treated as high-trust |
+| Google Books | Optional key | Title, author, description, ISBN, categories |
+| Hardcover | Optional token | Series, genres, synopsis and rating — strong for popular English titles |
+| Open Library | No | Subjects, synopsis and ISBNs — strong for older or obscure titles |
+| Wikidata | No | Structured series **and position in the series**, genre, author, date |
+| Wikipedia | No | Fast description and a thumbnail cover as a fallback |
+| LIBRIS (KB) | No | Swedish national bibliography — authoritative Swedish title/author/publisher/ISBN |
+| Calibre | No | Deep tier via Calibre's own metadata plugins (Goodreads and others) |
 
 ## Cover sources
 
