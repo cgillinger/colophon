@@ -2749,7 +2749,10 @@
         }
 
         /* Text column: flex column, space for pill → title → author. */
-        .display-hero-text {
+        /* Scoped to display mode — a bare `.display-hero-text { display:flex }`
+           would override `.display-only { display:none }` (equal specificity,
+           later in source) and leak the hero text into edit mode. */
+        .modal-box.display-mode .display-hero-text {
             display: flex;
             flex-direction: column;
             gap: 4px;
