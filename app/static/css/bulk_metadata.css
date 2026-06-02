@@ -2900,7 +2900,11 @@
             margin-right: auto;
         }
         .display-synopsis-body {
-            font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+            /* Georgia is a screen-optimised text serif — keeps the editorial
+               serif feel of the hero but stays readable as a body paragraph.
+               Cormorant Garamond is a display face (thin strokes, high
+               contrast) and was hard to read at body size. */
+            font-family: Georgia, 'Times New Roman', serif;
             font-size: 16px;
             line-height: 1.7;
             color: var(--text-primary);
