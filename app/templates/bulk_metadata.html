@@ -445,13 +445,21 @@
                 </div>
             </div>
             <div class="modal-fields">
-                <!-- Display-mode typographic header (populated alongside form fields). -->
-                <h1 class="display-title display-only" id="modalTitleDisplay"></h1>
-                <p class="display-author display-only" id="modalAuthorDisplay"></p>
-                <p class="display-series display-only" id="modalSeriesDisplay"></p>
-                <div class="display-meta display-only" id="modalMetaDisplay"></div>
+                <!-- Display-mode typographic hero (cover-left + text-right).
+                     Wrapped in .display-hero-text so CSS can target it as a
+                     flex column inside the hero row. All ids are preserved. -->
+                <div class="display-hero-text display-only">
+                    <p class="display-series" id="modalSeriesDisplay"></p>
+                    <h1 class="display-title" id="modalTitleDisplay"></h1>
+                    <p class="display-author" id="modalAuthorDisplay"></p>
+                </div>
+                <!-- Display-mode meta strip: facts (publisher · year · language)
+                     left-aligned; format info below. Genres follow. -->
+                <div class="display-meta-strip display-only">
+                    <div class="display-meta" id="modalMetaDisplay"></div>
+                    <div class="display-fileinfo" id="modalFileInfoDisplay"></div>
+                </div>
                 <div class="display-genres display-only display-flex" id="modalGenresDisplay"></div>
-                <div class="display-fileinfo display-only" id="modalFileInfoDisplay"></div>
 
                 <div class="modal-field">
                     <label for="modalTitle">{{ _('Title') }}</label>

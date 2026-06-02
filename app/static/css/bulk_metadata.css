@@ -2640,9 +2640,40 @@
         .modal-actions .spacer { flex: 1; }
 
         /* ---------------- Book modal: display ("shelf") mode ----------------
-           Same modal DOM, but with a typographic, read-only presentation.
+           Same modal DOM, but with an editorial, typographic presentation.
            Form chrome is hidden via .display-mode; display-only siblings show.
-           Mobile-aware: under 640px the grid collapses to a single column. */
+
+           Layout overview (display mode only):
+             • Top row:  rating (left) · Edit + X (right corners, absolutely positioned)
+             • Hero row: tinted surface — cover (left, ~130px) | text column (right):
+                           series pill → title → author
+             • Meta-strip (below hero): Read + reading-state actions (left) ·
+                           facts (publisher · year · lang · format) (right)
+             • Genres: chips row below meta-strip
+             • Synopsis: full-width reading column, 60ch max, serif
+
+           Edit mode is unaffected — new CSS is scoped under .modal-box.display-mode.
+
+           DOM order: rating → reading-state → modal-grid → display-synopsis-block
+           Visual order we want: rating(1) → hero/modal-grid(2) → reading-state(3)
+                                 → display-synopsis-block(4)
+           Achieved by making .modal-box.display-mode a flex column and using order. */
+
+        /* Flex column in display mode so we can reorder the reading-state below
+           the hero without touching DOM order (edit mode is unaffected). */
+        .modal-box.display-mode {
+            display: flex;
+            flex-direction: column;
+        }
+        /* Absolutely-positioned chrome (rating, delete, close, edit-toggle)
+           is outside flow so ordering doesn't affect them. Feedback bar
+           stays at the top. */
+        .modal-box.display-mode #modalFeedback    { order: 0; }
+        .modal-box.display-mode .modal-rating     { order: 1; }
+        .modal-box.display-mode .modal-grid       { order: 2; }
+        .modal-box.display-mode #modalReadingState { order: 3; }
+        .modal-box.display-mode .display-synopsis-block { order: 4; }
+
         .display-only { display: none; }
         .modal-box.display-mode .display-only { display: block; }
         .modal-box.display-mode .display-only.display-inline { display: inline-block; }
@@ -2660,8 +2691,8 @@
         .modal-box.display-mode #modalProgress {
             display: none !important;
         }
-        /* Modal fields container shouldn't enforce vertical gap when only display
-           children are visible; the display elements own their own spacing. */
+        /* Modal fields container: no vertical gap when only display-only
+           children are visible; they own their own spacing. */
         .modal-box.display-mode .modal-fields { gap: 0; }
         .modal-box.display-mode .modal-field { gap: 0; }
 
@@ -2693,37 +2724,74 @@
         }
         .modal-edit-toggle i { font-size: 14px; }
 
-        /* Slim reading-state strip in display mode (replaces the boxed look). */
-        .modal-box.display-mode .reading-state-box {
-            margin: 28px 0 18px 0;
-            padding: 10px 14px;
+        /* ── Hero section ──────────────────────────────────────────────────
+           In display mode the entire modal-grid becomes the hero: a tinted
+           surface with cover on the left and the text column on the right.
+           The cover already sits in the grid's first column cell; we style
+           the container here. */
+        .modal-box.display-mode .modal-grid {
             background: var(--bg-secondary);
-            border: none;
-            border-radius: 6px;
-        }
-        .modal-box.display-mode .reading-state-box .rs-row { margin-bottom: 2px; }
-        .modal-box.display-mode .reading-state-box .rs-actions {
-            margin-top: 6px;
-        }
-        .modal-box.display-mode .reading-state-box .rs-actions .btn {
-            font-size: 11px;
-            padding: 3px 8px;
+            border-radius: 8px;
+            padding: 24px;
+            gap: 20px;
+            grid-template-columns: 130px 1fr;
+            align-items: flex-end;
+            margin-top: 8px;
         }
 
-        /* Typographic display elements. */
+        /* Cover: fixed width, 2:3 aspect, medium radius. */
+        .modal-box.display-mode .modal-cover {
+            width: 130px;
+            height: auto;
+            aspect-ratio: 2 / 3;
+            border-radius: 6px;
+            align-self: flex-end;
+        }
+
+        /* Text column: flex column, space for pill → title → author. */
+        .display-hero-text {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            align-self: flex-end;
+        }
+
+        /* ── Series pill ───────────────────────────────────────────────────
+           #modalSeriesDisplay is already JS-hidden when no series exists,
+           so we never show an empty pill. Styled inline (display:block is
+           overridden here to an inline-block pill look). */
+        .modal-box.display-mode #modalSeriesDisplay {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--accent-primary-text);
+            background: var(--accent-primary-light);
+            border: 1px solid var(--accent-primary-border);
+            border-radius: 999px;
+            padding: 3px 10px;
+            margin: 0 0 6px 0;
+            align-self: flex-start;
+        }
+
+        /* ── Title ─────────────────────────────────────────────────────────
+           Cormorant Garamond for the editorial feel. */
         .display-title {
-            font-family: Georgia, 'Times New Roman', serif;
+            font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
             font-size: 28px;
             font-weight: 600;
             line-height: 1.2;
             color: var(--text-primary);
-            margin: 0 0 6px 0;
+            margin: 0 0 4px 0;
             word-wrap: break-word;
         }
+
+        /* ── Author ────────────────────────────────────────────────────────*/
         .display-author {
-            font-size: 16px;
+            font-size: 15px;
             color: var(--text-secondary);
-            margin: 0 0 4px 0;
+            margin: 0;
         }
         .display-author .by {
             color: var(--text-tertiary);
@@ -2740,30 +2808,65 @@
             color: var(--accent-primary);
             border-bottom-color: var(--accent-primary);
         }
-        .display-series {
-            font-size: 13px;
-            color: var(--text-tertiary);
-            margin: 0 0 16px 0;
+
+        /* ── Meta-strip ────────────────────────────────────────────────────
+           Sits below the hero. Contains publisher · year · language · format
+           facts in compact muted text.  The Read button and reading-state
+           box are DOM siblings (above/inside the grid) and flow naturally
+           in display mode above this strip. */
+        .display-meta-strip {
+            margin-top: 14px;
+            padding: 10px 0;
+            border-top: 1px solid var(--border-light);
         }
+
+        /* Reading-state box in display mode: slim card below the hero row. */
+        .modal-box.display-mode .reading-state-box {
+            margin: 16px 0 0 0;
+            padding: 10px 14px;
+            background: var(--bg-secondary);
+            border: none;
+            border-radius: 6px;
+        }
+        .modal-box.display-mode .reading-state-box .rs-row { margin-bottom: 2px; }
+        .modal-box.display-mode .reading-state-box .rs-actions {
+            margin-top: 6px;
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .modal-box.display-mode .reading-state-box .rs-actions .btn {
+            font-size: 11px;
+            padding: 3px 8px;
+        }
+
+        /* Facts: publisher · year · language · format. */
         .display-meta {
-            font-size: 13px;
+            font-size: 12px;
             color: var(--text-secondary);
             line-height: 1.7;
-            margin: 0 0 10px 0;
+            margin: 0;
         }
         .display-meta .sep {
             color: var(--text-tertiary);
-            margin: 0 6px;
+            margin: 0 5px;
         }
         .display-meta .label {
             color: var(--text-tertiary);
             margin-right: 4px;
         }
+        .display-fileinfo {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            margin-top: 2px;
+        }
+
+        /* ── Genres ────────────────────────────────────────────────────────*/
         .display-genres {
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
-            margin: 4px 0 14px 0;
+            margin: 12px 0 4px 0;
         }
         .display-genre-chip {
             font-size: 11px;
@@ -2774,11 +2877,9 @@
             padding: 3px 10px;
             letter-spacing: 0.02em;
         }
-        .display-fileinfo {
-            font-size: 11px;
-            color: var(--text-tertiary);
-            margin-top: 8px;
-        }
+
+        /* ── Synopsis ──────────────────────────────────────────────────────
+           Full-width reading column: centered, 60ch max, serif body. */
         .display-synopsis-block {
             margin-top: 28px;
             padding-top: 20px;
@@ -2791,67 +2892,66 @@
             letter-spacing: 0.08em;
             color: var(--text-tertiary);
             margin: 0 0 12px 0;
+            max-width: 60ch;
+            margin-left: auto;
+            margin-right: auto;
         }
         .display-synopsis-body {
-            font-family: Georgia, 'Times New Roman', serif;
-            font-size: 15px;
+            font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+            font-size: 16px;
             line-height: 1.7;
             color: var(--text-primary);
             white-space: pre-wrap;
+            max-width: 60ch;
+            margin: 0 auto;
         }
         .display-synopsis-body.empty {
             font-style: italic;
             color: var(--text-tertiary);
         }
-        /* Hide the synopsis-block container when not in display mode (it lives
-           in the modal markup alongside the form, but is display-only). */
+        /* Hide the synopsis-block container when not in display mode. */
         .modal-box:not(.display-mode) .display-synopsis-block { display: none; }
 
         /* "Read in browser" CTA. Hidden by default; shown only in display
-           mode (shelf view's passive modal) AND when JS has marked the book
-           as a readable format (the `readable` class). Vertical icon-over-
-           label, sits under the cover as the primary passive-view action. */
+           mode AND when JS has marked the book as a readable format
+           (the `readable` class). Compact inline pill in the meta-strip. */
         .modal-read-btn { display: none; }
         .modal-box.display-mode .modal-read-btn.readable {
-            display: flex;
-            flex-direction: column;
+            display: inline-flex;
+            flex-direction: row;
             align-items: center;
             justify-content: center;
-            gap: 4px;
-            width: 100%;
-            margin: 14px 0 4px;
-            padding: 12px;
+            gap: 6px;
+            padding: 6px 14px;
             border: 1px solid var(--accent-primary-border);
-            border-radius: 12px;
+            border-radius: 999px;
             background: var(--accent-primary-light);
             color: var(--accent-primary-text);
-            font-size: .9rem;
+            font-size: .82rem;
             font-weight: 600;
             cursor: pointer;
             transition: background .12s ease, transform .12s ease;
+            white-space: nowrap;
         }
         .modal-box.display-mode .modal-read-btn.readable:hover {
             background: var(--accent-primary);
             color: #fff;
             transform: translateY(-1px);
         }
-        .modal-box.display-mode .modal-read-btn.readable i { font-size: 1.7rem; }
+        .modal-box.display-mode .modal-read-btn.readable i { font-size: 1rem; }
 
-        /* In display mode the cover doesn't need the giant placeholder icon
-           shrink; keep current sizing but allow it to be a touch larger on
-           wide screens for that "spread" feel. */
+        /* Wide screens: slightly larger cover. */
         @media (min-width: 900px) {
-            .modal-box.display-mode .modal-cover {
-                width: 240px;
-                height: 360px;
-            }
             .modal-box.display-mode .modal-grid {
-                grid-template-columns: 240px 1fr;
-                gap: 32px;
+                grid-template-columns: 160px 1fr;
+                gap: 28px;
+            }
+            .modal-box.display-mode .modal-cover {
+                width: 160px;
             }
         }
 
-        /* Mobile: stack the grid, centre the cover, centre header text. */
+        /* Mobile (<640px): stack grid, cover above text column. */
         @media (max-width: 640px) {
             .modal-box {
                 width: 100%;
@@ -2863,20 +2963,20 @@
             .modal-box.display-mode .modal-grid {
                 grid-template-columns: 1fr;
                 gap: 16px;
-                justify-items: center;
-                text-align: center;
+                padding: 16px;
             }
             .modal-box.display-mode .modal-cover {
-                width: 60vw;
-                max-width: 220px;
+                width: 120px;
                 height: auto;
                 aspect-ratio: 2 / 3;
+                align-self: flex-start;
             }
             .modal-box.display-mode .display-genres {
-                justify-content: center;
+                justify-content: flex-start;
             }
-            .modal-box.display-mode .display-synopsis-body {
-                text-align: left;
+            .display-synopsis-body,
+            .display-synopsis-heading {
+                max-width: 100%;
             }
             .modal-edit-toggle {
                 top: 8px;
