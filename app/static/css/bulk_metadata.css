@@ -2924,7 +2924,13 @@
            (the `readable` class). Compact inline pill in the meta-strip. */
         .modal-read-btn { display: none; }
         .modal-box.display-mode .modal-read-btn.readable {
-            display: inline-flex;
+            display: flex;
+            /* Match the cover's width so the button lines up edge-to-edge
+               beneath it. The grid's left column IS the cover width (130px,
+               160px wide / 120px mobile override below), so width:100% +
+               global box-sizing:border-box keeps it exact. */
+            width: 100%;
+            margin-top: 12px;
             flex-direction: row;
             align-items: center;
             justify-content: center;
@@ -2977,6 +2983,11 @@
                 height: auto;
                 aspect-ratio: 2 / 3;
                 align-self: flex-start;
+            }
+            /* Column is 1fr here (not the cover width), so pin the read button
+               to the cover's 120px instead of stretching it full-width. */
+            .modal-box.display-mode .modal-read-btn.readable {
+                width: 120px;
             }
             .modal-box.display-mode .display-genres {
                 justify-content: flex-start;
