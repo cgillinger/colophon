@@ -47,6 +47,37 @@
 
     var _batchSSESource = null;
 
+    /* --- Fetch-depth chooser (Snabb / Normal / Djup → fast / more / deep) ---
+     * Passed as ?mode= on the batch bulk/stream; the backend resolves the saved
+     * default (METADATA_FETCH_MODE) when absent. Same control as the single-book
+     * modal, so depth selection is consistent whether you enrich one or a hundred. */
+    function _batchDefaultMode() {
+        return (window.__colophonConfig && window.__colophonConfig.fetchMode) || 'more';
+    }
+    var _batchFetchModeSel = _batchDefaultMode();
+    function _setBatchFetchMode(mode) {
+        var box = document.getElementById('batchFetchMode');
+        if (!box) return;
+        box.querySelectorAll('.fetch-mode-btn').forEach(function (b) {
+            var on = b.getAttribute('data-mode') === mode;
+            b.classList.toggle('active', on);
+            if (on) _batchFetchModeSel = mode;
+        });
+    }
+    function _initBatchFetchMode() {
+        var box = document.getElementById('batchFetchMode');
+        if (!box) return;
+        if (!box._wired) {
+            box._wired = true;
+            box.querySelectorAll('.fetch-mode-btn').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    _setBatchFetchMode(b.getAttribute('data-mode'));
+                });
+            });
+        }
+        _setBatchFetchMode(_batchDefaultMode());
+    }
+
     function _resetBatchWizardState() {
         _batchWizard.step = 1;
         _batchWizard.selectedFields = [];
@@ -157,6 +188,7 @@
 
         document.getElementById('batchModal').style.display = 'flex';
         _batchSetStep(1);
+        _initBatchFetchMode();
     }
 
     function closeBatchModal() {
@@ -1760,7 +1792,8 @@
         var maxItems = (maxItemsEl && maxItemsEl.value) || '25';
 
         var url = '/metadata/bulk/stream?item_ids=' + itemIds.join(',')
-            + '&max_items=' + maxItems;
+            + '&max_items=' + maxItems
+            + '&mode=' + encodeURIComponent(_batchFetchModeSel);
 
         var body = document.getElementById('batchProgressBody');
         var summaryEl = document.getElementById('batchProgressSub');

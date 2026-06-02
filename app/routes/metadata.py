@@ -898,6 +898,10 @@ def bulk_metadata():
     finished_count = LibraryItem.query.filter(LibraryItem.read_status == "Finished").count()
     unread_count = total_count - reading_count - finished_count
 
+    # Default fetch depth (fast|more|deep) — seeds the per-fetch tier chooser in
+    # the single-book modal and the batch wizard. Each fetch can override it.
+    from app.services.metadata_pipeline import resolve_fetch_mode
+
     return render_template(
         "bulk_metadata.html",
         items=items,
@@ -912,6 +916,7 @@ def bulk_metadata():
         reading_count=reading_count,
         finished_count=finished_count,
         unread_count=unread_count,
+        fetch_mode=resolve_fetch_mode(),
     )
 
 

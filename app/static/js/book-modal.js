@@ -36,6 +36,66 @@
     window._modalAllCandidates = [];
     var _modalSSESource = null;
     var _coverUrlBase = window.__colophonConfig.urls.coverItemBase;
+
+    /* --- Fetch-depth chooser (Snabb / Normal / Djup → fast / more / deep) ---
+     * Mirrors the standalone single-book page. The chosen mode is passed as
+     * ?mode= on the bulk/stream fetch; the backend resolves the saved default
+     * (METADATA_FETCH_MODE) when absent. */
+    function _modalDefaultMode() {
+        return (window.__colophonConfig && window.__colophonConfig.fetchMode) || 'more';
+    }
+    var _modalFetchModeSel = _modalDefaultMode();
+    function _setModalFetchMode(mode) {
+        var box = document.getElementById('modalFetchMode');
+        if (!box) return;
+        box.querySelectorAll('.fetch-mode-btn').forEach(function (b) {
+            var on = b.getAttribute('data-mode') === mode;
+            b.classList.toggle('active', on);
+            if (on) _modalFetchModeSel = mode;
+        });
+    }
+    function _initModalFetchMode() {
+        var box = document.getElementById('modalFetchMode');
+        if (!box) return;
+        if (!box._wired) {
+            box._wired = true;
+            box.querySelectorAll('.fetch-mode-btn').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    _setModalFetchMode(b.getAttribute('data-mode'));
+                });
+            });
+        }
+        _setModalFetchMode(_modalDefaultMode());
+    }
+
+    /* Live coverage banner: a running ✓/✗ over the essential fields plus the
+     * sources that have reported, updated per tier as the pipeline escalates.
+     * Driven by the pipeline's `stage: 'coverage'` SSE events. */
+    function _renderModalCoverage(d) {
+        var banner = document.getElementById('modalCoverageBanner');
+        if (!banner) return;
+        var labels = {
+            title: _i18n.batchFieldTitle, author: _i18n.batchFieldAuthor,
+            description: _i18n.batchFieldSynopsis, cover: _i18n.batchFieldCover,
+            series: _i18n.batchFieldSeries
+        };
+        var cov = d.coverage || {};
+        var fields = d.essential_fields || Object.keys(cov);
+        var chips = fields.map(function (f) {
+            var ok = !!cov[f];
+            return '<span class="' + (ok ? 'cov-ok' : 'cov-miss') + '">' +
+                (ok ? '✓' : '✗') + ' ' + _esc(labels[f] || f) + '</span>';
+        }).join(' ');
+        var line = (_i18n.coverageTier || 'Tier') + ' ' +
+            (d.tier_index || 1) + '/' + (d.tier_total || 1);
+        if (d.sources && d.sources.length) {
+            line += ' · ' + (_i18n.coverageSources || 'sources') + ': ' + d.sources.join(', ');
+        }
+        banner.innerHTML = '<div class="cov-line">' + line + '</div>' +
+            '<div class="cov-fields">' + chips + '</div>';
+        banner.style.display = 'block';
+    }
+
     function openBookModal(itemId, forceDisplay) {
         window._modalItemId = itemId;
         window._modalDirty = false;
@@ -56,6 +116,9 @@
         modalEl.style.display = 'flex';
         var mp = document.getElementById('modalProgress');
         if (mp) { mp.innerHTML = ''; mp.style.display = 'none'; }
+        var covBanner = document.getElementById('modalCoverageBanner');
+        if (covBanner) { covBanner.style.display = 'none'; covBanner.innerHTML = ''; }
+        _initModalFetchMode();
         window._modalSourceDetails = {};
         var closeBtn = document.getElementById('modalCloseBtn');
         if (closeBtn) closeBtn.textContent = _mt('close');
@@ -793,6 +856,8 @@
 
         _setFetchingState(true);
         _setModalBusy(true);
+        var covBanner = document.getElementById('modalCoverageBanner');
+        if (covBanner) { covBanner.style.display = 'none'; covBanner.innerHTML = ''; }
         progressEl.style.display = 'block';
         progressEl.innerHTML =
             '<div style="font-weight:500; margin-bottom:4px;">' + _i18n.searchingMetadata + '</div>' +
@@ -816,7 +881,8 @@
         if (!window._modalSourceDetails) window._modalSourceDetails = {};
 
         var url = '/metadata/bulk/stream?item_ids=' + id + '&max_items=1'
-            + '&smart_replace=' + encodeURIComponent(smartReplace.join(','));
+            + '&smart_replace=' + encodeURIComponent(smartReplace.join(','))
+            + '&mode=' + encodeURIComponent(_modalFetchModeSel);
         var sseSource = new EventSource(url);
         _modalSSESource = sseSource;
 
@@ -854,6 +920,7 @@
             }
 
             if (d.type === 'progress') {
+                if (d.stage === 'coverage') { _renderModalCoverage(d); return; }
                 var itemId = d.item_id;
                 var stageMap = { google_books: 'google', calibre: 'calibre' };
                 var key = stageMap[d.stage];

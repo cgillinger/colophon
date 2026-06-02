@@ -536,6 +536,13 @@
                 <a href="#" onclick="toggleModalFields(true);return false;" style="color:var(--text-secondary);">{{ _('All') }}</a> ·
                 <a href="#" onclick="toggleModalFields(false);return false;" style="color:var(--text-secondary);">{{ _('None') }}</a>
             </div>
+            <div style="font-size:12px; color:var(--text-secondary); margin:10px 0 4px;">{{ _('Search depth') }}</div>
+            <div class="fetch-mode" id="modalFetchMode" role="group" aria-label="{{ _('Search depth') }}">
+                <button type="button" class="fetch-mode-btn" data-mode="fast" title="{{ _('Only local + the fastest sources') }}">⚡ {{ _('Quick') }}</button>
+                <button type="button" class="fetch-mode-btn" data-mode="more" title="{{ _('Escalates to more sources when needed') }}">✓ {{ _('Normal') }}</button>
+                <button type="button" class="fetch-mode-btn" data-mode="deep" title="{{ _('All sources, slowest') }}">🔎 {{ _('Deep') }}</button>
+            </div>
+            <div class="fetch-coverage-banner" id="modalCoverageBanner" style="display:none;"></div>
         </div>
         <div class="modal-actions">
             <button type="button" class="btn outline" id="modalFetchBtn" onclick="fetchMetadata()"><i class="ti ti-search"></i> {{ _('Fetch metadata') }}</button>
@@ -633,6 +640,13 @@
                 <div style="font-size:11px; margin-top:6px;">
                     <a href="#" onclick="toggleBwFields(true);return false;" style="color:var(--text-secondary);">{{ _('All') }}</a> ·
                     <a href="#" onclick="toggleBwFields(false);return false;" style="color:var(--text-secondary);">{{ _('None') }}</a>
+                </div>
+
+                <div class="batch-field-group-label" style="margin-top:14px;">{{ _('Search depth') }}</div>
+                <div class="fetch-mode" id="batchFetchMode" role="group" aria-label="{{ _('Search depth') }}">
+                    <button type="button" class="fetch-mode-btn" data-mode="fast" title="{{ _('Only local + the fastest sources') }}">⚡ {{ _('Quick') }}</button>
+                    <button type="button" class="fetch-mode-btn" data-mode="more" title="{{ _('Escalates to more sources when needed') }}">✓ {{ _('Normal') }}</button>
+                    <button type="button" class="fetch-mode-btn" data-mode="deep" title="{{ _('All sources, slowest') }}">🔎 {{ _('Deep') }}</button>
                 </div>
             </div>
 
@@ -1022,10 +1036,22 @@
         brmMissingParen: {{ _('(missing)')|tojson }},
         brmFetchedCover: {{ _('Fetched cover')|tojson }},
         brmNoneParen: {{ _('(none)')|tojson }},
+        searchDepth: {{ _('Search depth')|tojson }},
+        fetchModeQuick: {{ _('Quick')|tojson }},
+        fetchModeNormal: {{ _('Normal')|tojson }},
+        fetchModeDeep: {{ _('Deep')|tojson }},
+        fetchModeQuickHint: {{ _('Only local + the fastest sources')|tojson }},
+        fetchModeNormalHint: {{ _('Escalates to more sources when needed')|tojson }},
+        fetchModeDeepHint: {{ _('All sources, slowest')|tojson }},
+        coverageTier: {{ _('Tier')|tojson }},
+        coverageSources: {{ _('sources')|tojson }},
         },
         urls: {
             coverItemBase: '{{ url_for("metadata.cover_item", item_id=0) }}'.replace(/\/0$/, '')
-        }
+        },
+        /* Default fetch depth (fast|more|deep); the tier chooser initialises
+           from this and each fetch can override it per-run. */
+        fetchMode: {{ fetch_mode|tojson }}
     };
 </script>
 <script src="{{ url_for('static', filename='js/core.js') }}?v={{ app_version }}"></script>

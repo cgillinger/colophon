@@ -3,31 +3,6 @@
 Deferred ideas and planned work. Implemented items get removed (the code/git
 history is the record).
 
-## Surface the fetch-depth selector in the bulk modal + batch wizard (v1.12.0 follow-up)
-
-**What:** v1.12.0 added the Snabb/Normal/Djup fetch-depth chooser, but only on the
-standalone single-book page (`/metadata/<id>`, `metadata.html`) — the one CLAUDE.md
-calls "rarely used standalone". The user's actual workflow goes through the bulk
-modal (`book-modal.js`) and the batch wizard, neither of which exposes a per-fetch
-depth selector. The batch path *honours* the resolved `METADATA_FETCH_MODE` default
-(v1.12.0, Layer 3) but gives no per-run choice.
-
-**What to do:**
-- Add the same three-button chooser (`fast`/`more`/`deep` → ⚡ Snabb / ✓ Normal /
-  🔎 Djup, default from `METADATA_FETCH_MODE`) to:
-  - the bulk single-book modal's fetch action (`app/static/js/book-modal.js` —
-    note it currently hits `/metadata/bulk/stream`, the batch path, not the
-    single-book `/enrich/stream`), and/or
-  - the batch wizard step 1 (`app/static/js/batch.js`), passing the chosen mode as
-    `?mode=` on the bulk stream (the route already accepts it, v1.12.0).
-- Reuse the markup/CSS already built for `metadata.html` (`.fetch-mode` /
-  `.fetch-mode-btn` in `bulk_metadata.css`) so it stays visually consistent.
-- Consider also surfacing the live coverage banner (Layer 2) in the bulk modal, not
-  just the standalone page.
-
-**Scope:** small-to-medium. UI plumbing on top of existing backend support → MINOR.
-Verify with Playwright on the prod lab book "12|21|12".
-
 ## Offline reading for the in-browser reader
 
 **Done (v1.5.0):** the online in-browser EPUB reader itself — `reader_bp`
@@ -136,79 +111,6 @@ lives in the modal instead of the bar.
 **Scope:** small-to-medium. New user-visible behaviour (preview step) + removed
 visible bar → MINOR. Verify on iPad viewport with the prod lab book "12|21|12":
 preview lists it, confirm pushes, cancel does nothing.
-
-## Metadata fetching: make depth + transparency first-class (the "feel" rework)
-
-**The problem (user, 2026-06-01):** clicking "Hämta metadata" feels like the
-system "just runs off". You can't choose how deep to search, you get poor
-feedback on *what* was fetched and *what will be replaced*, and it feels like
-there's little room to cherry-pick. Investigation showed most of the machinery
-already exists — it's **hidden and inconsistent**, not missing. Bookstation (the
-fork parent, `../bookstation`) already shipped the good version of this; bring it
-back. Three layers, cheap → large.
-
-**Key finding — two divergent code paths.** Single-book enrichment uses the full
-tiered pipeline (`run_metadata_enrichment` → `metadata_pipeline.py`) and already
-has a **per-field diff preview with checkboxes + per-field source chips**
-(`metadata_enrichment_preview.html`) — i.e. cherry-pick already works there. The
-**batch wizard runs a different, older path** (`search_all_sources_with_status`
-+ `choose_best_metadata_explained`) with no tier logic and an inconsistent review
-UI. The felt "can't pick raisins" almost certainly comes from batch (or from the
-single-book preview being under-discovered). Unifying the two paths is the real
-debt.
-
-### Layer 1 — surface the fetch tiers at the fetch button (small)
-
-The three modes already exist internally (`metadata_pipeline.py:58-60`:
-`fast`/`more`/`deep`) but are buried as a global DB setting
-(`METADATA_FETCH_MODE`). Bookstation surfaced them as three toggle buttons right
-next to the fetch button (`bookstation/app/templates/metadata.html:610-616`).
-Bring that back as a per-fetch override.
-
-- **User-facing names (decided): Snabb / Normal / Djup.**
-  - ⚡ **Snabb** — local + fastest sources only (tier 1)
-  - ✓ **Normal** (recommended default) — escalates to tier 2 if essentials missing
-  - 🔎 **Djup** — all sources incl. Calibre/AI, slowest (tier 3)
-- The pipeline already accepts an explicit mode (`resolve_fetch_mode(explicit=…)`,
-  `pipeline.py:303`); this is mostly UI + passing `?mode=` on the SSE stream.
-- Keep the global setting as the default the toggle initialises from.
-- **Note:** once the Calibre removal (above) lands, "Djup" loses Calibre — reword
-  its hint to "alla källor inkl. AI".
-
-### Layer 2 — live coverage banner during fetch (small)
-
-Bookstation showed a banner that updated per tier as it searched
-(`bookstation/app/templates/metadata.html:742-757`): "Nivå 2/3 · källor: …  ✓
-Titel ✓ Författare ✗ Omslag ✗ Serie". Colophon already emits per-source SSE
-events; this just renders them as a running ✓/✗ over the essential fields
-(`title, author, description, cover, series` — `pipeline.py:55`) plus which
-sources contributed. Makes the wait legible and shows *why* a deeper tier kicked
-in. Hooks into the single-book enrichment SSE handler.
-
-### Layer 3 — unify batch onto the tiered pipeline + per-field diff (large)
-
-The biggest piece and the one that actually delivers "cherry-pick in bulk". Move
-the batch wizard's step 3 onto the same `run_metadata_enrichment` + per-field
-diff + source-chip UI the single-book path already has, so depth selection,
-provenance, and field-level accept/reject are **consistent** whether you enrich
-one book or a hundred.
-- Batch search path: `app/routes/metadata.py` `/metadata/bulk/stream` (~L916)
-  currently calls `search_all_sources_with_status`; repoint at the pipeline.
-- Batch review UI: `app/static/js/batch.js` step 3 — already has an "alt-panel"
-  per-field source picker; align it with the single-book diff semantics
-  (status colours new/changed/same/missing, default-check only "new").
-
-**Adjacent, separate — do NOT fold in:** per-field locks
-(`docs/future-idea-per-field-locks.md`). Cherry-pick is one-shot ("take this
-now"); locks are persistent ("never touch my title again"). Complementary, but a
-different feature — keep it out of this rework.
-
-**Recommended order:** Layer 1 + 2 together (most "feel" change for least code),
-then Layer 3 once the pattern is settled.
-
-**Scope:** Layer 1 small (MINOR — new per-fetch control), Layer 2 small (PATCH —
-richer progress feedback), Layer 3 medium-large (MINOR — batch gains per-field
-cherry-pick + provenance). Verify each on the prod lab book "12|21|12".
 
 ## Make scroll restore after edit-reload pixel-accurate (v1.6.0 follow-up)
 
