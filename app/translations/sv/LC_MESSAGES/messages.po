@@ -2344,7 +2344,6 @@ msgid "Tier"
 msgstr "Nivå"
 
 #: app/templates/metadata.html:553
-#, fuzzy
 msgid "sources"
 msgstr "Källor"
 
