@@ -253,6 +253,14 @@
             initialProgress: {{ initial_progress|tojson }},
             readStatus: {{ read_status|tojson }},
             homeUrl: {{ url_for('metadata.index')|tojson }},
+            // The book renders in a separate iframe document that does NOT
+            // inherit this page's @font-face, so the OpenDyslexic face must be
+            // re-declared inside the book CSS with an absolute URL (the iframe's
+            // base is a blob:, so a relative /static path would not resolve).
+            fontUrls: {
+                dyslexic400: {{ url_for('static', filename='fonts/opendyslexic-400.woff2')|tojson }},
+                dyslexic700: {{ url_for('static', filename='fonts/opendyslexic-700.woff2')|tojson }}
+            },
             i18n: {
                 loadError: {{ _('Could not open this book.')|tojson }}
             }

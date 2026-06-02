@@ -75,6 +75,22 @@ import './../vendor/foliate-js/view.js';
     }
     var prefs = loadPrefs();
 
+    // Absolute woff2 URLs — the book iframe's base is a blob:, so relative
+    // paths won't resolve; qualify against the app origin.
+    function _fontUrl(path) {
+        if (!path) return '';
+        return /^https?:/i.test(path) ? path : (window.location.origin + path);
+    }
+    function dyslexicFontFace() {
+        var u = (cfg.fontUrls || {});
+        var r400 = _fontUrl(u.dyslexic400), r700 = _fontUrl(u.dyslexic700);
+        if (!r400) return '';
+        return "@font-face { font-family: 'OpenDyslexic'; font-style: normal; font-weight: 400; font-display: swap; src: url('"
+            + r400 + "') format('woff2'); }\n"
+            + (r700 ? "@font-face { font-family: 'OpenDyslexic'; font-style: normal; font-weight: 700; font-display: swap; src: url('"
+                + r700 + "') format('woff2'); }\n" : '');
+    }
+
     function buildBookCSS() {
         var theme = THEMES[prefs.theme] || THEMES.light;
         var lh = LINE_HEIGHTS[prefs.lineSpacing] || LINE_HEIGHTS.normal;
@@ -91,6 +107,8 @@ import './../vendor/foliate-js/view.js';
         ];
         // Publisher = leave the book's own fonts alone.
         if (prefs.fontFamily !== 'publisher' && FONT_STACKS[prefs.fontFamily]) {
+            // OpenDyslexic must be declared inside the book document itself.
+            if (prefs.fontFamily === 'dyslexic') rules.unshift(dyslexicFontFace());
             rules.push('html, body, p, li, blockquote, dd, dt, h1, h2, h3, h4, h5, h6, '
                 + 'span, div, td, th, a, figcaption { font-family: '
                 + FONT_STACKS[prefs.fontFamily] + ' !important; }');
