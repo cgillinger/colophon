@@ -3794,7 +3794,12 @@
             display: flex;
             align-items: center;
             gap: 4px;
-            background: var(--bg-primary, #1a1a1a);
+            /* Must match the page background behind the grid (body uses
+               --bg-secondary) so the tag only masks the frame's border line
+               where the title sits — like a fieldset legend. Using --bg-primary
+               here painted a lighter/darker rectangle that read as a "label
+               strip" stuck over the green line and the row above. */
+            background: var(--bg-secondary, #252a30);
             padding: 0 10px;
             white-space: nowrap;
             z-index: 4;
