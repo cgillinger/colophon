@@ -11,6 +11,12 @@
         (function () {
             var t = localStorage.getItem('colophon-theme') || 'light';
             document.documentElement.setAttribute('data-theme', t);
+            // Reader typography/theme prefs are separate from the app theme.
+            // Bootstrap the reader theme here too so the page paints in the
+            // right colours immediately (no light→sepia/dark flash).
+            var rt = 'light';
+            try { rt = (JSON.parse(localStorage.getItem('colophon-reader-prefs') || '{}').theme) || 'light'; } catch (e) {}
+            document.documentElement.setAttribute('data-reader-theme', rt);
         })();
     </script>
     <title>{{ item.title or _('Reader') }} — {{ _('Colophon') }}</title>
@@ -22,12 +28,42 @@
     {# bulk_metadata.css carries the theme CSS variables (--bg-primary etc.). #}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/bulk_metadata.css') }}?v={{ app_version }}">
     <style>
+        /* Self-hosted OpenDyslexic (SIL OFL 1.1) for the dyslexia-friendly
+           font option. See app/static/fonts/opendyslexic-OFL.txt. */
+        @font-face {
+            font-family: 'OpenDyslexic';
+            font-style: normal; font-weight: 400; font-display: swap;
+            src: url("{{ url_for('static', filename='fonts/opendyslexic-400.woff2') }}") format('woff2');
+        }
+        @font-face {
+            font-family: 'OpenDyslexic';
+            font-style: normal; font-weight: 700; font-display: swap;
+            src: url("{{ url_for('static', filename='fonts/opendyslexic-700.woff2') }}") format('woff2');
+        }
+
         html, body { height: 100%; margin: 0; overscroll-behavior: none; }
         body {
             display: flex; flex-direction: column;
             background: var(--bg-primary); color: var(--text-primary);
             font-family: system-ui, -apple-system, sans-serif;
         }
+
+        /* Reader theme chrome (light / sepia / dark) — independent of the app
+           theme. Drives the page surround so it matches the book's own
+           background set on the foliate content via setStyles(). */
+        html[data-reader-theme="light"] body { background: #ffffff; color: #1a1a1a; }
+        html[data-reader-theme="light"] .reader-topbar { background: #f6f7f8; border-color: rgba(0,0,0,.08); }
+        html[data-reader-theme="sepia"] body { background: #f4ecd8; color: #5b4636; }
+        html[data-reader-theme="sepia"] .reader-topbar { background: #ede3cb; border-color: rgba(91,70,54,.18); }
+        html[data-reader-theme="sepia"] .reader-back,
+        html[data-reader-theme="sepia"] .reader-title { color: #5b4636; }
+        html[data-reader-theme="sepia"] .reader-percent { color: #8a755e; }
+        html[data-reader-theme="dark"] body { background: #1b1f24; color: #cfd6dc; }
+        html[data-reader-theme="dark"] .reader-topbar { background: #23282e; border-color: rgba(255,255,255,.08); }
+        html[data-reader-theme="dark"] .reader-back,
+        html[data-reader-theme="dark"] .reader-title { color: #cfd6dc; }
+        html[data-reader-theme="dark"] .reader-overlay { background: #1b1f24; color: #8b949e; }
+        html[data-reader-theme="sepia"] .reader-overlay { background: #f4ecd8; color: #8a755e; }
         .reader-topbar {
             flex: 0 0 auto; display: flex; align-items: center; gap: .6rem;
             height: 48px; padding: 0 .6rem;
@@ -66,6 +102,81 @@
             font-size: .95rem; text-align: center; padding: 2rem;
         }
         .reader-overlay[hidden] { display: none; }
+
+        /* --- "Aa" reading-settings panel ----------------------------------- */
+        .reader-topbar .reader-settings {
+            flex: 0 0 auto;
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 38px; height: 38px; border: none; border-radius: 8px;
+            background: transparent; color: inherit;
+            font-size: 1.1rem; font-weight: 600; cursor: pointer;
+        }
+        .reader-topbar .reader-settings:hover { background: var(--bg-tertiary); }
+
+        .reader-sheet-backdrop {
+            position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.35);
+        }
+        .reader-sheet-backdrop[hidden] { display: none; }
+
+        .reader-sheet {
+            position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+            background: var(--rs-bg, #fff); color: var(--rs-fg, #1a1a1a);
+            border-top-left-radius: 16px; border-top-right-radius: 16px;
+            box-shadow: 0 -8px 28px rgba(0,0,0,.22);
+            padding: 8px 18px calc(18px + env(safe-area-inset-bottom, 0));
+            display: flex; flex-direction: column; gap: 14px;
+            max-width: 560px; margin: 0 auto;
+            transition: transform .22s ease;
+        }
+        /* Theme the sheet itself to match the chosen reading theme. */
+        html[data-reader-theme="light"] .reader-sheet { --rs-bg:#ffffff; --rs-fg:#1a1a1a; --rs-line:rgba(0,0,0,.10); --rs-chip:#f1f3f5; --rs-chip-on:#059669; }
+        html[data-reader-theme="sepia"] .reader-sheet { --rs-bg:#f4ecd8; --rs-fg:#5b4636; --rs-line:rgba(91,70,54,.18); --rs-chip:#e7dcc2; --rs-chip-on:#9a6f3f; }
+        html[data-reader-theme="dark"]  .reader-sheet { --rs-bg:#23282e; --rs-fg:#e8ecef; --rs-line:rgba(255,255,255,.10); --rs-chip:#30363b; --rs-chip-on:#10b981; }
+        .reader-sheet[hidden] { display: none; }
+
+        .reader-sheet .rs-grip {
+            width: 40px; height: 4px; border-radius: 2px;
+            background: var(--rs-line); margin: 2px auto 4px;
+        }
+        .reader-sheet .rs-row {
+            display: flex; align-items: center; gap: 12px;
+        }
+        .reader-sheet .rs-label {
+            flex: 0 0 84px; font-size: .82rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: .03em; opacity: .75;
+        }
+        .reader-sheet .rs-seg {
+            flex: 1 1 auto; display: flex; gap: 6px;
+        }
+        .reader-sheet .rs-seg button,
+        .reader-sheet .rs-stepper button,
+        .reader-sheet .rs-stepper .rs-val {
+            font: inherit; color: inherit;
+        }
+        .reader-sheet .rs-seg button {
+            flex: 1 1 0; min-width: 0; padding: 9px 4px;
+            border: 1px solid var(--rs-line); border-radius: 8px;
+            background: var(--rs-chip); cursor: pointer;
+            font-size: .85rem; line-height: 1.1; white-space: nowrap;
+        }
+        .reader-sheet .rs-seg button[aria-pressed="true"] {
+            background: var(--rs-chip-on); border-color: var(--rs-chip-on);
+            color: #fff; font-weight: 600;
+        }
+        .reader-sheet .rs-seg button[data-value="dyslexic"] { font-family: 'OpenDyslexic', sans-serif; }
+
+        .reader-sheet .rs-stepper {
+            flex: 1 1 auto; display: flex; align-items: center; gap: 8px;
+        }
+        .reader-sheet .rs-stepper button {
+            width: 44px; height: 40px; border: 1px solid var(--rs-line);
+            border-radius: 8px; background: var(--rs-chip); cursor: pointer;
+            font-size: 1.3rem; line-height: 1;
+        }
+        .reader-sheet .rs-stepper .rs-val {
+            flex: 1 1 auto; text-align: center; font-variant-numeric: tabular-nums;
+            font-size: .95rem; font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -75,11 +186,64 @@
         </button>
         <div class="reader-title">{{ item.title or item.file_name or _('Reader') }}</div>
         <div class="reader-percent" id="readerPercent">—</div>
+        <button type="button" class="reader-settings" id="readerSettingsBtn"
+                aria-label="{{ _('Reading settings') }}" title="{{ _('Reading settings') }}" aria-expanded="false">Aa</button>
     </div>
     <div class="reader-main">
         <div class="reader-tap prev" id="readerPrev" aria-label="{{ _('Previous page') }}"></div>
         <div class="reader-tap next" id="readerNext" aria-label="{{ _('Next page') }}"></div>
         <div class="reader-overlay" id="readerOverlay">{{ _('Loading book…') }}</div>
+    </div>
+
+    <div class="reader-sheet-backdrop" id="readerSheetBackdrop" hidden></div>
+    <div class="reader-sheet" id="readerSheet" hidden role="dialog" aria-modal="true" aria-label="{{ _('Reading settings') }}">
+        <div class="rs-grip"></div>
+
+        <div class="rs-row">
+            <span class="rs-label">{{ _('Theme') }}</span>
+            <div class="rs-seg" data-pref="theme" role="group" aria-label="{{ _('Theme') }}">
+                <button type="button" data-value="light">☀ {{ _('Light') }}</button>
+                <button type="button" data-value="sepia">◐ {{ _('Sepia') }}</button>
+                <button type="button" data-value="dark">☾ {{ _('Dark') }}</button>
+            </div>
+        </div>
+
+        <div class="rs-row">
+            <span class="rs-label">{{ _('Size') }}</span>
+            <div class="rs-stepper">
+                <button type="button" id="rsSizeDown" aria-label="{{ _('Smaller text') }}">−</button>
+                <span class="rs-val" id="rsSizeVal">100%</span>
+                <button type="button" id="rsSizeUp" aria-label="{{ _('Larger text') }}">+</button>
+            </div>
+        </div>
+
+        <div class="rs-row">
+            <span class="rs-label">{{ _('Font') }}</span>
+            <div class="rs-seg" data-pref="fontFamily" role="group" aria-label="{{ _('Font') }}">
+                <button type="button" data-value="publisher">{{ _('Publisher') }}</button>
+                <button type="button" data-value="serif">{{ _('Serif') }}</button>
+                <button type="button" data-value="sans">{{ _('Sans') }}</button>
+                <button type="button" data-value="dyslexic">{{ _('Dyslexia') }}</button>
+            </div>
+        </div>
+
+        <div class="rs-row">
+            <span class="rs-label">{{ _('Line spacing') }}</span>
+            <div class="rs-seg" data-pref="lineSpacing" role="group" aria-label="{{ _('Line spacing') }}">
+                <button type="button" data-value="tight">{{ _('Tight') }}</button>
+                <button type="button" data-value="normal">{{ _('Normal') }}</button>
+                <button type="button" data-value="loose">{{ _('Loose') }}</button>
+            </div>
+        </div>
+
+        <div class="rs-row">
+            <span class="rs-label">{{ _('Margins') }}</span>
+            <div class="rs-seg" data-pref="margins" role="group" aria-label="{{ _('Margins') }}">
+                <button type="button" data-value="narrow">{{ _('Narrow') }}</button>
+                <button type="button" data-value="normal">{{ _('Normal') }}</button>
+                <button type="button" data-value="wide">{{ _('Wide') }}</button>
+            </div>
+        </div>
     </div>
 
     <script>

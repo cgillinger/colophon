@@ -21,12 +21,138 @@ import './../vendor/foliate-js/view.js';
     var prevZone = document.getElementById('readerPrev');
     var nextZone = document.getElementById('readerNext');
 
+    var settingsBtn = document.getElementById('readerSettingsBtn');
+    var sheet = document.getElementById('readerSheet');
+    var backdrop = document.getElementById('readerSheetBackdrop');
+    var sizeVal = document.getElementById('rsSizeVal');
+    var sizeDown = document.getElementById('rsSizeDown');
+    var sizeUp = document.getElementById('rsSizeUp');
+
     var view = null;
     var saveTimer = null;
     var latest = null;           // { percent, status } pending save
     var lastSaved = null;        // last successfully sent { percent, status }
     var FINISHED_FRACTION = 0.999;
     var SAVE_DEBOUNCE_MS = 1500;
+
+    // --- Reading settings (typography/theme) --------------------------------
+    // Persisted globally in localStorage (not per-book, matching Kobo/Kindle)
+    // and applied to the foliate content via renderer.setStyles() + layout
+    // attributes. No server round-trip — these are pure presentation prefs.
+    var PREFS_KEY = 'colophon-reader-prefs';
+    var DEFAULT_PREFS = {
+        theme: 'light', fontSize: 100, fontFamily: 'publisher',
+        lineSpacing: 'normal', margins: 'normal'
+    };
+    var FONT_MIN = 70, FONT_MAX = 220, FONT_STEP = 10;
+    var FONT_STACKS = {
+        serif: "Georgia, 'Iowan Old Style', 'Times New Roman', serif",
+        sans: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+        dyslexic: "'OpenDyslexic', sans-serif"
+    };
+    var LINE_HEIGHTS = { tight: 1.3, normal: 1.6, loose: 2.0 };
+    var MARGINS = {
+        narrow: { gap: '4%', maxInline: '900px' },
+        normal: { gap: '7%', maxInline: '720px' },
+        wide:   { gap: '12%', maxInline: '580px' }
+    };
+    var THEMES = {
+        light: { bg: '#ffffff', fg: '#1a1a1a', link: '#1a6dd0' },
+        sepia: { bg: '#f4ecd8', fg: '#5b4636', link: '#9a6f3f' },
+        dark:  { bg: '#1b1f24', fg: '#cfd6dc', link: '#6cb6ff' }
+    };
+
+    function loadPrefs() {
+        try {
+            var saved = JSON.parse(localStorage.getItem(PREFS_KEY) || '{}');
+            var p = Object.assign({}, DEFAULT_PREFS, saved);
+            p.fontSize = Math.max(FONT_MIN, Math.min(FONT_MAX, Number(p.fontSize) || 100));
+            return p;
+        } catch (e) { return Object.assign({}, DEFAULT_PREFS); }
+    }
+    function savePrefs() {
+        try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch (e) { /* private mode */ }
+    }
+    var prefs = loadPrefs();
+
+    function buildBookCSS() {
+        var theme = THEMES[prefs.theme] || THEMES.light;
+        var lh = LINE_HEIGHTS[prefs.lineSpacing] || LINE_HEIGHTS.normal;
+        var rules = [
+            // Scale rem/em/%-based text (the bulk of modern EPUBs).
+            'html { font-size: ' + prefs.fontSize + '% !important; }',
+            // Normalise to the chosen theme — forcing is what makes sepia/dark
+            // legible over arbitrary publisher colours (matches Kindle/Kobo).
+            'html { background: ' + theme.bg + ' !important; }',
+            'body { background: ' + theme.bg + ' !important; color: ' + theme.fg + ' !important; }',
+            'p, li, blockquote, dd, dt, h1, h2, h3, h4, h5, h6, span, div, td, th, figcaption { color: ' + theme.fg + ' !important; }',
+            'a, a * { color: ' + theme.link + ' !important; }',
+            'p, li, blockquote, dd { line-height: ' + lh + ' !important; }'
+        ];
+        // Publisher = leave the book's own fonts alone.
+        if (prefs.fontFamily !== 'publisher' && FONT_STACKS[prefs.fontFamily]) {
+            rules.push('html, body, p, li, blockquote, dd, dt, h1, h2, h3, h4, h5, h6, '
+                + 'span, div, td, th, a, figcaption { font-family: '
+                + FONT_STACKS[prefs.fontFamily] + ' !important; }');
+        }
+        return rules.join('\n');
+    }
+
+    function applyReaderStyles() {
+        document.documentElement.setAttribute('data-reader-theme', prefs.theme);
+        if (!view || !view.renderer) return;
+        var m = MARGINS[prefs.margins] || MARGINS.normal;
+        view.renderer.setAttribute('gap', m.gap);
+        view.renderer.setAttribute('max-inline-size', m.maxInline);
+        view.renderer.setStyles(buildBookCSS());
+    }
+
+    function syncPanelUI() {
+        if (!sheet) return;
+        sheet.querySelectorAll('.rs-seg').forEach(function (seg) {
+            var pref = seg.getAttribute('data-pref');
+            seg.querySelectorAll('button').forEach(function (b) {
+                b.setAttribute('aria-pressed',
+                    String(b.getAttribute('data-value') === String(prefs[pref])));
+            });
+        });
+        if (sizeVal) sizeVal.textContent = prefs.fontSize + '%';
+    }
+
+    function openSheet() {
+        if (backdrop) backdrop.hidden = false;
+        if (sheet) sheet.hidden = false;
+        if (settingsBtn) settingsBtn.setAttribute('aria-expanded', 'true');
+        syncPanelUI();
+    }
+    function closeSheet() {
+        if (backdrop) backdrop.hidden = true;
+        if (sheet) sheet.hidden = true;
+        if (settingsBtn) settingsBtn.setAttribute('aria-expanded', 'false');
+    }
+    function sheetOpen() { return sheet && !sheet.hidden; }
+
+    function setFontSize(v) {
+        prefs.fontSize = Math.max(FONT_MIN, Math.min(FONT_MAX, v));
+        savePrefs(); applyReaderStyles(); syncPanelUI();
+    }
+
+    function bindSettings() {
+        if (settingsBtn) settingsBtn.addEventListener('click', function () {
+            sheetOpen() ? closeSheet() : openSheet();
+        });
+        if (backdrop) backdrop.addEventListener('click', closeSheet);
+        if (sheet) sheet.addEventListener('click', function (e) {
+            var segBtn = e.target.closest('.rs-seg button');
+            if (segBtn) {
+                var pref = segBtn.closest('.rs-seg').getAttribute('data-pref');
+                prefs[pref] = segBtn.getAttribute('data-value');
+                savePrefs(); applyReaderStyles(); syncPanelUI();
+            }
+        });
+        if (sizeDown) sizeDown.addEventListener('click', function () { setFontSize(prefs.fontSize - FONT_STEP); });
+        if (sizeUp) sizeUp.addEventListener('click', function () { setFontSize(prefs.fontSize + FONT_STEP); });
+    }
 
     function goHome() {
         // Prefer Back so the library keeps its scroll/filter state; fall back
@@ -84,10 +210,12 @@ import './../vendor/foliate-js/view.js';
         if (prevZone) prevZone.addEventListener('click', function () { if (view) view.goLeft(); });
         if (nextZone) nextZone.addEventListener('click', function () { if (view) view.goRight(); });
         document.addEventListener('keydown', function (ev) {
-            if (!view) return;
+            // Escape closes the settings sheet first; only leaves the reader
+            // when nothing is open.
+            if (ev.key === 'Escape') { if (sheetOpen()) closeSheet(); else goHome(); return; }
+            if (!view || sheetOpen()) return;
             if (ev.key === 'ArrowLeft') { view.goLeft(); }
             else if (ev.key === 'ArrowRight' || ev.key === ' ') { view.goRight(); }
-            else if (ev.key === 'Escape') { goHome(); }
         });
         // Persist the latest position when the tab is hidden or the page is
         // being unloaded — covers backgrounding on mobile and closing the tab.
@@ -103,11 +231,16 @@ import './../vendor/foliate-js/view.js';
 
     async function start() {
         bindControls();
+        bindSettings();
         try {
             view = document.createElement('foliate-view');
             main.insertBefore(view, overlay);
             view.addEventListener('relocate', onRelocate);
             await view.open(cfg.fileUrl);
+
+            // Apply saved typography/theme before positioning so the resume
+            // fraction maps to the final paginated layout.
+            applyReaderStyles();
 
             var initial = Number(cfg.initialProgress) || 0;
             var frac = 0;
