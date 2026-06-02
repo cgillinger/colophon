@@ -42,7 +42,7 @@ import './../vendor/foliate-js/view.js';
     var PREFS_KEY = 'colophon-reader-prefs';
     var DEFAULT_PREFS = {
         theme: 'light', fontSize: 100, fontFamily: 'publisher',
-        lineSpacing: 'normal', margins: 'normal'
+        lineSpacing: 'normal', margins: 'normal', flow: 'paginated'
     };
     var FONT_MIN = 70, FONT_MAX = 220, FONT_STEP = 10;
     var FONT_STACKS = {
@@ -118,7 +118,13 @@ import './../vendor/foliate-js/view.js';
 
     function applyReaderStyles() {
         document.documentElement.setAttribute('data-reader-theme', prefs.theme);
+        // Page-turn tap zones only make sense when paginated; in scroll mode
+        // they'd block edge scrolling, so hide them.
+        var paged = prefs.flow !== 'scrolled';
+        if (prevZone) prevZone.style.display = paged ? '' : 'none';
+        if (nextZone) nextZone.style.display = paged ? '' : 'none';
         if (!view || !view.renderer) return;
+        view.renderer.setAttribute('flow', paged ? 'paginated' : 'scrolled');
         var m = MARGINS[prefs.margins] || MARGINS.normal;
         view.renderer.setAttribute('gap', m.gap);
         view.renderer.setAttribute('max-inline-size', m.maxInline);

@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Colophon 1.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-06-02 14:06+0200\n"
+"POT-Creation-Date: 2026-06-02 14:21+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: sv\n"
@@ -2521,7 +2521,19 @@ msgstr "Smal"
 msgid "Wide"
 msgstr "Bred"
 
-#: app/templates/reader.html:257
+#: app/templates/reader.html:249 app/templates/reader.html:250
+msgid "Reading mode"
+msgstr "Läsläge"
+
+#: app/templates/reader.html:251
+msgid "Paged"
+msgstr "Bläddra"
+
+#: app/templates/reader.html:252
+msgid "Scroll"
+msgstr "Rulla"
+
+#: app/templates/reader.html:273
 msgid "Could not open this book."
 msgstr "Kunde inte öppna boken."
 
