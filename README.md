@@ -35,6 +35,7 @@ This is a personal project I built for my own library. I've published it in case
 ## What it does
 
 - Scans a book folder and builds a catalogue
+- Adds books by drag-and-drop or a file picker — batch upload, no rescan needed; freshly added books wear a "New" badge for a while
 - Fetches metadata from seven sources (Google Books, Hardcover, Open Library, Wikidata, Wikipedia, LIBRIS, Calibre) and merges them field by field
 - Detects series with AI (Mistral, OpenAI, DeepSeek, or local Ollama)
 - Finds covers from Open Library, Google Books, Hardcover, Wikidata, DuckDuckGo
@@ -99,6 +100,8 @@ All variables are read from `.env` (loaded via `env_file` in `docker-compose.yml
 | `COLOPHON_AI_API_KEY` | No | — | AI provider API key |
 | `COLOPHON_AI_MODEL` | No | `mistral-small-latest` | AI model name |
 | `COLOPHON_UPSTREAM_DIR` | No | — | Upstream library path inside the container (for sync) |
+| `COLOPHON_MAX_UPLOAD_MB` | No | `1024` | Max size per uploaded file (in-app upload) |
+| `COLOPHON_NEW_BADGE_DAYS` | No | `14` | Days a newly added book shows the "New" badge |
 
 All API keys can also be set in the web UI under **Settings → API settings**. UI values take priority over environment variables.
 
