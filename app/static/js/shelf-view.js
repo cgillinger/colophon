@@ -113,6 +113,12 @@
             ? '<span class="series-index-badge">' + _esc(_formatIdx(seriesIdx)) + '</span>'
             : '';
 
+        var newHtml = '';
+        if (row.dataset.isNew === '1') {
+            var _i18n = (window.__colophonConfig && window.__colophonConfig.i18n) || {};
+            newHtml = '<span class="new-badge new-badge-corner">' + _esc(_i18n.newlyAdded || 'New') + '</span>';
+        }
+
         var readHtml = _readStateHtml(row);
 
         return '<div class="grid-card"'
@@ -133,6 +139,7 @@
             +      '<input type="checkbox" class="grid-card-checkbox" value="' + _esc(value) + '"' + checked
             +        ' onclick="event.stopPropagation();">'
             +      badgeHtml
+            +      newHtml
             +      readHtml
             +    '</div>'
             +    '<div class="grid-card-info" onclick="openBookModal(' + _esc(itemId) + ')">'

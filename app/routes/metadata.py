@@ -902,9 +902,17 @@ def bulk_metadata():
     # the single-book modal and the batch wizard. Each fetch can override it.
     from app.services.metadata_pipeline import resolve_fetch_mode
 
+    # Cutoff for the "Nytillagt" badge: rows created within the last
+    # NEW_BADGE_DAYS days wear it. Derived from created_at, so it self-expires.
+    from datetime import timedelta
+    new_badge_days = current_app.config.get("NEW_BADGE_DAYS", 14)
+    new_badge_cutoff = datetime.utcnow() - timedelta(days=new_badge_days)
+
     return render_template(
         "bulk_metadata.html",
         items=items,
+        new_badge_cutoff=new_badge_cutoff,
+        new_badge_days=new_badge_days,
         groups=groups,
         summary=summary,
         total_count=total_count,

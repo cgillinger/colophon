@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.16.3.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.17.0.
 
 ## Quick reference
 
@@ -34,13 +34,13 @@ wsgi.py                         # Gunicorn entry: from app import create_app
 app/
   __init__.py                   # create_app(), blueprint registration, Babel, DB init
   models.py                     # LibraryItem + KoboDevice + KoboBookState
-  version.py                    # __version__ = "1.16.3"
+  version.py                    # __version__ = "1.17.0"
   paths.py                      # Central path constants
   config.py                     # Flask Config class (reads env vars)
   routes/
     __init__.py
     metadata.py                 # metadata_bp — bulk view, single-book modal, SSE streams
-    scan.py                     # scan_bp — /scan endpoint (JSON + SSE)
+    scan.py                     # scan_bp — /scan (JSON + SSE) + /upload (in-app file upload)
     settings.py                 # settings_bp — API keys, AI config, upstream sync settings
     kobo.py                     # kobo_bp — /kobo/<token>/* sync endpoints for Kobo devices
     reader.py                   # reader_bp — /reader/<id> in-browser EPUB reader + progress
@@ -88,15 +88,15 @@ app/
     sv/LC_MESSAGES/messages.po  # Swedish translation
   static/
     css/bulk_metadata.css       # Extracted styles for the main view
-    js/                         # Extracted frontend modules (14 files, see below)
+    js/                         # Extracted frontend modules (15 files, see below)
     icons/                      # Favicons, app/PWA icons, header logo SVGs (light+dark)
     vendor/tabler-icons/        # Icon font
     vendor/foliate-js/          # Vendored EPUB renderer (MIT) for the reader
-tests/                          # 16 pytest files: metadata_pipeline, calibre_metadata,
+tests/                          # 17 pytest files: metadata_pipeline, calibre_metadata,
                                 # bookf, grouping, kobo_conf, kobo_sync, language,
                                 # quality, reading_state, scanner, scoring,
                                 # source_status, title_clean, wikipedia,
-                                # metadata_merge, metadata_escalation
+                                # metadata_merge, metadata_escalation, upload
 tools/
   install_calibre_plugins.sh    # Dockerfile build step: Goodreads, FF, FictionDB plugins
   install_kepubify.sh           # Dockerfile build step: kepubify binary for Kobo conversion
@@ -125,6 +125,7 @@ bulk-result-modal.js     # Post-batch summary modal
 duplicates.js            # Duplicate cleanup UI
 reading-now.js           # "Currently reading" widget
 scan-sync.js             # Scan trigger + SSE handling for live progress
+upload.js                # In-app book upload: file picker + window-level drag-and-drop → POST /upload
 cleanup-misc.js          # Misc cleanup actions
 url-state.js             # Mirrors view/search/filters/sort/page to the URL (back + deep links)
 reader.js                # In-browser reader controller (standalone /reader page, not the bulk view; ES module, loads foliate-js)

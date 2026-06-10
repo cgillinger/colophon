@@ -61,6 +61,9 @@
     <div class="sidebar-section">
         <div class="sidebar-section-title">{{ _('Tools') }}</div>
         {% if _section == 'library' %}
+        <button type="button" class="sidebar-nav-item" onclick="openUploadPicker()">
+            <i class="ti ti-upload"></i> <span>{{ _('Upload books') }}</span>
+        </button>
         <button type="button" class="sidebar-nav-item" onclick="startScan()">
             <i class="ti ti-refresh"></i> <span>{{ _('Find new books') }}</span>
         </button>
@@ -68,6 +71,9 @@
             <i class="ti ti-copy"></i> <span>{{ _('Find duplicates') }}</span>
         </button>
         {% else %}
+        <a class="sidebar-nav-item" href="{{ url_for('metadata.bulk_metadata') }}#upload">
+            <i class="ti ti-upload"></i> <span>{{ _('Upload books') }}</span>
+        </a>
         <a class="sidebar-nav-item" href="{{ url_for('metadata.bulk_metadata') }}#scan">
             <i class="ti ti-refresh"></i> <span>{{ _('Find new books') }}</span>
         </a>

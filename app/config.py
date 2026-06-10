@@ -16,6 +16,15 @@ class Config:
 
     UPSTREAM_DIR = os.environ.get("COLOPHON_UPSTREAM_DIR", "").strip() or None
 
+    # Max size of a single uploaded file (in-app upload feature). Ebooks are
+    # small but comics (CBZ/CBR) and image-heavy PDFs can be large, so default
+    # generously. Gunicorn rejects oversized bodies before they hit a worker.
+    MAX_CONTENT_LENGTH = int(os.environ.get("COLOPHON_MAX_UPLOAD_MB", "1024")) * 1024 * 1024
+
+    # How many days a freshly added book wears the "Nytillagt" badge. Derived
+    # from LibraryItem.created_at, so it self-expires — no flag to clear.
+    NEW_BADGE_DAYS = int(os.environ.get("COLOPHON_NEW_BADGE_DAYS", "14"))
+
     SESSION_TYPE = "filesystem"
     SESSION_FILE_DIR = str(_VAR_DIR / "sessions")
     SESSION_PERMANENT = False

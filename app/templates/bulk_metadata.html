@@ -272,7 +272,8 @@
                             data-series="{{ item.series or '' }}"
                             data-series-index="{{ item.series_index or '' }}"
                             data-read-status="{{ item.read_status or 'ReadyToRead' }}"
-                            data-read-progress="{{ item.read_progress if item.read_progress is not none else '' }}">
+                            data-read-progress="{{ item.read_progress if item.read_progress is not none else '' }}"
+                            data-is-new="{{ '1' if item.created_at and new_badge_cutoff and item.created_at > new_badge_cutoff else '0' }}">
                             <td>
                                 <input type="checkbox" name="item_ids" value="{{ item.id }}" class="book-checkbox">
                             </td>
@@ -286,7 +287,7 @@
                                 </div>
                             </td>
                             <td class="book-cell" onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
-                                <div class="book-title">{{ item.title }}</div>
+                                <div class="book-title">{% if item.created_at and new_badge_cutoff and item.created_at > new_badge_cutoff %}<span class="new-badge" title="{{ _('Added in the last %(days)d days', days=new_badge_days) }}">{{ _('New') }}</span>{% endif %}{{ item.title }}</div>
                                 {% if item.series %}
                                     <div class="meta">{{ item.series }}{% if item.series_index %} · {{ item.series_index }}{% endif %}{% if item.publisher %} · {{ item.publisher }}{% endif %}</div>
                                 {% elif item.publisher %}
@@ -784,6 +785,28 @@
     </button>
     <button class="btn ghost" type="button" onclick="deselectAll()">{{ _('Deselect') }}</button>
 </div>
+
+{# ---- Upload (drag-and-drop + picker) ---------------------------------- #}
+<input type="file" id="uploadInput" multiple
+       accept=".epub,.mobi,.azw3,.kepub,.pdf,.cbz,.cbr"
+       style="display:none;" onchange="handleUploadFiles(this.files); this.value='';">
+
+<div id="uploadDropOverlay" class="upload-drop-overlay" aria-hidden="true">
+    <div class="upload-drop-card">
+        <i class="ti ti-upload"></i>
+        <div class="upload-drop-title">{{ _('Drop books to upload') }}</div>
+        <div class="upload-drop-hint">{{ _('EPUB, MOBI, AZW3, KEPUB, PDF, CBZ, CBR') }}</div>
+    </div>
+</div>
+
+<div id="uploadPanel" class="upload-panel" style="display:none;">
+    <div class="upload-panel-head">
+        <span id="uploadPanelTitle">{{ _('Uploading…') }}</span>
+        <button type="button" class="upload-panel-close" onclick="closeUploadPanel()"
+                aria-label="{{ _('Close') }}"><i class="ti ti-x"></i></button>
+    </div>
+    <div id="uploadPanelList" class="upload-panel-list"></div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -1053,6 +1076,17 @@
         fetchModeDeepHint: {{ _('All sources, slowest')|tojson }},
         coverageTier: {{ _('Tier')|tojson }},
         coverageSources: {{ _('sources')|tojson }},
+        uploadUploading: {{ _('Uploading…')|tojson }},
+        uploadItemUploading: {{ _('Uploading…')|tojson }},
+        uploadItemAdded: {{ _('Added')|tojson }},
+        uploadItemUpdated: {{ _('Updated')|tojson }},
+        uploadItemSkipped: {{ _('Already in library')|tojson }},
+        uploadItemUnsupported: {{ _('Unsupported format')|tojson }},
+        uploadItemError: {{ _('Failed')|tojson }},
+        uploadDoneSummary: {{ _('{added} added, {skipped} skipped, {errors} failed')|tojson }},
+        uploadRefreshing: {{ _('Refreshing…')|tojson }},
+        uploadNothingValid: {{ _('No supported files were selected.')|tojson }},
+        newlyAdded: {{ _('New')|tojson }},
         },
         urls: {
             coverItemBase: '{{ url_for("metadata.cover_item", item_id=0) }}'.replace(/\/0$/, '')
@@ -1071,6 +1105,7 @@
 <script src="{{ url_for('static', filename='js/bulk-result-modal.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/duplicates.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/scan-sync.js') }}?v={{ app_version }}"></script>
+<script src="{{ url_for('static', filename='js/upload.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/shelf-view.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/cleanup-misc.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/reading-now.js') }}?v={{ app_version }}"></script>
