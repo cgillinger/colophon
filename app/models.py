@@ -252,8 +252,13 @@ def _reset_author_resolution(session, flush_context, instances):
 
     Exception: when author_id or author_status changed in the same flush,
     the writer is the resolver itself or a deliberate user confirmation
-    (step-4 combobox sets both) — leave it alone.
+    (step-4 combobox sets both) — leave it alone. Registry cascades
+    (rename/merge relabel items to the same author_id, so no FK change
+    registers) suppress via session.info — see keep_author_links() in
+    app/services/author_resolver.py.
     """
+    if session.info.get("suppress_author_reset"):
+        return
     for obj in session.dirty:
         if not isinstance(obj, LibraryItem):
             continue

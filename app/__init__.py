@@ -14,6 +14,7 @@ from flask_session import Session
 from app.config import Config
 from app.models import db
 from app.paths import LOG_DIR
+from app.routes.authors import authors_bp
 from app.routes.kobo import kobo_bp
 from app.routes.metadata import metadata_bp
 from app.routes.reader import reader_bp
@@ -203,6 +204,7 @@ def create_app():
         ensure_kobo_book_states_table()
 
     app.register_blueprint(metadata_bp)
+    app.register_blueprint(authors_bp)
     app.register_blueprint(scan_bp)
     app.register_blueprint(settings_bp)
     app.register_blueprint(kobo_bp)

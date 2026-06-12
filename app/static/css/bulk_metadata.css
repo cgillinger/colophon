@@ -4412,3 +4412,80 @@
 .upload-item-error .upload-item-status { color: var(--danger, #c0392b); }
 .upload-spin { display: inline-block; animation: upload-spin 0.9s linear infinite; }
 @keyframes upload-spin { to { transform: rotate(360deg); } }
+
+/* ------------------------------------------------------------------ *
+ * Author authority — row flags, review filter chip, modal combobox
+ * ------------------------------------------------------------------ */
+.author-flag {
+    display: inline-block;
+    margin-right: 5px;
+    font-size: 13px;
+    vertical-align: -1px;
+}
+.author-flag-review  { color: var(--accent-yellow, #b8860b); }
+.author-flag-new     { color: var(--accent-primary, #4a6fa5); }
+.author-flag-missing { color: var(--text-tertiary); }
+
+.upload-panel-authors {
+    padding: 6px 14px 0;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.author-combobox { position: relative; }
+.author-dropdown {
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0;
+    right: 0;
+    z-index: 60;
+    max-height: 240px;
+    overflow-y: auto;
+    background: var(--bg-primary, #fff);
+    border: 1px solid var(--border-medium, #ccc);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+.author-dropdown-item {
+    padding: 8px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+.author-dropdown-item:hover,
+.author-dropdown-item.active {
+    background: var(--bg-tertiary, rgba(0, 0, 0, 0.06));
+}
+.author-dropdown-create {
+    border-top: 1px solid var(--border-medium, #ccc);
+    color: var(--accent-primary, #4a6fa5);
+}
+.author-chip {
+    margin-left: auto;
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 9px;
+    background: var(--bg-tertiary, rgba(0, 0, 0, 0.07));
+    color: var(--text-secondary);
+}
+.author-chip-tentative { background: rgba(184, 134, 11, 0.15); color: var(--accent-yellow, #b8860b); }
+.author-status-hint {
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+.author-status-hint .ti-alert-triangle { color: var(--accent-yellow, #b8860b); }
+.author-status-hint .ti-check { color: var(--accent-green, #2e7d32); }
+.author-hint-btn {
+    margin-left: 6px;
+    padding: 1px 9px;
+    font-size: 12px;
+    border: 1px solid var(--border-medium, #ccc);
+    border-radius: 7px;
+    background: transparent;
+    color: var(--accent-primary, #4a6fa5);
+    cursor: pointer;
+}
+.author-hint-btn:hover { background: var(--bg-tertiary, rgba(0, 0, 0, 0.06)); }

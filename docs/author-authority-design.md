@@ -1,9 +1,16 @@
 # Author Authority Control — design
 
-Status: **steps 1–3 implemented** (v1.18–1.19: data model + migrations, pure
-matcher `app/services/author_authority.py`, resolve-on-upload
-`app/services/author_resolver.py` wired into scan + /upload). Steps 4 (UI) and
-5 (escalations) remain. This document is the spec; it is meant
+Status: **fully implemented** (v1.18–1.20). Steps 1–3: data model +
+migrations, pure matcher (`author_authority.py`), resolve-on-upload
+(`author_resolver.py`, wired into scan + /upload). Step 4: combobox in the
+book modal (`author-combobox.js`), "authors to review" filter chip, upload
+summary line, and the `/authors` manage view (`authors_bp`, cascade
+rename/merge). Step 5: Wikidata authority anchoring
+(`author_authority_lookup.py`, the Verify button) and the AI adjudicator
+(`adjudicate_author_names`, the Ask AI button on duplicate pairs). The
+bootstrap pass became the pending pass: the first scan after upgrade
+resolves the whole library via layers 1–2, and the manage view + review
+filter are where the user confirms. This document is the spec; it is meant
 to be read top-to-bottom by whoever implements it (possibly a different model in
 a fresh session). It is self-contained — you should not need the originating
 conversation. Code anchors are given as `path:line` against the tree at the time

@@ -98,6 +98,10 @@
             <span class="sidebar-count sidebar-count-warn">{{ sidebar_unsynced }}</span>
         </a>
         {% endif %}
+        <a class="sidebar-nav-item {{ 'active' if _section == 'authors' else '' }}"
+           href="{{ url_for('authors.manage_authors') }}">
+            <i class="ti ti-users"></i> <span>{{ _('Authors') }}</span>
+        </a>
         <a class="sidebar-nav-item {{ 'active' if _section == 'kobo' else '' }}"
            href="{{ url_for('settings.kobo_settings') }}">
             <i class="ti ti-device-tablet"></i> <span>{{ _('Kobo sync') }}</span>

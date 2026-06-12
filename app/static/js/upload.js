@@ -62,6 +62,8 @@
         if (p) p.style.display = 'none';
         var list = document.getElementById('uploadPanelList');
         if (list) list.innerHTML = '';
+        var sub = document.getElementById('uploadPanelAuthors');
+        if (sub) { sub.textContent = ''; sub.style.display = 'none'; }
     }
     window.closeUploadPanel = closeUploadPanel;
 
@@ -72,6 +74,8 @@
         if (title) title.textContent = _i18n.uploadUploading || 'Uploading…';
         var list = document.getElementById('uploadPanelList');
         if (list) list.innerHTML = '';
+        var sub = document.getElementById('uploadPanelAuthors');
+        if (sub) { sub.textContent = ''; sub.style.display = 'none'; }
     }
 
     function _addRow(name) {
@@ -115,7 +119,10 @@
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 var res = (data && data.results && data.results[0]) || null;
-                if (res) return res;
+                if (res) {
+                    res.authors = (data && data.authors) || {};
+                    return res;
+                }
                 return { status: 'error', reason: (data && data.error) || 'error' };
             })
             .catch(function (err) {
@@ -140,6 +147,7 @@
 
         var rows = valid.map(function (f) { return _addRow(f.name); });
         var counts = { added: 0, updated: 0, skipped: 0, errors: 0 };
+        var authorCounts = { linked: 0, new: 0, review: 0, missing: 0 };
 
         // Sequential chain — one request at a time.
         var chain = Promise.resolve();
@@ -151,6 +159,10 @@
                     else if (res.status === 'updated') counts.updated++;
                     else if (res.status === 'skipped') counts.skipped++;
                     else counts.errors++;
+                    var a = res.authors || {};
+                    Object.keys(authorCounts).forEach(function (k) {
+                        authorCounts[k] += a[k] || 0;
+                    });
                 });
             });
         });
@@ -163,6 +175,25 @@
                 .replace('{skipped}', counts.skipped)
                 .replace('{errors}', counts.errors);
             if (title) title.textContent = summary;
+
+            // Author resolution summary — "known" = auto-linked; "to
+            // review" = fuzzy matches + unconfirmed new entries (the
+            // queue the "Authors to review" filter collects).
+            var sub = document.getElementById('uploadPanelAuthors');
+            if (sub) {
+                var resolved = authorCounts.linked + authorCounts.new
+                    + authorCounts.review + authorCounts.missing;
+                if (resolved > 0) {
+                    sub.textContent = (_i18n.uploadAuthorsSummary
+                        || 'Authors: {known} known · {review} to review · {missing} missing')
+                        .replace('{known}', authorCounts.linked)
+                        .replace('{review}', authorCounts.review + authorCounts.new)
+                        .replace('{missing}', authorCounts.missing);
+                    sub.style.display = 'block';
+                } else {
+                    sub.style.display = 'none';
+                }
+            }
 
             // Reload so the new rows appear correctly grouped/sorted and the
             // "Nytillagt" badge shows — but only if something actually landed.

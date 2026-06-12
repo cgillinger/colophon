@@ -1,0 +1,248 @@
+{% extends "_layout.html" %}
+{% set active_section = 'authors' %}
+{% block title %}{{ _('Authors') }} - Colophon{% endblock %}
+
+{% block extra_css %}
+<style>
+:root, [data-theme="light"] {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #ebedf0;
+            --text-primary: #1a1a1a;
+            --text-secondary: #555555;
+            --text-tertiary: #888888;
+            --border-light: rgba(0, 0, 0, 0.08);
+            --border-medium: rgba(0, 0, 0, 0.15);
+            --accent-primary: #059669;
+            --accent-primary-hover: #047857;
+            --accent-green: #059669;
+            --accent-red: #dc3545;
+            --accent-yellow: #e6a817;
+            --badge-ok-bg: #d1fae5;
+            --badge-ok-text: #065f46;
+            --badge-warn-bg: #fef3cd;
+            --badge-warn-text: #856404;
+            --badge-info-bg: #dbeafe;
+            --badge-info-text: #1e40af;
+        }
+        [data-theme="dark"] {
+            --bg-primary: #1e2227;
+            --bg-secondary: #252a30;
+            --bg-tertiary: #30363b;
+            --text-primary: #e8ecef;
+            --text-secondary: #aeb7bd;
+            --text-tertiary: #6c757d;
+            --border-light: rgba(255, 255, 255, 0.06);
+            --border-medium: rgba(255, 255, 255, 0.12);
+            --accent-primary: #10b981;
+            --accent-primary-hover: #34d399;
+            --accent-green: #10b981;
+            --accent-red: #ff6b6b;
+            --accent-yellow: #ffd166;
+            --badge-ok-bg: #065f46;
+            --badge-ok-text: #a7f3d0;
+            --badge-warn-bg: #3a3020;
+            --badge-warn-text: #ffd166;
+            --badge-info-bg: #1e3a5f;
+            --badge-info-text: #93c5fd;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 14px;
+        }
+        a { color: inherit; text-decoration: none; }
+        button, input, select { font-family: inherit; color: inherit; }
+
+        .container { max-width: 980px; margin: 0 auto; padding: 18px 20px 40px; }
+        h1 { margin: 0 0 6px; font-size: 22px; font-weight: 600; }
+        .lead { margin: 0 0 22px; color: var(--text-secondary); font-size: 14px; line-height: 1.55; }
+
+        .panel { background: var(--bg-primary); border: 1px solid var(--border-light); border-radius: 8px; padding: 22px 24px; margin-bottom: 18px; }
+        .panel-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 8px 0; font-size: 16px; font-weight: 600; }
+        .panel-title-left { display: flex; align-items: center; gap: 10px; }
+        .panel-desc { color: var(--text-secondary); font-size: 14px; line-height: 1.55; margin: 0 0 14px 0; }
+
+        .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+        .badge.ok { background: var(--badge-ok-bg); color: var(--badge-ok-text); }
+        .badge.warn { background: var(--badge-warn-bg); color: var(--badge-warn-text); }
+        .badge.info { background: var(--badge-info-bg); color: var(--badge-info-text); }
+
+        .btn { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-light); border-radius: 6px; padding: 6px 11px; font-size: 13px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+        .btn:hover { background: var(--bg-secondary); }
+        .btn.primary { background: var(--accent-primary); color: #fff; border-color: var(--accent-primary); }
+        .btn.primary:hover { background: var(--accent-primary-hover); }
+        .btn.danger { background: transparent; color: var(--accent-red); border-color: transparent; }
+        .btn.danger:hover { background: var(--bg-tertiary); }
+        .btn[disabled] { opacity: 0.55; cursor: default; }
+
+        .review-banner { background: var(--badge-warn-bg); color: var(--badge-warn-text); border-radius: 8px; padding: 12px 16px; margin-bottom: 18px; font-size: 14px; display: flex; align-items: center; gap: 10px; }
+        .review-banner a { font-weight: 600; text-decoration: underline; }
+
+        .dup-pair { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border-light); flex-wrap: wrap; }
+        .dup-pair:last-child { border-bottom: none; }
+        .dup-name { font-weight: 500; }
+        .dup-count { color: var(--text-tertiary); font-size: 12px; }
+        .dup-arrow { color: var(--text-tertiary); }
+        .dup-actions { margin-left: auto; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+        .ai-verdict { font-size: 12.5px; color: var(--text-secondary); }
+
+        .authors-toolbar { display: flex; gap: 10px; margin-bottom: 12px; }
+        .authors-toolbar input { flex: 1; background: var(--bg-secondary); border: 1px solid var(--border-medium); border-radius: 6px; color: var(--text-primary); padding: 8px 12px; font-size: 14px; }
+        .authors-toolbar input:focus { outline: none; border-color: var(--accent-primary); }
+
+        table.authors { width: 100%; border-collapse: collapse; font-size: 14px; }
+        table.authors th, table.authors td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border-light); vertical-align: middle; }
+        table.authors th { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+        table.authors tr:last-child td { border-bottom: none; }
+        td.author-name { font-weight: 500; }
+        td.author-name .ti-alert-triangle { color: var(--accent-yellow); margin-left: 6px; }
+        td.author-ids a { color: var(--accent-primary); font-size: 12.5px; margin-right: 8px; }
+        td.actions { white-space: nowrap; text-align: right; }
+        td.count { font-variant-numeric: tabular-nums; }
+        .empty-state { color: var(--text-tertiary); font-style: italic; padding: 20px; text-align: center; }
+        .upload-spin { display: inline-block; animation: authors-spin 0.9s linear infinite; }
+        @keyframes authors-spin { to { transform: rotate(360deg); } }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1><i class="ti ti-users"></i> {{ _('Authors') }}</h1>
+<p class="lead">
+    {{ _('Every author in the library, one canonical entry per person. Rename or merge an entry and all of its books are relabelled in one sweep. Tentative entries were created automatically from file metadata and are not written into files until confirmed.') }}
+</p>
+
+{% if review_count %}
+<div class="review-banner">
+    <i class="ti ti-alert-triangle"></i>
+    <span>{{ _('%(count)d books have an author waiting for review.', count=review_count) }}
+        <a href="{{ url_for('metadata.bulk_metadata') }}">{{ _('Open the library and use the “authors to review” filter.') }}</a></span>
+</div>
+{% endif %}
+
+{% if duplicate_pairs %}
+<div class="panel">
+    <div class="panel-title">
+        <span class="panel-title-left">
+            <i class="ti ti-git-merge" style="color:var(--accent-yellow); font-size:20px;"></i>
+            {{ _('Likely duplicates') }}
+        </span>
+    </div>
+    <p class="panel-desc">{{ _('These pairs of entries are nearly identical — usually a typo or a spelling variant that slipped in as its own author. Merging moves all books and aliases to the entry you keep.') }}</p>
+    {% set by_id = {} %}
+    {% for row in rows %}{% if by_id.update({row.author.id: row}) %}{% endif %}{% endfor %}
+    {% for a_id, b_id in duplicate_pairs %}
+        {% set a = by_id[a_id] %}{% set b = by_id[b_id] %}
+        <div class="dup-pair" data-a-id="{{ a_id }}" data-b-id="{{ b_id }}">
+            <span class="dup-name">{{ a.author.canonical_name }}</span>
+            <span class="dup-count">({{ a.book_count }})</span>
+            <span class="dup-arrow"><i class="ti ti-arrows-left-right"></i></span>
+            <span class="dup-name">{{ b.author.canonical_name }}</span>
+            <span class="dup-count">({{ b.book_count }})</span>
+            <span class="dup-actions">
+                <span class="ai-verdict" data-verdict></span>
+                <button type="button" class="btn" data-act="adjudicate" title="{{ _('Ask the AI whether these are the same person') }}">
+                    <i class="ti ti-sparkles"></i> {{ _('Ask AI') }}
+                </button>
+                <button type="button" class="btn primary" data-act="merge-into-a">
+                    <i class="ti ti-git-merge"></i> {{ _('Keep “%(name)s”', name=a.author.canonical_name) }}
+                </button>
+                <button type="button" class="btn primary" data-act="merge-into-b">
+                    <i class="ti ti-git-merge"></i> {{ _('Keep “%(name)s”', name=b.author.canonical_name) }}
+                </button>
+            </span>
+        </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="panel">
+    <div class="panel-title">
+        <span class="panel-title-left">
+            <i class="ti ti-users" style="color:var(--accent-primary); font-size:20px;"></i>
+            {{ _('Registry') }} <span class="dup-count">({{ rows|length }})</span>
+        </span>
+    </div>
+    <div class="authors-toolbar">
+        <input type="text" id="authorsFilter" placeholder="{{ _('Filter authors…') }}" autocomplete="off">
+    </div>
+    {% if rows %}
+    <table class="authors" id="authorsTable">
+        <thead>
+            <tr>
+                <th>{{ _('Author') }}</th>
+                <th>{{ _('Status') }}</th>
+                <th>{{ _('Authority') }}</th>
+                <th>{{ _('Books') }}</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            {% set a = row.author %}
+            <tr data-author-id="{{ a.id }}" data-name="{{ a.canonical_name|lower }}">
+                <td class="author-name">{{ a.canonical_name }}{% if row.likely_duplicate %}<i class="ti ti-alert-triangle" title="{{ _('Nearly identical to another entry') }}"></i>{% endif %}</td>
+                <td>
+                    {% if a.source == 'authority_linked' %}
+                        <span class="badge info">{{ _('Authority-linked') }}</span>
+                    {% elif a.source == 'user_confirmed' %}
+                        <span class="badge ok">{{ _('Confirmed') }}</span>
+                    {% else %}
+                        <span class="badge warn">{{ _('Tentative') }}</span>
+                    {% endif %}
+                </td>
+                <td class="author-ids">
+                    {% if a.wikidata_qid %}<a href="https://www.wikidata.org/wiki/{{ a.wikidata_qid }}" target="_blank" rel="noopener">{{ a.wikidata_qid }}</a>{% endif %}
+                    {% if a.viaf_id %}<a href="https://viaf.org/viaf/{{ a.viaf_id }}" target="_blank" rel="noopener">VIAF</a>{% endif %}
+                    {% if a.libris_id %}<a href="https://libris.kb.se/{{ a.libris_id }}" target="_blank" rel="noopener">LIBRIS</a>{% endif %}
+                    {% if not a.wikidata_qid and not a.viaf_id and not a.libris_id %}<span class="dup-count">—</span>{% endif %}
+                </td>
+                <td class="count">{{ row.book_count }}</td>
+                <td class="actions">
+                    {% if a.source == 'tentative' %}
+                    <button type="button" class="btn" data-act="confirm" title="{{ _('Mark this spelling as correct') }}"><i class="ti ti-check"></i> {{ _('Confirm') }}</button>
+                    {% endif %}
+                    <button type="button" class="btn" data-act="verify" title="{{ _('Look the author up in Wikidata and store authority ids') }}"><i class="ti ti-world-search"></i> {{ _('Verify') }}</button>
+                    <button type="button" class="btn" data-act="rename"><i class="ti ti-pencil"></i> {{ _('Rename') }}</button>
+                    <button type="button" class="btn" data-act="merge"><i class="ti ti-git-merge"></i> {{ _('Merge…') }}</button>
+                    {% if row.book_count == 0 %}
+                    <button type="button" class="btn danger" data-act="delete" title="{{ _('Remove unused entry') }}"><i class="ti ti-trash"></i></button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">{{ _('No authors yet — they appear here after the next scan or upload.') }}</div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.__authorsConfig = {
+        i18n: {
+            renamePrompt: {{ _('New name for “{name}”:')|tojson }},
+            mergePrompt: {{ _('Merge “{name}” into which author? Type the name:')|tojson }},
+            mergeNotFound: {{ _('No registered author matches “{name}”.')|tojson }},
+            mergeConfirm: {{ _('Move {count} books from “{source}” to “{target}”? “{source}” is deleted.')|tojson }},
+            nameTaken: {{ _('That name already belongs to another entry — merge them instead.')|tojson }},
+            deleteConfirm: {{ _('Remove the unused entry “{name}”?')|tojson }},
+            actionFailed: {{ _('The action failed.')|tojson }},
+            verifying: {{ _('Looking up…')|tojson }},
+            verifyNoMatch: {{ _('No confident match found in Wikidata.')|tojson }},
+            aiThinking: {{ _('Asking…')|tojson }},
+            aiSame: {{ _('AI: probably the same person — {reason}')|tojson }},
+            aiDifferent: {{ _('AI: probably different people — {reason}')|tojson }},
+            aiUnsure: {{ _('AI: not sure — {reason}')|tojson }},
+            aiUnavailable: {{ _('AI is not configured (Settings → AI).')|tojson }}
+        }
+    };
+</script>
+<script src="{{ url_for('static', filename='js/authors-manage.js') }}?v={{ app_version }}"></script>
+{% endblock %}

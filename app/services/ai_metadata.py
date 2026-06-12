@@ -304,3 +304,72 @@ def ai_is_configured() -> bool:
 def _is_local_endpoint() -> bool:
     url = (get_setting("AI_API_URL") or "").lower()
     return "localhost" in url or "127.0.0.1" in url
+
+
+_ADJUDICATE_PROMPT = """Two author name strings from an ebook library may or may not refer to the same real person:
+
+A: "{a}"
+B: "{b}"
+
+Decide whether they are the same person. Consider typos, transliteration (e.g. Dostoevsky/Dostoyevsky), diacritics, initials vs full names, and name order — but remember that distinct real authors can have nearly identical names (e.g. Michael Connelly vs Michael Connolly are different writers).
+
+Respond with JSON only:
+{{"verdict": "same" | "different" | "unsure", "reason": "<one short sentence>"}}
+
+Use "unsure" whenever you cannot be confident — a wrong "same" would merge two people's books."""
+
+
+def adjudicate_author_names(name_a: str, name_b: str) -> dict:
+    """AI adjudicator for the ambiguous middle (design matching layer 5):
+    are two author spellings the same person? Advisory only — the caller
+    (the manage view) shows the verdict and the USER decides to merge.
+    Never auto-merge on this.
+
+    Returns {"ok": True, "verdict": "same|different|unsure", "reason": str}
+    or {"ok": False, "error": "..."} (same error codes as the other calls).
+    """
+    api_url = (get_setting("AI_API_URL") or _DEFAULT_API_URL).strip()
+    api_key = (get_setting("AI_API_KEY") or "").strip()
+    model = (get_setting("AI_MODEL") or _DEFAULT_MODEL).strip()
+
+    payload = {
+        "model": model,
+        "messages": [{
+            "role": "user",
+            "content": _ADJUDICATE_PROMPT.format(a=name_a, b=name_b),
+        }],
+        "response_format": {"type": "json_object"},
+    }
+
+    try:
+        resp = requests.post(api_url, json=payload,
+                             headers=_build_headers(api_key), timeout=30)
+    except requests.Timeout:
+        return {"ok": False, "error": "timeout"}
+    except requests.RequestException as exc:
+        logger.warning("AI adjudicate request error: %s", exc)
+        return {"ok": False, "error": "request_failed"}
+
+    if resp.status_code in (401, 403):
+        return {"ok": False, "error": "auth"}
+    if resp.status_code == 429:
+        return {"ok": False, "error": "rate_limit"}
+    if not resp.ok:
+        return {"ok": False, "error": "api_error"}
+
+    try:
+        body = resp.json()
+        parsed = json.loads(body["choices"][0]["message"]["content"])
+        verdict = parsed.get("verdict")
+        reason = str(parsed.get("reason") or "")
+    except (KeyError, IndexError, json.JSONDecodeError, ValueError):
+        return {"ok": False, "error": "invalid_json"}
+
+    if verdict not in ("same", "different", "unsure"):
+        verdict = "unsure"
+
+    usage = body.get("usage", {})
+    if usage:
+        _log_usage(provider=_detect_provider(api_url), model=model, usage=usage)
+
+    return {"ok": True, "verdict": verdict, "reason": reason}

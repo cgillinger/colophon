@@ -306,6 +306,10 @@
                     if ((row.dataset.hasCover || '') !== '0') show = false;
                 } else if (filterType === 'unsynced') {
                     if ((row.dataset.unsynced || '') !== '1') show = false;
+                } else if (filterType === 'author_review') {
+                    // The review queue: ⚠️ fuzzy / ➕ unconfirmed / ❓ missing.
+                    var astat = row.dataset.authorStatus || '';
+                    if (astat !== 'review' && astat !== 'new' && astat !== 'missing') show = false;
                 }
             }
 

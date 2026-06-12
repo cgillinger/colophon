@@ -165,6 +165,8 @@
         document.getElementById('modalPublishedDate').value = _cleanDate(data.published_date || '');
         document.getElementById('modalDescription').value   = data.description    || '';
 
+        if (window.initAuthorCombobox) window.initAuthorCombobox(itemId, data);
+
         document.getElementById('modalAiBtn').style.display = data.ai_configured ? 'inline-flex' : 'none';
         var findSeriesBtn = document.getElementById('modalFindSeriesBtn');
         if (findSeriesBtn) findSeriesBtn.style.display = data.ai_configured ? '' : 'none';
@@ -1223,6 +1225,14 @@
             description:    document.getElementById('modalDescription').value.trim()
         };
 
+        // Registry combobox: a staged pick rides along as author_id; an
+        // explicit "Create new" runs the server-side fuzzy guard first
+        // (and may be cancelled by the user — then the save is aborted).
+        var authorSel = window.getModalAuthorSelection
+            ? window.getModalAuthorSelection()
+            : { author_id: null, create_new: false };
+        if (authorSel.author_id) payload.author_id = authorSel.author_id;
+
         var btn = document.getElementById('modalSaveBtn');
         if (btn) {
             btn._savedOriginalHTML = btn.innerHTML;
@@ -1232,11 +1242,24 @@
         setModalFeedback('info', _mt('saving'));
         _setModalBusy(true);
 
-        fetch('/metadata/' + id + '/save-json', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        })
+        var pre = (authorSel.create_new && window.confirmAuthorCreateIfNeeded)
+            ? window.confirmAuthorCreateIfNeeded(id, payload.author)
+            : Promise.resolve(true);
+
+        pre.then(function(proceed) {
+            if (!proceed) {
+                _setModalBusy(false);
+                _saveButtonFeedback(false);
+                clearModalFeedback();
+                var authorInput = document.getElementById('modalAuthor');
+                if (authorInput) authorInput.focus();
+                return;
+            }
+            return fetch('/metadata/' + id + '/save-json', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 _setModalBusy(false);
@@ -1246,12 +1269,14 @@
                     return;
                 }
                 _updateTableRow(id, payload);
+                if (window.updateRowAuthorFlag) window.updateRowAuthorFlag(id, data.author_status);
                 window._modalDirty = true;
                 _updateUnsyncedPill(1);
                 setModalFeedback('success', _mt('saved'));
                 setTimeout(clearModalFeedback, 3000);
                 _saveButtonFeedback(true);
-            })
+            });
+        })
             .catch(function() {
                 _setModalBusy(false);
                 setModalFeedback('error', _mt('saveFailed'));

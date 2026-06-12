@@ -892,6 +892,11 @@ def bulk_metadata():
     upstream_enabled = upstream_configured()
     unsynced_count = get_unsynced_count() if upstream_enabled else 0
 
+    # The author review queue: ⚠️ fuzzy / ➕ unconfirmed / ❓ missing.
+    author_review_count = LibraryItem.query.filter(
+        LibraryItem.author_status.in_(["review", "new", "missing"])
+    ).count()
+
     # Reading-state tab counts — computed from the full library, not the
     # filtered view, so the tabs stay accurate while a filter is active.
     reading_count = LibraryItem.query.filter(LibraryItem.read_status == "Reading").count()
@@ -920,6 +925,7 @@ def bulk_metadata():
         missing_cover_count=missing_cover_count,
         upstream_enabled=upstream_enabled,
         unsynced_count=unsynced_count,
+        author_review_count=author_review_count,
         read_filter=read_filter,
         reading_count=reading_count,
         finished_count=finished_count,
@@ -1813,6 +1819,8 @@ def metadata_json(item_id):
         "id": item.id,
         "title": item.title or "",
         "author": item.author or "",
+        "author_id": item.author_id,
+        "author_status": item.author_status,
         "series": item.series or "",
         "series_index": item.series_index or "",
         "isbn": item.isbn or "",
@@ -1894,6 +1902,18 @@ def save_metadata_json(item_id):
     item.description = clean_text(data.get("description") or "") or None
     item.genres = (data.get("genres") or "").strip() or None
     item.published_date = (data.get("published_date") or "").strip()[:10] or None
+    # Combobox confirmation: the modal sends author_id when the user
+    # picked a registry entry. Link + promote; the file write below then
+    # carries the canonical name (user_confirmed — it has earned it).
+    # A free-text author without author_id falls through to the reset
+    # listener and is re-resolved right after the commit.
+    if data.get("author_id") and item.author:
+        from app.services.author_resolver import assign_author_to_item
+        from app.models import Author
+        chosen = db.session.get(Author, data["author_id"])
+        if chosen:
+            assign_author_to_item(db.session, item, author=chosen)
+
     item.group_key = compute_group_key(item.title or "", item.author or "")
 
     written_text = {}
@@ -1910,7 +1930,12 @@ def save_metadata_json(item_id):
         item.file_modified_by_colophon = datetime.utcnow()
     db.session.commit()
 
-    resp = {"ok": True}
+    if item.author_status is None:
+        from app.services.author_resolver import resolve_pending_authors
+        resolve_pending_authors(db.session, [item])
+        db.session.commit()
+
+    resp = {"ok": True, "author_status": item.author_status}
     if not write_result["ok"] and write_result.get("error") not in ("no_fields", "not_installed", "unsupported_format"):
         resp["file_write_warning"] = write_result.get("error")
     return jsonify(resp)

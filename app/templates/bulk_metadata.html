@@ -273,7 +273,8 @@
                             data-series-index="{{ item.series_index or '' }}"
                             data-read-status="{{ item.read_status or 'ReadyToRead' }}"
                             data-read-progress="{{ item.read_progress if item.read_progress is not none else '' }}"
-                            data-is-new="{{ '1' if item.created_at and new_badge_cutoff and item.created_at > new_badge_cutoff else '0' }}">
+                            data-is-new="{{ '1' if item.created_at and new_badge_cutoff and item.created_at > new_badge_cutoff else '0' }}"
+                            data-author-status="{{ item.author_status or '' }}">
                             <td>
                                 <input type="checkbox" name="item_ids" value="{{ item.id }}" class="book-checkbox">
                             </td>
@@ -300,6 +301,13 @@
                                 {% endif %}
                             </td>
                             <td class="author-cell" onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
+                                {%- if item.author_status == 'review' -%}
+                                    <span class="author-flag author-flag-review" title="{{ _('Author resembles a known author — open to review') }}"><i class="ti ti-alert-triangle"></i></span>
+                                {%- elif item.author_status == 'new' -%}
+                                    <span class="author-flag author-flag-new" title="{{ _('New author — not yet confirmed') }}"><i class="ti ti-user-plus"></i></span>
+                                {%- elif item.author_status == 'missing' -%}
+                                    <span class="author-flag author-flag-missing" title="{{ _('Author missing') }}"><i class="ti ti-help"></i></span>
+                                {%- endif -%}
                                 {% if item.author %}{{ item.author }}{% else %}<span class="meta">{{ _('Unknown') }}</span>{% endif %}
                             </td>
                             <td class="genres-cell col-compact-only" onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
@@ -362,6 +370,9 @@
                 {% endif %}
                 {% if upstream_enabled and unsynced_count %}
                     · <span class="stats-badge" id="libraryChipUnsynced" onclick="toggleBadgeFilter('unsynced', '1', event)">{{ _('%(count)d unsynced', count=unsynced_count) }}</span>
+                {% endif %}
+                {% if author_review_count %}
+                    · <span class="stats-badge" id="libraryChipAuthorReview" onclick="toggleBadgeFilter('author_review', '1', event)">{{ _('%(count)d authors to review', count=author_review_count) }}</span>
                 {% endif %}
             </div>
             <span id="paginationInfo">{{ _('Showing %(count)d books', count=0) }}</span>
@@ -468,7 +479,12 @@
                 </div>
                 <div class="modal-field">
                     <label for="modalAuthor">{{ _('Author') }}</label>
-                    <input type="text" id="modalAuthor" class="modal-input">
+                    <div class="author-combobox" id="modalAuthorCombobox">
+                        <input type="text" id="modalAuthor" class="modal-input" autocomplete="off"
+                               role="combobox" aria-expanded="false" aria-controls="modalAuthorDropdown">
+                        <div id="modalAuthorDropdown" class="author-dropdown" role="listbox" style="display:none;"></div>
+                    </div>
+                    <div id="modalAuthorHint" class="author-status-hint" style="display:none;"></div>
                 </div>
                 <div class="modal-field-row">
                     <div class="modal-field">
@@ -805,6 +821,7 @@
         <button type="button" class="upload-panel-close" onclick="closeUploadPanel()"
                 aria-label="{{ _('Close') }}"><i class="ti ti-x"></i></button>
     </div>
+    <div id="uploadPanelAuthors" class="upload-panel-authors" style="display:none;"></div>
     <div id="uploadPanelList" class="upload-panel-list"></div>
 </div>
 {% endblock %}
@@ -1085,6 +1102,17 @@
         uploadItemError: {{ _('Failed')|tojson }},
         uploadDoneSummary: {{ _('{added} added, {skipped} skipped, {errors} failed')|tojson }},
         uploadRefreshing: {{ _('Refreshing…')|tojson }},
+        uploadAuthorsSummary: {{ _('Authors: {known} known · {review} to review · {missing} missing')|tojson }},
+        authorDidYouMean: {{ _('Did you mean {name}?')|tojson }},
+        authorUseSuggestion: {{ _('Use')|tojson }},
+        authorCreateNew: {{ _('Create new: “{name}”')|tojson }},
+        authorSimilarConfirm: {{ _('“{name}” is very similar to “{existing}”. Create as a new author anyway?')|tojson }},
+        authorLinkedOnSave: {{ _('Will be linked to {name} on save.')|tojson }},
+        authorStatusReview: {{ _('Resembles a known author — pick one in the list or keep your text.')|tojson }},
+        authorStatusNew: {{ _('New author — saving confirms the spelling.')|tojson }},
+        authorStatusMissing: {{ _('No author in the file — type or pick one.')|tojson }},
+        authorNoMatches: {{ _('No registered authors match.')|tojson }},
+        authorSearchFailed: {{ _('Author search failed.')|tojson }},
         uploadNothingValid: {{ _('No supported files were selected.')|tojson }},
         newlyAdded: {{ _('New')|tojson }},
         },
@@ -1101,6 +1129,7 @@
 <script src="{{ url_for('static', filename='js/selection.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/filters-sort-paging.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/batch.js') }}?v={{ app_version }}"></script>
+<script src="{{ url_for('static', filename='js/author-combobox.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/book-modal.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/bulk-result-modal.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/duplicates.js') }}?v={{ app_version }}"></script>

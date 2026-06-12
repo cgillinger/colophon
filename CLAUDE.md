@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.19.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.20.0.
 
 ## Quick reference
 
@@ -34,12 +34,13 @@ wsgi.py                         # Gunicorn entry: from app import create_app
 app/
   __init__.py                   # create_app(), blueprint registration, Babel, DB init
   models.py                     # LibraryItem + Author/AuthorAlias + KoboDevice + KoboBookState
-  version.py                    # __version__ = "1.19.0"
+  version.py                    # __version__ = "1.20.0"
   paths.py                      # Central path constants
   config.py                     # Flask Config class (reads env vars)
   routes/
     __init__.py
     metadata.py                 # metadata_bp — bulk view, single-book modal, SSE streams
+    authors.py                  # authors_bp — /authors manage view + registry JSON APIs
     scan.py                     # scan_bp — /scan (JSON + SSE) + /upload (in-app file upload)
     settings.py                 # settings_bp — API keys, AI config, upstream sync settings
     kobo.py                     # kobo_bp — /kobo/<token>/* sync endpoints for Kobo devices
@@ -62,7 +63,8 @@ app/
     cover_search.py             # 5 sources: Open Library, Google Books, Hardcover, Wikidata, DDG
     quality.py                  # is_better_* heuristics for field-by-field replacement
     author_authority.py         # Author matching layers 1-3 as pure functions (no DB)
-    author_resolver.py          # DB layer: links items to canonical authors, grows registry
+    author_resolver.py          # DB layer: links items, grows registry, cascade merge/rename
+    author_authority_lookup.py  # Wikidata person lookup → QID/VIAF/LIBRIS anchoring
     duplicate_detector.py       # Fuzzy duplicate detection for the cleanup UI
     app_settings.py             # DB+env hybrid settings (DB wins, env fallback)
     upstream_sync.py            # rsync-based pull/push to upstream library (e.g. Komga NFS)
@@ -85,21 +87,23 @@ app/
     settings_api.html           # API keys + cover source toggles
     settings_ai.html            # AI config + usage stats + upstream library
     settings_kobo.html          # Kobo device list + per-device URL + .conf snippet
+    authors.html                # Manage authors: registry table, duplicates, cascade actions
     reader.html                 # Standalone in-browser reader page (no _layout chrome)
   translations/
     sv/LC_MESSAGES/messages.po  # Swedish translation
   static/
     css/bulk_metadata.css       # Extracted styles for the main view
-    js/                         # Extracted frontend modules (15 files, see below)
+    js/                         # Extracted frontend modules (17 files, see below)
     icons/                      # Favicons, app/PWA icons, header logo SVGs (light+dark)
     vendor/tabler-icons/        # Icon font
     vendor/foliate-js/          # Vendored EPUB renderer (MIT) for the reader
-tests/                          # 19 pytest files: metadata_pipeline, calibre_metadata,
+tests/                          # 21 pytest files: metadata_pipeline, calibre_metadata,
                                 # bookf, grouping, kobo_conf, kobo_sync, language,
                                 # quality, reading_state, scanner, scoring,
                                 # source_status, title_clean, wikipedia,
                                 # metadata_merge, metadata_escalation, upload,
-                                # author_authority, author_resolver
+                                # author_authority, author_resolver,
+                                # author_routes, author_lookup
 tools/
   install_calibre_plugins.sh    # Dockerfile build step: Goodreads, FF, FictionDB plugins
   install_kepubify.sh           # Dockerfile build step: kepubify binary for Kobo conversion
@@ -131,6 +135,8 @@ scan-sync.js             # Scan trigger + SSE handling for live progress
 upload.js                # In-app book upload: file picker + window-level drag-and-drop → POST /upload
 cleanup-misc.js          # Misc cleanup actions
 url-state.js             # Mirrors view/search/filters/sort/page to the URL (back + deep links)
+author-combobox.js       # Registry-backed author field in the book modal (typeahead + create-guard)
+authors-manage.js        # /authors page: confirm/rename/merge/verify + AI adjudicator (own page, not the bulk view)
 reader.js                # In-browser reader controller (standalone /reader page, not the bulk view; ES module, loads foliate-js)
 ```
 
@@ -140,7 +146,7 @@ When editing the main view, look in the relevant JS module first — most logic 
 
 ### Blueprints
 
-Five: `metadata_bp`, `scan_bp`, `settings_bp`, `kobo_bp`, `reader_bp`. No `library` or `bookstores` blueprints — those were removed during the fork from Bookstation. `kobo_bp` is mounted at `/kobo` and only serves authenticated Kobo devices via per-device path tokens. `reader_bp` is mounted at `/reader` (added v1.5.0 — the fork's original `reader` blueprint was a different, removed thing; this is a fresh in-browser EPUB reader, see below).
+Six: `metadata_bp`, `authors_bp`, `scan_bp`, `settings_bp`, `kobo_bp`, `reader_bp`. `authors_bp` (added v1.20.0) serves the `/authors` manage view plus the registry JSON APIs the combobox uses. No `library` or `bookstores` blueprints — those were removed during the fork from Bookstation. `kobo_bp` is mounted at `/kobo` and only serves authenticated Kobo devices via per-device path tokens. `reader_bp` is mounted at `/reader` (added v1.5.0 — the fork's original `reader` blueprint was a different, removed thing; this is a fresh in-browser EPUB reader, see below).
 
 ### Metadata extraction
 
@@ -228,7 +234,7 @@ Tests mock external services (Google Books, Calibre subprocess). No integration 
 
 1. **Never spawn subprocesses per-file for reading metadata** — use ebooklib. Subprocesses + Gunicorn sync workers = timeouts.
 2. **Docker cache** — always `--no-cache` on rebuild. Cached layers have hidden stale code.
-3. **Blueprint references** — only `metadata.*`, `scan.*`, `settings.*`, `kobo.*` exist. Any `url_for('library.*')` etc. will crash.
+3. **Blueprint references** — only `metadata.*`, `authors.*`, `scan.*`, `settings.*`, `kobo.*`, `reader.*` exist. Any `url_for('library.*')` etc. will crash.
 4. **Main view is split** — `bulk_metadata.html` is the Jinja shell (~1000 lines); behaviour lives in `app/static/js/*.js` and styling in `app/static/css/bulk_metadata.css`. The i18n string map for JS lives in `core.js`. Edit the right file — don't add new logic back into the template.
 5. **Settings priority**: DB value > `COLOPHON_*` env > legacy `COLOPHON_MISTRAL_*` env > default.
 6. **Gunicorn timeout**: 300s. Long operations (bulk enrichment) use SSE streaming, not blocking requests.
