@@ -1,6 +1,9 @@
 # Author Authority Control — design
 
-Status: **design only, not implemented.** This document is the spec; it is meant
+Status: **steps 1–3 implemented** (v1.18–1.19: data model + migrations, pure
+matcher `app/services/author_authority.py`, resolve-on-upload
+`app/services/author_resolver.py` wired into scan + /upload). Steps 4 (UI) and
+5 (escalations) remain. This document is the spec; it is meant
 to be read top-to-bottom by whoever implements it (possibly a different model in
 a fresh session). It is self-contained — you should not need the originating
 conversation. Code anchors are given as `path:line` against the tree at the time

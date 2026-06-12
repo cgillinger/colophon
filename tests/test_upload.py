@@ -109,6 +109,19 @@ class TestUploadRoute:
         resp = client.post("/upload", data={}, content_type="multipart/form-data")
         assert resp.status_code == 400
 
+    def test_reports_author_status(self, client):
+        # A fake PDF has no embedded metadata → no author → ❓ missing.
+        resp = client.post(
+            "/upload",
+            data={"files": _file("Min Bok.pdf")},
+            content_type="multipart/form-data",
+        )
+        body = resp.get_json()
+        assert body["authors"] == {"missing": 1}
+        assert body["results"][0]["author_status"] == "missing"
+        item = LibraryItem.query.first()
+        assert item.author_status == "missing"
+
     def test_path_traversal_name_is_contained(self, client, tmp_path):
         resp = client.post(
             "/upload",

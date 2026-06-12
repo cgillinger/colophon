@@ -18,6 +18,13 @@ class LibraryItem(db.Model):
     # _DEVICE_CONTENT_COLUMNS: linking alone must not re-ship Kobo
     # entitlements. See docs/author-authority-design.md.
     author_id = db.Column(db.Integer, db.ForeignKey("authors.id"), nullable=True, index=True)
+    # Outcome of the last registry resolution (author_resolver.py):
+    # 'linked' (✅ known), 'new' (➕ tentative canonical created),
+    # 'review' (⚠️ fuzzy suggestion awaits the user), 'missing' (❓ no
+    # author). NULL = not yet resolved — picked up by the pending pass on
+    # the next scan/upload. Reset by _reset_author_resolution below
+    # whenever `author` changes without an explicit author_id.
+    author_status = db.Column(db.String(16), nullable=True)
     description = db.Column(db.Text, nullable=True)
 
     series = db.Column(db.String(500), nullable=True)
@@ -231,3 +238,30 @@ def _stamp_content_updated_at(session, flush_context, instances):
             now = datetime.utcnow()
             obj.content_updated_at = now
             obj.updated_at = now
+
+
+@_sa_event.listens_for(_SASession, "before_flush")
+def _reset_author_resolution(session, flush_context, instances):
+    """Invalidate the registry link whenever `author` changes hands.
+
+    Any code path that rewrites item.author (scan re-read, enrichment,
+    modal save, group sync) silently invalidates a previous resolution.
+    Resetting here — instead of at every call site — guarantees a stale
+    author_id can never survive an author edit. The pending pass on the
+    next scan/upload re-resolves.
+
+    Exception: when author_id or author_status changed in the same flush,
+    the writer is the resolver itself or a deliberate user confirmation
+    (step-4 combobox sets both) — leave it alone.
+    """
+    for obj in session.dirty:
+        if not isinstance(obj, LibraryItem):
+            continue
+        state = _sa_inspect(obj)
+        if not state.attrs["author"].history.has_changes():
+            continue
+        if (state.attrs["author_id"].history.has_changes()
+                or state.attrs["author_status"].history.has_changes()):
+            continue
+        obj.author_id = None
+        obj.author_status = None

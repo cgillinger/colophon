@@ -10,6 +10,7 @@ from pathlib import Path
 from flask import Blueprint, current_app, jsonify, request, Response
 
 from app.models import db, LibraryItem
+from app.services.author_resolver import resolve_pending_authors
 from app.services.scanner import (
     scan_directory,
     extract_local_metadata,
@@ -80,6 +81,7 @@ def upload():
     library_dir.mkdir(parents=True, exist_ok=True)
 
     results = []
+    ingested = []  # (result entry, LibraryItem) for post-loop author resolution
     added = updated = skipped = errors = 0
 
     for storage in files:
@@ -142,12 +144,31 @@ def upload():
             "title": item.title or safe_name,
             "author": item.author or "",
         })
+        ingested.append((results[-1], item))
+
+    # Author resolution — one batched pass over everything this request
+    # ingested (DB-only linking; never blocks the upload, never touches
+    # files). Drives the panel's "X authors known · Y to review" summary.
+    author_counts = {}
+    if ingested:
+        try:
+            author_counts = resolve_pending_authors(
+                db.session, [item for _, item in ingested]
+            )
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("author resolution failed after upload")
+        else:
+            for entry, item in ingested:
+                entry["author_status"] = item.author_status
 
     return jsonify({
         "added": added,
         "updated": updated,
         "skipped": skipped,
         "errors": errors,
+        "authors": author_counts,
         "results": results,
     })
 

@@ -707,6 +707,15 @@ def scan_directory(root_path, db_session=None, on_progress=None, cover_dir=None)
                 if len(members) > 1:
                     sync_group_metadata(members)
 
+    # Author resolution — after group sync so it sees the final author
+    # strings. Batched pending pass: new rows, rows whose author changed
+    # (the before_flush listener in models.py reset them), and the whole
+    # pre-upgrade library on the first scan after the migration. DB-only;
+    # never touches files. See app/services/author_resolver.py.
+    session.flush()
+    from app.services.author_resolver import resolve_pending_authors
+    result["authors"] = resolve_pending_authors(session)
+
     session.commit()
     return result
 

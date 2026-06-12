@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.18.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.19.0.
 
 ## Quick reference
 
@@ -33,8 +33,8 @@ Use `--no-cache` every time. Docker layer cache has caused silent regressions be
 wsgi.py                         # Gunicorn entry: from app import create_app
 app/
   __init__.py                   # create_app(), blueprint registration, Babel, DB init
-  models.py                     # LibraryItem + KoboDevice + KoboBookState
-  version.py                    # __version__ = "1.18.0"
+  models.py                     # LibraryItem + Author/AuthorAlias + KoboDevice + KoboBookState
+  version.py                    # __version__ = "1.19.0"
   paths.py                      # Central path constants
   config.py                     # Flask Config class (reads env vars)
   routes/
@@ -61,6 +61,8 @@ app/
     ai_metadata.py              # Provider-agnostic AI enrichment (series detection etc.)
     cover_search.py             # 5 sources: Open Library, Google Books, Hardcover, Wikidata, DDG
     quality.py                  # is_better_* heuristics for field-by-field replacement
+    author_authority.py         # Author matching layers 1-3 as pure functions (no DB)
+    author_resolver.py          # DB layer: links items to canonical authors, grows registry
     duplicate_detector.py       # Fuzzy duplicate detection for the cleanup UI
     app_settings.py             # DB+env hybrid settings (DB wins, env fallback)
     upstream_sync.py            # rsync-based pull/push to upstream library (e.g. Komga NFS)
@@ -92,11 +94,12 @@ app/
     icons/                      # Favicons, app/PWA icons, header logo SVGs (light+dark)
     vendor/tabler-icons/        # Icon font
     vendor/foliate-js/          # Vendored EPUB renderer (MIT) for the reader
-tests/                          # 17 pytest files: metadata_pipeline, calibre_metadata,
+tests/                          # 19 pytest files: metadata_pipeline, calibre_metadata,
                                 # bookf, grouping, kobo_conf, kobo_sync, language,
                                 # quality, reading_state, scanner, scoring,
                                 # source_status, title_clean, wikipedia,
-                                # metadata_merge, metadata_escalation, upload
+                                # metadata_merge, metadata_escalation, upload,
+                                # author_authority, author_resolver
 tools/
   install_calibre_plugins.sh    # Dockerfile build step: Goodreads, FF, FictionDB plugins
   install_kepubify.sh           # Dockerfile build step: kepubify binary for Kobo conversion
@@ -172,7 +175,7 @@ Reading progress is **not** a separate store: the reader writes to the same cano
 
 ## Models
 
-Three tables in `app/models.py`:
+Five tables in `app/models.py`:
 
 **`library_items` (LibraryItem)** — the catalogue. Important fields:
 - `manual_metadata` (bool) — locks text fields from auto-overwrite
@@ -180,6 +183,14 @@ Three tables in `app/models.py`:
 - `group_key` — format grouping hash
 - `pipeline_status` — scanned / enriched / polished
 - `file_modified_by_colophon` / `upstream_synced_at` — upstream sync tracking
+- `author_id` / `author_status` — registry link + resolution outcome
+  (linked/new/review/missing, NULL = pending). `author` edits reset both via a
+  `before_flush` listener; the next scan/upload re-resolves.
+
+**`authors` (Author)** + **`author_aliases` (AuthorAlias)** — author authority
+control: canonical author entities and observed variant spellings. `source`
+(`tentative`/`user_confirmed`/`authority_linked`) gates file writes — tentative
+entries are DB-only. See `docs/author-authority-design.md`.
 
 **`kobo_devices` (KoboDevice)** — registered Kobo e-readers. Each row has a path token used in the device's sync URL (`/kobo/<token>/...`). Revokable from the settings UI.
 

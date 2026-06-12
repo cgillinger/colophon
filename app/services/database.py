@@ -57,6 +57,10 @@ def ensure_database_columns():
         # Author authority control — FK into authors. The authors table
         # exists before this runs (db.create_all / ensure_author_tables).
         "author_id": "ALTER TABLE library_items ADD COLUMN author_id INTEGER REFERENCES authors(id)",
+        # Resolution outcome: linked/new/review/missing. NULL = pending —
+        # exactly right for existing rows after upgrade: the next scan's
+        # pending pass resolves the whole library in one batch.
+        "author_status": "ALTER TABLE library_items ADD COLUMN author_status VARCHAR(16)",
     }
 
     changed = False

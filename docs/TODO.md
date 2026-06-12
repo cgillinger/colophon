@@ -158,6 +158,12 @@ the library into author folders without spawning parallel folders.
 that first; it is self-contained and implementation-ready. MVP (data model +
 deterministic matcher) is ~zero risk; AI/authority-anchoring are bounded add-ons.
 
+**Status:** steps 1–3 done (v1.18–1.19): data model + migrations, pure matcher,
+resolve-on-upload wired into scan + /upload (DB-only linking, batched pending
+pass, author_status per item). Remaining: step 4 (combobox in book-modal,
+"Authors to review" filter, "Manage authors" view with cascade merge/rename)
+and step 5 (LIBRIS/Wikidata QID anchoring, AI adjudicator, bootstrap pass).
+
 **Scope:** medium. New user-visible feature → MINOR bump.
 
 ## Remove the Calibre dependency
