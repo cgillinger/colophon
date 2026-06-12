@@ -194,10 +194,14 @@ def create_app():
     db.init_app(app)
 
     with app.app_context():
-        db.create_all()
-        # Before ensure_database_columns: the author_id ALTER references authors.
+        # Order matters. ensure_author_tables() must precede ensure_database_columns()
+        # because the author_id ALTER references authors(id). Both must precede
+        # db.create_all(), because create_all() emits CREATE INDEX for the
+        # ix_library_items_author_id index and that fails if the author_id column
+        # doesn't exist on library_items yet.
         ensure_author_tables()
         ensure_database_columns()
+        db.create_all()
         ensure_app_settings_table()
         ensure_ai_usage_log_table()
         ensure_kobo_devices_table()
