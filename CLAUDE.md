@@ -4,11 +4,6 @@
 
 Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.20.3.
 
-> **⚠️ Pending deployment:** v1.18–v1.20 (author authority control) are on
-> `main` but NOT yet deployed to the server. On a machine with server
-> access, read `docs/DEPLOY-HANDOFF.md` and run the rollout. Remove this
-> notice together with that file once deployed.
-
 ## Quick reference
 
 ```
