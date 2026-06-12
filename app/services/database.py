@@ -85,6 +85,17 @@ def ensure_database_columns():
     except Exception:
         db.session.rollback()
 
+    # Index on the author_id FK column added above. Created here rather than in
+    # ensure_author_tables() because the column only exists after the ALTER.
+    try:
+        db.session.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_library_items_author_id "
+            "ON library_items (author_id)"
+        ))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
     backfill_group_keys(force=group_key_added)
     backfill_content_updated_at()
     sanitize_html_descriptions()
@@ -246,10 +257,10 @@ def ensure_author_tables():
         "CREATE INDEX IF NOT EXISTS ix_author_aliases_author_id "
         "ON author_aliases (author_id)"
     ))
-    db.session.execute(text(
-        "CREATE INDEX IF NOT EXISTS ix_library_items_author_id "
-        "ON library_items (author_id)"
-    ))
+    # The ix_library_items_author_id index lives in ensure_database_columns(),
+    # not here: it needs the library_items.author_id column, which that function
+    # adds. This function must run first (the author_id ALTER references
+    # authors(id)), so the column doesn't exist yet at this point.
     db.session.commit()
 
 
