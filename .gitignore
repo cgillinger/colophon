@@ -48,3 +48,4 @@ messages.pot
 # Övrigt
 struktur.txt
 backup_platform_drm_*/
+.claude/settings.local.json
