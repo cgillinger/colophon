@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.20.3.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.21.0.
 
 ## Quick reference
 
@@ -34,7 +34,7 @@ wsgi.py                         # Gunicorn entry: from app import create_app
 app/
   __init__.py                   # create_app(), blueprint registration, Babel, DB init
   models.py                     # LibraryItem + Author/AuthorAlias + KoboDevice + KoboBookState
-  version.py                    # __version__ = "1.20.3"
+  version.py                    # __version__ = "1.21.0"
   paths.py                      # Central path constants
   config.py                     # Flask Config class (reads env vars)
   routes/
@@ -146,7 +146,7 @@ When editing the main view, look in the relevant JS module first — most logic 
 
 ### Blueprints
 
-Six: `metadata_bp`, `authors_bp`, `scan_bp`, `settings_bp`, `kobo_bp`, `reader_bp`. `authors_bp` (added v1.20.3) serves the `/authors` manage view plus the registry JSON APIs the combobox uses. No `library` or `bookstores` blueprints — those were removed during the fork from Bookstation. `kobo_bp` is mounted at `/kobo` and only serves authenticated Kobo devices via per-device path tokens. `reader_bp` is mounted at `/reader` (added v1.5.0 — the fork's original `reader` blueprint was a different, removed thing; this is a fresh in-browser EPUB reader, see below).
+Six: `metadata_bp`, `authors_bp`, `scan_bp`, `settings_bp`, `kobo_bp`, `reader_bp`. `authors_bp` (added v1.21.0) serves the `/authors` manage view plus the registry JSON APIs the combobox uses. No `library` or `bookstores` blueprints — those were removed during the fork from Bookstation. `kobo_bp` is mounted at `/kobo` and only serves authenticated Kobo devices via per-device path tokens. `reader_bp` is mounted at `/reader` (added v1.5.0 — the fork's original `reader` blueprint was a different, removed thing; this is a fresh in-browser EPUB reader, see below).
 
 ### Metadata extraction
 

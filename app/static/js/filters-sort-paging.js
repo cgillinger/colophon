@@ -310,6 +310,8 @@
                     // The review queue: ⚠️ fuzzy / ➕ unconfirmed / ❓ missing.
                     var astat = row.dataset.authorStatus || '';
                     if (astat !== 'review' && astat !== 'new' && astat !== 'missing') show = false;
+                } else if (filterType === 'new') {
+                    if ((row.dataset.isNew || '') !== '1') show = false;
                 }
             }
 
@@ -678,5 +680,20 @@
     if (typeof applyViewMode        === 'function') applyViewMode();
     _updateFilterActiveDot();
     _toggleSearchClear();
+
+    /* Curiosity beats patience: after an in-app upload we reload with this
+     * one-shot flag set, so the user lands directly on their just-added books
+     * with the "Nytillagt" filter active — instead of hunting for them in the
+     * A→Z list. One click on the chip clears it back to the full library. */
+    try {
+        if (sessionStorage.getItem('colophon-show-new') === '1') {
+            sessionStorage.removeItem('colophon-show-new');
+            var _newChip = document.getElementById('libraryChipNew');
+            if (_newChip && typeof toggleBadgeFilter === 'function') {
+                toggleBadgeFilter('new', '1', { target: _newChip });
+            }
+        }
+    } catch (e) { /* sessionStorage unavailable — no-op */ }
+
     if (window._viewMode === 'shelf' && typeof initShelfView === 'function') initShelfView();
 })(window, document);

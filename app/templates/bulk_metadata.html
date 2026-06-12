@@ -374,6 +374,9 @@
                 {% if author_review_count %}
                     · <span class="stats-badge" id="libraryChipAuthorReview" onclick="toggleBadgeFilter('author_review', '1', event)">{{ _('%(count)d authors to review', count=author_review_count) }}</span>
                 {% endif %}
+                {% if new_count %}
+                    · <span class="stats-badge" id="libraryChipNew" onclick="toggleBadgeFilter('new', '1', event)">{{ _('%(count)d newly added', count=new_count) }}</span>
+                {% endif %}
             </div>
             <span id="paginationInfo">{{ _('Showing %(count)d books', count=0) }}</span>
             <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">

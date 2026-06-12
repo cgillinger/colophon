@@ -1250,6 +1250,11 @@ msgstr "%(count)d författare att granska"
 
 #: app/templates/bulk_metadata.html:378
 #, python-format
+msgid "%(count)d newly added"
+msgstr "%(count)d nytillagda"
+
+#: app/templates/bulk_metadata.html:378
+#, python-format
 msgid "Showing %(count)d books"
 msgstr "Visar %(count)d böcker"
 

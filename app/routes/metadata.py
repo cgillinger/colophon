@@ -913,11 +913,18 @@ def bulk_metadata():
     new_badge_days = current_app.config.get("NEW_BADGE_DAYS", 14)
     new_badge_cutoff = datetime.utcnow() - timedelta(days=new_badge_days)
 
+    # Count for the "Nytillagt" filter chip — same cutoff as the badge.
+    new_count = LibraryItem.query.filter(
+        LibraryItem.created_at.isnot(None),
+        LibraryItem.created_at > new_badge_cutoff,
+    ).count()
+
     return render_template(
         "bulk_metadata.html",
         items=items,
         new_badge_cutoff=new_badge_cutoff,
         new_badge_days=new_badge_days,
+        new_count=new_count,
         groups=groups,
         summary=summary,
         total_count=total_count,

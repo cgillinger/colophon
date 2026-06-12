@@ -198,6 +198,11 @@
             // Reload so the new rows appear correctly grouped/sorted and the
             // "Nytillagt" badge shows — but only if something actually landed.
             if (counts.added > 0 || counts.updated > 0) {
+                // When genuinely new books landed, ask the reloaded page to open
+                // the "Nytillagt" filter so the user sees their upload at once.
+                if (counts.added > 0) {
+                    try { sessionStorage.setItem('colophon-show-new', '1'); } catch (e) {}
+                }
                 setTimeout(function () {
                     if (title) title.textContent = _i18n.uploadRefreshing || 'Refreshing…';
                     location.reload();
