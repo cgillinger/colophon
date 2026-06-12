@@ -66,15 +66,23 @@ def ensure_database_columns():
     changed = False
     group_key_added = False
 
+    # Commit each ALTER on its own and tolerate "duplicate column name". The two
+    # Gunicorn sync workers boot concurrently and both run this; without per-
+    # column commits a lost race aborts the whole batch, and without swallowing
+    # the duplicate error the losing worker crashes (code 3) and takes the
+    # master down with it. Idempotent here = clean first boot.
     for column_name, sql in columns_to_add.items():
         if column_name not in existing_columns:
-            db.session.execute(text(sql))
-            changed = True
-            if column_name == "group_key":
-                group_key_added = True
-
-    if changed:
-        db.session.commit()
+            try:
+                db.session.execute(text(sql))
+                db.session.commit()
+                changed = True
+                if column_name == "group_key":
+                    group_key_added = True
+            except Exception as exc:
+                db.session.rollback()
+                if "duplicate column name" not in str(exc).lower():
+                    raise
 
     try:
         db.session.execute(text(
