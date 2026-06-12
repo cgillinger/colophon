@@ -140,6 +140,26 @@ landed 588.
 **Scope:** small. Polish → PATCH. Not blocking — the reported "stale data after
 edit" bug is already fixed (v1.6.0); this is just exact scroll position.
 
+## Author authority control (canonical author registry)
+
+**What:** Reconcile author spellings to one canonical form per author, so the
+same person stops appearing as "J.R.R. Tolkien" / "Tolkien, J.R.R." / "JRR
+Tolkien". A DB-side registry (`authors` + `author_aliases`, `library_items
+.author_id`) resolves incoming `dc:creator` strings via layered matching
+(exact → format-invariant signature → fuzzy → LIBRIS/Wikidata → AI), writes the
+canonical name back into the file (the file stays the source of truth), and
+surfaces uncertain matches in an "Authors to review" queue + a combobox in the
+edit modal.
+
+**Why:** consistent author facets/filtering, and a prerequisite for ever sorting
+the library into author folders without spawning parallel folders.
+
+**Full design + implementation plan:** `docs/author-authority-design.md` — read
+that first; it is self-contained and implementation-ready. MVP (data model +
+deterministic matcher) is ~zero risk; AI/authority-anchoring are bounded add-ons.
+
+**Scope:** medium. New user-visible feature → MINOR bump.
+
 ## Remove the Calibre dependency
 
 **Why:** Calibre is the heaviest, least robust, hardest-to-maintain dependency

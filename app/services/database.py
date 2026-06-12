@@ -54,6 +54,9 @@ def ensure_database_columns():
         # Drives the Kobo sync delta — advances only on content/file
         # changes, never on reading progress. See models.py.
         "content_updated_at": "ALTER TABLE library_items ADD COLUMN content_updated_at DATETIME",
+        # Author authority control — FK into authors. The authors table
+        # exists before this runs (db.create_all / ensure_author_tables).
+        "author_id": "ALTER TABLE library_items ADD COLUMN author_id INTEGER REFERENCES authors(id)",
     }
 
     changed = False
@@ -208,6 +211,42 @@ def normalize_series_index_values():
         logger.info("Normalized series_index for %d rows", result.rowcount)
     else:
         db.session.rollback()
+
+
+def ensure_author_tables():
+    """Author authority control (docs/author-authority-design.md):
+    canonical authors + variant aliases. db.create_all() creates these on
+    fresh databases; this keeps already-migrated databases in step and adds
+    the indexes ALTER TABLE can't."""
+    db.session.execute(text("""
+        CREATE TABLE IF NOT EXISTS authors (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            canonical_name VARCHAR(500) NOT NULL,
+            sort_name VARCHAR(500),
+            wikidata_qid VARCHAR(32),
+            libris_id VARCHAR(64),
+            viaf_id VARCHAR(64),
+            source VARCHAR(20) NOT NULL DEFAULT 'tentative',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """))
+    db.session.execute(text("""
+        CREATE TABLE IF NOT EXISTS author_aliases (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            variant_key VARCHAR(500) NOT NULL UNIQUE,
+            author_id INTEGER NOT NULL REFERENCES authors(id)
+        )
+    """))
+    db.session.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_author_aliases_author_id "
+        "ON author_aliases (author_id)"
+    ))
+    db.session.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_library_items_author_id "
+        "ON library_items (author_id)"
+    ))
+    db.session.commit()
 
 
 def ensure_app_settings_table():

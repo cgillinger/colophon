@@ -22,6 +22,7 @@ from app.routes.settings import settings_bp
 from app.services.database import (
     ensure_ai_usage_log_table,
     ensure_app_settings_table,
+    ensure_author_tables,
     ensure_database_columns,
     ensure_kobo_book_states_table,
     ensure_kobo_devices_table,
@@ -193,6 +194,8 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        # Before ensure_database_columns: the author_id ALTER references authors.
+        ensure_author_tables()
         ensure_database_columns()
         ensure_app_settings_table()
         ensure_ai_usage_log_table()

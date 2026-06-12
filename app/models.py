@@ -12,6 +12,12 @@ class LibraryItem(db.Model):
 
     title = db.Column(db.String(500), nullable=False)
     author = db.Column(db.String(500), nullable=True)
+    # FK into authors (authority control). Relational convenience only —
+    # the canonical name itself lives in `author`, mirroring the file.
+    # NULL = not yet resolved against the registry. Deliberately NOT in
+    # _DEVICE_CONTENT_COLUMNS: linking alone must not re-ship Kobo
+    # entitlements. See docs/author-authority-design.md.
+    author_id = db.Column(db.Integer, db.ForeignKey("authors.id"), nullable=True, index=True)
     description = db.Column(db.Text, nullable=True)
 
     series = db.Column(db.String(500), nullable=True)
@@ -100,6 +106,47 @@ class LibraryItem(db.Model):
             return text[:450] + "..."
 
         return text
+
+
+class Author(db.Model):
+    """Canonical author entity (authority control).
+
+    canonical_name is the display form that eventually gets written into
+    files — but only once the entry has earned it: source != 'tentative'.
+    See docs/author-authority-design.md ("earning the right to be written").
+    """
+    __tablename__ = "authors"
+
+    id = db.Column(db.Integer, primary_key=True)
+    canonical_name = db.Column(db.String(500), nullable=False)
+    # The opf:file-as sort form, e.g. "Tolkien, J. R. R.".
+    sort_name = db.Column(db.String(500), nullable=True)
+
+    # Authority ids — populated by the escalation layer (step 5).
+    wikidata_qid = db.Column(db.String(32), nullable=True)
+    libris_id = db.Column(db.String(64), nullable=True)
+    viaf_id = db.Column(db.String(64), nullable=True)
+
+    # 'tentative' (free-text first occurrence — never written to files),
+    # 'user_confirmed', 'authority_linked'. Gates file writes.
+    source = db.Column(db.String(20), nullable=False, default="tentative")
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class AuthorAlias(db.Model):
+    """Variant spelling → canonical author.
+
+    variant_key holds the layer-1 normalised form of an observed spelling
+    (author_authority.normalize_author_name), so repeat occurrences of a
+    known variant resolve with one indexed lookup.
+    """
+    __tablename__ = "author_aliases"
+
+    id = db.Column(db.Integer, primary_key=True)
+    variant_key = db.Column(db.String(500), nullable=False, unique=True, index=True)
+    author_id = db.Column(db.Integer, db.ForeignKey("authors.id"), nullable=False, index=True)
 
 
 class KoboDevice(db.Model):
