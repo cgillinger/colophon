@@ -770,6 +770,10 @@ msgstr "Register"
 msgid "Filter authors…"
 msgstr "Filtrera författare…"
 
+#: app/templates/authors.html:175
+msgid "Show only unconfirmed"
+msgstr "Visa endast obekräftade"
+
 #: app/templates/authors.html:177 app/templates/bulk_metadata.html:239
 #: app/templates/bulk_metadata.html:481 app/templates/bulk_metadata.html:551
 #: app/templates/bulk_metadata.html:647 app/templates/bulk_metadata.html:1046

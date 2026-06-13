@@ -2,7 +2,16 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.21.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.22.0.
+
+## 🚧 Pågående arbete — fortsätt 2026-06-11
+
+**Författarundermappar för uppladdade böcker + uppströmsstädning.** Designen är klar och
+nedskriven i [`DESIGN-author-folders.md`](DESIGN-author-folders.md) — börja där. Inget byggt
+ännu. Kort: ladda upp platt i roten (oförändrat), lägg till en "Flytta till författarmapp"-knapp
+i edit-modalen för rot-böcker (aktiv när författare finns), med `authorKey`-konsolidering, säker
+filsystems-sanering, och kirurgisk uppströmsstädning av rsync-orphans kopplad till push. Fyra
+öppna beslut listade i designdokets sista sektion. Pausat av användaren.
 
 ## Quick reference
 
@@ -34,7 +43,7 @@ wsgi.py                         # Gunicorn entry: from app import create_app
 app/
   __init__.py                   # create_app(), blueprint registration, Babel, DB init
   models.py                     # LibraryItem + Author/AuthorAlias + KoboDevice + KoboBookState
-  version.py                    # __version__ = "1.21.0"
+  version.py                    # __version__ = "1.22.0"
   paths.py                      # Central path constants
   config.py                     # Flask Config class (reads env vars)
   routes/

@@ -131,13 +131,19 @@
     /* -------------------- quick filter -------------------- */
 
     var filter = document.getElementById('authorsFilter');
-    if (filter && table) {
-        filter.addEventListener('input', function () {
-            var q = filter.value.toLowerCase().trim();
+    var unconfirmedOnly = document.getElementById('authorsUnconfirmedOnly');
+    if (table && (filter || unconfirmedOnly)) {
+        var applyFilter = function () {
+            var q = filter ? filter.value.toLowerCase().trim() : '';
+            var tentativeOnly = unconfirmedOnly && unconfirmedOnly.checked;
             table.querySelectorAll('tbody tr').forEach(function (tr) {
-                tr.style.display = (!q || (tr.dataset.name || '').indexOf(q) !== -1) ? '' : 'none';
+                var matchesText = !q || (tr.dataset.name || '').indexOf(q) !== -1;
+                var matchesStatus = !tentativeOnly || tr.dataset.source === 'tentative';
+                tr.style.display = (matchesText && matchesStatus) ? '' : 'none';
             });
-        });
+        };
+        if (filter) filter.addEventListener('input', applyFilter);
+        if (unconfirmedOnly) unconfirmedOnly.addEventListener('change', applyFilter);
     }
 
     /* -------------------- duplicate pairs -------------------- */
