@@ -1,6 +1,6 @@
 # Colophon — self-hosted e-book metadata manager with Kobo wireless sync
 
-[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.22.0-brightgreen)](https://github.com/cgillinger/colophon/releases) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#setting-up-kobo-sync)
+[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.23.0-brightgreen)](https://github.com/cgillinger/colophon/releases) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#setting-up-kobo-sync)
 
 **Colophon — the e-book manager.** A self-hosted web app that turns a messy folder of e-book files into a clean, browsable library and syncs it to a Kobo e-reader over WiFi. (Not the printing/publishing term — this is the software.)
 
@@ -141,6 +141,39 @@ Colophon queries these in a progressive flow and merges the results **field by f
 | OpenAI | `https://api.openai.com/v1/chat/completions` | Pay-as-you-go |
 | DeepSeek | `https://api.deepseek.com/v1/chat/completions` | Very cheap |
 | Ollama (local) | `http://localhost:11434/v1/chat/completions` | Free, no key needed |
+
+---
+
+## Managing authors
+
+Colophon keeps **one canonical entry per author** so every book by the same
+person is labelled identically — even when the source files spell the name
+differently. The **Authors** page (in the sidebar) is where you curate that
+registry. Spelling variants are auto-linked to the canonical entry, and
+near-identical entries are flagged as likely duplicates.
+
+Each entry has a status that controls whether the name is written back into
+your files:
+
+| Status | Meaning | Written to files? |
+|---|---|---|
+| Tentative | Created automatically from file metadata during a scan or upload | No — DB only |
+| Confirmed | You confirmed the spelling is correct | Yes |
+| Authority-linked | Verified against Wikidata; stores the QID, VIAF and LIBRIS ids | Yes |
+
+What you can do from the page:
+
+- **Filter to unconfirmed** and tick the checkboxes to **confirm several at
+  once** — the fastest way to clear out freshly-scanned tentative entries.
+- **Rename** or **merge** an entry — both cascade, relabelling every linked
+  book in one sweep.
+- **Verify** an entry against Wikidata to anchor it with authority ids.
+- For likely-duplicate pairs, merge with one click, or **Ask AI** whether the
+  two names are the same person (advisory only — AI proposes, you decide; needs
+  an AI provider configured, see above).
+
+Tentative entries are deliberately never written into files until you confirm
+them, so an auto-guessed spelling can't quietly rewrite your library.
 
 ---
 

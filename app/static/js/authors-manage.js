@@ -141,9 +141,102 @@
                 var matchesStatus = !tentativeOnly || tr.dataset.source === 'tentative';
                 tr.style.display = (matchesText && matchesStatus) ? '' : 'none';
             });
+            if (typeof _refreshBulkBar === 'function') _refreshBulkBar();
         };
         if (filter) filter.addEventListener('input', applyFilter);
         if (unconfirmedOnly) unconfirmedOnly.addEventListener('change', applyFilter);
+    }
+
+    /* -------------------- bulk selection + confirm -------------------- */
+
+    var bulkBar = document.getElementById('authorsBulkBar');
+    var bulkCount = document.getElementById('authorsBulkCount');
+    var selectAll = document.getElementById('authorsSelectAll');
+
+    function _visibleRows() {
+        if (!table) return [];
+        return Array.prototype.filter.call(
+            table.querySelectorAll('tbody tr'),
+            function (tr) { return tr.style.display !== 'none'; }
+        );
+    }
+
+    function _checkedRows() {
+        if (!table) return [];
+        return Array.prototype.filter.call(
+            table.querySelectorAll('tbody tr'),
+            function (tr) {
+                var cb = tr.querySelector('.author-select');
+                return cb && cb.checked;
+            }
+        );
+    }
+
+    function _refreshBulkBar() {
+        var checked = _checkedRows();
+        if (bulkBar) bulkBar.hidden = checked.length === 0;
+        if (bulkCount) bulkCount.textContent = _fmt('selectedCount', { count: checked.length }, '{count} selected');
+        if (selectAll) {
+            var visible = _visibleRows();
+            var visibleChecked = visible.filter(function (tr) {
+                var cb = tr.querySelector('.author-select');
+                return cb && cb.checked;
+            });
+            selectAll.checked = visible.length > 0 && visibleChecked.length === visible.length;
+            selectAll.indeterminate = visibleChecked.length > 0 && visibleChecked.length < visible.length;
+        }
+    }
+
+    if (table && bulkBar) {
+        table.addEventListener('change', function (e) {
+            if (e.target && e.target.classList.contains('author-select')) _refreshBulkBar();
+        });
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            _visibleRows().forEach(function (tr) {
+                var cb = tr.querySelector('.author-select');
+                if (cb) cb.checked = selectAll.checked;
+            });
+            _refreshBulkBar();
+        });
+    }
+
+    var bulkClear = document.getElementById('authorsBulkClear');
+    if (bulkClear) {
+        bulkClear.addEventListener('click', function () {
+            _checkedRows().forEach(function (tr) {
+                var cb = tr.querySelector('.author-select');
+                if (cb) cb.checked = false;
+            });
+            _refreshBulkBar();
+        });
+    }
+
+    var bulkConfirm = document.getElementById('authorsBulkConfirm');
+    if (bulkConfirm) {
+        bulkConfirm.addEventListener('click', function () {
+            var tentative = _checkedRows().filter(function (tr) {
+                return tr.dataset.source === 'tentative';
+            });
+            if (!tentative.length) {
+                alert(_i18n.bulkNoTentative || 'None of the selected entries are unconfirmed.');
+                return;
+            }
+            var msg = _fmt('bulkConfirmPrompt', { count: tentative.length },
+                'Confirm {count} selected authors?');
+            if (!window.confirm(msg)) return;
+            var ids = tentative.map(function (tr) { return parseInt(tr.dataset.authorId, 10); });
+            bulkConfirm.disabled = true;
+            _post('/authors/confirm-bulk', { ids: ids }).then(function (b) {
+                if (b.ok) location.reload();
+                else { bulkConfirm.disabled = false; alert(_i18n.actionFailed || 'The action failed.'); }
+            }).catch(function () {
+                bulkConfirm.disabled = false;
+                alert(_i18n.actionFailed || 'The action failed.');
+            });
+        });
     }
 
     /* -------------------- duplicate pairs -------------------- */

@@ -195,6 +195,25 @@ def confirm(author_id):
     return jsonify({"ok": True, "author": _author_dict(author)})
 
 
+@authors_bp.route("/authors/confirm-bulk", methods=["POST"])
+def confirm_bulk():
+    """Bulk variant of /confirm: flip every selected tentative entry to
+    user_confirmed in one commit. Non-tentative ids in the selection are
+    silently ignored (confirming them is a no-op), so the UI can offer
+    checkboxes on all rows without special-casing already-confirmed ones."""
+    ids = (request.get_json(silent=True) or {}).get("ids") or []
+    ids = [i for i in ids if isinstance(i, int)]
+    if not ids:
+        return jsonify({"ok": False, "error": "no_ids"}), 400
+    authors = Author.query.filter(
+        Author.id.in_(ids), Author.source == "tentative"
+    ).all()
+    for author in authors:
+        author.source = "user_confirmed"
+    db.session.commit()
+    return jsonify({"ok": True, "confirmed": len(authors)})
+
+
 @authors_bp.route("/authors/<int:author_id>/verify", methods=["POST"])
 def verify(author_id):
     """Authority anchoring (design step 5): resolve the canonical name

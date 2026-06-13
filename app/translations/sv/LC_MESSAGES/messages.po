@@ -774,6 +774,32 @@ msgstr "Filtrera författare…"
 msgid "Show only unconfirmed"
 msgstr "Visa endast obekräftade"
 
+#: app/templates/authors.html:181
+msgid "Confirm selected"
+msgstr "Bekräfta markerade"
+
+#: app/templates/authors.html:182
+msgid "Clear selection"
+msgstr "Avmarkera alla"
+
+#: app/templates/authors.html:188
+msgid "Select all"
+msgstr "Markera alla"
+
+#: app/templates/authors.html:198
+#, python-format
+msgid "Select %(name)s"
+msgstr "Markera %(name)s"
+
+msgid "{count} selected"
+msgstr "{count} markerade"
+
+msgid "Confirm {count} selected authors? They become eligible for file writes."
+msgstr "Bekräfta {count} markerade författare? De blir då behöriga för filskrivning."
+
+msgid "None of the selected entries are unconfirmed."
+msgstr "Inga av de markerade posterna är obekräftade."
+
 #: app/templates/authors.html:177 app/templates/bulk_metadata.html:239
 #: app/templates/bulk_metadata.html:481 app/templates/bulk_metadata.html:551
 #: app/templates/bulk_metadata.html:647 app/templates/bulk_metadata.html:1046
