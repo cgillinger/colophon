@@ -1123,7 +1123,7 @@
         uploadNothingValid: {{ _('No supported files were selected.')|tojson }},
         newlyAdded: {{ _('New')|tojson }},
         shelfNewBandTitle: {{ _('Newly added')|tojson }},
-        shelfNewBandMore: {{ _('+%(count)s more')|tojson }},
+        shelfNewBandMore: {{ _('+{count} more')|tojson }},
         },
         urls: {
             coverItemBase: '{{ url_for("metadata.cover_item", item_id=0) }}'.replace(/\/0$/, '')

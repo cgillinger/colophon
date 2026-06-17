@@ -3991,8 +3991,8 @@ msgid "Newly added"
 msgstr "Nytillagt"
 
 #: app/templates/bulk_metadata.html:1126
-msgid "+%(count)s more"
-msgstr "+%(count)s till"
+msgid "+{count} more"
+msgstr "+{count} till"
 
 #~ msgid "Settings saved."
 #~ msgstr "Inställningar sparade."

@@ -216,7 +216,7 @@
         var moreHtml = '';
         if (rows.length > shown.length) {
             var n = rows.length - shown.length;
-            var label = (_i18n.shelfNewBandMore || '+%(count)s more').replace('%(count)s', n);
+            var label = (_i18n.shelfNewBandMore || '+{count} more').replace('{count}', n);
             /* Defer to the real chip so it lights up and the band self-hides. */
             moreHtml = '<button type="button" class="nb-more"'
                 +      ' onclick="var c=document.getElementById(\'libraryChipNew\'); if(c) c.click();">'
