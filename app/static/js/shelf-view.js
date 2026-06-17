@@ -41,6 +41,20 @@
 
     function _grid() { return document.getElementById('gridView'); }
 
+    /* Display title from the table row's .book-title. For newly-added books that
+     * cell leads with a <span class="new-badge">, whose text ("Nytillagt") would
+     * otherwise bleed into the card title — strip it. data-title is lowercased
+     * (search key), so it can't be used for display. */
+    function _titleText(row) {
+        var el = row.querySelector('.book-title');
+        if (!el) return row.dataset.title || '';
+        if (!el.querySelector('.new-badge')) return (el.textContent || '').trim();
+        var clone = el.cloneNode(true);
+        var badge = clone.querySelector('.new-badge');
+        if (badge) badge.parentNode.removeChild(badge);
+        return (clone.textContent || '').trim();
+    }
+
     function _coverWidth() {
         var grid = _grid();
         if (!grid) return COVER_DEFAULT;
@@ -92,8 +106,7 @@
 
     function _cardHtml(row) {
         var itemId    = row.dataset.itemId || '';
-        var titleEl   = row.querySelector('.book-title');
-        var title     = titleEl ? (titleEl.textContent || '').trim() : (row.dataset.title || '');
+        var title     = _titleText(row);
         var authorEl  = row.querySelector('.author-cell');
         var author    = authorEl ? (authorEl.textContent || '').trim() : '';
         var coverImg  = row.querySelector('.cover img');
@@ -160,8 +173,7 @@
 
     function _newBandCardHtml(row) {
         var itemId   = row.dataset.itemId || '';
-        var titleEl  = row.querySelector('.book-title');
-        var title    = titleEl ? (titleEl.textContent || '').trim() : (row.dataset.title || '');
+        var title    = _titleText(row);
         var authorEl = row.querySelector('.author-cell');
         var author   = authorEl ? (authorEl.textContent || '').trim() : '';
         var coverImg = row.querySelector('.cover img');
