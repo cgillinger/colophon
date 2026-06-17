@@ -3978,6 +3978,22 @@ msgstr ""
 msgid "URL copied to clipboard."
 msgstr "URL kopierad till urklipp."
 
+#: app/templates/bulk_metadata.html:200
+msgid "Date added (newest first)"
+msgstr "Tillagd (nyast först)"
+
+#: app/templates/bulk_metadata.html:201
+msgid "Date added (oldest first)"
+msgstr "Tillagd (äldst först)"
+
+#: app/templates/bulk_metadata.html:1125
+msgid "Newly added"
+msgstr "Nytillagt"
+
+#: app/templates/bulk_metadata.html:1126
+msgid "+%(count)s more"
+msgstr "+%(count)s till"
+
 #~ msgid "Settings saved."
 #~ msgstr "Inställningar sparade."
 

@@ -4299,6 +4299,66 @@
 }
 
 /* ====================================================================== *
+ * Shelf "Nytillagt" band — pinned strip of recently added books above the
+ * main shelf (shelf view only). Built by shelf-view.js:_renderNewBand().
+ * ====================================================================== */
+.shelf-new-band {
+    --cover-width: 160px;
+    padding: 8px 0 20px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border-light);
+}
+.shelf-new-band .nb-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0 14px;
+}
+.shelf-new-band .nb-title {
+    font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+    font-size: 20px;
+    font-weight: 500;
+    font-style: italic;
+    color: var(--accent-primary);
+    letter-spacing: 0.4px;
+}
+.shelf-new-band .nb-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    background: var(--accent-primary);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+}
+.shelf-new-band .nb-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px 20px;
+    align-items: flex-start;
+}
+.shelf-new-band .nb-more {
+    align-self: center;
+    background: transparent;
+    border: 1px solid var(--border-light);
+    color: var(--text-secondary);
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color 0.15s, color 0.15s;
+}
+.shelf-new-band .nb-more:hover {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+/* ====================================================================== *
  * Upload — drag-and-drop overlay + progress panel.
  * ====================================================================== */
 .upload-drop-overlay {

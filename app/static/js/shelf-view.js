@@ -19,6 +19,7 @@
     var SCROLL_BATCH  = 40;
     var GAP_X         = 20;
     var COVER_DEFAULT = 160;
+    var NEW_BAND_MAX  = 18;   /* cap the "Nytillagt" band; rest reachable via the chip */
 
     var FLOURISH_SVG =
         '<svg viewBox="0 0 22 10" width="22" height="10" xmlns="http://www.w3.org/2000/svg">' +
@@ -147,6 +148,96 @@
             +      '<div class="grid-card-author">' + _esc(author) + '</div>'
             +    '</div>'
             +  '</div>';
+    }
+
+    /* ---- "Nytillagt" band -------------------------------------------------
+     * A pinned strip of the most recently added books, shown above the main
+     * shelf. The same books still appear in their natural sorted position
+     * below — the band is a discovery shortcut, not a filter. Cards here carry
+     * NO checkbox (selection happens on the real card below; a second checkbox
+     * with the same item-id would desync). Lives outside #gridView so infinite
+     * scroll, Skriptorium and the resize observer never touch it. ----------- */
+
+    function _newBandCardHtml(row) {
+        var itemId   = row.dataset.itemId || '';
+        var titleEl  = row.querySelector('.book-title');
+        var title    = titleEl ? (titleEl.textContent || '').trim() : (row.dataset.title || '');
+        var authorEl = row.querySelector('.author-cell');
+        var author   = authorEl ? (authorEl.textContent || '').trim() : '';
+        var coverImg = row.querySelector('.cover img');
+        var coverSrc = coverImg ? coverImg.getAttribute('src') : '';
+        var imgStyle = coverSrc ? '' : 'display:none;';
+        var phStyle  = coverSrc ? 'display:none;' : 'display:flex;';
+
+        return '<div class="grid-card nb-card" data-item-id="' + _esc(itemId) + '">'
+            +    '<div class="grid-card-cover" onclick="openBookModal(' + _esc(itemId) + ')">'
+            +      '<img src="' + _esc(coverSrc) + '" alt="' + _esc(title + (author ? ' — ' + author : '')) + '" loading="lazy" style="' + imgStyle + '"'
+            +        ' onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';">'
+            +      '<div class="grid-card-placeholder" style="' + phStyle + '">'
+            +        '<i class="ti ti-book"></i>'
+            +        '<span class="grid-card-placeholder-title">' + _esc(title) + '</span>'
+            +        '<span class="grid-card-placeholder-author">' + _esc(author) + '</span>'
+            +      '</div>'
+            +    '</div>'
+            +    '<div class="grid-card-info" onclick="openBookModal(' + _esc(itemId) + ')">'
+            +      '<div class="grid-card-title">' + _esc(title) + '</div>'
+            +      '<div class="grid-card-author">' + _esc(author) + '</div>'
+            +    '</div>'
+            +  '</div>';
+    }
+
+    function _renderNewBand() {
+        var band = document.getElementById('shelfNewBand');
+        if (!band) return;
+        band.innerHTML = '';
+        band.style.display = 'none';
+
+        /* When the 'Nytillagt' chip filter is already on, the whole shelf is
+         * new books — the band would just be a redundant copy. Skip it. */
+        var newChip = document.getElementById('libraryChipNew');
+        if (newChip && newChip.classList.contains('badge-active')) return;
+
+        var rows = _rows().filter(function (r) { return r.dataset.isNew === '1'; });
+        if (rows.length === 0) return;
+
+        /* Newest first. created_at is emitted as an ISO 8601 string, so a plain
+         * lexicographic compare is chronological. Empty (null created_at) last. */
+        rows.sort(function (a, b) {
+            var av = a.dataset.created || '';
+            var bv = b.dataset.created || '';
+            return av < bv ? 1 : (av > bv ? -1 : 0);
+        });
+
+        var _i18n = (window.__colophonConfig && window.__colophonConfig.i18n) || {};
+        var shown = rows.slice(0, NEW_BAND_MAX);
+        var cards = '';
+        for (var i = 0; i < shown.length; i++) cards += _newBandCardHtml(shown[i]);
+
+        var moreHtml = '';
+        if (rows.length > shown.length) {
+            var n = rows.length - shown.length;
+            var label = (_i18n.shelfNewBandMore || '+%(count)s more').replace('%(count)s', n);
+            /* Defer to the real chip so it lights up and the band self-hides. */
+            moreHtml = '<button type="button" class="nb-more"'
+                +      ' onclick="var c=document.getElementById(\'libraryChipNew\'); if(c) c.click();">'
+                +      _esc(label) + ' →</button>';
+        }
+
+        band.innerHTML =
+            '<div class="nb-head">'
+            +  '<span class="series-flourish">' + FLOURISH_SVG + '</span>'
+            +  '<span class="nb-title">' + _esc(_i18n.shelfNewBandTitle || 'Newly added') + '</span>'
+            +  '<span class="nb-count">' + rows.length + '</span>'
+            +  '</div>'
+            +  '<div class="nb-strip">' + cards + moreHtml + '</div>';
+        band.style.display = '';
+    }
+
+    function _clearNewBand() {
+        var band = document.getElementById('shelfNewBand');
+        if (!band) return;
+        band.innerHTML = '';
+        band.style.display = 'none';
     }
 
     function updateGridSelectionState() {
@@ -392,6 +483,7 @@
         _renderedCount = 0;
         _renderSeq     = 0;
         grid.innerHTML = '';
+        _renderNewBand();
         _renderBatch(INITIAL_BATCH);
         _setupResizeObserver();
         /* renderBatch already applies Skriptorium when toggled on. */
@@ -406,6 +498,7 @@
         if (s && s.parentNode) s.parentNode.removeChild(s);
         var grid = _grid();
         if (grid) grid.innerHTML = '';
+        _clearNewBand();
         document.body.classList.remove('shelf-active');
         _renderedCount = 0;
         _renderSeq     = 0;
@@ -420,6 +513,7 @@
         _renderedCount = 0;
         _renderSeq     = 0;
         grid.innerHTML = '';
+        _renderNewBand();
         _renderBatch(INITIAL_BATCH);
     }
     window.refreshShelfView = refreshShelfView;

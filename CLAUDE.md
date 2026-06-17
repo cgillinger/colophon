@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.23.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.24.0.
 
 ## 🚧 Pågående arbete — fortsätt 2026-06-11
 
@@ -43,7 +43,7 @@ wsgi.py                         # Gunicorn entry: from app import create_app
 app/
   __init__.py                   # create_app(), blueprint registration, Babel, DB init
   models.py                     # LibraryItem + Author/AuthorAlias + KoboDevice + KoboBookState
-  version.py                    # __version__ = "1.23.0"
+  version.py                    # __version__ = "1.24.0"
   paths.py                      # Central path constants
   config.py                     # Flask Config class (reads env vars)
   routes/

@@ -197,6 +197,8 @@
                 <option value="author:desc">{{ _('Author Z–A') }}</option>
                 <option value="published:desc">{{ _('Publication date (newest)') }}</option>
                 <option value="published:asc">{{ _('Publication date (oldest)') }}</option>
+                <option value="created:desc">{{ _('Date added (newest first)') }}</option>
+                <option value="created:asc">{{ _('Date added (oldest first)') }}</option>
             </select>
 
             <div class="filter-sep"></div>
@@ -253,6 +255,7 @@
                             data-isbn="{{ (item.isbn or '')|lower }}"
                             data-genres="{{ (item.genres or '')|lower }}"
                             data-published="{{ (item.published_date or '') }}"
+                            data-created="{{ item.created_at.isoformat() if item.created_at else '' }}"
                             data-ext="{{ item.extension|lower }}"
                             data-has-series="{{ '1' if item.series else '0' }}"
                             data-has-description="{{ '1' if item.description else '0' }}"
@@ -348,6 +351,7 @@
                 </tbody>
             </table>
         </div>
+        <div id="shelfNewBand" class="shelf-new-band" style="display:none;"></div>
         <div id="gridView"></div>
         <div id="seriesView" style="display:none;"></div>
 
@@ -1118,6 +1122,8 @@
         authorSearchFailed: {{ _('Author search failed.')|tojson }},
         uploadNothingValid: {{ _('No supported files were selected.')|tojson }},
         newlyAdded: {{ _('New')|tojson }},
+        shelfNewBandTitle: {{ _('Newly added')|tojson }},
+        shelfNewBandMore: {{ _('+%(count)s more')|tojson }},
         },
         urls: {
             coverItemBase: '{{ url_for("metadata.cover_item", item_id=0) }}'.replace(/\/0$/, '')
