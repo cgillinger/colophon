@@ -1,4 +1,5 @@
 # Colophon – e-book metadata manager
+import hashlib
 import json
 import logging
 import os
@@ -201,7 +202,7 @@ def reading_now():
             "series_index": item.series_index or "",
             "progress": item.read_progress,
             "last_modified": item.read_last_modified.isoformat() if item.read_last_modified else None,
-            "cover_url": url_for("metadata.cover_item", item_id=item.id),
+            "cover_url": url_for("metadata.cover_item", item_id=item.id, w=320),
         }
 
     # Most recent first within each list.
@@ -240,10 +241,19 @@ def set_user_rating(item_id):
     return jsonify({"ok": True, "rating": item.user_rating})
 
 
-@metadata_bp.route("/cover/<int:item_id>")
-def cover_item(item_id):
-    item = get_item_or_404(item_id)
+# Allowlisted thumbnail widths. A requested ?w= snaps up to the smallest of
+# these so the on-disk cache can never explode into one file per arbitrary
+# width. 320 covers the shelf (--cover-width:160px @2x) and is crisp for the
+# 80px table cell; 160/640 are kept for smaller widgets / future retina needs.
+_THUMB_WIDTHS = (160, 320, 640)
 
+
+def _resolve_cover_source(item):
+    """Return a path to a valid cover image for *item*, or None.
+
+    Mirrors the original fallback chain: the item's own cached file, a
+    re-extracted (healed) cover, then a format-sibling's cover.
+    """
     # Fast path: cached file exists AND is actually an image. Older scans
     # could save XHTML cover pages with a .jpg extension; the magic-byte
     # check rejects those so the heal path below can replace them.
@@ -252,14 +262,14 @@ def cover_item(item_id):
         and os.path.exists(item.cover_path)
         and _looks_like_image_file(item.cover_path)
     ):
-        return send_file(item.cover_path)
+        return item.cover_path
 
     # Heal path: re-extract cover from the EPUB if the file is missing
     # or corrupted. Self-heal keeps the invariant the user expects —
     # "the cover is in the EPUB, it can't disappear" — true in practice.
     healed = _heal_cover(item)
     if healed:
-        return send_file(healed)
+        return healed
 
     # Group fallback: format-siblings share a cover. Validate them with
     # the same image check so we don't serve a sibling's broken file.
@@ -276,11 +286,92 @@ def cover_item(item_id):
                 and os.path.exists(sibling.cover_path)
                 and _looks_like_image_file(sibling.cover_path)
             ):
-                return send_file(sibling.cover_path)
+                return sibling.cover_path
             sibling_healed = _heal_cover(sibling)
             if sibling_healed:
-                return send_file(sibling_healed)
-    return ("", 404)
+                return sibling_healed
+    return None
+
+
+def _get_or_make_thumbnail(src_path, width):
+    """Return a path to a cached downscaled JPEG of *src_path* at *width*, or
+    None if Pillow is unavailable or generation fails (caller falls back to
+    the original).
+
+    The cache key is derived from the source file's identity (realpath + mtime
+    + size) and the width, so it changes automatically whenever a cover is
+    replaced or rewritten. That means none of the (many) ``cover_path`` write
+    sites need explicit invalidation — a new cover simply misses the old thumb.
+    Thumbnails live in a dedicated ``thumbs/`` subdir; originals are untouched.
+    """
+    try:
+        from PIL import Image, ImageOps
+    except Exception:
+        return None
+    try:
+        st = os.stat(src_path)
+    except OSError:
+        return None
+
+    key = "%s|%d|%d|%d" % (
+        os.path.realpath(src_path), st.st_mtime_ns, st.st_size, width,
+    )
+    name = hashlib.sha1(key.encode("utf-8")).hexdigest() + ".jpg"
+    thumb_dir = os.path.join(current_app.config["COVER_DIR"], "thumbs")
+    dest = os.path.join(thumb_dir, name)
+    if os.path.exists(dest):
+        return dest
+
+    try:
+        os.makedirs(thumb_dir, exist_ok=True)
+        with Image.open(src_path) as im:
+            im = ImageOps.exif_transpose(im)  # respect embedded orientation
+            # Flatten any transparency onto white so JPEG output is sane.
+            if im.mode in ("RGBA", "LA", "P"):
+                im = im.convert("RGBA")
+                bg = Image.new("RGB", im.size, (255, 255, 255))
+                bg.paste(im, mask=im.split()[-1])
+                im = bg
+            else:
+                im = im.convert("RGB")
+            if im.width > width:
+                height = max(1, round(im.height * width / im.width))
+                im = im.resize((width, height), Image.LANCZOS)
+            tmp = dest + ".tmp"
+            im.save(tmp, "JPEG", quality=82, optimize=True, progressive=True)
+            os.replace(tmp, dest)  # atomic publish; concurrent workers are safe
+        return dest
+    except Exception:
+        logger.exception("thumbnail generation failed for %s", src_path)
+        return None
+
+
+@metadata_bp.route("/cover/<int:item_id>")
+def cover_item(item_id):
+    item = get_item_or_404(item_id)
+    source = _resolve_cover_source(item)
+    if not source:
+        return ("", 404)
+
+    # Optional downscaled thumbnail (?w=). The bulk/shelf/series views request a
+    # small width so opening the catalogue doesn't pull full-resolution covers
+    # (often hundreds of KB to several MB each) that only render at 80–320px.
+    # Full resolution is served when no width is given (book modal, cover
+    # picker) or if thumbnailing is unavailable.
+    requested = request.args.get("w", type=int)
+    if requested and requested > 0:
+        width = min(
+            (w for w in _THUMB_WIDTHS if w >= requested),
+            default=_THUMB_WIDTHS[-1],
+        )
+        thumb = _get_or_make_thumbnail(source, width)
+        if thumb:
+            # Short max_age cuts repeat round-trips during a browse session;
+            # the URL is stable across cover changes, so it's kept short and the
+            # ETag/Last-Modified revalidation catches a swapped cover quickly.
+            return send_file(thumb, max_age=3600)
+
+    return send_file(source)
 
 
 SUPPORTED_LANGUAGES = [

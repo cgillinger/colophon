@@ -11,3 +11,4 @@ requests
 gunicorn
 langdetect==1.0.9
 ddgs>=7.0
+Pillow>=10.0
