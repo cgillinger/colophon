@@ -151,7 +151,7 @@
                 if (books[ci].coverSrc) { coverFor = books[ci]; break; }
             }
             var coverHtml = coverFor
-                ? '<img src="' + _seriesEsc(coverFor.coverSrc) + '" alt="' + _seriesEsc(name) + '">'
+                ? '<img src="' + _seriesEsc(coverFor.coverSrc) + '" alt="' + _seriesEsc(name) + '" loading="lazy" decoding="async">'
                 : '📚';
 
             var listHtml = '';
@@ -189,7 +189,7 @@
                 + _seriesEsc(_i18n.standaloneBooks) + ' (' + standalone.length + ')</div>';
             standalone.forEach(function (b) {
                 var coverHtml = b.coverSrc
-                    ? '<img src="' + _seriesEsc(b.coverSrc) + '" alt="' + _seriesEsc(b.title) + '">'
+                    ? '<img src="' + _seriesEsc(b.coverSrc) + '" alt="' + _seriesEsc(b.title) + '" loading="lazy" decoding="async">'
                     : '📖';
                 html += '<div class="series-card" data-item-id="' + _seriesEsc(b.itemId) + '">'
                     + '<div class="series-card-cover">' + coverHtml + '</div>'
