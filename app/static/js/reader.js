@@ -315,24 +315,24 @@ import './../vendor/foliate-js/view.js';
         }
     }
 
-    // One-shot request/response over the SW message channel.
-    function swRequest(message, matchType, timeoutMs) {
+    // One-shot request/response to the controlling SW over a dedicated
+    // MessageChannel port. More reliable on iOS Safari than listening on
+    // navigator.serviceWorker for an event.source reply (which can be null).
+    function swRequest(message, timeoutMs) {
         return new Promise(function (resolve) {
-            if (!swReady()) { resolve(null); return; }
+            var sw = ('serviceWorker' in navigator) && navigator.serviceWorker.controller;
+            if (!sw) { resolve(null); return; }
             var done = false;
-            function onMsg(ev) {
-                var d = ev.data || {};
-                if (d.type === matchType) {
-                    done = true;
-                    navigator.serviceWorker.removeEventListener('message', onMsg);
-                    resolve(d);
-                }
-            }
-            navigator.serviceWorker.addEventListener('message', onMsg);
-            navigator.serviceWorker.controller.postMessage(message);
-            setTimeout(function () {
-                if (!done) { navigator.serviceWorker.removeEventListener('message', onMsg); resolve(null); }
-            }, timeoutMs || 60000);
+            var ch = new MessageChannel();
+            ch.port1.onmessage = function (ev) {
+                if (done) return;
+                done = true;
+                resolve(ev.data || null);
+            };
+            try {
+                sw.postMessage(message, [ch.port2]);
+            } catch (e) { resolve(null); return; }
+            setTimeout(function () { if (!done) { done = true; resolve(null); } }, timeoutMs || 60000);
         });
     }
 
@@ -348,12 +348,12 @@ import './../vendor/foliate-js/view.js';
         if (offlineSaved) {
             // Remove only the per-book assets so other saved books survive.
             setOfflineUI('busy');
-            await swRequest({ type: 'removeBook', id: cfg.itemId, assets: [cfg.pageUrl, cfg.fileUrl] }, 'removeBook', 15000);
+            await swRequest({ type: 'removeBook', id: cfg.itemId, assets: [cfg.pageUrl, cfg.fileUrl] }, 15000);
             offlineSaved = false;
             setOfflineUI('idle');
         } else {
             setOfflineUI('busy');
-            var res = await swRequest({ type: 'cacheBook', id: cfg.itemId, assets: bookAssets() }, 'cacheBook', 120000);
+            var res = await swRequest({ type: 'cacheBook', id: cfg.itemId, assets: bookAssets() }, 120000);
             offlineSaved = !!(res && res.ok);
             setOfflineUI(offlineSaved ? 'saved' : 'idle');
             if (!offlineSaved && offlineBtn) {
@@ -363,20 +363,30 @@ import './../vendor/foliate-js/view.js';
         offlineBusy = false;
     }
 
-    async function initOffline() {
-        if (!offlineBtn || !('serviceWorker' in navigator)) return;
-        // Wait for the SW to control this page (first visit may register late).
-        try { await navigator.serviceWorker.ready; } catch (e) { return; }
-        if (!navigator.serviceWorker.controller) {
-            // Not controlled yet (fresh registration). It will control the next
-            // load; keep the button hidden this time to avoid a dead control.
-            return;
-        }
+    var offlineWired = false;
+    async function enableOfflineButton() {
+        if (offlineWired || !offlineBtn) return;
+        offlineWired = true;
         offlineBtn.hidden = false;
         offlineBtn.addEventListener('click', toggleOffline);
-        var res = await swRequest({ type: 'isBookCached', id: cfg.itemId, fileUrl: cfg.fileUrl }, 'isBookCached', 8000);
+        var res = await swRequest({ type: 'isBookCached', id: cfg.itemId, fileUrl: cfg.fileUrl }, 8000);
         offlineSaved = !!(res && res.cached);
         setOfflineUI(offlineSaved ? 'saved' : 'idle');
+    }
+
+    function initOffline() {
+        if (!offlineBtn || !('serviceWorker' in navigator)) return;
+        // Enable as soon as a SW controls the page. On first load the controller
+        // can still be null (registration/activation in flight) or a stale
+        // worker may be handing over after skipWaiting — both surface as a
+        // controllerchange, so wire up then too. The button stays hidden until
+        // a controller exists, so we never message into the void.
+        if (navigator.serviceWorker.controller) {
+            enableOfflineButton();
+        }
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+            enableOfflineButton();
+        });
     }
 
     async function start() {

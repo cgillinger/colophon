@@ -304,9 +304,26 @@
         // Register the service worker so a downloaded book opens with no
         // connection (and so direct /reader visits are SW-controlled too).
         // Needs a secure context — works over the Tailscale HTTPS hostname.
+        //
+        // Unlike the main app (which shows an update prompt before swapping the
+        // SW), the reader promotes a waiting/new worker straight away: the
+        // standalone reader has no in-progress edit to protect, and an active
+        // version that already controls the page must not keep handling the
+        // offline messages of a newer page (it lacks the handlers → the save
+        // button would spin and give up). The reader's own JS picks up control
+        // via the 'controllerchange' event without a reload.
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () {
-                navigator.serviceWorker.register('/sw.js').catch(function () { /* offline save just stays unavailable */ });
+                navigator.serviceWorker.register('/sw.js').then(function (reg) {
+                    function promote(w) { if (w && w.state !== 'redundant') w.postMessage('skipWaiting'); }
+                    if (reg.waiting) promote(reg.waiting);
+                    reg.addEventListener('updatefound', function () {
+                        var nw = reg.installing;
+                        if (nw) nw.addEventListener('statechange', function () {
+                            if (nw.state === 'installed') promote(nw);
+                        });
+                    });
+                }).catch(function () { /* offline save just stays unavailable */ });
             });
         }
     </script>

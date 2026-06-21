@@ -89,6 +89,9 @@ self.addEventListener('message', function (event) {
 });
 
 function reply(event, msg) {
+    // Prefer the dedicated MessageChannel port the page sent (reliable on iOS
+    // Safari); fall back to event.source for older callers.
+    if (event.ports && event.ports[0]) { event.ports[0].postMessage(msg); return; }
     if (event.source) event.source.postMessage(msg);
 }
 
