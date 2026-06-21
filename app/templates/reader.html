@@ -112,6 +112,11 @@
             font-size: 1.1rem; font-weight: 600; cursor: pointer;
         }
         .reader-topbar .reader-settings:hover { background: var(--bg-tertiary); }
+        /* Offline "save" button states: saved = green/check, saving = pulsing. */
+        .reader-topbar .reader-offline.is-saved { color: #059669; }
+        .reader-topbar .reader-offline.is-busy { opacity: .55; pointer-events: none; }
+        .reader-topbar .reader-offline.is-busy i { animation: rdrPulse 1s ease-in-out infinite; }
+        @keyframes rdrPulse { 0%,100% { opacity: .4; } 50% { opacity: 1; } }
 
         .reader-sheet-backdrop {
             position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.35);
@@ -186,6 +191,10 @@
         </button>
         <div class="reader-title">{{ item.title or item.file_name or _('Reader') }}</div>
         <div class="reader-percent" id="readerPercent">—</div>
+        <button type="button" class="reader-settings reader-offline" id="readerOfflineBtn"
+                aria-label="{{ _('Save for offline reading') }}" title="{{ _('Save for offline reading') }}" hidden>
+            <i class="ti ti-download"></i>
+        </button>
         <button type="button" class="reader-settings" id="readerSettingsBtn"
                 aria-label="{{ _('Reading settings') }}" title="{{ _('Reading settings') }}" aria-expanded="false">Aa</button>
     </div>
@@ -256,11 +265,25 @@
 
     <script>
         window.__readerConfig = {
+            itemId: {{ item.id|tojson }},
             fileUrl: {{ file_url|tojson }},
+            pageUrl: {{ url_for('reader.read_book', item_id=item.id)|tojson }},
             progressUrl: {{ progress_url|tojson }},
             initialProgress: {{ initial_progress|tojson }},
             readStatus: {{ read_status|tojson }},
             homeUrl: {{ url_for('metadata.index')|tojson }},
+            // Shared reader-shell assets cached alongside the book so the whole
+            // reader works offline. foliate's module graph is cached separately
+            // by the service worker (stale-while-revalidate). Tabler's icon
+            // font is included so the toolbar icons render with no connection.
+            shellAssets: [
+                {{ (url_for('static', filename='js/reader.js') ~ '?v=' ~ app_version)|tojson }},
+                {{ (url_for('static', filename='css/bulk_metadata.css') ~ '?v=' ~ app_version)|tojson }},
+                {{ url_for('static', filename='vendor/tabler-icons/tabler-icons.min.css')|tojson }},
+                {{ url_for('static', filename='vendor/tabler-icons/fonts/tabler-icons.woff2')|tojson }},
+                {{ url_for('static', filename='fonts/opendyslexic-400.woff2')|tojson }},
+                {{ url_for('static', filename='fonts/opendyslexic-700.woff2')|tojson }}
+            ],
             // The book renders in a separate iframe document that does NOT
             // inherit this page's @font-face, so the OpenDyslexic face must be
             // re-declared inside the book CSS with an absolute URL (the iframe's
@@ -270,9 +293,22 @@
                 dyslexic700: {{ url_for('static', filename='fonts/opendyslexic-700.woff2')|tojson }}
             },
             i18n: {
-                loadError: {{ _('Could not open this book.')|tojson }}
+                loadError: {{ _('Could not open this book.')|tojson }},
+                saveOffline: {{ _('Save for offline reading')|tojson }},
+                saving: {{ _('Saving for offline…')|tojson }},
+                savedOffline: {{ _('Saved — tap to remove offline copy')|tojson }},
+                saveFailed: {{ _('Could not save for offline')|tojson }}
             }
         };
+
+        // Register the service worker so a downloaded book opens with no
+        // connection (and so direct /reader visits are SW-controlled too).
+        // Needs a secure context — works over the Tailscale HTTPS hostname.
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('/sw.js').catch(function () { /* offline save just stays unavailable */ });
+            });
+        }
     </script>
     <script type="module" src="{{ url_for('static', filename='js/reader.js') }}?v={{ app_version }}"></script>
 </body>

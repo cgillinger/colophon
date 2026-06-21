@@ -3,7 +3,9 @@
 // In-browser reader controller. Loads an EPUB into foliate-js, resumes by
 // percent, and syncs progress back to the server through the same canonical
 // reading-state fields the Kobo sync uses (POST /reader/<id>/progress →
-// services/reading_state.py). Step 1 is online-only; no offline caching.
+// services/reading_state.py). Supports offline reading: a "save for offline"
+// button caches the book + reader shell via the service worker, and progress
+// is mirrored to localStorage so it resumes (and re-syncs) without a network.
 //
 // ES module: imports the vendored foliate-js <foliate-view> custom element.
 import './../vendor/foliate-js/view.js';
@@ -21,6 +23,7 @@ import './../vendor/foliate-js/view.js';
     var prevZone = document.getElementById('readerPrev');
     var nextZone = document.getElementById('readerNext');
 
+    var offlineBtn = document.getElementById('readerOfflineBtn');
     var settingsBtn = document.getElementById('readerSettingsBtn');
     var sheet = document.getElementById('readerSheet');
     var backdrop = document.getElementById('readerSheetBackdrop');
@@ -196,13 +199,33 @@ import './../vendor/foliate-js/view.js';
         return a && b && a.status === b.status && Math.round(a.percent) === Math.round(b.percent);
     }
 
+    // --- Offline-safe progress -------------------------------------------
+    // Progress is always mirrored to localStorage so the book resumes at the
+    // right place even when opened offline (the server-rendered initial
+    // progress is then stale). A copy that failed to reach the server is kept
+    // marked unsynced and retried on reconnect.
+    var PROGRESS_KEY = 'colophon-reader-progress-' + (cfg.itemId != null ? cfg.itemId : 'x');
+
+    function persistLocal(state, synced) {
+        try {
+            localStorage.setItem(PROGRESS_KEY, JSON.stringify({
+                percent: state.percent, status: state.status, synced: !!synced
+            }));
+        } catch (e) { /* private mode / quota */ }
+    }
+    function readLocalProgress() {
+        try { return JSON.parse(localStorage.getItem(PROGRESS_KEY) || 'null'); }
+        catch (e) { return null; }
+    }
+
     function flush(useBeacon) {
         if (!latest || sameState(latest, lastSaved)) return;
         var payload = latest;
+        persistLocal(payload, false);     // keep a local copy regardless of network
         var body = JSON.stringify(payload);
         if (useBeacon && navigator.sendBeacon) {
-            navigator.sendBeacon(cfg.progressUrl, new Blob([body], { type: 'application/json' }));
-            lastSaved = payload;
+            var ok = navigator.sendBeacon(cfg.progressUrl, new Blob([body], { type: 'application/json' }));
+            if (ok) { lastSaved = payload; persistLocal(payload, true); }
             return;
         }
         fetch(cfg.progressUrl, {
@@ -210,7 +233,18 @@ import './../vendor/foliate-js/view.js';
             headers: { 'Content-Type': 'application/json' },
             body: body,
             keepalive: true
-        }).then(function () { lastSaved = payload; }).catch(function () { /* retried on next relocate */ });
+        }).then(function (r) {
+            if (r && r.ok) { lastSaved = payload; persistLocal(payload, true); }
+        }).catch(function () { /* stays unsynced; retried on 'online' / next change */ });
+    }
+
+    // On reconnect, push up any progress made while offline.
+    function flushUnsynced() {
+        var local = readLocalProgress();
+        if (local && local.synced === false) {
+            latest = { percent: local.percent, status: local.status };
+            flush(false);
+        }
     }
 
     function scheduleSave(state, immediate) {
@@ -253,9 +287,104 @@ import './../vendor/foliate-js/view.js';
         if (overlay) { overlay.hidden = false; overlay.textContent = i18n.loadError || 'Could not open this book.'; }
     }
 
+    // --- Save for offline -------------------------------------------------
+    // Talks to the service worker: cache the book file + reader page + shared
+    // shell assets so the whole reader works with no connection. The SW also
+    // stale-while-revalidates foliate's module graph as the book renders.
+    var offlineSaved = false;
+    var offlineBusy = false;
+
+    function swReady() {
+        return ('serviceWorker' in navigator) && navigator.serviceWorker.controller;
+    }
+
+    function setOfflineUI(state) {
+        if (!offlineBtn) return;
+        offlineBtn.classList.toggle('is-saved', state === 'saved');
+        offlineBtn.classList.toggle('is-busy', state === 'busy');
+        var icon = offlineBtn.querySelector('i');
+        var label = state === 'saved' ? (i18n.savedOffline || 'Saved')
+                  : state === 'busy' ? (i18n.saving || 'Saving…')
+                  : (i18n.saveOffline || 'Save for offline');
+        offlineBtn.setAttribute('aria-label', label);
+        offlineBtn.setAttribute('title', label);
+        if (icon) {
+            icon.className = state === 'saved' ? 'ti ti-circle-check'
+                          : state === 'busy' ? 'ti ti-loader-2'
+                          : 'ti ti-download';
+        }
+    }
+
+    // One-shot request/response over the SW message channel.
+    function swRequest(message, matchType, timeoutMs) {
+        return new Promise(function (resolve) {
+            if (!swReady()) { resolve(null); return; }
+            var done = false;
+            function onMsg(ev) {
+                var d = ev.data || {};
+                if (d.type === matchType) {
+                    done = true;
+                    navigator.serviceWorker.removeEventListener('message', onMsg);
+                    resolve(d);
+                }
+            }
+            navigator.serviceWorker.addEventListener('message', onMsg);
+            navigator.serviceWorker.controller.postMessage(message);
+            setTimeout(function () {
+                if (!done) { navigator.serviceWorker.removeEventListener('message', onMsg); resolve(null); }
+            }, timeoutMs || 60000);
+        });
+    }
+
+    function bookAssets() {
+        // Per-book first (removed on un-save), then shared shell (kept).
+        var shell = Array.isArray(cfg.shellAssets) ? cfg.shellAssets : [];
+        return [cfg.pageUrl, cfg.fileUrl].concat(shell).filter(Boolean);
+    }
+
+    async function toggleOffline() {
+        if (offlineBusy || !swReady()) return;
+        offlineBusy = true;
+        if (offlineSaved) {
+            // Remove only the per-book assets so other saved books survive.
+            setOfflineUI('busy');
+            await swRequest({ type: 'removeBook', id: cfg.itemId, assets: [cfg.pageUrl, cfg.fileUrl] }, 'removeBook', 15000);
+            offlineSaved = false;
+            setOfflineUI('idle');
+        } else {
+            setOfflineUI('busy');
+            var res = await swRequest({ type: 'cacheBook', id: cfg.itemId, assets: bookAssets() }, 'cacheBook', 120000);
+            offlineSaved = !!(res && res.ok);
+            setOfflineUI(offlineSaved ? 'saved' : 'idle');
+            if (!offlineSaved && offlineBtn) {
+                offlineBtn.setAttribute('title', i18n.saveFailed || 'Could not save for offline');
+            }
+        }
+        offlineBusy = false;
+    }
+
+    async function initOffline() {
+        if (!offlineBtn || !('serviceWorker' in navigator)) return;
+        // Wait for the SW to control this page (first visit may register late).
+        try { await navigator.serviceWorker.ready; } catch (e) { return; }
+        if (!navigator.serviceWorker.controller) {
+            // Not controlled yet (fresh registration). It will control the next
+            // load; keep the button hidden this time to avoid a dead control.
+            return;
+        }
+        offlineBtn.hidden = false;
+        offlineBtn.addEventListener('click', toggleOffline);
+        var res = await swRequest({ type: 'isBookCached', id: cfg.itemId, fileUrl: cfg.fileUrl }, 'isBookCached', 8000);
+        offlineSaved = !!(res && res.cached);
+        setOfflineUI(offlineSaved ? 'saved' : 'idle');
+    }
+
     async function start() {
         bindControls();
         bindSettings();
+        window.addEventListener('online', flushUnsynced);
+        initOffline();
+        flushUnsynced();   // a previous offline session may have pending progress
         try {
             view = document.createElement('foliate-view');
             main.insertBefore(view, overlay);
@@ -267,12 +396,21 @@ import './../vendor/foliate-js/view.js';
             applyReaderStyles();
 
             var initial = Number(cfg.initialProgress) || 0;
+            var status = cfg.readStatus;
+            // Prefer locally-stored progress when it's further along — covers
+            // resuming offline, where the server-rendered initial value is
+            // stale (it can't have received progress made without a connection).
+            var local = readLocalProgress();
+            if (local && Number(local.percent) > initial) {
+                initial = Number(local.percent);
+                status = local.status || status;
+            }
             var frac = 0;
             // Resume by percent. Don't jump to the end of a finished book —
             // start it over instead. Exact paragraph resume across devices is
             // out of scope (Kobo KEPUB spans vs EPUB CFI differ); percent is
             // the shared coordinate.
-            if (initial > 0 && initial < 100 && cfg.readStatus !== 'Finished') {
+            if (initial > 0 && initial < 100 && status !== 'Finished') {
                 frac = initial / 100;
             }
             await view.goToFraction(frac);

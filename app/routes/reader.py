@@ -1,16 +1,21 @@
 # Colophon – e-book metadata manager
 """In-browser EPUB reader.
 
-Step 1 is online-only: it renders a book in the browser (foliate-js) and
-syncs reading progress through the *same* canonical LibraryItem fields the
-Kobo sync uses (see services/reading_state.py), so reading in the app and on
-a Kobo stay in lock-step for free. Offline caching of book content is
-deliberately deferred (see docs/TODO.md).
+Renders a book in the browser (foliate-js) and syncs reading progress through
+the *same* canonical LibraryItem fields the Kobo sync uses (see
+services/reading_state.py), so reading in the app and on a Kobo stay in
+lock-step for free.
+
+Offline reading is supported (v1.26.0): the reader's "save for offline" button
+caches the book file + reader shell into a persistent Cache Storage bucket via
+the service worker (app/templates/sw.js), and reading progress is mirrored to
+localStorage so a saved book resumes — and later re-syncs — with no connection.
+Requires a secure context (HTTPS), e.g. via Tailscale Serve.
 
 Routes:
   GET  /reader/<id>         — the reader page
-  GET  /reader/<id>/file    — the raw EPUB bytes (a stable, token-free URL so
-                              a future "download for offline" step can cache it)
+  GET  /reader/<id>/file    — the raw EPUB bytes (a stable, token-free URL the
+                              service worker caches for offline reading)
   POST /reader/<id>/progress — persist reading progress (percent + status)
 """
 import logging

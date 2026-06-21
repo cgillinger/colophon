@@ -37,6 +37,17 @@
 const VERSION = '{{ app_version }}';
 const CACHE = 'colophon-v' + VERSION;
 
+// Persistent cache for offline reading. Deliberately NOT version-tied: a
+// downloaded book and its reader shell must survive app updates, so `activate`
+// keeps this cache while purging the per-version one. Populated by an explicit
+// "save for offline" action in the reader (postMessage 'cacheBook'); foliate's
+// module graph is runtime-cached here too (see fetch handler) because those
+// relative imports carry no ?v= and so escape the versioned-static rule.
+const OFFLINE = 'colophon-offline';
+const READER_FILE = /^\/reader\/\d+\/file$/;
+const READER_PAGE = /^\/reader\/\d+$/;
+const FOLIATE_PREFIX = '/static/vendor/foliate-js/';
+
 self.addEventListener('install', function () {
     // Do NOT skipWaiting here. The new worker waits until the page tells it
     // to (via the "new version" prompt), so we never reload out from under
@@ -48,7 +59,7 @@ self.addEventListener('activate', function (event) {
         const keys = await caches.keys();
         await Promise.all(
             keys
-                .filter(function (k) { return k.indexOf('colophon-') === 0 && k !== CACHE; })
+                .filter(function (k) { return k.indexOf('colophon-') === 0 && k !== CACHE && k !== OFFLINE; })
                 .map(function (k) { return caches.delete(k); })
         );
         await self.clients.claim();
@@ -56,8 +67,62 @@ self.addEventListener('activate', function (event) {
 });
 
 self.addEventListener('message', function (event) {
-    if (event.data === 'skipWaiting') self.skipWaiting();
+    const data = event.data;
+    if (data === 'skipWaiting') { self.skipWaiting(); return; }
+    if (!data || typeof data !== 'object') return;
+
+    // Offline-reader controls from the reader page. Each replies to the sender
+    // so the UI can reflect the result (saved / removed / current state).
+    if (data.type === 'cacheBook') {
+        event.waitUntil(cacheBook(data.assets || []).then(function (ok) {
+            reply(event, { type: 'cacheBook', id: data.id, ok: ok });
+        }));
+    } else if (data.type === 'removeBook') {
+        event.waitUntil(removeBook(data.assets || []).then(function () {
+            reply(event, { type: 'removeBook', id: data.id, ok: true });
+        }));
+    } else if (data.type === 'isBookCached') {
+        event.waitUntil(isBookCached(data.fileUrl).then(function (cached) {
+            reply(event, { type: 'isBookCached', id: data.id, cached: cached });
+        }));
+    }
 });
+
+function reply(event, msg) {
+    if (event.source) event.source.postMessage(msg);
+}
+
+// Cache a book's full offline bundle. Per-asset fetch+put (not cache.addAll)
+// so one odd asset can't sink the whole download. `cache: 'reload'` bypasses
+// the HTTP cache to snapshot a fresh, self-consistent set for the version
+// that's live right now.
+async function cacheBook(assets) {
+    try {
+        const cache = await caches.open(OFFLINE);
+        await Promise.all(assets.map(async function (u) {
+            try {
+                const res = await fetch(u, { cache: 'reload' });
+                if (res && res.ok) await cache.put(u, res.clone());
+            } catch (e) { /* skip this asset; book may still be readable */ }
+        }));
+        return true;
+    } catch (e) { return false; }
+}
+
+// Remove only the per-book assets (the EPUB + its reader page). Shared deps
+// (foliate modules, reader.js, CSS, fonts) are left so other downloaded books
+// keep working.
+async function removeBook(assets) {
+    const cache = await caches.open(OFFLINE);
+    await Promise.all(assets.map(function (u) { return cache.delete(u); }));
+}
+
+async function isBookCached(fileUrl) {
+    if (!fileUrl) return false;
+    const cache = await caches.open(OFFLINE);
+    const hit = await cache.match(fileUrl);
+    return !!hit;
+}
 
 async function cacheFirst(req) {
     const cache = await caches.open(CACHE);
@@ -90,12 +155,66 @@ async function networkFirst(req) {
     }
 }
 
+// Serve from the persistent offline cache if present, else go to the network.
+// Never writes — only an explicit "save for offline" populates this cache, so
+// books the user didn't download are never silently stored.
+async function offlineFirst(req) {
+    const cache = await caches.open(OFFLINE);
+    const hit = await cache.match(req);
+    if (hit) return hit;
+    return fetch(req);
+}
+
+// Reader page: prefer the network (fresh progress/markup), fall back to the
+// downloaded copy when offline so a saved book still opens.
+async function readerPage(req) {
+    const cache = await caches.open(OFFLINE);
+    try {
+        return await fetch(req);
+    } catch (err) {
+        const hit = await cache.match(req);
+        if (hit) return hit;
+        throw err;
+    }
+}
+
+// Stale-while-revalidate into a given cache: serve the cached copy instantly,
+// refresh it in the background. Used for foliate's module graph so the reader
+// shell is complete offline once it has run online at least once.
+async function staleWhileRevalidate(req, cacheName) {
+    const cache = await caches.open(cacheName);
+    const hit = await cache.match(req);
+    const net = fetch(req).then(function (res) {
+        if (res && res.ok) cache.put(req, res.clone());
+        return res;
+    }).catch(function () { return hit; });
+    return hit || net;
+}
+
 self.addEventListener('fetch', function (event) {
     const req = event.request;
     if (req.method !== 'GET') return;
 
     const url = new URL(req.url);
     if (url.origin !== self.location.origin) return;
+
+    // Offline reading (checked before the generic rules below):
+    //   - the book file        -> offline-cache-first (download-only)
+    //   - the reader page       -> network-first, offline copy as fallback
+    //   - foliate modules       -> stale-while-revalidate into the persistent
+    //                              cache (relative imports, no ?v=)
+    if (READER_FILE.test(url.pathname)) {
+        event.respondWith(offlineFirst(req));
+        return;
+    }
+    if (READER_PAGE.test(url.pathname)) {
+        event.respondWith(readerPage(req));
+        return;
+    }
+    if (url.pathname.indexOf(FOLIATE_PREFIX) === 0) {
+        event.respondWith(staleWhileRevalidate(req, OFFLINE));
+        return;
+    }
 
     // Versioned static assets: cache-first.
     if (url.pathname.indexOf('/static/') === 0 && url.searchParams.has('v')) {

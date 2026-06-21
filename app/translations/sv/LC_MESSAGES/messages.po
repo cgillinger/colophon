@@ -2879,6 +2879,22 @@ msgstr "Rulla"
 msgid "Could not open this book."
 msgstr "Kunde inte öppna boken."
 
+#: app/templates/reader.html
+msgid "Save for offline reading"
+msgstr "Spara för offline-läsning"
+
+#: app/templates/reader.html
+msgid "Saving for offline…"
+msgstr "Sparar för offline…"
+
+#: app/templates/reader.html
+msgid "Saved — tap to remove offline copy"
+msgstr "Sparad — tryck för att ta bort offline-kopian"
+
+#: app/templates/reader.html
+msgid "Could not save for offline"
+msgstr "Kunde inte spara för offline"
+
 #: app/templates/settings_ai.html:307 app/templates/settings_api.html:462
 #: app/templates/settings_api.html:868
 msgid "AI metadata"
