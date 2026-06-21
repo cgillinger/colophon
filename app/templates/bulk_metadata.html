@@ -284,7 +284,7 @@
                             <td onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
                                 <div class="cover">
                                     {% if item.cover_path %}
-                                        <img src="{{ url_for('metadata.cover_item', item_id=item.id) }}" alt="{{ item.title }}" onerror="this.parentNode.innerHTML='📖';">
+                                        <img src="{{ url_for('metadata.cover_item', item_id=item.id) }}" alt="{{ item.title }}" loading="lazy" decoding="async" onerror="this.parentNode.innerHTML='📖';">
                                     {% else %}
                                         📖
                                     {% endif %}
