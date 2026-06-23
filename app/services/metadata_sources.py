@@ -369,6 +369,18 @@ def extension_from_url(url):
     return ""
 
 
+def _full_size_google_books_url(cover_url):
+    """Google Books image links default to a 128px thumbnail (``zoom=1``).
+    Request the full-size image (``zoom=0``) so applied or enriched covers
+    aren't saved as low-res thumbnails. Mirrors the convention in
+    cover_search.py. Safe because the ``zoom=0`` placeholder-retry further down
+    falls back to ``zoom=1`` if Google returns a curl-edge placeholder.
+    """
+    if "books.google" not in cover_url:
+        return cover_url
+    return cover_url.replace("&zoom=1", "&zoom=0").replace("&zoom=5", "&zoom=0")
+
+
 def download_cover_to_file(cover_url, cover_dir, item_id):
     cover_url = clean_text(cover_url)
 
@@ -377,6 +389,10 @@ def download_cover_to_file(cover_url, cover_dir, item_id):
 
     if not cover_url.startswith(("http://", "https://")):
         return None
+
+    # Upgrade Google Books thumbnails to full resolution before download, so a
+    # zoom=1 thumbnail URL never gets saved and locked as the cover.
+    cover_url = _full_size_google_books_url(cover_url)
 
     try:
         response = requests.get(
