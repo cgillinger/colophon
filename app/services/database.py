@@ -10,6 +10,17 @@ logger = logging.getLogger(__name__)
 
 
 def ensure_database_columns():
+    # On a brand-new database the table doesn't exist yet — db.create_all()
+    # (called right after this in create_app) builds it complete from the model.
+    # The per-column ALTERs below are migration-only, for upgrading an existing
+    # library, so skip them entirely when the table is absent; a missing-table
+    # ALTER would otherwise raise and abort first boot of a fresh instance.
+    table_exists = db.session.execute(text(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='library_items'"
+    )).fetchone()
+    if not table_exists:
+        return
+
     rows = db.session.execute(text("PRAGMA table_info(library_items)")).fetchall()
     existing_columns = {row[1] for row in rows}
 
