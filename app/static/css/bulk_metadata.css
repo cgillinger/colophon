@@ -46,6 +46,21 @@
         .sidebar-brand .brand-logo-dark { display: none; }
         [data-theme="dark"] .sidebar-brand .brand-logo-light { display: none; }
         [data-theme="dark"] .sidebar-brand .brand-logo-dark { display: block; }
+        /* Per-instance owner label (COLOPHON_LIBRARY_OWNER), sits between the
+           wordmark and the "Vyer" section. Matches the "Serie"/"Nytillagt"
+           headings: Cormorant Garamond italic in the gold accent. Pulled up
+           under the brand's 20px bottom padding so it hugs the logo. */
+        .sidebar-library-owner {
+            margin: -14px 0 10px;
+            padding: 0 18px;
+            text-align: center;
+            font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+            font-size: 18px;
+            font-weight: 500;
+            font-style: italic;
+            color: var(--accent-primary);
+            letter-spacing: 0.4px;
+        }
         .sidebar-section { padding: 8px 0; }
         .sidebar-section-title {
             padding: 6px 18px;

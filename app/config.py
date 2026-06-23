@@ -25,6 +25,12 @@ class Config:
     # from LibraryItem.created_at, so it self-expires — no flag to clear.
     NEW_BADGE_DAYS = int(os.environ.get("COLOPHON_NEW_BADGE_DAYS", "14"))
 
+    # Whose library this instance shows. Rendered verbatim under the wordmark
+    # in the sidebar so each per-person instance (see multi-user-via-instances)
+    # is self-identifying. Empty = no label. Set to the full text you want,
+    # e.g. COLOPHON_LIBRARY_OWNER="Christians bibliotek".
+    LIBRARY_OWNER = os.environ.get("COLOPHON_LIBRARY_OWNER", "").strip()
+
     SESSION_TYPE = "filesystem"
     SESSION_FILE_DIR = str(_VAR_DIR / "sessions")
     SESSION_PERMANENT = False

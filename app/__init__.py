@@ -103,6 +103,12 @@ def create_app():
         return {"app_version": __version__}
 
     @app.context_processor
+    def inject_library_owner():
+        """The per-instance library owner label shown under the wordmark
+        (COLOPHON_LIBRARY_OWNER). Empty string = render nothing."""
+        return {"library_owner": app.config.get("LIBRARY_OWNER", "")}
+
+    @app.context_processor
     def inject_sidebar_counts():
         """Library counts shown in the sidebar across every page.
         Cheap queries — three COUNT(*) statements on a single-user SQLite

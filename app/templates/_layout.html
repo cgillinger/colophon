@@ -53,6 +53,13 @@
              src="{{ url_for('static', filename='icons/logo-horizontal-dark.svg') }}" alt="Colophon">
     </a>
 
+    {# Per-instance owner label (COLOPHON_LIBRARY_OWNER). Identifies whose
+       library this instance shows — see the multi-user-via-instances model.
+       Styled like the "Serie"/"Nytillagt" headings (Cormorant italic, gold). #}
+    {% if library_owner %}
+    <div class="sidebar-library-owner">{{ library_owner }}</div>
+    {% endif %}
+
     {# 1. VYER — what the user is looking at right now. Empty on settings
        pages (the block is filled by bulk_metadata only). #}
     {% block sidebar_views %}{% endblock %}
