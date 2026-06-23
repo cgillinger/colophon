@@ -127,11 +127,28 @@ import './../vendor/foliate-js/view.js';
         if (prevZone) prevZone.style.display = paged ? '' : 'none';
         if (nextZone) nextZone.style.display = paged ? '' : 'none';
         if (!view || !view.renderer) return;
+        // Fixed-layout (pre-paginated) books render with foliate's foliate-fxl
+        // renderer, which has none of the reflowable styling controls
+        // (setStyles/flow/gap/max-inline-size — those live on the paginator).
+        // Calling setStyles() there throws and the catch in start() surfaces it
+        // as "Could not open this book." Typography/theme prefs don't apply to
+        // page-image spreads anyway, so skip them for fixed-layout.
+        if (view.isFixedLayout || typeof view.renderer.setStyles !== 'function') return;
         view.renderer.setAttribute('flow', paged ? 'paginated' : 'scrolled');
         var m = MARGINS[prefs.margins] || MARGINS.normal;
         view.renderer.setAttribute('gap', m.gap);
         view.renderer.setAttribute('max-inline-size', m.maxInline);
         view.renderer.setStyles(buildBookCSS());
+    }
+
+    // Fixed-layout books are pre-paginated page images: text size, font,
+    // line spacing, margins and reading mode have no effect (only Theme, which
+    // tints the reader chrome, still applies). Hide the reflowable-only rows so
+    // the settings sheet doesn't offer controls that silently do nothing.
+    function adaptControlsForLayout() {
+        if (!view || !view.isFixedLayout) return;
+        document.querySelectorAll('#readerSheet [data-flow-only]')
+            .forEach(function (el) { el.hidden = true; });
     }
 
     function syncPanelUI() {
@@ -401,6 +418,8 @@ import './../vendor/foliate-js/view.js';
             view.addEventListener('relocate', onRelocate);
             await view.open(cfg.fileUrl);
 
+            // Tailor the settings sheet to the book's layout before showing it.
+            adaptControlsForLayout();
             // Apply saved typography/theme before positioning so the resume
             // fraction maps to the final paginated layout.
             applyReaderStyles();
