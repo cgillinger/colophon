@@ -8,6 +8,8 @@ Colophon scans a folder of e-book files (EPUB, MOBI, AZW3, KEPUB, PDF, CBZ, CBR)
 
 This is a personal project I built for my own library. I've published it in case someone else has the same problem and can use it as a head start. Runs in one Docker container, MIT-licensed, no telemetry. Think of it as a lightweight, metadata-focused alternative to Calibre and Calibre-Web that plays nicely with Komga, Kavita and other servers that read embedded metadata.
 
+📖 **New here?** The **[User Handbook](docs/handbook-en.md)** (också på **[svenska](docs/handbook-sv.md)**) walks through every feature in plain language, with a look-up index — so you can jump straight to *Sharing a book*, *Kobo sync*, *Managing authors*, and so on.
+
 ---
 
 ## Screenshots
@@ -43,8 +45,10 @@ This is a personal project I built for my own library. I've published it in case
 - Keeps authors consistent — one canonical entry per author, spelling variants auto-linked, typos flagged for review, one-click merge/rename that relabels every book, with optional Wikidata verification
 - Groups multiple formats of the same book as one entry
 - Syncs to a Kobo over WiFi — covers, downloads, reading progress
-- Reads EPUBs in the browser, with progress synced to your Kobo
-- UI in English and Swedish
+- Reads EPUBs in the browser — themes, fonts (incl. a dyslexia-friendly face) and **save-for-offline** — with reading progress synced to and from your Kobo
+- Hands a DRM-free EPUB to a friend in person, straight from the reader via your phone's share sheet
+- Installs as an app (PWA) on phone, tablet or desktop
+- UI in English and Swedish, light and dark themes
 
 ## What it doesn't do
 
