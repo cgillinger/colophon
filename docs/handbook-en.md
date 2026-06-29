@@ -374,5 +374,6 @@ available → Reload** prompt appears — it never interrupts you mid-edit.
 
 ---
 
-*Found something out of date, or a feature this handbook misses? It's a living
-document — open an issue or a PR.*
+*Colophon is a personal project, built first and foremost for my own library and
+shared as-is. This handbook describes it as it currently stands; features come
+and go to suit how I use it.*

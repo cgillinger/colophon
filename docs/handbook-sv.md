@@ -380,5 +380,6 @@ tillgänglig → Ladda om**-prompt — den avbryter dig aldrig mitt i en rediger
 
 ---
 
-*Hittade du något inaktuellt, eller en funktion handboken missar? Det är ett
-levande dokument — öppna en issue eller en PR.*
+*Colophon är ett personligt projekt, byggt främst för mitt eget bibliotek och
+delat som det är. Den här handboken beskriver det som det ser ut just nu;
+funktioner kommer och går efter hur jag själv använder det.*
