@@ -239,6 +239,48 @@ python -m pytest tests/ -v
 
 Tests mock external services (Google Books, Calibre subprocess). No integration tests requiring Docker.
 
+### Running tests locally (outside Docker)
+
+The dev box only has system Python with no project deps. One-time setup:
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt pytest
+```
+
+`create_app()` defaults `DATA_DIR=/data` and `LIBRARY_DIR=/books` (the container
+mounts), which don't exist locally → `PermissionError` in any test that builds
+the app (e.g. `test_kobo_sync`). Point them at writable local dirs via a repo
+`.env` (loaded by `load_dotenv()`; gitignored locally via `.git/info/exclude`,
+since `.env` is not yet in `.gitignore`):
+
+```
+COLOPHON_DATA_DIR=<repo>/data        # under gitignored data/
+COLOPHON_LIBRARY_DIR=<repo>/var/books-dev   # under gitignored var/
+```
+
+Then `.venv/bin/python -m pytest tests/ -q`. Containers ignore this file — they
+get their env from docker-compose.
+
+> ⚠️ **Never run the suite inside the live `colophon` / `colophon2` container.**
+> The `test_kobo_sync.py` fixture calls the real `create_app()` and runs
+> `DELETE FROM library_items / kobo_devices / kobo_book_states` on
+> `DATA_DIR/colophon.db` — i.e. the **production DB** at `/data`. Run it locally
+> (above) or in a throwaway container with **no `/data` mount**:
+> ```bash
+> docker run --rm -v /mnt/docker/stacks/colophon/repo:/src -w /src \
+>   -e PYTHONPATH=/src --entrypoint sh colophon:latest \
+>   -c "pip install -q pytest && python -m pytest tests/ -q"
+> ```
+
+**Known pre-existing failures (as of v1.28.1):** a clean run is *409 passed, 10
+failed*. The 10 are not regressions — `test_quality.py` (6) and
+`test_scoring.py` (3) assert Swedish reason/warning substrings the code now
+emits in English, and `test_scanner.py::...test_does_not_overwrite_manual_metadata`
+expects a `manual_metadata` guard the scanner no longer applies. Treat "the same
+10" as green; fixing them (decide SV vs EN reasons, confirm scanner intent) is a
+separate cleanup.
+
 ## Common pitfalls
 
 1. **Never spawn subprocesses per-file for reading metadata** — use ebooklib. Subprocesses + Gunicorn sync workers = timeouts.
