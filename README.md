@@ -192,7 +192,7 @@ Colophon uses Flask-Babel. A new language is a translation file, no code changes
 4. Add the code to `SUPPORTED_LANGUAGES` in `app/__init__.py`
 5. `docker compose down && docker compose build --no-cache && docker compose up -d`
 
-PRs with `.po` files welcome.
+The steps are here if you'd like another language in your own copy.
 
 ---
 
@@ -269,7 +269,7 @@ Eject KOBOeReader properly (Finder eject button / right-click → Eject) and wai
 
 ## A note about this project
 
-This is a hobby project I work on when I have time. Issues and PRs are welcome — I read everything, but responses may be slow, which is a matter of time and not interest. Use at your own risk and keep backups of your e-book files.
+This is a hobby project I build for my own library and share as-is, in case it's useful to someone with the same problem. I develop it to fit my own needs, so I may not respond to issues or take on pull requests — that's a matter of time and focus, not disinterest. Use at your own risk and keep backups of your e-book files.
 
 ## License
 
