@@ -117,6 +117,26 @@
         .reader-topbar .reader-offline.is-busy { opacity: .55; pointer-events: none; }
         .reader-topbar .reader-offline.is-busy i { animation: rdrPulse 1s ease-in-out infinite; }
         @keyframes rdrPulse { 0%,100% { opacity: .4; } 50% { opacity: 1; } }
+        /* Share ("give this book") button. Dimmed when blocked (DRM / not a
+           secure context) — still tappable so the toast can explain why. */
+        .reader-topbar .reader-share.is-blocked { opacity: .45; }
+        .reader-topbar .reader-share.is-busy { opacity: .55; pointer-events: none; }
+        .reader-topbar .reader-share.is-busy i { animation: rdrPulse 1s ease-in-out infinite; }
+
+        /* Transient explanation toast (share availability). */
+        .reader-toast {
+            position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0));
+            transform: translateX(-50%) translateY(8px);
+            z-index: 60; max-width: min(92vw, 420px);
+            padding: 11px 16px; border-radius: 10px;
+            background: rgba(25,28,32,.96); color: #f3f5f7;
+            font-size: .88rem; line-height: 1.35; text-align: center;
+            box-shadow: 0 6px 24px rgba(0,0,0,.28);
+            opacity: 0; transition: opacity .18s ease, transform .18s ease;
+            pointer-events: none;
+        }
+        .reader-toast.is-visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .reader-toast[hidden] { display: none; }
 
         .reader-sheet-backdrop {
             position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.35);
@@ -195,6 +215,11 @@
                 aria-label="{{ _('Save for offline reading') }}" title="{{ _('Save for offline reading') }}" hidden>
             <i class="ti ti-download"></i>
         </button>
+        <button type="button" class="reader-settings reader-share" id="readerShareBtn"
+                aria-label="{{ _('Give this book to someone') }}" title="{{ _('Give this book to someone') }}"
+                data-drm="{{ '0' if can_share else '1' }}">
+            <i class="ti ti-share"></i>
+        </button>
         <button type="button" class="reader-settings" id="readerSettingsBtn"
                 aria-label="{{ _('Reading settings') }}" title="{{ _('Reading settings') }}" aria-expanded="false">Aa</button>
     </div>
@@ -263,6 +288,10 @@
         </div>
     </div>
 
+    {# Transient message surface — used to explain why sharing is unavailable
+       (DRM / not on HTTPS) rather than failing silently. #}
+    <div class="reader-toast" id="readerToast" role="status" aria-live="polite" hidden></div>
+
     <script>
         window.__readerConfig = {
             itemId: {{ item.id|tojson }},
@@ -272,6 +301,13 @@
             initialProgress: {{ initial_progress|tojson }},
             readStatus: {{ read_status|tojson }},
             homeUrl: {{ url_for('metadata.index')|tojson }},
+            // "Give this book to someone": hand the raw EPUB to the OS share
+            // sheet (AirDrop / Nearby Share / Messages / mail). canShare is the
+            // server's content gate (readable, on disk, no DRM); the secure-
+            // context + Web Share feature checks happen client-side.
+            canShare: {{ can_share|tojson }},
+            shareFileName: {{ share_filename|tojson }},
+            bookTitle: {{ (item.title or item.file_name or '')|tojson }},
             // Shared reader-shell assets cached alongside the book so the whole
             // reader works offline. foliate's module graph is cached separately
             // by the service worker (stale-while-revalidate). Tabler's icon
@@ -297,7 +333,12 @@
                 saveOffline: {{ _('Save for offline reading')|tojson }},
                 saving: {{ _('Saving for offline…')|tojson }},
                 savedOffline: {{ _('Saved — tap to remove offline copy')|tojson }},
-                saveFailed: {{ _('Could not save for offline')|tojson }}
+                saveFailed: {{ _('Could not save for offline')|tojson }},
+                shareDrm: {{ _('This book is copy-protected (DRM) and can’t be shared. The recipient wouldn’t be able to open the file — the protection is tied to your account.')|tojson }},
+                shareNeedsHttps: {{ _('Sharing needs a secure (HTTPS) connection. Open Colophon via your Tailscale address (https://…) instead of the plain http:// address, then try again.')|tojson }},
+                shareUnsupported: {{ _('Your browser can’t share files directly — the book will download instead, so you can send it yourself.')|tojson }},
+                shareError: {{ _('Could not share this book.')|tojson }},
+                sharePreparing: {{ _('Preparing book to share…')|tojson }}
             }
         };
 

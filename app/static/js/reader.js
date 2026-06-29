@@ -24,6 +24,8 @@ import './../vendor/foliate-js/view.js';
     var nextZone = document.getElementById('readerNext');
 
     var offlineBtn = document.getElementById('readerOfflineBtn');
+    var shareBtn = document.getElementById('readerShareBtn');
+    var toastEl = document.getElementById('readerToast');
     var settingsBtn = document.getElementById('readerSettingsBtn');
     var sheet = document.getElementById('readerSheet');
     var backdrop = document.getElementById('readerSheetBackdrop');
@@ -406,11 +408,97 @@ import './../vendor/foliate-js/view.js';
         });
     }
 
+    // --- Give this book to someone ---------------------------------------
+    // Hand the raw EPUB to the OS share sheet (AirDrop / Nearby Share /
+    // Messages / mail) via the Web Share API. The point is the in-person
+    // "you can have it from me" handoff. Three things can stop it — each gets
+    // a clear toast rather than a dead button or a silent failure:
+    //   1. DRM        — server says the book isn't shareable (cfg.canShare).
+    //   2. not HTTPS  — Web Share with files needs a secure context.
+    //   3. no support — browser lacks file sharing → fall back to a download.
+    var toastTimer = null;
+    function showToast(msg) {
+        if (!toastEl || !msg) return;
+        toastEl.textContent = msg;
+        toastEl.hidden = false;
+        // Force reflow so the .is-visible transition runs on re-show.
+        void toastEl.offsetWidth;
+        toastEl.classList.add('is-visible');
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () {
+            toastEl.classList.remove('is-visible');
+            setTimeout(function () { toastEl.hidden = true; }, 220);
+        }, 6000);
+    }
+
+    // A reason the share can't proceed at all, or null if it can be attempted.
+    function shareBlockReason() {
+        if (!cfg.canShare) return i18n.shareDrm || 'This book can’t be shared.';
+        if (!window.isSecureContext) return i18n.shareNeedsHttps || 'Sharing needs HTTPS.';
+        return null;
+    }
+
+    function downloadFile(blob, name) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url; a.download = name || 'book.epub';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+    }
+
+    var sharing = false;
+    async function doShare() {
+        if (sharing) return;
+        var reason = shareBlockReason();
+        if (reason) { showToast(reason); return; }
+
+        sharing = true;
+        if (shareBtn) shareBtn.classList.add('is-busy');
+        try {
+            var resp = await fetch(cfg.fileUrl);
+            if (!resp || !resp.ok) throw new Error('fetch failed');
+            var blob = await resp.blob();
+            var name = cfg.shareFileName || 'book.epub';
+            var file = new File([blob], name, { type: 'application/epub+zip' });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({ files: [file], title: cfg.bookTitle || name });
+            } else {
+                // Secure context but no file-level Web Share (e.g. desktop
+                // Firefox): download so the user can send it themselves.
+                downloadFile(blob, name);
+                showToast(i18n.shareUnsupported || 'Downloading instead.');
+            }
+        } catch (err) {
+            // The user dismissing the native share sheet is not an error.
+            if (err && err.name === 'AbortError') { /* cancelled */ }
+            else {
+                console.error('Share failed:', err);
+                showToast(i18n.shareError || 'Could not share this book.');
+            }
+        } finally {
+            sharing = false;
+            if (shareBtn) shareBtn.classList.remove('is-busy');
+        }
+    }
+
+    function initShare() {
+        if (!shareBtn) return;
+        // Dim the button up-front when it can't actually share, but keep it
+        // tappable so the toast can explain why (transparency over a hidden
+        // or greyed-out dead control).
+        if (shareBlockReason()) shareBtn.classList.add('is-blocked');
+        shareBtn.addEventListener('click', doShare);
+    }
+
     async function start() {
         bindControls();
         bindSettings();
         window.addEventListener('online', flushUnsynced);
         initOffline();
+        initShare();
         flushUnsynced();   // a previous offline session may have pending progress
         try {
             view = document.createElement('foliate-view');

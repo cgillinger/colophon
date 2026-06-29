@@ -20,6 +20,7 @@ Routes:
 """
 import logging
 import os
+import re
 from datetime import datetime
 
 from flask import (
@@ -34,6 +35,7 @@ from flask import (
 
 from app.models import db
 from app.routes.helpers import get_item_or_404
+from app.services.drm import epub_has_drm
 from app.services.reading_state import apply_reading_state
 
 logger = logging.getLogger(__name__)
@@ -50,6 +52,33 @@ def _is_readable(item):
     return (item.extension or "").lower() in READABLE_EXTENSIONS
 
 
+def _share_filename(item):
+    """A human-friendly '.epub' download name for the share sheet.
+
+    Prefer 'Title - Author.epub' (what a recipient wants to see in their
+    library), sanitised for cross-platform filenames; fall back to the real
+    on-disk basename when there's no usable title.
+    """
+    title = (item.title or "").strip()
+    author = (item.author or "").strip()
+    if title:
+        stem = f"{title} - {author}" if author else title
+        stem = re.sub(r'[\\/:*?"<>|]+', " ", stem)   # illegal on Win/macOS
+        stem = re.sub(r"\s+", " ", stem).strip()[:120]
+        if stem:
+            return f"{stem}.epub"
+    return os.path.basename(item.file_path or "") or "book.epub"
+
+
+def _can_share(item):
+    """A book is shareable from the reader when it's a readable EPUB whose
+    file exists and carries no DRM. DRM detection is on-demand (reads only the
+    zip's META-INF) rather than a stored flag, so it can never go stale."""
+    if not _is_readable(item) or not item.file_path or not os.path.exists(item.file_path):
+        return False
+    return not epub_has_drm(item.file_path)
+
+
 @reader_bp.route("/<int:item_id>")
 def read_book(item_id):
     item = get_item_or_404(item_id)
@@ -62,6 +91,8 @@ def read_book(item_id):
         progress_url=url_for("reader.update_progress", item_id=item.id),
         initial_progress=item.read_progress or 0,
         read_status=item.read_status or "ReadyToRead",
+        can_share=_can_share(item),
+        share_filename=_share_filename(item),
     )
 
 
