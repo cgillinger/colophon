@@ -69,6 +69,11 @@ class LibraryItem(db.Model):
     read_status = db.Column(db.String(20), default="ReadyToRead", nullable=False)
     read_progress = db.Column(db.Float, nullable=True)
     read_location = db.Column(db.Text, nullable=True)
+    # The full Kobo CurrentBookmark.Location object (Value + Type + Source) as
+    # JSON, stored verbatim and echoed back unchanged so the device resumes at
+    # the exact span. read_location keeps just the Value for display/compat.
+    # Never synthesize this — a fabricated Source makes the Kobo jump to start.
+    read_location_json = db.Column(db.Text, nullable=True)
     read_last_modified = db.Column(db.DateTime, nullable=True)
     read_started_at = db.Column(db.DateTime, nullable=True)
     read_finished_at = db.Column(db.DateTime, nullable=True)

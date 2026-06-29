@@ -10,6 +10,7 @@ Kobo dedupes by RevisionId.
 Protocol shape borrowed from gotson/komga (MIT-licensed) — see
 THIRD_PARTY_LICENSES.md. No code copied; DTOs rebuilt in Python.
 """
+import json
 import logging
 import os
 import uuid
@@ -51,6 +52,26 @@ _KOBO_UUID_NAMESPACE = uuid.UUID("4c0fb9b1-2b3b-4a1f-9a8d-0c8b6c1a2b3a")
 
 def _book_uuid(item_id: int) -> str:
     return str(uuid.uuid5(_KOBO_UUID_NAMESPACE, f"book-{item_id}"))
+
+
+def _faithful_location(item: LibraryItem) -> dict | None:
+    """The exact ``CurrentBookmark.Location`` object the device last sent
+    (Value + Type + Source), or ``None`` if we have no faithful copy.
+
+    We NEVER fabricate one. The Kobo's span Location is resolved against its
+    ``Source`` (the content document the span lives in); a synthesized
+    ``Source=book_uuid`` doesn't match anything on the device, so the Kobo
+    can't resolve the span and jumps to the start. When there's no stored
+    full Location we return ``None`` and the DTO sends ``Location: null`` (as
+    Komga does), so the device keeps its own intact local bookmark instead."""
+    raw = getattr(item, "read_location_json", None)
+    if not raw:
+        return None
+    try:
+        loc = json.loads(raw)
+    except (ValueError, TypeError):
+        return None
+    return loc if isinstance(loc, dict) and loc else None
 
 
 def _iso(dt: datetime | None) -> str:
@@ -531,21 +552,18 @@ def _entitlement_dtos(item: LibraryItem, base_url: str, token: str) -> dict:
         book_metadata["Series"] = series_obj
 
     state_last_modified = _iso(item.read_last_modified) if item.read_last_modified else last_modified
-    location_obj = None
-    if item.read_location:
-        location_obj = {
-            "Value": item.read_location,
-            "Type": "KoboSpan",
-            "Source": book_uuid,
-        }
+    current_bookmark = {
+        "LastModified": state_last_modified,
+        # The device's own Location echoed back verbatim, or null — never a
+        # fabricated Source (see _faithful_location). Null lets the Kobo keep
+        # its intact local bookmark; Komga sends null here too.
+        "Location": _faithful_location(item),
+        "ProgressPercent": item.read_progress,
+        "ContentSourceProgressPercent": item.read_progress,
+    }
     reading_state = {
         "Created": created,
-        "CurrentBookmark": {
-            "LastModified": state_last_modified,
-            "Location": location_obj,
-            "ProgressPercent": item.read_progress,
-            "ContentSourceProgressPercent": item.read_progress,
-        },
+        "CurrentBookmark": current_bookmark,
         "EntitlementId": book_uuid,
         "LastModified": state_last_modified,
         "PriorityTimestamp": state_last_modified,
@@ -786,21 +804,18 @@ def _build_state_response(item: LibraryItem) -> dict:
     book_uuid = _book_uuid(item.id)
     last_modified = _iso(item.read_last_modified or item.updated_at)
     created = _iso(item.created_at)
-    location_obj = None
-    if item.read_location:
-        location_obj = {
-            "Value": item.read_location,
-            "Type": "KoboSpan",
-            "Source": book_uuid,
-        }
+    current_bookmark = {
+        "LastModified": last_modified,
+        # The device's own Location echoed back verbatim, or null — never a
+        # fabricated Source (see _faithful_location). Null lets the Kobo keep
+        # its intact local bookmark; Komga sends null here too.
+        "Location": _faithful_location(item),
+        "ProgressPercent": item.read_progress,
+        "ContentSourceProgressPercent": item.read_progress,
+    }
     return {
         "Created": created,
-        "CurrentBookmark": {
-            "LastModified": last_modified,
-            "Location": location_obj,
-            "ProgressPercent": item.read_progress,
-            "ContentSourceProgressPercent": item.read_progress,
-        },
+        "CurrentBookmark": current_bookmark,
         "EntitlementId": book_uuid,
         "LastModified": last_modified,
         "PriorityTimestamp": last_modified,
@@ -882,7 +897,7 @@ def update_reading_state(device, book_id):
 
     status_info = payload.get("StatusInfo") or {}
     bookmark = payload.get("CurrentBookmark") or {}
-    location = bookmark.get("Location") or {}
+    location = bookmark.get("Location")
 
     incoming_status = status_info.get("Status") or item.read_status or "ReadyToRead"
     incoming_mod = (
@@ -894,7 +909,10 @@ def update_reading_state(device, book_id):
     progress = bookmark.get("ProgressPercent")
     if progress is None:
         progress = bookmark.get("ContentSourceProgressPercent")
-    location_value = location.get("Value") if isinstance(location, dict) else None
+    # Capture the WHOLE Location object (Value + Type + Source), not just Value,
+    # so it can be stored verbatim and echoed back unchanged for exact resume.
+    # Empty/missing Location -> None: the stored full location is left intact.
+    incoming_location = location if isinstance(location, dict) and location else None
 
     # Monotonic / last-write-wins rules live in the shared helper so the
     # in-browser reader enforces them identically (services/reading_state.py).
@@ -902,7 +920,7 @@ def update_reading_state(device, book_id):
         item,
         incoming_status,
         progress=progress,
-        location=location_value,
+        location=incoming_location,
         modified_at=incoming_mod,
     )
     if not applied:

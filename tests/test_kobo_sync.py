@@ -734,15 +734,18 @@ def test_state_get_returns_saved_dto(app, client):
     """GET /state must return the saved DTO wrapped in ReadingStates.
     A `{}` response (the old catch-all behaviour) lets the device
     overwrite our state with its local ReadyToRead default."""
+    import json
     from datetime import datetime
     from app.models import LibraryItem, db
 
+    full_loc = {"Value": "epubcfi(/6/8)", "Type": "KoboSpan", "Source": "doc-uuid-1"}
     with app.app_context():
         token, item_id, book_uuid = _make_book("Get state book")
         item = LibraryItem.query.get(item_id)
         item.read_status = "Reading"
         item.read_progress = 42.0
         item.read_location = "epubcfi(/6/8)"
+        item.read_location_json = json.dumps(full_loc)
         item.read_last_modified = datetime(2026, 5, 23, 12, 0, 0)
         db.session.commit()
 
@@ -753,7 +756,8 @@ def test_state_get_returns_saved_dto(app, client):
     state = payload["ReadingStates"][0]
     assert state["StatusInfo"]["Status"] == "Reading"
     assert state["CurrentBookmark"]["ProgressPercent"] == 42.0
-    assert state["CurrentBookmark"]["Location"]["Value"] == "epubcfi(/6/8)"
+    # Location echoed back verbatim — incl. the device's own Source.
+    assert state["CurrentBookmark"]["Location"] == full_loc
 
 
 def test_state_put_older_timestamp_is_ignored(app, client):
@@ -893,11 +897,15 @@ def test_state_put_finished_sets_finished_at(app, client):
 
 
 def test_entitlement_includes_reading_state_from_db(app, client):
-    """A library_sync response must reflect the persisted reading state."""
+    """A library_sync response must reflect the persisted reading state and
+    echo the device's full Location verbatim (Value + Type + the device's own
+    Source — never a fabricated one)."""
+    import json
     from datetime import datetime
     from app.models import LibraryItem, db
     from app.services.kobo_auth import create_device
 
+    full_loc = {"Value": "epubcfi(/6/8)", "Type": "KoboSpan", "Source": "doc-uuid-42"}
     with app.app_context():
         _, token = create_device("State DTO test")
         item = LibraryItem(
@@ -908,6 +916,7 @@ def test_entitlement_includes_reading_state_from_db(app, client):
             read_status="Reading",
             read_progress=50.0,
             read_location="epubcfi(/6/8)",
+            read_location_json=json.dumps(full_loc),
             read_last_modified=datetime(2026, 5, 23, 9, 0, 0),
             read_started_at=datetime(2026, 5, 20, 9, 0, 0),
             times_started=1,
@@ -924,11 +933,8 @@ def test_entitlement_includes_reading_state_from_db(app, client):
     assert rs["StatusInfo"]["Status"] == "Reading"
     assert rs["StatusInfo"]["TimesStartedReading"] == 1
     assert rs["CurrentBookmark"]["ProgressPercent"] == 50.0
-    loc = rs["CurrentBookmark"]["Location"]
-    assert loc is not None
-    assert loc["Value"] == "epubcfi(/6/8)"
-    assert loc["Type"] == "KoboSpan"
-    assert loc["Source"]  # the book UUID
+    # Verbatim — Source is the device's, not _book_uuid(item).
+    assert rs["CurrentBookmark"]["Location"] == full_loc
     del item_id  # silence linter
 
 
@@ -953,6 +959,69 @@ def test_entitlement_omits_location_when_none(app, client):
     rs = inner["ReadingState"]
     assert rs["StatusInfo"]["Status"] == "ReadyToRead"
     assert rs["CurrentBookmark"]["Location"] is None
+
+
+def test_state_put_stores_full_location_and_round_trips(app, client):
+    """PUT with a full Location (Value+Type+Source) stores all three fields in
+    read_location_json, and GET /state echoes the exact same object back so the
+    device resumes at the precise span."""
+    import json
+    from app.models import LibraryItem
+
+    with app.app_context():
+        token, item_id, book_uuid = _make_book("Round trip book")
+
+    full_loc = {
+        "Value": "epubcfi(/6/14!/4/2/10/1:0)",
+        "Type": "KoboSpan",
+        "Source": "OEBPS/chapter3.xhtml",
+    }
+    resp = client.put(
+        f"/kobo/{token}/v1/library/{book_uuid}/state",
+        json={
+            "StatusInfo": {"Status": "Reading", "LastModified": "2026-06-29T10:00:00.000Z"},
+            "CurrentBookmark": {
+                "ProgressPercent": 60.0,
+                "Location": full_loc,
+                "LastModified": "2026-06-29T10:00:00.000Z",
+            },
+            "LastModified": "2026-06-29T10:00:00.000Z",
+        },
+    )
+    assert resp.status_code == 200
+
+    with app.app_context():
+        item = LibraryItem.query.get(item_id)
+        assert json.loads(item.read_location_json) == full_loc  # all three fields
+        assert item.read_location == full_loc["Value"]          # mirrored for display
+
+    # Round-trip: GET /state hands the device its own Location back unchanged.
+    resp = client.get(f"/kobo/{token}/v1/library/{book_uuid}/state")
+    state = resp.get_json()["ReadingStates"][0]
+    assert state["CurrentBookmark"]["Location"] == full_loc
+
+
+def test_legacy_read_location_without_json_yields_null_location(app, client):
+    """A book with only a legacy read_location (Value) and no read_location_json
+    must NOT fabricate a Location/Source — the DTO sends Location: null so the
+    device keeps its own local bookmark instead of jumping to the start."""
+    from datetime import datetime
+    from app.models import LibraryItem, db
+
+    with app.app_context():
+        token, item_id, book_uuid = _make_book("Legacy loc book")
+        item = LibraryItem.query.get(item_id)
+        item.read_status = "Reading"
+        item.read_progress = 25.0
+        item.read_location = "epubcfi(/6/8)"   # legacy Value only
+        item.read_location_json = None
+        item.read_last_modified = datetime(2026, 6, 29, 12, 0, 0)
+        db.session.commit()
+
+    resp = client.get(f"/kobo/{token}/v1/library/{book_uuid}/state")
+    state = resp.get_json()["ReadingStates"][0]
+    assert state["CurrentBookmark"]["ProgressPercent"] == 25.0
+    assert state["CurrentBookmark"]["Location"] is None
 
 
 def test_state_put_route_shadows_catchall(app, client):

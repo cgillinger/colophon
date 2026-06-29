@@ -1970,6 +1970,9 @@ def reset_reading_state(item_id):
     item.read_status = "ReadyToRead"
     item.read_progress = None
     item.read_location = None
+    # Also clear the full Kobo Location, else the next sync would echo the old
+    # span back and the device would resume the position we just reset.
+    item.read_location_json = None
     item.read_started_at = None
     item.read_finished_at = None
     item.times_started = 0

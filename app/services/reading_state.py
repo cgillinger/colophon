@@ -11,6 +11,7 @@ status or last-write-wins ordering.
 This was extracted from the Kobo handler; it carries that handler's rules
 verbatim so existing Kobo behaviour is unchanged.
 """
+import json
 from datetime import datetime
 
 # Monotonic status ranks: a book only ever moves forward.
@@ -49,9 +50,12 @@ def apply_reading_state(item, status, progress=None, location=None, modified_at=
       - ``read_started_at`` / ``times_started`` are set on the first transition
         into ``Reading``; ``read_finished_at`` on the first into ``Finished``,
         which also coerces progress to 100.
-      - ``read_location`` is only touched when a truthy ``location`` is given,
-        so a caller that has no location (the browser reader, which resumes by
-        percent) never clobbers a location written by another device.
+      - ``location`` is only touched when truthy, so a caller that has no
+        location (the browser reader, which resumes by percent) never clobbers a
+        location written by another device. A ``dict`` (the Kobo's full
+        ``CurrentBookmark.Location``: Value + Type + Source) is stored verbatim
+        in ``read_location_json`` and its ``Value`` mirrored to ``read_location``
+        for display; a plain string (legacy) updates ``read_location`` only.
       - ``read_last_modified`` only ever advances, so an applied older-timestamp
         "furthest page" update can't drag the timeline marker (and the Kobo
         delta it drives) backwards.
@@ -97,7 +101,14 @@ def apply_reading_state(item, status, progress=None, location=None, modified_at=
         except (TypeError, ValueError):
             pass
     if location:
-        item.read_location = location
+        if isinstance(location, dict):
+            # Full Kobo Location object — keep it verbatim so the device can
+            # resolve the exact span on resume, and mirror Value for display.
+            item.read_location_json = json.dumps(location)
+            item.read_location = location.get("Value")
+        else:
+            # Legacy/string location (e.g. existing callers/tests).
+            item.read_location = location
     # Timeline marker advances only — never regress it, even when we apply an
     # older-timestamped furthest-page update above.
     incoming_mod = modified_at or datetime.utcnow()

@@ -6,6 +6,7 @@ and the in-browser reader use, so these tests lock in the monotonic /
 last-write-wins rules that keep the two in sync. Pure logic — no DB or network
 (the helper only mutates attributes on the passed object).
 """
+import json
 from datetime import datetime, timedelta
 
 from app.services.reading_state import apply_reading_state
@@ -21,6 +22,7 @@ class _Item:
         self.read_status = "ReadyToRead"
         self.read_progress = None
         self.read_location = None
+        self.read_location_json = None
         self.read_last_modified = None
         self.read_started_at = None
         self.read_finished_at = None
@@ -149,6 +151,46 @@ def test_reading_to_finished_with_lower_progress_coerces_to_100():
     assert item.read_status == "Finished"
     assert item.read_progress == 100.0
     assert item.read_finished_at == T1
+
+
+# --- Full Location storage (v1.28.2) ------------------------------------------
+# A dict location (the Kobo's full CurrentBookmark.Location: Value+Type+Source)
+# is stored verbatim in read_location_json; a string stays legacy; no location
+# (the browser reader) never touches read_location_json.
+
+
+def test_dict_location_stored_as_json_and_value_mirrored():
+    item = _Item(read_status="Reading", read_progress=10.0, read_last_modified=T0)
+    loc = {"Value": "epubcfi(/6/4!/2)", "Type": "KoboSpan", "Source": "uuid-123"}
+    assert apply_reading_state(item, "Reading", 20.0, location=loc, modified_at=T1) is True
+    assert json.loads(item.read_location_json) == loc
+    assert item.read_location == "epubcfi(/6/4!/2)"  # Value mirrored for display
+
+
+def test_string_location_is_legacy_and_leaves_json_untouched():
+    item = _Item(read_status="Reading", read_progress=10.0, read_last_modified=T0)
+    assert apply_reading_state(item, "Reading", 20.0, location="span-xyz", modified_at=T1) is True
+    assert item.read_location == "span-xyz"
+    assert item.read_location_json is None
+
+
+def test_no_location_does_not_touch_location_json():
+    # The in-browser reader passes no location and resumes by percent — it must
+    # never clobber a full Location the Kobo wrote.
+    existing = json.dumps({"Value": "v", "Type": "KoboSpan", "Source": "uuid-1"})
+    item = _Item(read_status="Reading", read_progress=10.0,
+                 read_location_json=existing, read_last_modified=T0)
+    assert apply_reading_state(item, "Reading", 30.0, modified_at=T1) is True
+    assert item.read_location_json == existing
+
+
+def test_dropped_update_does_not_store_location():
+    # A furthest-wins drop (lower progress) must not persist its location either.
+    item = _Item(read_status="Reading", read_progress=40.0, read_last_modified=T0)
+    loc = {"Value": "back", "Type": "KoboSpan", "Source": "uuid-9"}
+    assert apply_reading_state(item, "Reading", 5.0, location=loc, modified_at=T1) is False
+    assert item.read_location_json is None
+    assert item.read_location is None
 
 
 def test_reset_to_readytoread_not_blocked_by_furthest_read_rule():

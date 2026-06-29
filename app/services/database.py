@@ -53,6 +53,7 @@ def ensure_database_columns():
         ),
         "read_progress": "ALTER TABLE library_items ADD COLUMN read_progress REAL",
         "read_location": "ALTER TABLE library_items ADD COLUMN read_location TEXT",
+        "read_location_json": "ALTER TABLE library_items ADD COLUMN read_location_json TEXT",
         "read_last_modified": "ALTER TABLE library_items ADD COLUMN read_last_modified DATETIME",
         "read_started_at": "ALTER TABLE library_items ADD COLUMN read_started_at DATETIME",
         "read_finished_at": "ALTER TABLE library_items ADD COLUMN read_finished_at DATETIME",
