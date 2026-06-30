@@ -227,9 +227,12 @@ review and clean up. Nothing is deleted without your say-so.
 
 ## 12. Reading in the browser
 
-Colophon has a built-in EPUB reader — no app needed.
+Colophon has a built-in reader — no app needed. It opens **EPUB, MOBI and
+AZW3**; DRM-protected files can't be opened (Colophon never strips DRM).
 
-- **Open it** from a book's details in **Shelf** view: tap **Read** (EPUB only).
+- **Open it** from a book's details in **Shelf** view: tap **Read** (EPUB,
+  MOBI, AZW3). MOBI and AZW3 reflow just like EPUB, so the reading settings
+  below apply to them too.
 - **Turn pages** by tapping the left/right edges, or with the arrow keys.
 - **Reading settings** (the **Aa** button) let you tune:
   - **Theme** — Light, Sepia, Dark.
