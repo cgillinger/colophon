@@ -1,10 +1,15 @@
 # Colophon – e-book metadata manager
-"""In-browser EPUB reader.
+"""In-browser e-book reader.
 
 Renders a book in the browser (foliate-js) and syncs reading progress through
 the *same* canonical LibraryItem fields the Kobo sync uses (see
 services/reading_state.py), so reading in the app and on a Kobo stay in
 lock-step for free.
+
+Formats: EPUB (incl. fixed-layout) plus MOBI/AZW3 — foliate-js carries the
+parsers for all three and dispatches on the file's magic bytes, so we just hand
+it the raw bytes. PDF is not yet supported (its parser isn't vendored). DRM'd
+MOBI/AZW3 fail to open and surface the generic load-error overlay.
 
 Offline reading is supported (v1.26.0): the reader's "save for offline" button
 caches the book file + reader shell into a persistent Cache Storage bucket via
@@ -42,10 +47,18 @@ logger = logging.getLogger(__name__)
 
 reader_bp = Blueprint("reader", __name__, url_prefix="/reader")
 
-# Formats the in-browser reader can render. EPUB is the tested path in step 1;
-# the file route is gated to this set so we never hand the reader a format it
-# can't open.
-READABLE_EXTENSIONS = {".epub"}
+# Formats the in-browser reader can render, mapped to the Content-Type we serve
+# the raw bytes with. foliate-js sniffs the actual format from the file's magic
+# bytes, so these mimetypes are cosmetic correctness rather than load-bearing;
+# the key set is the real gate — the file route 404s anything outside it so we
+# never hand the reader a format it can't open. (.azw is old MOBI-in-disguise.)
+READER_MIMETYPES = {
+    ".epub": "application/epub+zip",
+    ".mobi": "application/x-mobipocket-ebook",
+    ".azw": "application/x-mobipocket-ebook",
+    ".azw3": "application/vnd.amazon.ebook",
+}
+READABLE_EXTENSIONS = set(READER_MIMETYPES)
 
 
 def _is_readable(item):
@@ -71,10 +84,16 @@ def _share_filename(item):
 
 
 def _can_share(item):
-    """A book is shareable from the reader when it's a readable EPUB whose
-    file exists and carries no DRM. DRM detection is on-demand (reads only the
-    zip's META-INF) rather than a stored flag, so it can never go stale."""
-    if not _is_readable(item) or not item.file_path or not os.path.exists(item.file_path):
+    """A book is shareable from the reader when it's an EPUB whose file exists
+    and carries no DRM. DRM detection is on-demand (reads only the zip's
+    META-INF) rather than a stored flag, so it can never go stale.
+
+    Share stays EPUB-only even though the reader now opens MOBI/AZW3: handing a
+    recipient the raw file means we must vouch it's DRM-free, and epub_has_drm
+    only understands EPUB. Sharing other formats is a separate step."""
+    if (item.extension or "").lower() != ".epub":
+        return False
+    if not item.file_path or not os.path.exists(item.file_path):
         return False
     return not epub_has_drm(item.file_path)
 
@@ -98,12 +117,13 @@ def read_book(item_id):
 
 @reader_bp.route("/<int:item_id>/file")
 def book_file(item_id):
-    """Serve the raw EPUB bytes to the browser reader.
+    """Serve the raw book bytes to the browser reader.
 
     Mirrors the cover_item guard in routes/metadata.py: 404 if the file has
     gone missing on disk rather than letting send_file raise. We serve the
-    *raw* EPUB (not the kepubified variant the Kobo download path produces) —
-    browsers and foliate-js read plain EPUB.
+    *raw* file (for EPUB, not the kepubified variant the Kobo download path
+    produces) — foliate-js reads plain EPUB/MOBI/AZW3 and sniffs the format
+    from the bytes regardless of the Content-Type we declare.
     """
     item = get_item_or_404(item_id)
     if not _is_readable(item):
@@ -111,9 +131,10 @@ def book_file(item_id):
     if not item.file_path or not os.path.exists(item.file_path):
         logger.warning("Reader: file missing on disk for item %s: %s", item.id, item.file_path)
         abort(404)
+    ext = (item.extension or "").lower()
     return send_file(
         item.file_path,
-        mimetype="application/epub+zip",
+        mimetype=READER_MIMETYPES.get(ext, "application/octet-stream"),
         download_name=os.path.basename(item.file_path),
         conditional=True,
     )

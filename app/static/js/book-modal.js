@@ -148,11 +148,13 @@
         var ext = (data.extension || '').replace('.', '').toUpperCase();
         document.getElementById('modalFileInfo').innerHTML = (data.file_name || '—') + '<br>' + ext + ' · ' + size;
 
-        // Gate the "Read in browser" button to readable formats (EPUB in
-        // step 1). The CSS only shows it in display-mode, so a `readable`
-        // class here is the second half of the gate.
+        // Gate the "Read in browser" button to formats foliate-js can open
+        // (EPUB + MOBI/AZW3; keep in sync with READABLE_EXTENSIONS in
+        // routes/reader.py). The CSS only shows it in display-mode, so a
+        // `readable` class here is the second half of the gate.
         var readBtn = document.getElementById('modalReadBtn');
-        if (readBtn) readBtn.classList.toggle('readable', (data.extension || '').toLowerCase() === '.epub');
+        var READABLE_EXTS = ['.epub', '.mobi', '.azw3', '.azw'];
+        if (readBtn) readBtn.classList.toggle('readable', READABLE_EXTS.indexOf((data.extension || '').toLowerCase()) !== -1);
 
         document.getElementById('modalTitle').value         = data.title          || '';
         document.getElementById('modalAuthor').value        = data.author         || '';
