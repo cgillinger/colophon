@@ -301,12 +301,14 @@
             initialProgress: {{ initial_progress|tojson }},
             readStatus: {{ read_status|tojson }},
             homeUrl: {{ url_for('metadata.index')|tojson }},
-            // "Give this book to someone": hand the raw EPUB to the OS share
-            // sheet (AirDrop / Nearby Share / Messages / mail). canShare is the
-            // server's content gate (readable, on disk, no DRM); the secure-
-            // context + Web Share feature checks happen client-side.
+            // "Give this book to someone": hand the raw file (EPUB or
+            // MOBI/AZW3) to the OS share sheet (AirDrop / Nearby Share /
+            // Messages / mail). canShare is the server's content gate (readable,
+            // on disk, no DRM); the secure-context + Web Share feature checks
+            // happen client-side. shareMime types the shared File correctly.
             canShare: {{ can_share|tojson }},
             shareFileName: {{ share_filename|tojson }},
+            shareMime: {{ share_mimetype|tojson }},
             bookTitle: {{ (item.title or item.file_name or '')|tojson }},
             // Shared reader-shell assets cached alongside the book so the whole
             // reader works offline. foliate's module graph is cached separately

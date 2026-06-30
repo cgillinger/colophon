@@ -271,12 +271,12 @@ progress percentage.
 
 ## 14. Sharing a book (giving it away)
 
-You can hand a DRM-free EPUB to someone in person — *"you can have it from me"* —
-straight from the reader.
+You can hand a DRM-free book (**EPUB, MOBI or AZW3**) to someone in person —
+*"you can have it from me"* — straight from the reader.
 
 - **Where:** open the book in the reader (Shelf → **Read**); in the reader's top
   bar, the **share** icon (between the offline-download icon and **Aa**).
-- **What happens:** Colophon hands the EPUB to your phone's normal share sheet —
+- **What happens:** Colophon hands the file to your phone's normal share sheet —
   **AirDrop, Nearby Share, Messages, mail** — and your friend gets the file
   directly. No accounts, nothing exposed to the internet.
 - **When it's unavailable**, the button explains why instead of failing silently:

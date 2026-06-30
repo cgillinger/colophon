@@ -1,6 +1,6 @@
 # Colophon — self-hosted e-book metadata manager with Kobo wireless sync
 
-[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.29.0-brightgreen)](https://github.com/cgillinger/colophon/releases) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#setting-up-kobo-sync)
+[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.30.0-brightgreen)](https://github.com/cgillinger/colophon/releases) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#setting-up-kobo-sync)
 
 **Colophon — the e-book manager.** A self-hosted web app that turns a messy folder of e-book files into a clean, browsable library and syncs it to a Kobo e-reader over WiFi. (Not the printing/publishing term — this is the software.)
 
@@ -45,8 +45,8 @@ This is a personal project I built for my own library. I've published it in case
 - Keeps authors consistent — one canonical entry per author, spelling variants auto-linked, typos flagged for review, one-click merge/rename that relabels every book, with optional Wikidata verification
 - Groups multiple formats of the same book as one entry
 - Syncs to a Kobo over WiFi — covers, downloads, reading progress
-- Reads EPUBs in the browser — themes, fonts (incl. a dyslexia-friendly face) and **save-for-offline** — with reading progress synced to and from your Kobo
-- Hands a DRM-free EPUB to a friend in person, straight from the reader via your phone's share sheet
+- Reads EPUB, MOBI and AZW3 in the browser — themes, fonts (incl. a dyslexia-friendly face) and **save-for-offline** — with reading progress synced to and from your Kobo
+- Hands a DRM-free book (EPUB, MOBI or AZW3) to a friend in person, straight from the reader via your phone's share sheet
 - Installs as an app (PWA) on phone, tablet or desktop
 - UI in English and Swedish, light and dark themes
 

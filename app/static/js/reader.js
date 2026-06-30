@@ -409,8 +409,8 @@ import './../vendor/foliate-js/view.js';
     }
 
     // --- Give this book to someone ---------------------------------------
-    // Hand the raw EPUB to the OS share sheet (AirDrop / Nearby Share /
-    // Messages / mail) via the Web Share API. The point is the in-person
+    // Hand the raw file (EPUB or MOBI/AZW3) to the OS share sheet (AirDrop /
+    // Nearby Share / Messages / mail) via the Web Share API. The point is the in-person
     // "you can have it from me" handoff. Three things can stop it — each gets
     // a clear toast rather than a dead button or a silent failure:
     //   1. DRM        — server says the book isn't shareable (cfg.canShare).
@@ -461,7 +461,7 @@ import './../vendor/foliate-js/view.js';
             if (!resp || !resp.ok) throw new Error('fetch failed');
             var blob = await resp.blob();
             var name = cfg.shareFileName || 'book.epub';
-            var file = new File([blob], name, { type: 'application/epub+zip' });
+            var file = new File([blob], name, { type: cfg.shareMime || 'application/epub+zip' });
 
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
                 await navigator.share({ files: [file], title: cfg.bookTitle || name });

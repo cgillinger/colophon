@@ -40,7 +40,7 @@ from flask import (
 
 from app.models import db
 from app.routes.helpers import get_item_or_404
-from app.services.drm import epub_has_drm
+from app.services.drm import file_has_drm
 from app.services.reading_state import apply_reading_state
 
 logger = logging.getLogger(__name__)
@@ -65,13 +65,24 @@ def _is_readable(item):
     return (item.extension or "").lower() in READABLE_EXTENSIONS
 
 
-def _share_filename(item):
-    """A human-friendly '.epub' download name for the share sheet.
+def _share_extension(item):
+    """The file's real extension, dot-prefixed and lower-cased (e.g. '.mobi'),
+    falling back to the on-disk suffix and finally '.epub'."""
+    ext = (item.extension or "").lower() or os.path.splitext(item.file_path or "")[1].lower()
+    if ext and not ext.startswith("."):
+        ext = "." + ext
+    return ext or ".epub"
 
-    Prefer 'Title - Author.epub' (what a recipient wants to see in their
+
+def _share_filename(item):
+    """A human-friendly download name for the share sheet, keeping the file's
+    real extension so the recipient gets a correctly-typed file.
+
+    Prefer 'Title - Author.<ext>' (what a recipient wants to see in their
     library), sanitised for cross-platform filenames; fall back to the real
     on-disk basename when there's no usable title.
     """
+    ext = _share_extension(item)
     title = (item.title or "").strip()
     author = (item.author or "").strip()
     if title:
@@ -79,23 +90,21 @@ def _share_filename(item):
         stem = re.sub(r'[\\/:*?"<>|]+', " ", stem)   # illegal on Win/macOS
         stem = re.sub(r"\s+", " ", stem).strip()[:120]
         if stem:
-            return f"{stem}.epub"
-    return os.path.basename(item.file_path or "") or "book.epub"
+            return f"{stem}{ext}"
+    return os.path.basename(item.file_path or "") or f"book{ext}"
 
 
 def _can_share(item):
-    """A book is shareable from the reader when it's an EPUB whose file exists
-    and carries no DRM. DRM detection is on-demand (reads only the zip's
-    META-INF) rather than a stored flag, so it can never go stale.
+    """A book is shareable from the reader when it's a readable format whose
+    file exists and carries no DRM. DRM detection is on-demand (per-format, see
+    services/drm.py) rather than a stored flag, so it can never go stale.
 
-    Share stays EPUB-only even though the reader now opens MOBI/AZW3: handing a
-    recipient the raw file means we must vouch it's DRM-free, and epub_has_drm
-    only understands EPUB. Sharing other formats is a separate step."""
-    if (item.extension or "").lower() != ".epub":
+    Covers EPUB and MOBI/AZW3 — handing a recipient the raw file means vouching
+    it's DRM-free, and file_has_drm() understands all three. PDF share lands
+    with PDF reading (it can't reach the in-reader share button until then)."""
+    if not _is_readable(item) or not item.file_path or not os.path.exists(item.file_path):
         return False
-    if not item.file_path or not os.path.exists(item.file_path):
-        return False
-    return not epub_has_drm(item.file_path)
+    return not file_has_drm(item.file_path, item.extension)
 
 
 @reader_bp.route("/<int:item_id>")
@@ -112,6 +121,7 @@ def read_book(item_id):
         read_status=item.read_status or "ReadyToRead",
         can_share=_can_share(item),
         share_filename=_share_filename(item),
+        share_mimetype=READER_MIMETYPES.get(_share_extension(item), "application/octet-stream"),
     )
 
 

@@ -1,5 +1,5 @@
 # Colophon – e-book metadata manager
-"""Best-effort DRM detection for EPUB files.
+"""Best-effort DRM detection for EPUB and MOBI/AZW3 files.
 
 Used to gate the reader's "share book" affordance: we never hand someone a
 copy-protected file they couldn't open anyway, and we explain *why* instead of
@@ -77,3 +77,48 @@ def epub_has_drm(file_path) -> bool:
     # Only obfuscation algorithms → just fonts, shareable. An encryption.xml
     # with no EncryptionMethod at all is anomalous → treat as protected.
     return not found_method
+
+
+def mobi_has_drm(file_path) -> bool:
+    """Return True if this MOBI/AZW3 carries Mobipocket DRM.
+
+    MOBI and AZW3 are PalmDB containers: a 78-byte header, then an 8-byte
+    record-info entry per record, then the record data. Record 0 opens with the
+    PalmDOC header, whose 'Encryption Type' field (a big-endian uint16 at offset
+    12 of the record) is 0 = none, 1 = old scheme, 2 = Mobipocket DRM. We read
+    only those few header bytes — no full parse.
+
+    Conservative like epub_has_drm: anything we can't read as a PalmDB returns
+    False (a truncated/corrupt file isn't 'protected' — the reader surfaces its
+    own open error for those)."""
+    try:
+        with open(str(file_path), "rb") as f:
+            header = f.read(82)
+            if len(header) < 82:
+                return False
+            num_records = int.from_bytes(header[76:78], "big")
+            if num_records < 1:
+                return False
+            rec0_offset = int.from_bytes(header[78:82], "big")
+            f.seek(rec0_offset + 12)
+            enc = f.read(2)
+            if len(enc) < 2:
+                return False
+            return int.from_bytes(enc, "big") != 0
+    except OSError:
+        return False
+
+
+def file_has_drm(file_path, extension) -> bool:
+    """Dispatch DRM detection by format, for the reader's share gate.
+
+    EPUB and MOBI/AZW3 each have their own detector; an unrecognised format
+    returns False (we don't block sharing on a format we can't vet — and the
+    share button only ever appears for formats the reader can open anyway).
+    PDF detection lands with PDF reading."""
+    ext = (extension or "").lower()
+    if ext == ".epub":
+        return epub_has_drm(file_path)
+    if ext in (".mobi", ".azw", ".azw3"):
+        return mobi_has_drm(file_path)
+    return False

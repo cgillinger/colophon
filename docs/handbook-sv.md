@@ -275,12 +275,12 @@ procentuell progress.
 
 ## 14. Dela en bok (ge bort den)
 
-Du kan räcka över en DRM-fri EPUB till någon på plats — *"du kan få den av mig"* —
-direkt från läsaren.
+Du kan räcka över en DRM-fri bok (**EPUB, MOBI eller AZW3**) till någon på plats
+— *"du kan få den av mig"* — direkt från läsaren.
 
 - **Var:** öppna boken i läsaren (Hyllvy → **Läs**); i läsarens topbar sitter
   **dela**-ikonen (mellan offline-nedladdningen och **Aa**).
-- **Vad som händer:** Colophon räcker EPUB:en till telefonens vanliga dela-meny —
+- **Vad som händer:** Colophon räcker filen till telefonens vanliga dela-meny —
   **AirDrop, Snabbdelning, Meddelanden, mejl** — och din vän får filen direkt.
   Inga konton, inget exponerat mot internet.
 - **När det inte går** förklarar knappen varför i stället för att tyst misslyckas:
