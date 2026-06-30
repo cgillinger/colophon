@@ -28,7 +28,7 @@ This is a personal project I built for my own library. I've published it in case
 
 ![Book detail](docs/screenshots/book-detail.png)
 
-**In-browser reader** — read EPUBs in any browser; progress syncs back to your Kobo.
+**In-browser reader** — read EPUB, MOBI, AZW3 and PDF in any browser; progress syncs back to your Kobo.
 
 ![In-browser reader](docs/screenshots/reader.png)
 
@@ -67,7 +67,7 @@ If you've searched for any of these, Colophon is aimed at you:
 - **A Calibre / Calibre-Web alternative** when you mainly want clean metadata, covers and a nice library view, without running the full Calibre desktop stack.
 - **Wireless Kobo sync for a self-hosted library** — point a Kobo at your own catalogue instead of the Kobo store, and get covers, downloads and reading-progress sync over WiFi. No cable after setup.
 - **A metadata front-end for Komga or Kavita** — Colophon writes metadata *back into the files*, so the server you already run picks up the same titles, authors, series and covers.
-- **An in-browser EPUB reader** with reading progress that syncs to and from your Kobo.
+- **An in-browser reader** (EPUB, MOBI, AZW3, PDF) with reading progress that syncs to and from your Kobo.
 
 It is *not* a comics page-reader, a multi-user server, or an internet-facing app — see [What it doesn't do](#what-it-doesnt-do).
 
