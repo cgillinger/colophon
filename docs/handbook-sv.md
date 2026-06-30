@@ -233,9 +233,12 @@ att granska och städa. Inget raderas utan ditt godkännande.
 
 ## 12. Läsa i webbläsaren
 
-Colophon har en inbyggd EPUB-läsare — ingen app behövs.
+Colophon har en inbyggd läsare — ingen app behövs. Den öppnar **EPUB, MOBI och
+AZW3**; DRM-skyddade filer går inte att öppna (Colophon tar aldrig bort DRM).
 
-- **Öppna den** från en boks detaljer i **Hyllvy**: tryck **Läs** (endast EPUB).
+- **Öppna den** från en boks detaljer i **Hyllvy**: tryck **Läs** (EPUB, MOBI,
+  AZW3). MOBI och AZW3 flödar om precis som EPUB, så läsinställningarna nedan
+  gäller dem också.
 - **Bläddra** genom att trycka på vänster/höger kant, eller med piltangenterna.
 - **Läsinställningar** (**Aa**-knappen) låter dig justera:
   - **Tema** — Ljus, Sepia, Mörk.
