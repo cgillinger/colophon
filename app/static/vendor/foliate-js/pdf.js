@@ -123,6 +123,10 @@ export const makePDF = async file => {
         range: transport,
         cMapUrl: pdfjsPath('cmaps/'),
         standardFontDataUrl: pdfjsPath('standard_fonts/'),
+        // Colophon local patch: point pdf.js at the vendored WebAssembly image
+        // decoders (openjpeg = JPEG2000, jbig2, qcms). Without this, scanned
+        // PDFs whose pages are JPX images fail to decode and render blank.
+        wasmUrl: pdfjsPath('wasm/'),
         isEvalSupported: false,
     }).promise
 
