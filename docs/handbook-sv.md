@@ -233,12 +233,17 @@ att granska och städa. Inget raderas utan ditt godkännande.
 
 ## 12. Läsa i webbläsaren
 
-Colophon har en inbyggd läsare — ingen app behövs. Den öppnar **EPUB, MOBI och
-AZW3**; DRM-skyddade filer går inte att öppna (Colophon tar aldrig bort DRM).
+Colophon har en inbyggd läsare — ingen app behövs. Den öppnar **EPUB, MOBI, AZW3
+och PDF**; DRM-skyddade (eller lösenordskrypterade) filer går inte att öppna
+(Colophon tar aldrig bort DRM).
 
 - **Öppna den** från en boks detaljer i **Hyllvy**: tryck **Läs** (EPUB, MOBI,
-  AZW3). MOBI och AZW3 flödar om precis som EPUB, så läsinställningarna nedan
-  gäller dem också.
+  AZW3, PDF). MOBI och AZW3 flödar om precis som EPUB, så läsinställningarna
+  nedan gäller dem också.
+- **PDF:er** är sidbilder (fast layout), så inställningarna för textstorlek/
+  typsnitt/marginaler påverkar inte, och sidan behåller sin egen bakgrund —
+  temat tonar bara läsarens ram runt den. Bläddring, progress och offline
+  fungerar ändå.
 - **Bläddra** genom att trycka på vänster/höger kant, eller med piltangenterna.
 - **Läsinställningar** (**Aa**-knappen) låter dig justera:
   - **Tema** — Ljus, Sepia, Mörk.
@@ -275,8 +280,8 @@ procentuell progress.
 
 ## 14. Dela en bok (ge bort den)
 
-Du kan räcka över en DRM-fri bok (**EPUB, MOBI eller AZW3**) till någon på plats
-— *"du kan få den av mig"* — direkt från läsaren.
+Du kan räcka över en DRM-fri bok (**EPUB, MOBI, AZW3 eller PDF**) till någon på
+plats — *"du kan få den av mig"* — direkt från läsaren.
 
 - **Var:** öppna boken i läsaren (Hyllvy → **Läs**); i läsarens topbar sitter
   **dela**-ikonen (mellan offline-nedladdningen och **Aa**).

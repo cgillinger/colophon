@@ -227,12 +227,16 @@ review and clean up. Nothing is deleted without your say-so.
 
 ## 12. Reading in the browser
 
-Colophon has a built-in reader — no app needed. It opens **EPUB, MOBI and
-AZW3**; DRM-protected files can't be opened (Colophon never strips DRM).
+Colophon has a built-in reader — no app needed. It opens **EPUB, MOBI, AZW3 and
+PDF**; DRM-protected (or password-encrypted) files can't be opened (Colophon
+never strips DRM).
 
 - **Open it** from a book's details in **Shelf** view: tap **Read** (EPUB,
-  MOBI, AZW3). MOBI and AZW3 reflow just like EPUB, so the reading settings
+  MOBI, AZW3, PDF). MOBI and AZW3 reflow just like EPUB, so the reading settings
   below apply to them too.
+- **PDFs** are page images (fixed layout), so the text-size/font/margin settings
+  don't apply and the page keeps its own background — the theme only tints the
+  reader's chrome around it. Page-turning, progress and offline still work.
 - **Turn pages** by tapping the left/right edges, or with the arrow keys.
 - **Reading settings** (the **Aa** button) let you tune:
   - **Theme** — Light, Sepia, Dark.
@@ -271,7 +275,7 @@ progress percentage.
 
 ## 14. Sharing a book (giving it away)
 
-You can hand a DRM-free book (**EPUB, MOBI or AZW3**) to someone in person —
+You can hand a DRM-free book (**EPUB, MOBI, AZW3 or PDF**) to someone in person —
 *"you can have it from me"* — straight from the reader.
 
 - **Where:** open the book in the reader (Shelf → **Read**); in the reader's top

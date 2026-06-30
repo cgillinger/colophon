@@ -153,7 +153,7 @@
         // routes/reader.py). The CSS only shows it in display-mode, so a
         // `readable` class here is the second half of the gate.
         var readBtn = document.getElementById('modalReadBtn');
-        var READABLE_EXTS = ['.epub', '.mobi', '.azw3', '.azw'];
+        var READABLE_EXTS = ['.epub', '.mobi', '.azw3', '.azw', '.pdf'];
         if (readBtn) readBtn.classList.toggle('readable', READABLE_EXTS.indexOf((data.extension || '').toLowerCase()) !== -1);
 
         document.getElementById('modalTitle').value         = data.title          || '';

@@ -1,5 +1,5 @@
 # Colophon – e-book metadata manager
-"""Best-effort DRM detection for EPUB and MOBI/AZW3 files.
+"""Best-effort DRM detection for EPUB, MOBI/AZW3 and PDF files.
 
 Used to gate the reader's "share book" affordance: we never hand someone a
 copy-protected file they couldn't open anyway, and we explain *why* instead of
@@ -109,16 +109,43 @@ def mobi_has_drm(file_path) -> bool:
         return False
 
 
+def pdf_has_drm(file_path) -> bool:
+    """Return True if this PDF is encrypted (carries an /Encrypt entry).
+
+    PDF encryption — even the common 'permissions only, empty user password'
+    kind that opens without ever prompting — puts an ``/Encrypt`` reference in
+    the trailer. Telling 'needs a password' apart from 'permissions only' needs
+    a full parse, so for a give-it-away feature we take the safe side: any
+    ``/Encrypt`` means we don't offer to share. We scan the raw bytes (chunked,
+    early-exit, with a 1-byte overlap so the token can't hide on a boundary)
+    rather than parsing. Anything unreadable returns False."""
+    needle = b"/Encrypt"
+    try:
+        with open(str(file_path), "rb") as f:
+            tail = b""
+            while True:
+                chunk = f.read(1 << 20)  # 1 MiB
+                if not chunk:
+                    return False
+                if needle in tail + chunk:
+                    return True
+                tail = chunk[-(len(needle) - 1):]
+    except OSError:
+        return False
+
+
 def file_has_drm(file_path, extension) -> bool:
     """Dispatch DRM detection by format, for the reader's share gate.
 
-    EPUB and MOBI/AZW3 each have their own detector; an unrecognised format
-    returns False (we don't block sharing on a format we can't vet — and the
-    share button only ever appears for formats the reader can open anyway).
-    PDF detection lands with PDF reading."""
+    EPUB, MOBI/AZW3 and PDF each have their own detector; an unrecognised
+    format returns False (we don't block sharing on a format we can't vet — and
+    the share button only ever appears for formats the reader can open
+    anyway)."""
     ext = (extension or "").lower()
     if ext == ".epub":
         return epub_has_drm(file_path)
     if ext in (".mobi", ".azw", ".azw3"):
         return mobi_has_drm(file_path)
+    if ext == ".pdf":
+        return pdf_has_drm(file_path)
     return False

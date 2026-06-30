@@ -2,3 +2,13 @@ johnfactotum/foliate-js
 Pinned commit: 78914aef4466eb960965702401634c2cb348e9b1
 License: MIT (see LICENSE)
 Vendored for the Colophon in-browser reader. Do not edit in place.
+
+vendor/pdfjs/ — Mozilla pdf.js (pdfjs-dist), used by foliate's pdf.js wrapper
+for in-browser PDF rendering.
+  Version: 5.5.207 (matches the pdf.js v5.5.207 the foliate wrapper targets)
+  License: Apache-2.0
+  Source: npm pdfjs-dist@5.5.207 — build/pdf.mjs, build/pdf.worker.mjs,
+          cmaps/, standard_fonts/
+  Plus text_layer_builder.css + annotation_layer_builder.css from
+  mozilla/pdf.js tag v5.5.207 web/ (not shipped in pdfjs-dist).
+  The foliate-js/pdf.js wrapper itself is from the pinned commit above.
