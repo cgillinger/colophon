@@ -6,10 +6,12 @@ the *same* canonical LibraryItem fields the Kobo sync uses (see
 services/reading_state.py), so reading in the app and on a Kobo stay in
 lock-step for free.
 
-Formats: EPUB (incl. fixed-layout) plus MOBI/AZW3 — foliate-js carries the
-parsers for all three and dispatches on the file's magic bytes, so we just hand
-it the raw bytes. PDF is not yet supported (its parser isn't vendored). DRM'd
-MOBI/AZW3 fail to open and surface the generic load-error overlay.
+Formats: EPUB (incl. fixed-layout), MOBI/AZW3 and PDF — foliate-js carries the
+parsers and dispatches on the file's magic bytes, so we just hand it the raw
+bytes (PDF rendering uses the vendored pdf.js under foliate-js/vendor/pdfjs/).
+PDF is pre-paginated, so the reader's typography controls are inert for it (the
+fixed-layout path already hides them). DRM'd/encrypted files fail to open and
+surface the generic load-error overlay.
 
 Offline reading is supported (v1.26.0): the reader's "save for offline" button
 caches the book file + reader shell into a persistent Cache Storage bucket via
@@ -57,6 +59,7 @@ READER_MIMETYPES = {
     ".mobi": "application/x-mobipocket-ebook",
     ".azw": "application/x-mobipocket-ebook",
     ".azw3": "application/vnd.amazon.ebook",
+    ".pdf": "application/pdf",
 }
 READABLE_EXTENSIONS = set(READER_MIMETYPES)
 
