@@ -46,6 +46,7 @@ This is a personal project I built for my own library. I've published it in case
 - Groups multiple formats of the same book as one entry
 - Syncs to a Kobo over WiFi — covers, downloads, reading progress
 - Reads EPUB, MOBI, AZW3 and PDF in the browser — themes, fonts (incl. a dyslexia-friendly face) and **save-for-offline** — with reading progress synced to and from your Kobo
+- Looks up words while you read — select a word to get an English definition (GCIDE/Webster) and Swedish translation (FreeDict/WikDict); open-source dictionaries download automatically on first use, plus an optional AI explanation of the word in its exact sentence
 - Hands a DRM-free book (EPUB, MOBI, AZW3 or PDF) to a friend in person, straight from the reader via your phone's share sheet
 - Installs as an app (PWA) on phone, tablet or desktop
 - UI in English and Swedish, light and dark themes

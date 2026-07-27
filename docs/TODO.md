@@ -23,6 +23,26 @@ not run the SW. See `app/templates/sw.js`, `app/static/js/reader.js`,
 - **Download from the book modal** (not just from inside the open reader), so a
   book can be saved for offline without opening it first.
 
+## Vocabulary list from dictionary lookups (Kindle "Vocabulary Builder" style)
+
+**What:** The reader's word lookup (v1.32.0, `docs/reader-dictionary-lookup.md`)
+deliberately logs nothing. Add persistence: every looked-up word is saved with
+its book, sentence and timestamp, and a per-book (or global) vocabulary list
+lets the user review words they've had to look up — the Kindle Vocabulary
+Builder experience.
+
+**Where it hooks in:**
+- `app/routes/reader.py` `dict_lookup()` — the natural logging point; it already
+  has word + language, and the client could pass `item_id` + sentence along.
+- New small table (word, item_id, sentence, language, looked_up_at) via the
+  usual `services/database.py` ensure_*_table migration pattern.
+- UI: simplest is a section in the book's display modal ("Ord du slagit upp");
+  a standalone view is more work and probably overkill.
+
+**Scope:** small. New user-visible feature → MINOR bump. Decide: log every
+lookup automatically vs a "save word" button on the sheet (automatic matches
+Kindle; a button is less noise from accidental lookups).
+
 ## Deep-link to an open book modal (`?book=<id>`)
 
 **What:** Let a book's display modal be reflected in the URL so you can link
