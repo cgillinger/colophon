@@ -9,6 +9,7 @@
 //
 // ES module: imports the vendored foliate-js <foliate-view> custom element.
 import './../vendor/foliate-js/view.js';
+import { initDictLookup } from './reader-dict.js';
 
 (function () {
     'use strict';
@@ -34,6 +35,7 @@ import './../vendor/foliate-js/view.js';
     var sizeUp = document.getElementById('rsSizeUp');
 
     var view = null;
+    var dictCtl = null;          // dictionary-sheet controller (reader-dict.js)
     var saveTimer = null;
     var latest = null;           // { percent, status } pending save
     var lastSaved = null;        // last successfully sent { percent, status }
@@ -287,9 +289,14 @@ import './../vendor/foliate-js/view.js';
         if (prevZone) prevZone.addEventListener('click', function () { if (view) view.goLeft(); });
         if (nextZone) nextZone.addEventListener('click', function () { if (view) view.goRight(); });
         document.addEventListener('keydown', function (ev) {
-            // Escape closes the settings sheet first; only leaves the reader
-            // when nothing is open.
-            if (ev.key === 'Escape') { if (sheetOpen()) closeSheet(); else goHome(); return; }
+            // Escape closes the dictionary sheet first, then the settings
+            // sheet; only leaves the reader when nothing is open.
+            if (ev.key === 'Escape') {
+                if (dictCtl && dictCtl.isOpen()) dictCtl.close();
+                else if (sheetOpen()) closeSheet();
+                else goHome();
+                return;
+            }
             if (!view || sheetOpen()) return;
             if (ev.key === 'ArrowLeft') { view.goLeft(); }
             else if (ev.key === 'ArrowRight' || ev.key === ' ') { view.goRight(); }
@@ -504,6 +511,9 @@ import './../vendor/foliate-js/view.js';
             view = document.createElement('foliate-view');
             main.insertBefore(view, overlay);
             view.addEventListener('relocate', onRelocate);
+            // Before open(): the per-section 'load' events the dictionary
+            // module listens for start firing as soon as the book renders.
+            dictCtl = initDictLookup({ view: view, cfg: cfg });
             await view.open(cfg.fileUrl);
 
             // Tailor the settings sheet to the book's layout before showing it.

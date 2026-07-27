@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Colophon 1.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-06-29 08:53+0000\n"
+"POT-Creation-Date: 2026-07-27 11:50+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: sv\n"
@@ -187,7 +187,7 @@ msgstr "Inga AI-förslag att granska. Kör hämtningen först."
 msgid "Metadata saved (%(count)d fields updated)."
 msgstr "Metadata sparad (%(count)d fält uppdaterade)."
 
-#: app/routes/metadata.py:2088
+#: app/routes/metadata.py:2091
 msgid "No books selected."
 msgstr "Inga böcker valda."
 
@@ -659,8 +659,9 @@ msgstr ""
 
 #: app/templates/_layout.html:110 app/templates/authors.html:3
 #: app/templates/authors.html:121
+#, fuzzy
 msgid "Authors"
-msgstr "Författare"
+msgstr "författare"
 
 #: app/templates/_layout.html:114 app/templates/settings_kobo.html:3
 #: app/templates/settings_kobo.html:141
@@ -721,23 +722,20 @@ msgid ""
 "Tentative entries were created automatically from file metadata and are "
 "not written into files until confirmed."
 msgstr ""
-"Alla författare i biblioteket, en kanonisk post per person. Byt namn på "
-"eller slå ihop en post så märks alla dess böcker om i ett svep. "
-"Preliminära poster har skapats automatiskt från filernas metadata och "
-"skrivs inte in i filerna förrän de bekräftats."
 
 #: app/templates/authors.html:129
 #, python-format
 msgid "%(count)d books have an author waiting for review."
-msgstr "%(count)d böcker har en författare som väntar på granskning."
+msgstr ""
 
 #: app/templates/authors.html:130
 msgid "Open the library and use the “authors to review” filter."
-msgstr "Öppna biblioteket och använd filtret ”författare att granska”."
+msgstr ""
 
 #: app/templates/authors.html:139
+#, fuzzy
 msgid "Likely duplicates"
-msgstr "Troliga dubbletter"
+msgstr "Hitta dubbletter"
 
 #: app/templates/authors.html:142
 msgid ""
@@ -745,13 +743,10 @@ msgid ""
 "spelling variant that slipped in as its own author. Merging moves all "
 "books and aliases to the entry you keep."
 msgstr ""
-"De här posterna är nästan identiska — oftast ett stavfel eller en "
-"stavningsvariant som slunkit in som egen författare. Ihopslagning flyttar"
-" alla böcker och alias till posten du behåller."
 
 #: app/templates/authors.html:155
 msgid "Ask the AI whether these are the same person"
-msgstr "Fråga AI:n om det är samma person"
+msgstr ""
 
 #: app/templates/authors.html:156 app/templates/bulk_metadata.html:581
 msgid "Ask AI"
@@ -760,31 +755,35 @@ msgstr "Fråga AI"
 #: app/templates/authors.html:159 app/templates/authors.html:162
 #, python-format
 msgid "Keep “%(name)s”"
-msgstr "Behåll ”%(name)s”"
+msgstr ""
 
 #: app/templates/authors.html:174
 msgid "Registry"
-msgstr "Register"
+msgstr ""
 
 #: app/templates/authors.html:178
+#, fuzzy
 msgid "Filter authors…"
-msgstr "Filtrera författare…"
+msgstr "författare"
 
 #: app/templates/authors.html:181
 msgid "Show only unconfirmed"
-msgstr "Visa endast obekräftade"
+msgstr ""
 
 #: app/templates/authors.html:186
+#, fuzzy, python-format
 msgid "Confirm selected"
-msgstr "Bekräfta markerade"
+msgstr "%(count)d valda"
 
 #: app/templates/authors.html:187
+#, fuzzy
 msgid "Clear selection"
-msgstr "Avmarkera alla"
+msgstr "Rensa sökning"
 
 #: app/templates/authors.html:193
+#, fuzzy
 msgid "Select all"
-msgstr "Markera alla"
+msgstr "Markera alla/inga"
 
 #: app/templates/authors.html:194 app/templates/bulk_metadata.html:241
 #: app/templates/bulk_metadata.html:488 app/templates/bulk_metadata.html:558
@@ -799,147 +798,155 @@ msgid "Status"
 msgstr "Status"
 
 #: app/templates/authors.html:196
+#, fuzzy
 msgid "Authority"
-msgstr "Auktoritet"
+msgstr "Författare"
 
 #: app/templates/authors.html:197
+#, fuzzy
 msgid "Books"
-msgstr "Böcker"
+msgstr "böcker"
 
 #: app/templates/authors.html:205
-#, python-format
+#, fuzzy, python-format
 msgid "Select %(name)s"
-msgstr "Markera %(name)s"
+msgstr "Enhet skapad: %(name)s"
 
 #: app/templates/authors.html:206
 msgid "Nearly identical to another entry"
-msgstr "Nästan identisk med en annan post"
+msgstr ""
 
 #: app/templates/authors.html:209
 msgid "Authority-linked"
-msgstr "Auktoriserad"
+msgstr ""
 
 #: app/templates/authors.html:211
+#, fuzzy
 msgid "Confirmed"
-msgstr "Bekräftad"
+msgstr "Konfigurerad"
 
 #: app/templates/authors.html:213
+#, fuzzy
 msgid "Tentative"
-msgstr "Preliminär"
+msgstr "Test misslyckades"
 
 #: app/templates/authors.html:225
 msgid "Mark this spelling as correct"
-msgstr "Markera stavningen som korrekt"
+msgstr ""
 
 #: app/templates/authors.html:225
+#, fuzzy
 msgid "Confirm"
-msgstr "Bekräfta"
+msgstr "Konfigurerad"
 
 #: app/templates/authors.html:227
 msgid "Look the author up in Wikidata and store authority ids"
-msgstr "Slå upp författaren i Wikidata och spara auktoritets-id:n"
+msgstr ""
 
 #: app/templates/authors.html:227
+#, fuzzy
 msgid "Verify"
-msgstr "Verifiera"
+msgstr "Serif"
 
 #: app/templates/authors.html:228
+#, fuzzy
 msgid "Rename"
-msgstr "Byt namn"
+msgstr "Namn"
 
 #: app/templates/authors.html:229
+#, fuzzy
 msgid "Merge…"
-msgstr "Slå ihop…"
+msgstr "till"
 
 #: app/templates/authors.html:231
+#, fuzzy
 msgid "Remove unused entry"
-msgstr "Ta bort oanvänd post"
+msgstr "Ta bort sparad AI-nyckel?"
 
 #: app/templates/authors.html:239
 msgid "No authors yet — they appear here after the next scan or upload."
 msgstr ""
-"Inga författare ännu — de dyker upp här efter nästa skanning eller "
-"uppladdning."
 
 #: app/templates/authors.html:248
 #, python-brace-format
 msgid "New name for “{name}”:"
-msgstr "Nytt namn för ”{name}”:"
+msgstr ""
 
 #: app/templates/authors.html:249
 #, python-brace-format
 msgid "Merge “{name}” into which author? Type the name:"
-msgstr "Slå ihop ”{name}” med vilken författare? Skriv namnet:"
+msgstr ""
 
 #: app/templates/authors.html:250
 #, python-brace-format
 msgid "No registered author matches “{name}”."
-msgstr "Ingen registrerad författare matchar ”{name}”."
+msgstr ""
 
 #: app/templates/authors.html:251
 #, python-brace-format
 msgid "Move {count} books from “{source}” to “{target}”? “{source}” is deleted."
-msgstr "Flytta {count} böcker från ”{source}” till ”{target}”? ”{source}” raderas."
+msgstr ""
 
 #: app/templates/authors.html:252
 msgid "That name already belongs to another entry — merge them instead."
-msgstr "Namnet tillhör redan en annan post — slå ihop dem i stället."
+msgstr ""
 
 #: app/templates/authors.html:253
 #, python-brace-format
 msgid "Remove the unused entry “{name}”?"
-msgstr "Ta bort den oanvända posten ”{name}”?"
+msgstr ""
 
 #: app/templates/authors.html:254
+#, fuzzy
 msgid "The action failed."
-msgstr "Åtgärden misslyckades."
+msgstr "autentisering misslyckades"
 
-#: app/templates/authors.html:255
+#: app/templates/authors.html:255 app/templates/reader.html:427
 msgid "Looking up…"
 msgstr "Slår upp…"
 
 #: app/templates/authors.html:256
 msgid "No confident match found in Wikidata."
-msgstr "Ingen säker träff i Wikidata."
+msgstr ""
 
 #: app/templates/authors.html:257
+#, fuzzy
 msgid "Asking…"
-msgstr "Frågar…"
+msgstr "Betyg"
 
 #: app/templates/authors.html:258
 #, python-brace-format
 msgid "AI: probably the same person — {reason}"
-msgstr "AI: troligen samma person — {reason}"
+msgstr ""
 
 #: app/templates/authors.html:259
 #, python-brace-format
 msgid "AI: probably different people — {reason}"
-msgstr "AI: troligen olika personer — {reason}"
+msgstr ""
 
 #: app/templates/authors.html:260
 #, python-brace-format
 msgid "AI: not sure — {reason}"
-msgstr "AI: osäkert — {reason}"
+msgstr ""
 
 #: app/templates/authors.html:261
+#, fuzzy
 msgid "AI is not configured (Settings → AI)."
-msgstr "AI är inte konfigurerat (Inställningar → AI)."
+msgstr "AI är inte konfigurerat."
 
 #: app/templates/authors.html:262
-#, python-brace-format
+#, fuzzy, python-brace-format
 msgid "{count} selected"
-msgstr "{count} markerade"
+msgstr "{count} böcker valda"
 
 #: app/templates/authors.html:263
 #, python-brace-format
 msgid "Confirm {count} selected authors? They become eligible for file writes."
 msgstr ""
-"Bekräfta {count} markerade författare? De blir då behöriga för "
-"filskrivning."
 
 #: app/templates/authors.html:264
 msgid "None of the selected entries are unconfirmed."
-msgstr "Inga av de markerade posterna är obekräftade."
+msgstr ""
 
 #: app/templates/bulk_metadata.html:3 app/templates/metadata.html:17
 msgid "Metadata"
@@ -1169,11 +1176,11 @@ msgstr "Publiceringsdatum (äldst)"
 
 #: app/templates/bulk_metadata.html:200
 msgid "Date added (newest first)"
-msgstr "Tillagd (nyast först)"
+msgstr ""
 
 #: app/templates/bulk_metadata.html:201
 msgid "Date added (oldest first)"
-msgstr "Tillagd (äldst först)"
+msgstr ""
 
 #: app/templates/bulk_metadata.html:212 app/templates/bulk_metadata.html:1027
 msgid "Delete selected"
@@ -1211,7 +1218,7 @@ msgstr "Genre"
 #: app/templates/bulk_metadata.html:243 app/templates/bulk_metadata.html:517
 #: app/templates/bulk_metadata.html:561 app/templates/bulk_metadata.html:657
 #: app/templates/bulk_metadata.html:1056 app/templates/metadata.html:487
-#: app/templates/reader.html:257
+#: app/templates/reader.html:307
 msgid "Publisher"
 msgstr "Förlag"
 
@@ -1246,15 +1253,16 @@ msgstr "Nytillagt"
 
 #: app/templates/bulk_metadata.html:308
 msgid "Author resembles a known author — open to review"
-msgstr "Författaren liknar en känd författare — öppna för att granska"
+msgstr ""
 
 #: app/templates/bulk_metadata.html:310
 msgid "New author — not yet confirmed"
-msgstr "Ny författare — ännu inte bekräftad"
+msgstr ""
 
 #: app/templates/bulk_metadata.html:312
+#, fuzzy
 msgid "Author missing"
-msgstr "Författare saknas"
+msgstr "Författare saknas i träffen"
 
 #: app/templates/bulk_metadata.html:314 app/templates/bulk_metadata.html:875
 #: app/templates/bulk_metadata.html:993
@@ -1289,14 +1297,14 @@ msgid "%(count)d unsynced"
 msgstr "%(count)d osynkade"
 
 #: app/templates/bulk_metadata.html:379
-#, python-format
+#, fuzzy, python-format
 msgid "%(count)d authors to review"
-msgstr "%(count)d författare att granska"
+msgstr "öppna boken för att granska"
 
 #: app/templates/bulk_metadata.html:382
-#, python-format
+#, fuzzy, python-format
 msgid "%(count)d newly added"
-msgstr "%(count)d nytillagda"
+msgstr "%(count)d osynkade"
 
 #: app/templates/bulk_metadata.html:385
 #, python-format
@@ -1331,7 +1339,7 @@ msgstr "Radera bok"
 #: app/templates/bulk_metadata.html:594 app/templates/bulk_metadata.html:760
 #: app/templates/bulk_metadata.html:770 app/templates/bulk_metadata.html:777
 #: app/templates/bulk_metadata.html:787 app/templates/bulk_metadata.html:829
-#: app/templates/bulk_metadata.html:906
+#: app/templates/bulk_metadata.html:906 app/templates/reader.html:347
 msgid "Close"
 msgstr "Stäng"
 
@@ -1462,7 +1470,7 @@ msgstr "Eskalerar till fler källor vid behov"
 
 #: app/templates/bulk_metadata.html:574 app/templates/bulk_metadata.html:680
 #: app/templates/bulk_metadata.html:1096 app/templates/metadata.html:525
-#: app/templates/reader.html:268 app/templates/reader.html:277
+#: app/templates/reader.html:318 app/templates/reader.html:327
 msgid "Normal"
 msgstr "Normal"
 
@@ -2564,60 +2572,62 @@ msgstr "Uppdaterar…"
 #: app/templates/bulk_metadata.html:1112
 #, python-brace-format
 msgid "Authors: {known} known · {review} to review · {missing} missing"
-msgstr "Författare: {known} kända · {review} att granska · {missing} saknas"
+msgstr ""
 
 #: app/templates/bulk_metadata.html:1113
 #, python-brace-format
 msgid "Did you mean {name}?"
-msgstr "Menade du {name}?"
+msgstr ""
 
 #: app/templates/bulk_metadata.html:1115
 #, python-brace-format
 msgid "Create new: “{name}”"
-msgstr "Skapa ny: ”{name}”"
+msgstr ""
 
 #: app/templates/bulk_metadata.html:1116
 #, python-brace-format
 msgid "“{name}” is very similar to “{existing}”. Create as a new author anyway?"
-msgstr "”{name}” är mycket likt ”{existing}”. Skapa som ny författare ändå?"
+msgstr ""
 
 #: app/templates/bulk_metadata.html:1117
 #, python-brace-format
 msgid "Will be linked to {name} on save."
-msgstr "Länkas till {name} när du sparar."
+msgstr ""
 
 #: app/templates/bulk_metadata.html:1118
 msgid "Resembles a known author — pick one in the list or keep your text."
-msgstr "Liknar en känd författare — välj en i listan eller behåll din text."
+msgstr ""
 
 #: app/templates/bulk_metadata.html:1119
 msgid "New author — saving confirms the spelling."
-msgstr "Ny författare — att spara bekräftar stavningen."
+msgstr ""
 
 #: app/templates/bulk_metadata.html:1120
 msgid "No author in the file — type or pick one."
-msgstr "Ingen författare i filen — skriv eller välj en."
+msgstr ""
 
 #: app/templates/bulk_metadata.html:1121
 msgid "No registered authors match."
-msgstr "Inga registrerade författare matchar."
+msgstr ""
 
 #: app/templates/bulk_metadata.html:1122
+#, fuzzy
 msgid "Author search failed."
-msgstr "Författarsökningen misslyckades."
+msgstr "Omslagssökning misslyckades."
 
 #: app/templates/bulk_metadata.html:1123
 msgid "No supported files were selected."
 msgstr "Inga filer med format som stöds valdes."
 
 #: app/templates/bulk_metadata.html:1125
+#, fuzzy
 msgid "Newly added"
-msgstr "Nytillagt"
+msgstr "Tillagd"
 
 #: app/templates/bulk_metadata.html:1126
-#, python-brace-format
+#, fuzzy, python-brace-format
 msgid "+{count} more"
-msgstr "+{count} till"
+msgstr "{count} sparade"
 
 #: app/templates/cover_lookup.html:16 app/templates/metadata.html:537
 msgid "Fetch cover"
@@ -2795,168 +2805,216 @@ msgstr "Omslag är låst — bocka ur låsning för att byta."
 msgid "Sources:"
 msgstr "Källor:"
 
-#: app/templates/reader.html:22 app/templates/reader.html:212
+#: app/templates/reader.html:22 app/templates/reader.html:262
 msgid "Reader"
 msgstr "Läsare"
 
-#: app/templates/reader.html:209
+#: app/templates/reader.html:259
 msgid "Back"
 msgstr "Tillbaka"
 
-#: app/templates/reader.html:215 app/templates/reader.html:333
+#: app/templates/reader.html:265 app/templates/reader.html:418
 msgid "Save for offline reading"
-msgstr "Spara för offline-läsning"
+msgstr ""
 
-#: app/templates/reader.html:219
+#: app/templates/reader.html:269
+#, fuzzy
 msgid "Give this book to someone"
-msgstr "Ge bort boken till någon"
+msgstr "öppna boken för att granska"
 
-#: app/templates/reader.html:224 app/templates/reader.html:233
+#: app/templates/reader.html:274 app/templates/reader.html:283
 msgid "Reading settings"
 msgstr "Läsinställningar"
 
-#: app/templates/reader.html:227
+#: app/templates/reader.html:277
 msgid "Previous page"
 msgstr "Föregående sida"
 
-#: app/templates/reader.html:228
+#: app/templates/reader.html:278
 msgid "Next page"
 msgstr "Nästa sida"
 
-#: app/templates/reader.html:229
+#: app/templates/reader.html:279
 msgid "Loading book…"
 msgstr "Laddar bok…"
 
-#: app/templates/reader.html:237 app/templates/reader.html:238
+#: app/templates/reader.html:287 app/templates/reader.html:288
 msgid "Theme"
 msgstr "Tema"
 
-#: app/templates/reader.html:239
+#: app/templates/reader.html:289
 msgid "Light"
 msgstr "Ljus"
 
-#: app/templates/reader.html:240
+#: app/templates/reader.html:290
 msgid "Sepia"
 msgstr "Sepia"
 
-#: app/templates/reader.html:241
+#: app/templates/reader.html:291
 msgid "Dark"
 msgstr "Mörk"
 
-#: app/templates/reader.html:246
+#: app/templates/reader.html:296
 msgid "Size"
 msgstr "Storlek"
 
-#: app/templates/reader.html:248
+#: app/templates/reader.html:298
 msgid "Smaller text"
 msgstr "Mindre text"
 
-#: app/templates/reader.html:250
+#: app/templates/reader.html:300
 msgid "Larger text"
 msgstr "Större text"
 
-#: app/templates/reader.html:255 app/templates/reader.html:256
+#: app/templates/reader.html:305 app/templates/reader.html:306
 msgid "Font"
 msgstr "Typsnitt"
 
-#: app/templates/reader.html:258
+#: app/templates/reader.html:308
 msgid "Serif"
 msgstr "Serif"
 
-#: app/templates/reader.html:259
+#: app/templates/reader.html:309
 msgid "Sans"
 msgstr "Sans"
 
-#: app/templates/reader.html:260
+#: app/templates/reader.html:310
 msgid "Dyslexia"
 msgstr "Dyslexi"
 
-#: app/templates/reader.html:265 app/templates/reader.html:266
+#: app/templates/reader.html:315 app/templates/reader.html:316
 msgid "Line spacing"
 msgstr "Radavstånd"
 
-#: app/templates/reader.html:267
+#: app/templates/reader.html:317
 msgid "Tight"
 msgstr "Tät"
 
-#: app/templates/reader.html:269
+#: app/templates/reader.html:319
 msgid "Loose"
 msgstr "Luftig"
 
-#: app/templates/reader.html:274 app/templates/reader.html:275
+#: app/templates/reader.html:324 app/templates/reader.html:325
 msgid "Margins"
 msgstr "Marginaler"
 
-#: app/templates/reader.html:276
+#: app/templates/reader.html:326
 msgid "Narrow"
 msgstr "Smal"
 
-#: app/templates/reader.html:278
+#: app/templates/reader.html:328
 msgid "Wide"
 msgstr "Bred"
 
-#: app/templates/reader.html:283 app/templates/reader.html:284
+#: app/templates/reader.html:333 app/templates/reader.html:334
 msgid "Reading mode"
 msgstr "Läsläge"
 
-#: app/templates/reader.html:285
+#: app/templates/reader.html:335
 msgid "Paged"
 msgstr "Bläddra"
 
-#: app/templates/reader.html:286
+#: app/templates/reader.html:336
 msgid "Scroll"
 msgstr "Rulla"
 
-#: app/templates/reader.html:332
+#: app/templates/reader.html:343 app/templates/reader.html:346
+msgid "Dictionary"
+msgstr "Ordbok"
+
+#: app/templates/reader.html:354
+msgid "Swedish"
+msgstr "Svenska"
+
+#: app/templates/reader.html:357
+msgid "Explain with AI"
+msgstr "Förklara med AI"
+
+#: app/templates/reader.html:359
+msgid "AI — in this sentence"
+msgstr "AI — i den här meningen"
+
+#: app/templates/reader.html:417
 msgid "Could not open this book."
 msgstr "Kunde inte öppna boken."
 
-#: app/templates/reader.html:334
+#: app/templates/reader.html:419
 msgid "Saving for offline…"
-msgstr "Sparar för offline…"
+msgstr ""
 
-#: app/templates/reader.html:335
+#: app/templates/reader.html:420
 msgid "Saved — tap to remove offline copy"
-msgstr "Sparad — tryck för att ta bort offline-kopian"
+msgstr ""
 
-#: app/templates/reader.html:336
+#: app/templates/reader.html:421
 msgid "Could not save for offline"
-msgstr "Kunde inte spara för offline"
+msgstr ""
 
-#: app/templates/reader.html:337
+#: app/templates/reader.html:422
 msgid ""
 "This book is copy-protected (DRM) and can’t be shared. The recipient "
 "wouldn’t be able to open the file — the protection is tied to your "
 "account."
 msgstr ""
-"Den här boken är kopieringsskyddad (DRM) och kan inte delas. Mottagaren "
-"skulle ändå inte kunna öppna filen — skyddet är låst till ditt konto."
 
-#: app/templates/reader.html:338
+#: app/templates/reader.html:423
 msgid ""
 "Sharing needs a secure (HTTPS) connection. Open Colophon via your "
 "Tailscale address (https://…) instead of the plain http:// address, then "
 "try again."
 msgstr ""
-"Delning kräver en säker anslutning (HTTPS). Öppna Colophon via din "
-"Tailscale-adress (https://…) i stället för den vanliga http://-adressen "
-"och försök igen."
 
-#: app/templates/reader.html:339
+#: app/templates/reader.html:424
 msgid ""
 "Your browser can’t share files directly — the book will download instead,"
 " so you can send it yourself."
 msgstr ""
-"Din webbläsare kan inte dela filer direkt — boken laddas ned i stället, så "
-"att du kan skicka den själv."
 
-#: app/templates/reader.html:340
+#: app/templates/reader.html:425
+#, fuzzy
 msgid "Could not share this book."
-msgstr "Kunde inte dela boken."
+msgstr "Kunde inte öppna boken."
 
-#: app/templates/reader.html:341
+#: app/templates/reader.html:426
 msgid "Preparing book to share…"
-msgstr "Förbereder boken för delning…"
+msgstr ""
+
+#: app/templates/reader.html:428
+#, python-brace-format
+msgid "Downloading dictionaries ({mb} MB, one-time)…"
+msgstr "Hämtar ordböcker ({mb} MB, engångsnedladdning)…"
+
+#: app/templates/reader.html:429
+msgid "Dictionary download failed — see the server log."
+msgstr "Ordboksnedladdningen misslyckades — se serverloggen."
+
+#: app/templates/reader.html:430
+msgid "No entry found — try the AI explanation."
+msgstr "Ingen träff i ordboken — prova AI-förklaringen."
+
+#: app/templates/reader.html:431
+msgid "No entry found."
+msgstr "Ingen träff i ordboken."
+
+#: app/templates/reader.html:432
+msgid "No dictionary for this language yet — the AI explanation still works."
+msgstr "Ingen ordbok för det här språket ännu — AI-förklaringen fungerar ändå."
+
+#: app/templates/reader.html:433
+msgid "No dictionary for this language yet."
+msgstr "Ingen ordbok för det här språket ännu."
+
+#: app/templates/reader.html:434
+msgid "Lookup failed."
+msgstr "Uppslaget misslyckades."
+
+#: app/templates/reader.html:435
+msgid "Thinking…"
+msgstr "Tänker…"
+
+#: app/templates/reader.html:436
+msgid "AI explanation failed."
+msgstr "AI-förklaringen misslyckades."
 
 #: app/templates/settings_ai.html:307 app/templates/settings_api.html:462
 #: app/templates/settings_api.html:868
@@ -4245,4 +4303,295 @@ msgstr "URL kopierad till urklipp."
 
 #~ msgid "Leave empty for anonymous access"
 #~ msgstr "Lämna tomt för anonym åtkomst"
+
+#~ msgid "Authors"
+#~ msgstr "Författare"
+
+#~ msgid ""
+#~ "Every author in the library, one "
+#~ "canonical entry per person. Rename or"
+#~ " merge an entry and all of its"
+#~ " books are relabelled in one sweep."
+#~ " Tentative entries were created "
+#~ "automatically from file metadata and are"
+#~ " not written into files until "
+#~ "confirmed."
+#~ msgstr ""
+#~ "Alla författare i biblioteket, en "
+#~ "kanonisk post per person. Byt namn "
+#~ "på eller slå ihop en post så "
+#~ "märks alla dess böcker om i ett"
+#~ " svep. Preliminära poster har skapats "
+#~ "automatiskt från filernas metadata och "
+#~ "skrivs inte in i filerna förrän de"
+#~ " bekräftats."
+
+#~ msgid "%(count)d books have an author waiting for review."
+#~ msgstr "%(count)d böcker har en författare som väntar på granskning."
+
+#~ msgid "Open the library and use the “authors to review” filter."
+#~ msgstr "Öppna biblioteket och använd filtret ”författare att granska”."
+
+#~ msgid "Likely duplicates"
+#~ msgstr "Troliga dubbletter"
+
+#~ msgid ""
+#~ "These pairs of entries are nearly "
+#~ "identical — usually a typo or a"
+#~ " spelling variant that slipped in as"
+#~ " its own author. Merging moves all"
+#~ " books and aliases to the entry "
+#~ "you keep."
+#~ msgstr ""
+#~ "De här posterna är nästan identiska "
+#~ "— oftast ett stavfel eller en "
+#~ "stavningsvariant som slunkit in som egen"
+#~ " författare. Ihopslagning flyttar alla "
+#~ "böcker och alias till posten du "
+#~ "behåller."
+
+#~ msgid "Ask the AI whether these are the same person"
+#~ msgstr "Fråga AI:n om det är samma person"
+
+#~ msgid "Keep “%(name)s”"
+#~ msgstr "Behåll ”%(name)s”"
+
+#~ msgid "Registry"
+#~ msgstr "Register"
+
+#~ msgid "Filter authors…"
+#~ msgstr "Filtrera författare…"
+
+#~ msgid "Show only unconfirmed"
+#~ msgstr "Visa endast obekräftade"
+
+#~ msgid "Confirm selected"
+#~ msgstr "Bekräfta markerade"
+
+#~ msgid "Clear selection"
+#~ msgstr "Avmarkera alla"
+
+#~ msgid "Select all"
+#~ msgstr "Markera alla"
+
+#~ msgid "Authority"
+#~ msgstr "Auktoritet"
+
+#~ msgid "Books"
+#~ msgstr "Böcker"
+
+#~ msgid "Select %(name)s"
+#~ msgstr "Markera %(name)s"
+
+#~ msgid "Nearly identical to another entry"
+#~ msgstr "Nästan identisk med en annan post"
+
+#~ msgid "Authority-linked"
+#~ msgstr "Auktoriserad"
+
+#~ msgid "Confirmed"
+#~ msgstr "Bekräftad"
+
+#~ msgid "Tentative"
+#~ msgstr "Preliminär"
+
+#~ msgid "Mark this spelling as correct"
+#~ msgstr "Markera stavningen som korrekt"
+
+#~ msgid "Confirm"
+#~ msgstr "Bekräfta"
+
+#~ msgid "Look the author up in Wikidata and store authority ids"
+#~ msgstr "Slå upp författaren i Wikidata och spara auktoritets-id:n"
+
+#~ msgid "Verify"
+#~ msgstr "Verifiera"
+
+#~ msgid "Rename"
+#~ msgstr "Byt namn"
+
+#~ msgid "Merge…"
+#~ msgstr "Slå ihop…"
+
+#~ msgid "Remove unused entry"
+#~ msgstr "Ta bort oanvänd post"
+
+#~ msgid "No authors yet — they appear here after the next scan or upload."
+#~ msgstr ""
+#~ "Inga författare ännu — de dyker "
+#~ "upp här efter nästa skanning eller "
+#~ "uppladdning."
+
+#~ msgid "New name for “{name}”:"
+#~ msgstr "Nytt namn för ”{name}”:"
+
+#~ msgid "Merge “{name}” into which author? Type the name:"
+#~ msgstr "Slå ihop ”{name}” med vilken författare? Skriv namnet:"
+
+#~ msgid "No registered author matches “{name}”."
+#~ msgstr "Ingen registrerad författare matchar ”{name}”."
+
+#~ msgid ""
+#~ "Move {count} books from “{source}” to"
+#~ " “{target}”? “{source}” is deleted."
+#~ msgstr ""
+#~ "Flytta {count} böcker från ”{source}” "
+#~ "till ”{target}”? ”{source}” raderas."
+
+#~ msgid "That name already belongs to another entry — merge them instead."
+#~ msgstr "Namnet tillhör redan en annan post — slå ihop dem i stället."
+
+#~ msgid "Remove the unused entry “{name}”?"
+#~ msgstr "Ta bort den oanvända posten ”{name}”?"
+
+#~ msgid "The action failed."
+#~ msgstr "Åtgärden misslyckades."
+
+#~ msgid "Looking up…"
+#~ msgstr "Slår upp…"
+
+#~ msgid "No confident match found in Wikidata."
+#~ msgstr "Ingen säker träff i Wikidata."
+
+#~ msgid "Asking…"
+#~ msgstr "Frågar…"
+
+#~ msgid "AI: probably the same person — {reason}"
+#~ msgstr "AI: troligen samma person — {reason}"
+
+#~ msgid "AI: probably different people — {reason}"
+#~ msgstr "AI: troligen olika personer — {reason}"
+
+#~ msgid "AI: not sure — {reason}"
+#~ msgstr "AI: osäkert — {reason}"
+
+#~ msgid "AI is not configured (Settings → AI)."
+#~ msgstr "AI är inte konfigurerat (Inställningar → AI)."
+
+#~ msgid "{count} selected"
+#~ msgstr "{count} markerade"
+
+#~ msgid "Confirm {count} selected authors? They become eligible for file writes."
+#~ msgstr ""
+#~ "Bekräfta {count} markerade författare? De "
+#~ "blir då behöriga för filskrivning."
+
+#~ msgid "None of the selected entries are unconfirmed."
+#~ msgstr "Inga av de markerade posterna är obekräftade."
+
+#~ msgid "Date added (newest first)"
+#~ msgstr "Tillagd (nyast först)"
+
+#~ msgid "Date added (oldest first)"
+#~ msgstr "Tillagd (äldst först)"
+
+#~ msgid "Author resembles a known author — open to review"
+#~ msgstr "Författaren liknar en känd författare — öppna för att granska"
+
+#~ msgid "New author — not yet confirmed"
+#~ msgstr "Ny författare — ännu inte bekräftad"
+
+#~ msgid "Author missing"
+#~ msgstr "Författare saknas"
+
+#~ msgid "%(count)d authors to review"
+#~ msgstr "%(count)d författare att granska"
+
+#~ msgid "%(count)d newly added"
+#~ msgstr "%(count)d nytillagda"
+
+#~ msgid "Authors: {known} known · {review} to review · {missing} missing"
+#~ msgstr "Författare: {known} kända · {review} att granska · {missing} saknas"
+
+#~ msgid "Did you mean {name}?"
+#~ msgstr "Menade du {name}?"
+
+#~ msgid "Create new: “{name}”"
+#~ msgstr "Skapa ny: ”{name}”"
+
+#~ msgid ""
+#~ "“{name}” is very similar to "
+#~ "“{existing}”. Create as a new author "
+#~ "anyway?"
+#~ msgstr "”{name}” är mycket likt ”{existing}”. Skapa som ny författare ändå?"
+
+#~ msgid "Will be linked to {name} on save."
+#~ msgstr "Länkas till {name} när du sparar."
+
+#~ msgid "Resembles a known author — pick one in the list or keep your text."
+#~ msgstr "Liknar en känd författare — välj en i listan eller behåll din text."
+
+#~ msgid "New author — saving confirms the spelling."
+#~ msgstr "Ny författare — att spara bekräftar stavningen."
+
+#~ msgid "No author in the file — type or pick one."
+#~ msgstr "Ingen författare i filen — skriv eller välj en."
+
+#~ msgid "No registered authors match."
+#~ msgstr "Inga registrerade författare matchar."
+
+#~ msgid "Author search failed."
+#~ msgstr "Författarsökningen misslyckades."
+
+#~ msgid "Newly added"
+#~ msgstr "Nytillagt"
+
+#~ msgid "+{count} more"
+#~ msgstr "+{count} till"
+
+#~ msgid "Save for offline reading"
+#~ msgstr "Spara för offline-läsning"
+
+#~ msgid "Give this book to someone"
+#~ msgstr "Ge bort boken till någon"
+
+#~ msgid "Saving for offline…"
+#~ msgstr "Sparar för offline…"
+
+#~ msgid "Saved — tap to remove offline copy"
+#~ msgstr "Sparad — tryck för att ta bort offline-kopian"
+
+#~ msgid "Could not save for offline"
+#~ msgstr "Kunde inte spara för offline"
+
+#~ msgid ""
+#~ "This book is copy-protected (DRM) "
+#~ "and can’t be shared. The recipient "
+#~ "wouldn’t be able to open the file"
+#~ " — the protection is tied to "
+#~ "your account."
+#~ msgstr ""
+#~ "Den här boken är kopieringsskyddad (DRM)"
+#~ " och kan inte delas. Mottagaren "
+#~ "skulle ändå inte kunna öppna filen "
+#~ "— skyddet är låst till ditt konto."
+
+#~ msgid ""
+#~ "Sharing needs a secure (HTTPS) "
+#~ "connection. Open Colophon via your "
+#~ "Tailscale address (https://…) instead of "
+#~ "the plain http:// address, then try "
+#~ "again."
+#~ msgstr ""
+#~ "Delning kräver en säker anslutning "
+#~ "(HTTPS). Öppna Colophon via din "
+#~ "Tailscale-adress (https://…) i stället för"
+#~ " den vanliga http://-adressen och försök"
+#~ " igen."
+
+#~ msgid ""
+#~ "Your browser can’t share files directly"
+#~ " — the book will download instead,"
+#~ " so you can send it yourself."
+#~ msgstr ""
+#~ "Din webbläsare kan inte dela filer "
+#~ "direkt — boken laddas ned i "
+#~ "stället, så att du kan skicka den"
+#~ " själv."
+
+#~ msgid "Could not share this book."
+#~ msgstr "Kunde inte dela boken."
+
+#~ msgid "Preparing book to share…"
+#~ msgstr "Förbereder boken för delning…"
 

@@ -202,6 +202,56 @@
             flex: 1 1 auto; text-align: center; font-variant-numeric: tabular-nums;
             font-size: .95rem; font-weight: 600;
         }
+
+        /* --- Dictionary sheet (word lookup) -------------------------------- */
+        /* Non-modal bottom card — no backdrop, so the page stays readable
+           behind it. Shares the .reader-sheet theme variables. */
+        .reader-sheet.reader-dict { z-index: 45; gap: 10px; max-height: 55vh; }
+        .reader-dict .rd-head { display: flex; align-items: center; gap: 10px; }
+        .reader-dict .rd-eyebrow {
+            flex: 1; font-size: .68rem; font-weight: 600;
+            letter-spacing: .12em; text-transform: uppercase; opacity: .6;
+        }
+        .reader-dict .rd-close {
+            border: none; background: transparent; color: inherit; cursor: pointer;
+            font-size: 1rem; padding: 4px 8px; border-radius: 6px; opacity: .7;
+        }
+        .reader-dict .rd-close:hover { background: var(--rs-chip); opacity: 1; }
+        .reader-dict .rd-word {
+            font-family: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+            font-size: 1.35rem; line-height: 1.2; overflow-wrap: anywhere;
+        }
+        .reader-dict .rd-body {
+            overflow-y: auto; min-height: 0;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .reader-dict .rd-status { font-size: .9rem; opacity: .75; }
+        .reader-dict .rd-status.rd-busy { animation: rdrPulse 1.2s ease-in-out infinite; }
+        .reader-dict .rd-entry { font-size: .92rem; line-height: 1.5; overflow-wrap: anywhere; }
+        .reader-dict .rd-entry.rd-pre { white-space: pre-wrap; font-size: .85rem; }
+        .reader-dict .rd-entry a { color: inherit; }
+        .reader-dict .rd-trans-row {
+            border-top: 1px solid var(--rs-line); padding-top: 10px;
+            display: flex; gap: 10px; align-items: baseline;
+        }
+        .reader-dict .rd-trans-tag {
+            flex: 0 0 auto; font-size: .66rem; font-weight: 600;
+            letter-spacing: .12em; text-transform: uppercase; opacity: .6;
+        }
+        .reader-dict .rd-trans { flex: 1 1 auto; display: flex; flex-direction: column; gap: 8px; }
+        .reader-dict .rd-ai-btn {
+            align-self: flex-start; font: inherit; font-size: .88rem; color: inherit;
+            padding: 8px 14px; border: 1px solid var(--rs-line); border-radius: 8px;
+            background: var(--rs-chip); cursor: pointer;
+        }
+        .reader-dict .rd-ai-btn:hover { border-color: var(--rs-chip-on); }
+        .reader-dict .rd-ai-btn:disabled { opacity: .55; cursor: default; }
+        .reader-dict .rd-ai-box { border-top: 1px solid var(--rs-line); padding-top: 10px; }
+        .reader-dict .rd-ai-tag {
+            font-size: .66rem; font-weight: 600; letter-spacing: .12em;
+            text-transform: uppercase; margin-bottom: 5px; color: var(--rs-chip-on);
+        }
+        .reader-dict .rd-ai-text { font-size: .9rem; line-height: 1.5; }
     </style>
 </head>
 <body>
@@ -288,6 +338,30 @@
         </div>
     </div>
 
+    {# Dictionary lookup sheet — opened by selecting a single word in the book
+       (static/js/reader-dict.js). Non-modal: reading continues behind it. #}
+    <div class="reader-sheet reader-dict" id="readerDictSheet" hidden role="dialog" aria-label="{{ _('Dictionary') }}">
+        <div class="rs-grip"></div>
+        <div class="rd-head">
+            <span class="rd-eyebrow">{{ _('Dictionary') }}</span>
+            <button type="button" class="rd-close" id="rdClose" aria-label="{{ _('Close') }}"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="rd-word" id="rdWord"></div>
+        <div class="rd-body">
+            <div class="rd-status" id="rdStatus" hidden></div>
+            <div class="rd-defs" id="rdDefs" hidden></div>
+            <div class="rd-trans-row" id="rdTransRow" hidden>
+                <span class="rd-trans-tag">{{ _('Swedish') }}</span>
+                <div class="rd-trans" id="rdTrans"></div>
+            </div>
+            <button type="button" class="rd-ai-btn" id="rdAiBtn" hidden>✦ {{ _('Explain with AI') }}</button>
+            <div class="rd-ai-box" id="rdAiBox" hidden>
+                <div class="rd-ai-tag">{{ _('AI — in this sentence') }}</div>
+                <div class="rd-ai-text" id="rdAiText"></div>
+            </div>
+        </div>
+    </div>
+
     {# Transient message surface — used to explain why sharing is unavailable
        (DRM / not on HTTPS) rather than failing silently. #}
     <div class="reader-toast" id="readerToast" role="status" aria-live="polite" hidden></div>
@@ -310,12 +384,21 @@
             shareFileName: {{ share_filename|tojson }},
             shareMime: {{ share_mimetype|tojson }},
             bookTitle: {{ (item.title or item.file_name or '')|tojson }},
+            // Dictionary lookup (docs/reader-dictionary-lookup.md): the book's
+            // language picks which dictionaries to query/download; the AI
+            // button only renders when a provider is configured.
+            bookLanguage: {{ book_language|tojson }},
+            dictLookupUrl: {{ dict_lookup_url|tojson }},
+            dictDownloadUrl: {{ dict_download_url|tojson }},
+            dictExplainUrl: {{ dict_explain_url|tojson }},
+            aiConfigured: {{ ai_configured|tojson }},
             // Shared reader-shell assets cached alongside the book so the whole
             // reader works offline. foliate's module graph is cached separately
             // by the service worker (stale-while-revalidate). Tabler's icon
             // font is included so the toolbar icons render with no connection.
             shellAssets: [
                 {{ (url_for('static', filename='js/reader.js') ~ '?v=' ~ app_version)|tojson }},
+                {{ (url_for('static', filename='js/reader-dict.js') ~ '?v=' ~ app_version)|tojson }},
                 {{ (url_for('static', filename='css/bulk_metadata.css') ~ '?v=' ~ app_version)|tojson }},
                 {{ url_for('static', filename='vendor/tabler-icons/tabler-icons.min.css')|tojson }},
                 {{ url_for('static', filename='vendor/tabler-icons/fonts/tabler-icons.woff2')|tojson }},
@@ -340,7 +423,17 @@
                 shareNeedsHttps: {{ _('Sharing needs a secure (HTTPS) connection. Open Colophon via your Tailscale address (https://…) instead of the plain http:// address, then try again.')|tojson }},
                 shareUnsupported: {{ _('Your browser can’t share files directly — the book will download instead, so you can send it yourself.')|tojson }},
                 shareError: {{ _('Could not share this book.')|tojson }},
-                sharePreparing: {{ _('Preparing book to share…')|tojson }}
+                sharePreparing: {{ _('Preparing book to share…')|tojson }},
+                dictLoading: {{ _('Looking up…')|tojson }},
+                dictDownloading: {{ _('Downloading dictionaries ({mb} MB, one-time)…')|tojson }},
+                dictDownloadFailed: {{ _('Dictionary download failed — see the server log.')|tojson }},
+                dictMiss: {{ _('No entry found — try the AI explanation.')|tojson }},
+                dictMissNoAi: {{ _('No entry found.')|tojson }},
+                dictNoLanguage: {{ _('No dictionary for this language yet — the AI explanation still works.')|tojson }},
+                dictNoLanguageNoAi: {{ _('No dictionary for this language yet.')|tojson }},
+                dictError: {{ _('Lookup failed.')|tojson }},
+                dictAiThinking: {{ _('Thinking…')|tojson }},
+                dictAiFailed: {{ _('AI explanation failed.')|tojson }}
             }
         };
 

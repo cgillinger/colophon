@@ -306,6 +306,77 @@ def _is_local_endpoint() -> bool:
     return "localhost" in url or "127.0.0.1" in url
 
 
+_EXPLAIN_PROMPT = """You are a reading companion inside an e-book reader. The reader (a native Swedish speaker reading in English) selected the word "{word}" in this sentence:
+
+"{sentence}"
+
+The book is {book}. Explain, in Swedish, what the word means as used in this exact sentence — including any idiom, archaic usage or irony. 2–3 short sentences, no preamble, no markdown."""
+
+
+def explain_word_in_context(word, sentence, item=None):
+    """AI fallback/companion for the reader's dictionary sheet: explain a
+    selected word in its sentence, in Swedish. Same provider, error-code and
+    usage-logging conventions as adjudicate_author_names().
+
+    Returns {"ok": True, "explanation": str} or {"ok": False, "error": "..."}.
+    """
+    api_url = (get_setting("AI_API_URL") or _DEFAULT_API_URL).strip()
+    api_key = (get_setting("AI_API_KEY") or "").strip()
+    model = (get_setting("AI_MODEL") or _DEFAULT_MODEL).strip()
+
+    book = "unknown"
+    if item is not None:
+        title = (item.title or "").strip()
+        author = (item.author or "").strip()
+        if title:
+            book = f'"{title}"' + (f" by {author}" if author else "")
+
+    payload = {
+        "model": model,
+        "messages": [{
+            "role": "user",
+            "content": _EXPLAIN_PROMPT.format(
+                word=(word or "")[:80],
+                sentence=(sentence or "")[:500],
+                book=book,
+            ),
+        }],
+        "max_tokens": 300,
+    }
+
+    try:
+        resp = requests.post(api_url, json=payload,
+                             headers=_build_headers(api_key), timeout=30)
+    except requests.Timeout:
+        return {"ok": False, "error": "timeout"}
+    except requests.RequestException as exc:
+        logger.warning("AI explain request error: %s", exc)
+        return {"ok": False, "error": "request_failed"}
+
+    if resp.status_code in (401, 403):
+        return {"ok": False, "error": "auth"}
+    if resp.status_code == 429:
+        return {"ok": False, "error": "rate_limit"}
+    if not resp.ok:
+        return {"ok": False, "error": "api_error"}
+
+    try:
+        body = resp.json()
+        explanation = (body["choices"][0]["message"]["content"] or "").strip()
+    except (KeyError, IndexError, ValueError):
+        return {"ok": False, "error": "invalid_json"}
+    if not explanation:
+        return {"ok": False, "error": "empty"}
+
+    usage = body.get("usage", {})
+    if usage:
+        _log_usage(provider=_detect_provider(api_url), model=model, usage=usage,
+                   book_id=getattr(item, "id", None),
+                   book_title=getattr(item, "title", None))
+
+    return {"ok": True, "explanation": explanation}
+
+
 _ADJUDICATE_PROMPT = """Two author name strings from an ebook library may or may not refer to the same real person:
 
 A: "{a}"

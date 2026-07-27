@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.31.1.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.32.0.
 
 ## 🚧 Pågående arbete — fortsätt 2026-06-11
 
@@ -86,6 +86,7 @@ app/
     kobo_kepub.py               # On-the-fly EPUB→KEPUB conversion via kepubify
     kobo_conf.py                # Render Kobo .conf snippets for the setup UI
     reading_state.py            # Shared monotonic reading-state writer (Kobo + reader)
+    dictionaries.py             # Reader word lookup: on-demand StarDict download + server-side lookup
   templates/
     _layout.html                # Base template — sidebar, topbar, theme bootstrap
     bulk_metadata.html          # Main library view (~1000 lines; JS/CSS extracted to static/)
@@ -112,7 +113,7 @@ tests/                          # 21 pytest files: metadata_pipeline, calibre_me
                                 # source_status, title_clean, wikipedia,
                                 # metadata_merge, metadata_escalation, upload,
                                 # author_authority, author_resolver,
-                                # author_routes, author_lookup
+                                # author_routes, author_lookup, reader_dict
 tools/
   install_calibre_plugins.sh    # Dockerfile build step: Goodreads, FF, FictionDB plugins
   install_kepubify.sh           # Dockerfile build step: kepubify binary for Kobo conversion
@@ -147,6 +148,7 @@ url-state.js             # Mirrors view/search/filters/sort/page to the URL (bac
 author-combobox.js       # Registry-backed author field in the book modal (typeahead + create-guard)
 authors-manage.js        # /authors page: confirm/rename/merge/verify + AI adjudicator (own page, not the bulk view)
 reader.js                # In-browser reader controller (standalone /reader page, not the bulk view; ES module, loads foliate-js)
+reader-dict.js           # Dictionary-lookup sheet for the reader (select a word → definition + translation + AI)
 ```
 
 When editing the main view, look in the relevant JS module first — most logic lives there, not in the template.
@@ -187,6 +189,13 @@ Both scan and bulk metadata use Server-Sent Events with background threads + `qu
 foliate-js (`static/vendor/foliate-js/`, an ES module, no build step). `/reader/<id>/file` serves the **raw** EPUB (not the kepubified Kobo variant); the URL is stable and token-free so a future "download for offline" step can cache it. Step 1 is **online-only** — offline caching of book content is still deferred (see `docs/TODO.md`).
 
 Reading progress is **not** a separate store: the reader writes to the same canonical `LibraryItem` reading-state fields the Kobo sync uses (`read_status`, `read_progress`, …) via the shared `services/reading_state.py:apply_reading_state()`, which both the Kobo PUT handler and `/reader/<id>/progress` call. Because it bumps `read_last_modified`, progress made in the browser rides the existing Kobo delta to the device, and vice versa — no new sync infra. The browser resumes by **percent** (`goToFraction`); it never writes `read_location`, because Kobo's KEPUB-span locations and foliate's EPUB CFIs are different coordinate systems (exact *browser*-to-Kobo position is intentionally out of scope — though the Kobo's **own** bookmark now round-trips exactly Kobo→Colophon→Kobo, see below). The "Läs" button is a `display-only` element gated to EPUB, so it appears only in the shelf view's passive modal, not the table view's edit modal.
+
+**Dictionary lookup (v1.32.0)**: selecting a single word in the reader opens a
+bottom sheet with an English definition (GCIDE) + Swedish translation
+(FreeDict/WikDict) + optional AI explanation-in-context. Dictionaries download
+on demand (pinned URL + checksum in `services/dictionaries.py`'s MANIFEST) to
+`DATA_DIR/dictionaries/<pair>/` and lookups run **server-side** — full design
+and how to add languages in [`docs/reader-dictionary-lookup.md`](docs/reader-dictionary-lookup.md).
 
 **Reading-state sync gotchas live in [`docs/kobo-reading-state-sync.md`](docs/kobo-reading-state-sync.md)** — read it before touching `reading_state.py` or the Kobo PUT/DTO paths. It records the conflict-resolution rules (monotonic status + furthest-read-wins, v1.28.1), the full-Location round-trip (`read_location_json`, v1.28.2 — `Source` is the chapter file, never the book UUID), the content-vs-progress re-download distinction, why sideloaded books (foreign v4 UUIDs) can't sync, and a symptom→cause triage table.
 
@@ -275,7 +284,7 @@ get their env from docker-compose.
 >   -c "pip install -q pytest && python -m pytest tests/ -q"
 > ```
 
-**Known pre-existing failures (as of v1.28.2):** a clean run is *409 passed, 10
+**Known pre-existing failures (as of v1.32.0):** a clean run is *447 passed, 10
 failed*. The 10 are not regressions — `test_quality.py` (6) and
 `test_scoring.py` (3) assert Swedish reason/warning substrings the code now
 emits in English, and `test_scanner.py::...test_does_not_overwrite_manual_metadata`

@@ -42,6 +42,8 @@ from flask import (
 
 from app.models import db
 from app.routes.helpers import get_item_or_404
+from app.services import dictionaries
+from app.services.ai_metadata import ai_is_configured, explain_word_in_context
 from app.services.drm import file_has_drm
 from app.services.reading_state import apply_reading_state
 
@@ -125,6 +127,11 @@ def read_book(item_id):
         can_share=_can_share(item),
         share_filename=_share_filename(item),
         share_mimetype=READER_MIMETYPES.get(_share_extension(item), "application/octet-stream"),
+        book_language=dictionaries.normalize_language(item.language),
+        dict_lookup_url=url_for("reader.dict_lookup"),
+        dict_download_url=url_for("reader.dict_download"),
+        dict_explain_url=url_for("reader.dict_explain", item_id=item.id),
+        ai_configured=ai_is_configured(),
     )
 
 
@@ -194,3 +201,55 @@ def update_progress(item_id):
             "read_progress": item.read_progress,
         }
     )
+
+
+# --------------------------------------------------------------------------
+# Dictionary lookup (see docs/reader-dictionary-lookup.md)
+# --------------------------------------------------------------------------
+@reader_bp.route("/dict/lookup")
+def dict_lookup():
+    """Look a selected word up in the on-disk dictionaries for a language.
+
+    Answers needs_download (with total MB) when the language's dictionaries
+    aren't installed yet, and unsupported_language when no pairs are mapped —
+    the sheet then falls back to AI-only mode rather than erroring.
+    """
+    word = (request.args.get("word") or "").strip()
+    language = request.args.get("lang") or ""
+    if not word or len(word) > 80:
+        return jsonify({"status": "bad_request"}), 400
+    return jsonify(dictionaries.lookup_word(language, word))
+
+
+@reader_bp.route("/dict/download", methods=["POST"])
+def dict_download():
+    """Download + install every missing dictionary for a language. One-time
+    per language; idempotent, so a timed-out attempt is safe to retry."""
+    payload = request.get_json(silent=True) or {}
+    language = payload.get("language") or ""
+    if not dictionaries.pairs_for_language(language):
+        return jsonify({"error": "unsupported_language"}), 400
+    try:
+        pairs = dictionaries.download_for_language(language)
+    except Exception as exc:
+        logger.error("Dictionary download failed for %s: %s", language, exc)
+        return jsonify({"error": "download_failed"}), 502
+    return jsonify({"ok": True, "pairs": pairs})
+
+
+@reader_bp.route("/<int:item_id>/dict/explain", methods=["POST"])
+def dict_explain(item_id):
+    """AI explanation of a word in its sentence (Swedish). Companion to the
+    dictionary entries; also the fallback when they miss."""
+    item = get_item_or_404(item_id)
+    if not ai_is_configured():
+        return jsonify({"error": "not_configured"}), 503
+    payload = request.get_json(silent=True) or {}
+    word = (payload.get("word") or "").strip()
+    sentence = (payload.get("sentence") or "").strip()
+    if not word:
+        return jsonify({"error": "bad_request"}), 400
+    result = explain_word_in_context(word, sentence, item)
+    if not result.get("ok"):
+        return jsonify({"error": result.get("error", "failed")}), 502
+    return jsonify({"ok": True, "explanation": result["explanation"]})
