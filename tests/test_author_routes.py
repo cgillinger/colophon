@@ -223,6 +223,31 @@ def test_confirm_promotes_tentative(client):
     assert body["author"]["source"] == "user_confirmed"
 
 
+def test_confirm_clears_new_flag_on_linked_books(client):
+    author = _author("Selma Lagerlöf", source="tentative")
+    item = _add_item("Selma Lagerlöf")
+    item.author_id = author.id
+    item.author_status = STATUS_NEW
+    db.session.commit()
+
+    client.post(f"/authors/{author.id}/confirm")
+    assert db.session.get(LibraryItem, item.id).author_status == STATUS_LINKED
+
+
+def test_confirm_bulk_clears_new_flag(client):
+    a = _author("Selma Lagerlöf", source="tentative")
+    b = _author("Hjalmar Söderberg", source="tentative")
+    ia, ib = _add_item("Selma Lagerlöf"), _add_item("Hjalmar Söderberg")
+    ia.author_id, ia.author_status = a.id, STATUS_NEW
+    ib.author_id, ib.author_status = b.id, STATUS_NEW
+    db.session.commit()
+
+    body = client.post("/authors/confirm-bulk", json={"ids": [a.id, b.id]}).get_json()
+    assert body["confirmed"] == 2
+    assert db.session.get(LibraryItem, ia.id).author_status == STATUS_LINKED
+    assert db.session.get(LibraryItem, ib.id).author_status == STATUS_LINKED
+
+
 def test_delete_refuses_when_in_use(client):
     author = _author("Selma Lagerlöf")
     item = _add_item("Selma Lagerlöf")

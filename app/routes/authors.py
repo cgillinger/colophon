@@ -185,12 +185,22 @@ def merge(author_id):
                     "relabelled": count})
 
 
+def _clear_new_flag(author):
+    """author_status 'new' = 'this book created a tentative entry'. Once the
+    entry is confirmed the wait is over — flip those books to 'linked' so the
+    review banner/filter shrink with each confirm."""
+    LibraryItem.query.filter_by(
+        author_id=author.id, author_status="new"
+    ).update({"author_status": "linked"})
+
+
 @authors_bp.route("/authors/<int:author_id>/confirm", methods=["POST"])
 def confirm(author_id):
     """Tentative → user_confirmed: the entry has earned file writes."""
     author = _get_author_or_404(author_id)
     if author.source == "tentative":
         author.source = "user_confirmed"
+        _clear_new_flag(author)
         db.session.commit()
     return jsonify({"ok": True, "author": _author_dict(author)})
 
@@ -210,6 +220,7 @@ def confirm_bulk():
     ).all()
     for author in authors:
         author.source = "user_confirmed"
+        _clear_new_flag(author)
     db.session.commit()
     return jsonify({"ok": True, "confirmed": len(authors)})
 
@@ -233,6 +244,7 @@ def verify(author_id):
     author.viaf_id = result["viaf_id"] or author.viaf_id
     author.libris_id = result["libris_id"] or author.libris_id
     author.source = "authority_linked"
+    _clear_new_flag(author)
     db.session.commit()
     return jsonify({
         "ok": True,

@@ -121,6 +121,26 @@ def ensure_database_columns():
     sanitize_html_descriptions()
     backfill_language_detection()
     normalize_series_index_values()
+    backfill_author_status_confirmed()
+
+
+def backfill_author_status_confirmed():
+    """author_status 'new' marks the book that created a tentative registry
+    entry — it's 'waiting' only until that entry is confirmed. Confirms used
+    to leave the flag set, so the review banner never shrank; clear it for
+    books whose author has since been confirmed/authority-linked."""
+    try:
+        result = db.session.execute(text(
+            "UPDATE library_items SET author_status = 'linked' "
+            "WHERE author_status = 'new' AND author_id IN "
+            "(SELECT id FROM authors WHERE source != 'tentative')"
+        ))
+        if result.rowcount:
+            db.session.commit()
+        else:
+            db.session.rollback()
+    except Exception:
+        db.session.rollback()
 
 
 def sanitize_html_descriptions():
