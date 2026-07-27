@@ -244,6 +244,17 @@ never strips DRM).
     **dyslexia-friendly** face), **Line spacing**, **Margins**.
   - **Reading mode** — Paged (tap to turn) or Scroll.
   These are remembered across books.
+- **Look up words** — select a single word in the book (long-press on a tablet
+  or phone) and a card opens at the bottom: the **Swedish translation** on top
+  and an English dictionary definition (Webster's) below it, collapsed behind
+  **Show more** when it runs long. The **✦ Explain with AI** button explains the
+  word *in that exact sentence* — great for idioms and archaic words, and the
+  fallback when the dictionary doesn't know the word (requires AI to be
+  configured, see §7). The first time you look up a word, Colophon automatically
+  downloads the dictionaries (open-source, ~37 MB, one-time) — after that,
+  lookups are instant and fully local. Works for books in English in EPUB, MOBI
+  and AZW3 (not PDF); lookups need the server, so a book saved for offline has
+  no dictionary without a connection.
 - **Save for offline** (the download icon) caches the book so you can read it
   with no connection; your progress is kept locally and re-syncs when you're back
   online. *Requires a secure (HTTPS) connection* — see §15 on serving over

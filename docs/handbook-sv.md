@@ -251,6 +251,16 @@ och PDF**; DRM-skyddade (eller lösenordskrypterade) filer går inte att öppna
     **dyslexivänligt**), **Radavstånd**, **Marginaler**.
   - **Läsläge** — Bläddra (tryck för att vända) eller Rulla.
   Dessa kommer ihåg mellan böcker.
+- **Slå upp ord** — markera ett enskilt ord i boken (långtryck på platta/mobil)
+  så öppnas ett kort i underkant: **svensk översättning** överst och en engelsk
+  ordboksdefinition (Websters) under, hopfälld bakom **Visa mer** när den är
+  lång. Knappen **✦ Förklara med AI** förklarar ordet *i just den meningen* —
+  bra för idiom och ålderdomliga ord, och räddningen när ordboken saknar ordet
+  (kräver att AI är konfigurerat, se §7). Första gången du slår upp ett ord
+  laddar Colophon automatiskt ner ordböckerna (fria ordböcker, ~37 MB, en gång)
+  — därefter är uppslagen omedelbara och helt lokala. Fungerar för böcker på
+  engelska i EPUB, MOBI och AZW3 (inte PDF); uppslag kräver att servern nås,
+  så en offline-sparad bok har ingen ordbok utan uppkoppling.
 - **Spara offline** (nedladdningsikonen) cachar boken så att du kan läsa utan
   uppkoppling; din progress sparas lokalt och synkas igen när du är online. *Kräver
   en säker (HTTPS) anslutning* — se §15 om att servera via Tailscale.
