@@ -226,7 +226,10 @@
                     {% if row.book_count %}
                     <a class="count-link" href="{{ url_for('metadata.bulk_metadata') }}?author={{ a.id }}"
                        title="{{ _('Show this author’s books in the library') }}">{{ row.book_count }} <i class="ti ti-external-link"></i></a>
-                    {% else %}0{% endif %}
+                    {% else %}
+                    <span class="badge warn no-books" title="{{ _('No books link to this entry — usually a leftover from bad file metadata. Safe to remove.') }}">
+                        <i class="ti ti-book-off"></i> {{ _('No books') }}</span>
+                    {% endif %}
                 </td>
                 <td class="actions">
                     {% if a.source == 'tentative' %}
