@@ -38,6 +38,15 @@
         {% endif %}
     {% endwith %}
 
+    {% if author_filter %}
+    <div class="author-filter-banner">
+        <i class="ti ti-user"></i>
+        <span>{{ _('Showing books by “%(name)s”', name=author_filter.canonical_name) }}</span>
+        <a href="{{ url_for('metadata.bulk_metadata') }}" class="author-filter-clear">
+            <i class="ti ti-x"></i> {{ _('Show all books') }}</a>
+    </div>
+    {% endif %}
+
     {% if summary %}
         <section class="panel">
             <h2>{{ _('Result') }}</h2>

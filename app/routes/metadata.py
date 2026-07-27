@@ -29,7 +29,7 @@ from flask_babel import gettext as _
 
 logger = logging.getLogger(__name__)
 
-from app.models import db, LibraryItem
+from app.models import db, Author, LibraryItem
 from app.services.metadata_sources import (
     choose_best_metadata,
     choose_best_metadata_explained,
@@ -717,7 +717,20 @@ def bulk_metadata():
     if read_filter not in ("reading", "finished", "unread"):
         read_filter = ""
 
+    # Registry deep link: /metadata/bulk?author=<id> shows one author's books
+    # (from the /authors manage view). Server-side like `status` — the id is
+    # exact (LibraryItem.author_id), so variant spellings can't miss.
+    author_filter = None
+    try:
+        author_id = int(request.args.get("author", ""))
+    except ValueError:
+        author_id = None
+    if author_id:
+        author_filter = db.session.get(Author, author_id)
+
     base_q = LibraryItem.query
+    if author_filter:
+        base_q = base_q.filter(LibraryItem.author_id == author_filter.id)
     if read_filter == "reading":
         items_q = base_q.filter(LibraryItem.read_status == "Reading")
     elif read_filter == "finished":
@@ -1024,6 +1037,7 @@ def bulk_metadata():
         upstream_enabled=upstream_enabled,
         unsynced_count=unsynced_count,
         author_review_count=author_review_count,
+        author_filter=author_filter,
         read_filter=read_filter,
         reading_count=reading_count,
         finished_count=finished_count,

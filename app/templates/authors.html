@@ -111,6 +111,9 @@
         td.author-ids a { color: var(--accent-primary); font-size: 12.5px; margin-right: 8px; }
         td.actions { white-space: nowrap; text-align: right; }
         td.count { font-variant-numeric: tabular-nums; }
+        td.count .count-link { color: var(--accent-primary); font-weight: 500; }
+        td.count .count-link:hover { text-decoration: underline; }
+        td.count .count-link .ti { font-size: 12px; }
         .empty-state { color: var(--text-tertiary); font-style: italic; padding: 20px; text-align: center; }
         .upload-spin { display: inline-block; animation: authors-spin 0.9s linear infinite; }
         @keyframes authors-spin { to { transform: rotate(360deg); } }
@@ -219,7 +222,12 @@
                     {% if a.libris_id %}<a href="https://libris.kb.se/{{ a.libris_id }}" target="_blank" rel="noopener">LIBRIS</a>{% endif %}
                     {% if not a.wikidata_qid and not a.viaf_id and not a.libris_id %}<span class="dup-count">—</span>{% endif %}
                 </td>
-                <td class="count">{{ row.book_count }}</td>
+                <td class="count">
+                    {% if row.book_count %}
+                    <a class="count-link" href="{{ url_for('metadata.bulk_metadata') }}?author={{ a.id }}"
+                       title="{{ _('Show this author’s books in the library') }}">{{ row.book_count }} <i class="ti ti-external-link"></i></a>
+                    {% else %}0{% endif %}
+                </td>
                 <td class="actions">
                     {% if a.source == 'tentative' %}
                     <button type="button" class="btn" data-act="confirm" title="{{ _('Mark this spelling as correct') }}"><i class="ti ti-check"></i> {{ _('Confirm') }}</button>

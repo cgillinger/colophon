@@ -51,6 +51,10 @@
         var status = p.get('status');
         if (status) np.set('status', status);
 
+        // Same for the server-rendered author filter (/authors deep link).
+        var author = p.get('author');
+        if (author) np.set('author', author);
+
         // Always include the view so every entry is unambiguous (a missing
         // view param only ever means the very first, server-rendered entry).
         if (window._viewMode) np.set('view', window._viewMode);
