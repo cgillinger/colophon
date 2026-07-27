@@ -375,20 +375,20 @@
                 <span id="libraryChipTotal">{{ _('%(count)d books', count=total_count) }}</span>
                 {% if format_counts %}
                     {% for ext, count in format_counts.items() %}
-                        · <span class="stats-badge" onclick="toggleBadgeFilter('format', '{{ ext }}', event)">{{ count }} {{ ext }}</span>
+                        · <span class="stats-badge" data-badge="format:{{ ext }}" onclick="toggleBadgeFilter('format', '{{ ext }}', event)">{{ count }} {{ ext }}</span>
                     {% endfor %}
                 {% endif %}
                 {% if missing_cover_count %}
-                    · <span class="stats-badge" id="libraryChipMissingCover" onclick="toggleBadgeFilter('missing_cover', '1', event)">{{ _('%(count)d missing cover', count=missing_cover_count) }}</span>
+                    · <span class="stats-badge" id="libraryChipMissingCover" data-badge="missing_cover:1" onclick="toggleBadgeFilter('missing_cover', '1', event)">{{ _('%(count)d missing cover', count=missing_cover_count) }}</span>
                 {% endif %}
                 {% if upstream_enabled and unsynced_count %}
-                    · <span class="stats-badge" id="libraryChipUnsynced" onclick="toggleBadgeFilter('unsynced', '1', event)">{{ _('%(count)d unsynced', count=unsynced_count) }}</span>
+                    · <span class="stats-badge" id="libraryChipUnsynced" data-badge="unsynced:1" onclick="toggleBadgeFilter('unsynced', '1', event)">{{ _('%(count)d unsynced', count=unsynced_count) }}</span>
                 {% endif %}
                 {% if author_review_count %}
-                    · <span class="stats-badge" id="libraryChipAuthorReview" onclick="toggleBadgeFilter('author_review', '1', event)">{{ _('%(count)d authors to review', count=author_review_count) }}</span>
+                    · <span class="stats-badge" id="libraryChipAuthorReview" data-badge="author_review:1" onclick="toggleBadgeFilter('author_review', '1', event)">{{ _('%(count)d authors to review', count=author_review_count) }}</span>
                 {% endif %}
                 {% if new_count %}
-                    · <span class="stats-badge" id="libraryChipNew" onclick="toggleBadgeFilter('new', '1', event)">{{ _('%(count)d newly added', count=new_count) }}</span>
+                    · <span class="stats-badge" id="libraryChipNew" data-badge="new:1" onclick="toggleBadgeFilter('new', '1', event)">{{ _('%(count)d newly added', count=new_count) }}</span>
                 {% endif %}
             </div>
             <span id="paginationInfo">{{ _('Showing %(count)d books', count=0) }}</span>

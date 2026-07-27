@@ -130,7 +130,7 @@
 <div class="review-banner">
     <i class="ti ti-alert-triangle"></i>
     <span>{{ _('%(count)d books have an author waiting for review.', count=review_count) }}
-        <a href="{{ url_for('metadata.bulk_metadata') }}">{{ _('Open the library and use the “authors to review” filter.') }}</a></span>
+        <a href="{{ url_for('metadata.bulk_metadata') }}?badge=author_review:1&view=table">{{ _('Open the library with the “authors to review” filter.') }}</a></span>
 </div>
 {% endif %}
 

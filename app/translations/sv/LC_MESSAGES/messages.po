@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Colophon 1.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-07-27 18:17+0200\n"
+"POT-Creation-Date: 2026-07-27 21:18+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: sv\n"
@@ -187,7 +187,7 @@ msgstr "Inga AI-förslag att granska. Kör hämtningen först."
 msgid "Metadata saved (%(count)d fields updated)."
 msgstr "Metadata sparad (%(count)d fält uppdaterade)."
 
-#: app/routes/metadata.py:2105
+#: app/routes/metadata.py:2121
 msgid "No books selected."
 msgstr "Inga böcker valda."
 
@@ -728,8 +728,8 @@ msgid "%(count)d books have an author waiting for review."
 msgstr "%(count)d böcker har en författare som väntar på granskning."
 
 #: app/templates/authors.html:133
-msgid "Open the library and use the “authors to review” filter."
-msgstr "Öppna biblioteket och använd filtret ”författare att granska”."
+msgid "Open the library with the “authors to review” filter."
+msgstr "Öppna biblioteket med filtret ”författare att granska”."
 
 #: app/templates/authors.html:142
 msgid "Likely duplicates"

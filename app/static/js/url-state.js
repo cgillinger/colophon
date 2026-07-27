@@ -68,6 +68,9 @@
         var ext = _val('filterExtension');
         if (ext) np.set('ext', ext);
 
+        var badge = window._getBadgeFilter ? window._getBadgeFilter() : null;
+        if (badge) np.set('badge', badge);
+
         var sort = _sortString();
         if (sort && sort !== DEFAULT_SORT) np.set('sort', sort);
 
@@ -102,6 +105,11 @@
             if (missing) missing.value = p.get('missing') || '';
             var ext = document.getElementById('filterExtension');
             if (ext) ext.value = p.get('ext') || '';
+
+            // Chip filter (format / missing cover / authors to review / …).
+            // setBadgeFilter runs applyFilters itself; the explicit call
+            // below stays for the setter-less fallback.
+            if (window.setBadgeFilter) window.setBadgeFilter(p.get('badge') || null);
 
             // Filter first (hide/show rows), then sort, then paginate.
             if (window.applyFilters) window.applyFilters();

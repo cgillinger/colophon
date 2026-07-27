@@ -240,22 +240,23 @@
 
     var _activeBadgeFilter = null;
 
-    function toggleBadgeFilter(type, value, event) {
-        var badges = document.querySelectorAll('.stats-badge');
-        var key = type + ':' + value;
-
-        if (_activeBadgeFilter === key) {
-            _activeBadgeFilter = null;
-            badges.forEach(function (b) { b.classList.remove('badge-active'); });
-        } else {
-            _activeBadgeFilter = key;
-            badges.forEach(function (b) { b.classList.remove('badge-active'); });
-            if (event && event.target) {
-                var badge = event.target.closest('.stats-badge');
-                if (badge) badge.classList.add('badge-active');
-            }
-        }
+    function setBadgeFilter(key) {
+        // key like 'author_review:1' / 'format:epub', or null to clear.
+        // Chip highlight matches via data-badge so deep links (url-state)
+        // light the right chip without a click event.
+        _activeBadgeFilter = key || null;
+        document.querySelectorAll('.stats-badge').forEach(function (b) {
+            b.classList.toggle('badge-active', !!key && b.dataset.badge === key);
+        });
         applyFilters();
+    }
+    window.setBadgeFilter = setBadgeFilter;
+    window._getBadgeFilter = function () { return _activeBadgeFilter; };
+
+    function toggleBadgeFilter(type, value) {
+        var key = type + ':' + value;
+        setBadgeFilter(_activeBadgeFilter === key ? null : key);
+        if (window._writeUrlState) window._writeUrlState(false);
     }
     window.toggleBadgeFilter = toggleBadgeFilter;
 
