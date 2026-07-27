@@ -493,6 +493,7 @@ def metadata_item(item_id):
             return redirect(url_for("metadata.metadata_item", item_id=item.id))
 
         item.title = title
+        author_typed = author != (item.author or "")
         item.author = author or None
         item.series = series or None
         item.series_index = series_index or None
@@ -557,6 +558,19 @@ def metadata_item(item_id):
         if write_result["ok"]:
             item.file_modified_by_colophon = datetime.utcnow()
         db.session.commit()
+
+        # Same semantics as the modal save: a user-typed author resolves
+        # now, and a brand-new name counts as user-approved.
+        if item.author_status is None or item.author_status == "stale":
+            from app.services.author_resolver import resolve_pending_authors
+            resolve_pending_authors(db.session, [item])
+            db.session.commit()
+        if author_typed and item.author_status == "new" and item.author_id:
+            entry = db.session.get(Author, item.author_id)
+            if entry and entry.source == "tentative":
+                entry.source = "user_confirmed"
+            item.author_status = "linked"
+            db.session.commit()
 
         flash("Metadata sparad.", "success")
         warning = _file_write_warning(write_result.get("error") if not write_result["ok"] else None)
@@ -2008,6 +2022,7 @@ def save_metadata_json(item_id):
         return jsonify({"ok": False, "error": "title_required"}), 400
 
     item.title = title
+    author_typed = (data.get("author") or "").strip() != (item.author or "")
     item.author = (data.get("author") or "").strip() or None
     item.series = (data.get("series") or "").strip() or None
     item.series_index = (data.get("series_index") or "").strip() or None
@@ -2024,7 +2039,6 @@ def save_metadata_json(item_id):
     # listener and is re-resolved right after the commit.
     if data.get("author_id") and item.author:
         from app.services.author_resolver import assign_author_to_item
-        from app.models import Author
         chosen = db.session.get(Author, data["author_id"])
         if chosen:
             assign_author_to_item(db.session, item, author=chosen)
@@ -2048,6 +2062,18 @@ def save_metadata_json(item_id):
     if item.author_status is None or item.author_status == "stale":
         from app.services.author_resolver import resolve_pending_authors
         resolve_pending_authors(db.session, [item])
+        db.session.commit()
+
+    # A name the user typed in the edit modal is a deliberate act — the
+    # entry it created is user-approved, not a file-derived guess (the
+    # modal hint promises "saving confirms the spelling"). Only the
+    # brand-new case: a fuzzy near-match keeps its 'review' proposal so
+    # the typo guard still gets a say.
+    if author_typed and item.author_status == "new" and item.author_id:
+        entry = db.session.get(Author, item.author_id)
+        if entry and entry.source == "tentative":
+            entry.source = "user_confirmed"
+        item.author_status = "linked"
         db.session.commit()
 
     resp = {"ok": True, "author_status": item.author_status}
