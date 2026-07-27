@@ -20,11 +20,21 @@ class LibraryItem(db.Model):
     author_id = db.Column(db.Integer, db.ForeignKey("authors.id"), nullable=True, index=True)
     # Outcome of the last registry resolution (author_resolver.py):
     # 'linked' (✅ known), 'new' (➕ tentative canonical created),
-    # 'review' (⚠️ fuzzy suggestion awaits the user), 'missing' (❓ no
-    # author). NULL = not yet resolved — picked up by the pending pass on
-    # the next scan/upload. Reset by _reset_author_resolution below
+    # 'review' (⚠️ linked + open merge proposal in suggested_author_id),
+    # 'missing' (❓ no author), 'stale' (transient: `author` changed, the
+    # pending pass will re-resolve — author_id kept as memory). NULL = not
+    # yet resolved. Set to 'stale' by _reset_author_resolution below
     # whenever `author` changes without an explicit author_id.
+    # Invariant (DESIGN-robust-author-links.md): a book with a non-empty
+    # author string is always linked — 'review' is a proposal ON TOP of an
+    # intact link, never an unlinked state.
     author_status = db.Column(db.String(16), nullable=True)
+    # Open merge proposal: the registry entry this book's linked entry
+    # probably duplicates (set from re-resolution memory or cold fuzzy).
+    # Cleared when the proposal is settled (merge / confirm / new pick).
+    suggested_author_id = db.Column(
+        db.Integer, db.ForeignKey("authors.id"), nullable=True
+    )
     description = db.Column(db.Text, nullable=True)
 
     series = db.Column(db.String(500), nullable=True)
@@ -247,13 +257,16 @@ def _stamp_content_updated_at(session, flush_context, instances):
 
 @_sa_event.listens_for(_SASession, "before_flush")
 def _reset_author_resolution(session, flush_context, instances):
-    """Invalidate the registry link whenever `author` changes hands.
+    """Mark the registry link stale — never sever it — when `author`
+    changes hands (DESIGN-robust-author-links.md).
 
     Any code path that rewrites item.author (scan re-read, enrichment,
-    modal save, group sync) silently invalidates a previous resolution.
-    Resetting here — instead of at every call site — guarantees a stale
-    author_id can never survive an author edit. The pending pass on the
-    next scan/upload re-resolves.
+    modal free-text, group sync) invalidates the previous resolution, but
+    the link itself is the safest context we have: author_id is KEPT as
+    memory and author_status becomes 'stale', so the pending pass can
+    judge the new string against the book's own previous entry instead of
+    re-resolving cold. Open proposals refer to the old string and are
+    dropped.
 
     Exception: when author_id or author_status changed in the same flush,
     the writer is the resolver itself or a deliberate user confirmation
@@ -273,5 +286,5 @@ def _reset_author_resolution(session, flush_context, instances):
         if (state.attrs["author_id"].history.has_changes()
                 or state.attrs["author_status"].history.has_changes()):
             continue
-        obj.author_id = None
-        obj.author_status = None
+        obj.author_status = "stale" if obj.author_id is not None else None
+        obj.suggested_author_id = None

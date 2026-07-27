@@ -10,7 +10,11 @@ ebook files — tentative canonicals have not earned that (design guard 1);
 file writes stay with the existing metadata-write moment.
 
 Iron rule (enforced here): auto-link only layers 1–2 (exact / signature).
-A fuzzy hit sets author_status='review' and links nothing.
+Fuzzy never *merges* anything — but since v2 (DESIGN-robust-author-links.md)
+it no longer leaves the book unlinked either: an unmatched string becomes a
+tentative entry the book links to, and the fuzzy hit is recorded as a merge
+*proposal* between two registry entries (suggested_author_id, status
+'review'). A book with a non-empty author string is always linked.
 
 Multi-author policy: a comma-joined multi-author string ("John Smith,
 Jane Doe") is treated as one opaque unit — it becomes its own registry
@@ -20,10 +24,11 @@ signature semantics the worst case is a redundant entry, never a false
 merge. Splitting into person entities is a possible later refinement.
 
 Resolution happens as a batched *pending pass* (resolve_pending_authors)
-over items with author_status IS NULL, called from scan_directory and
-/upload after upserts. The before_flush listener in models.py resets
-author_id/author_status to NULL whenever item.author changes, so any
-author edit anywhere automatically re-enters the queue.
+over items with author_status IS NULL or 'stale', called from
+scan_directory and /upload after upserts. The before_flush listener in
+models.py marks items 'stale' (keeping author_id as memory) whenever
+item.author changes, so any author edit anywhere automatically re-enters
+the queue — with context.
 """
 import re
 from contextlib import contextmanager
@@ -41,8 +46,9 @@ from app.services.author_authority import (
 # author_status values (LibraryItem.author_status)
 STATUS_LINKED = "linked"    # ✅ matched the registry via layer 1–2
 STATUS_NEW = "new"          # ➕ created a tentative canonical entry
-STATUS_REVIEW = "review"    # ⚠️ fuzzy suggestion only — user must confirm
+STATUS_REVIEW = "review"    # ⚠️ linked + open merge proposal (suggested_author_id)
 STATUS_MISSING = "missing"  # ❓ no author in the file at all
+STATUS_STALE = "stale"      # ⏳ author string changed; pending pass re-resolves
 
 
 def _display_form(name):
@@ -109,14 +115,42 @@ class AuthorRegistry:
         self._candidates.append((author.id, author.canonical_name))
         return author
 
+    def _forget(self, author_id):
+        """Drop a GC'd entry from the in-memory indexes so later books in
+        the same batch can't link to a deleted row."""
+        for index in (self._exact, self._signatures):
+            for key in [k for k, v in index.items() if v == author_id]:
+                del index[key]
+        self._candidates = [c for c in self._candidates if c[0] != author_id]
+
+    def _gc_if_orphaned(self, author_id):
+        """A tentative entry the batch just walked away from: if nothing
+        links to it and no proposal references it, it is an auto-created
+        leftover — remove it (invariant 4). Confirmed entries are never
+        auto-removed; they keep the 'Inga böcker' badge instead."""
+        if gc_orphaned_author(self.session, author_id):
+            self._forget(author_id)
+
     def resolve_and_link(self, item):
         """Resolve one item's author string and stamp author_id +
         author_status. DB-only — never touches the file. Returns the
-        status set."""
+        status set.
+
+        v2 invariant: a non-empty string always ends LINKED. When nothing
+        matches deterministically, the literal string becomes/reuses a
+        tentative entry the book links to, and any fuzzy hit — judged
+        against the book's *previous* entry first (the memory a 'stale'
+        item carries), then cold against the registry — is stored as a
+        merge proposal in suggested_author_id (status 'review')."""
+        prev_id = item.author_id if item.author_status == STATUS_STALE else None
+
         name = (item.author or "").strip()
         if not name:
             item.author_id = None
             item.author_status = STATUS_MISSING
+            item.suggested_author_id = None
+            if prev_id:
+                self._gc_if_orphaned(prev_id)
             return STATUS_MISSING
 
         kind, payload = resolve_author(
@@ -126,27 +160,44 @@ class AuthorRegistry:
         if kind in ("exact", "signature"):
             item.author_id = payload
             item.author_status = STATUS_LINKED
+            item.suggested_author_id = None
             if kind == "signature":
                 self._record_alias(name, payload)
+            if prev_id and prev_id != payload:
+                self._gc_if_orphaned(prev_id)
             return STATUS_LINKED
 
-        if kind == "suggest":
-            # Iron rule: fuzzy proposes, never links. Suggestions are
-            # recomputed on demand by the review UI (step 4) — the
-            # registry may have changed by the time the user looks.
-            item.author_id = None
-            item.author_status = STATUS_REVIEW
-            return STATUS_REVIEW
-
+        # No deterministic match: link the literal string (never limbo).
         author = self._create_tentative(name)
         item.author_id = author.id
-        item.author_status = STATUS_NEW
-        return STATUS_NEW
+
+        # Proposal: the remembered entry wins over cold fuzzy — the same
+        # book's field changing spelling is near-certainly the same person.
+        suggestion_id = None
+        if prev_id and prev_id != author.id:
+            prev = self.session.get(Author, prev_id)
+            if prev and fuzzy_similarity(
+                name, prev.canonical_name
+            ) >= FUZZY_SUGGEST_THRESHOLD:
+                suggestion_id = prev.id
+        if suggestion_id is None and kind == "suggest":
+            suggestion_id = payload[0][0]  # best cold candidate
+
+        if suggestion_id:
+            item.suggested_author_id = suggestion_id
+            item.author_status = STATUS_REVIEW
+        else:
+            item.suggested_author_id = None
+            item.author_status = STATUS_NEW
+
+        if prev_id and prev_id != author.id and prev_id != suggestion_id:
+            self._gc_if_orphaned(prev_id)
+        return item.author_status
 
 
 def resolve_pending_authors(session, items=None):
-    """Resolve items whose author_status is NULL. Cheap: in-memory
-    matching only, no file reads, no network. Caller commits.
+    """Resolve items whose author_status is NULL or 'stale'. Cheap:
+    in-memory matching only, no file reads, no network. Caller commits.
 
     With items=None, sweeps the whole table — new rows, rows whose
     author changed, and the entire pre-upgrade library on the first scan
@@ -160,11 +211,17 @@ def resolve_pending_authors(session, items=None):
     if items is None:
         pending = (
             session.query(LibraryItem)
-            .filter(LibraryItem.author_status.is_(None))
+            .filter(
+                (LibraryItem.author_status.is_(None))
+                | (LibraryItem.author_status == STATUS_STALE)
+            )
             .all()
         )
     else:
-        pending = [it for it in items if it.author_status is None]
+        pending = [
+            it for it in items
+            if it.author_status is None or it.author_status == STATUS_STALE
+        ]
     counts = {}
     if not pending:
         return counts
@@ -174,6 +231,54 @@ def resolve_pending_authors(session, items=None):
         status = registry.resolve_and_link(item)
         counts[status] = counts.get(status, 0) + 1
     return counts
+
+
+def gc_orphaned_author(session, author_id):
+    """Remove a *tentative* entry no book links to and no proposal
+    references (invariant 4 of DESIGN-robust-author-links.md). Called
+    when a resolution walks away from an entry and when a book is
+    deleted. Confirmed/authority-linked entries are never auto-removed —
+    they are curated knowledge and get the 'Inga böcker' badge instead.
+    Returns True if the entry was removed. Caller commits."""
+    if not author_id:
+        return False
+    author = session.get(Author, author_id)
+    if author is None or author.source != "tentative":
+        return False
+    in_use = (
+        session.query(LibraryItem.id)
+        .filter(
+            (LibraryItem.author_id == author_id)
+            | (LibraryItem.suggested_author_id == author_id)
+        )
+        .first()
+    )
+    if in_use:
+        return False
+    session.query(AuthorAlias).filter_by(author_id=author_id).delete()
+    session.delete(author)
+    return True
+
+
+def is_known_variant(session, author_id, name):
+    """True when `name` is an already-recorded spelling of the linked
+    entry (canonical or alias). The scanner's flip-flop guard: a re-scan
+    seeing an older spelling of the same person in the file must not
+    overwrite the DB's current form (the file catches up at the next
+    metadata write)."""
+    if not author_id:
+        return False
+    key = normalize_author_name(name or "")
+    if not key:
+        return False
+    if session.query(AuthorAlias).filter_by(
+        variant_key=key, author_id=author_id
+    ).first():
+        return True
+    author = session.get(Author, author_id)
+    return bool(
+        author and normalize_author_name(author.canonical_name) == key
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -256,10 +361,15 @@ def assign_author_to_item(session, item, author=None, name=None):
     ).first():
         session.add(AuthorAlias(variant_key=old_variant, author_id=author.id))
 
+    left_behind = {item.author_id, item.suggested_author_id} - {None, author.id}
     with keep_author_links(session):
         item.author = author.canonical_name
         item.author_id = author.id
         item.author_status = STATUS_LINKED
+        item.suggested_author_id = None
+    session.flush()
+    for orphan_id in left_behind:
+        gc_orphaned_author(session, orphan_id)
     return author
 
 
@@ -318,6 +428,16 @@ def merge_authors(session, source, target):
             item.author = target.canonical_name
             item.author_id = target.id
             item.author_status = STATUS_LINKED
+            item.suggested_author_id = None
+
+    # Proposals pointing at the disappearing entry follow the merge; a
+    # proposal that now points at the book's own entry is thereby settled.
+    for item in session.query(LibraryItem).filter_by(
+        suggested_author_id=source.id
+    ).all():
+        item.suggested_author_id = None if item.author_id == target.id else target.id
+        if item.suggested_author_id is None and item.author_status == STATUS_REVIEW:
+            item.author_status = STATUS_LINKED
 
     session.delete(source)
     return len(items)
@@ -336,11 +456,34 @@ def authors_overview(session):
         .all()
     )
     authors = session.query(Author).order_by(Author.canonical_name).all()
+    known_ids = {a.id for a in authors}
 
     duplicate_ids = set()
     pairs = []
+    seen_pairs = set()
+
+    # Open merge proposals first — they carry memory context (the same
+    # book's field changed spelling), so they outrank cold fuzzy pairs.
+    proposals = (
+        session.query(LibraryItem.author_id, LibraryItem.suggested_author_id)
+        .filter(LibraryItem.suggested_author_id.isnot(None))
+        .distinct()
+        .all()
+    )
+    for a_id, b_id in proposals:
+        if a_id not in known_ids or b_id not in known_ids:
+            continue
+        key = frozenset((a_id, b_id))
+        if key in seen_pairs:
+            continue
+        seen_pairs.add(key)
+        pairs.append((a_id, b_id))
+        duplicate_ids.update((a_id, b_id))
+
     for i, a in enumerate(authors):
         for b in authors[i + 1:]:
+            if frozenset((a.id, b.id)) in seen_pairs:
+                continue
             if fuzzy_similarity(a.canonical_name, b.canonical_name) >= FUZZY_SUGGEST_THRESHOLD:
                 pairs.append((a.id, b.id))
                 duplicate_ids.update((a.id, b.id))

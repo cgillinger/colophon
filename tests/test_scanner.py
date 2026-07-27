@@ -258,6 +258,7 @@ class TestUpsertLibraryItem:
         existing = MagicMock()
         existing.manual_metadata = False
         existing.cover_locked = False
+        existing.author_id = None
 
         result = upsert_library_item(epub_path, self._meta(), existing=existing)
 
@@ -273,11 +274,53 @@ class TestUpsertLibraryItem:
         existing.manual_metadata = True
         existing.title = "Original Title"
         existing.cover_locked = False
+        existing.author_id = None
 
         upsert_library_item(epub_path, self._meta(title="New Title"), existing=existing)
 
         # title should NOT be updated when manual_metadata is True
         assert existing.title == "Original Title"
+
+    def test_rescan_known_alias_does_not_overwrite_author(self, tmp_path):
+        # Flip-flop guard (DESIGN-robust-author-links.md): the file still
+        # carries an older spelling of the linked author — DB form wins.
+        epub_path = tmp_path / "book.epub"
+        epub_path.write_bytes(b"fake")
+
+        existing = MagicMock()
+        existing.manual_metadata = False
+        existing.cover_locked = False
+        existing.author = "Mary Doria Russell"
+        existing.author_id = 7
+
+        with patch(
+            "app.services.author_resolver.is_known_variant", return_value=True
+        ) as guard:
+            upsert_library_item(
+                epub_path, self._meta(author="Russel, Mary Doria"),
+                existing=existing, db_session=MagicMock(),
+            )
+        guard.assert_called_once()
+        assert existing.author == "Mary Doria Russell"
+
+    def test_rescan_unknown_author_string_still_overwrites(self, tmp_path):
+        epub_path = tmp_path / "book.epub"
+        epub_path.write_bytes(b"fake")
+
+        existing = MagicMock()
+        existing.manual_metadata = False
+        existing.cover_locked = False
+        existing.author = "Mary Doria Russell"
+        existing.author_id = 7
+
+        with patch(
+            "app.services.author_resolver.is_known_variant", return_value=False
+        ):
+            upsert_library_item(
+                epub_path, self._meta(author="Greg Donegan"),
+                existing=existing, db_session=MagicMock(),
+            )
+        assert existing.author == "Greg Donegan"
 
     def test_does_not_overwrite_cover_when_locked(self, tmp_path):
         epub_path = tmp_path / "book.epub"
@@ -287,6 +330,7 @@ class TestUpsertLibraryItem:
         existing.manual_metadata = False
         existing.cover_locked = True
         existing.cover_path = "/original/cover.jpg"
+        existing.author_id = None
 
         upsert_library_item(epub_path, self._meta(cover_path="/new/cover.jpg"), existing=existing)
 
@@ -299,6 +343,7 @@ class TestUpsertLibraryItem:
         existing = MagicMock()
         existing.manual_metadata = False
         existing.cover_locked = False
+        existing.author_id = None
 
         upsert_library_item(epub_path, self._meta(cover_path="/new/cover.jpg"), existing=existing)
 

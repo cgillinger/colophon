@@ -73,6 +73,13 @@ def ensure_database_columns():
         # exactly right for existing rows after upgrade: the next scan's
         # pending pass resolves the whole library in one batch.
         "author_status": "ALTER TABLE library_items ADD COLUMN author_status VARCHAR(16)",
+        # Open merge proposal (DESIGN-robust-author-links.md): the entry
+        # this book's linked entry probably duplicates. Settled by merge/
+        # confirm/combobox pick.
+        "suggested_author_id": (
+            "ALTER TABLE library_items ADD COLUMN suggested_author_id "
+            "INTEGER REFERENCES authors(id)"
+        ),
     }
 
     changed = False
@@ -122,6 +129,64 @@ def ensure_database_columns():
     backfill_language_detection()
     normalize_series_index_values()
     backfill_author_status_confirmed()
+    backfill_relink_limbo_books()
+    backfill_gc_orphan_tentative_authors()
+
+
+def backfill_relink_limbo_books():
+    """v2 invariant repair (DESIGN-robust-author-links.md): books left
+    unlinked with a non-empty author string — the old 'review' limbo —
+    re-enter the pending pass, which now always ends in a link (worst
+    case a literal tentative entry + a merge proposal). Idempotent: the
+    filter matches nothing once every stringed book is linked."""
+    try:
+        rows = db.session.execute(text(
+            "SELECT id FROM library_items "
+            "WHERE author IS NOT NULL AND author != '' AND author_id IS NULL"
+        )).fetchall()
+        if not rows:
+            return
+        db.session.execute(text(
+            "UPDATE library_items SET author_status = NULL, "
+            "suggested_author_id = NULL "
+            "WHERE id IN (%s)" % ",".join(str(r[0]) for r in rows)
+        ))
+        from app.services.author_resolver import resolve_pending_authors
+        counts = resolve_pending_authors(db.session)
+        db.session.commit()
+        logging.getLogger(__name__).info(
+            "Relinked %d limbo books: %s", len(rows), counts
+        )
+    except Exception:
+        db.session.rollback()
+
+
+def backfill_gc_orphan_tentative_authors():
+    """Remove auto-created (tentative) registry entries that no book
+    links to and no proposal references — leftovers from the pre-v2 link
+    severing. Logged before removal (design decision: log, then delete).
+    Confirmed entries are never touched."""
+    try:
+        rows = db.session.execute(text(
+            "SELECT id, canonical_name FROM authors WHERE source = 'tentative' "
+            "AND id NOT IN (SELECT author_id FROM library_items "
+            "               WHERE author_id IS NOT NULL) "
+            "AND id NOT IN (SELECT suggested_author_id FROM library_items "
+            "               WHERE suggested_author_id IS NOT NULL)"
+        )).fetchall()
+        if not rows:
+            return
+        logger = logging.getLogger(__name__)
+        for author_id, name in rows:
+            logger.info("GC orphan tentative author %s: %r", author_id, name)
+        ids = ",".join(str(r[0]) for r in rows)
+        db.session.execute(text(
+            "DELETE FROM author_aliases WHERE author_id IN (%s)" % ids
+        ))
+        db.session.execute(text("DELETE FROM authors WHERE id IN (%s)" % ids))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
 
 def backfill_author_status_confirmed():

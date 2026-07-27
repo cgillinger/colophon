@@ -542,8 +542,14 @@ def upsert_library_item(file_path, metadata: dict, existing=None, db_session=Non
         old_author = existing.author
         if metadata.get("title"):
             existing.title = metadata["title"]
-        if metadata.get("author"):
-            existing.author = metadata["author"]
+        if metadata.get("author") and metadata["author"] != existing.author:
+            # Flip-flop guard (DESIGN-robust-author-links.md): when the
+            # file still carries an older spelling of the same person
+            # (registered alias of the linked entry), the DB's current
+            # form wins — the file catches up at the next metadata write.
+            from app.services.author_resolver import is_known_variant
+            if not is_known_variant(session, existing.author_id, metadata["author"]):
+                existing.author = metadata["author"]
         if metadata.get("description"):
             existing.description = metadata["description"]
         if metadata.get("publisher"):
@@ -611,11 +617,24 @@ def scan_directory(root_path, db_session=None, on_progress=None, cover_dir=None)
         return result
 
     # Remove DB items whose files no longer exist
+    touched_authors = set()
     for existing_item in LibraryItem.query.all():
         if not existing_item.file_path or not Path(existing_item.file_path).exists():
+            touched_authors.update(
+                {existing_item.author_id, existing_item.suggested_author_id}
+                - {None}
+            )
             session.delete(existing_item)
             result["removed"] += 1
     session.commit()
+    if touched_authors:
+        # Last-book-deleted lifecycle: auto-created (tentative) entries
+        # left without books are removed; confirmed entries persist as
+        # standing authority knowledge (the 'Inga böcker' badge).
+        from app.services.author_resolver import gc_orphaned_author
+        for author_id in touched_authors:
+            gc_orphaned_author(session, author_id)
+        session.commit()
 
     # Build one in-memory index instead of querying per file
     existing_by_path = {item.file_path: item for item in LibraryItem.query.all()}

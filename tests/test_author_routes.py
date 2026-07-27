@@ -234,6 +234,53 @@ def test_confirm_clears_new_flag_on_linked_books(client):
     assert db.session.get(LibraryItem, item.id).author_status == STATUS_LINKED
 
 
+def test_confirm_settles_open_proposal(client):
+    ours = _author("Mary Doria Russell", source="tentative")
+    other = _author("Mary Doria Russel", source="user_confirmed")
+    item = _add_item("Mary Doria Russell")
+    item.author_id = ours.id
+    item.author_status = "review"
+    item.suggested_author_id = other.id
+    db.session.commit()
+
+    # Confirming the entry = "this is a real, distinct author" — the open
+    # merge proposal on its books is thereby rejected and settled.
+    client.post(f"/authors/{ours.id}/confirm")
+    assert item.author_status == STATUS_LINKED
+    assert item.suggested_author_id is None
+
+
+def test_delete_proposal_counterpart_rejects_proposal(client):
+    ours = _author("Mary Doria Russell", source="tentative")
+    other = _author("Mary Doria Russel", source="user_confirmed")
+    item = _add_item("Mary Doria Russell")
+    item.author_id = ours.id
+    item.author_status = "review"
+    item.suggested_author_id = other.id
+    db.session.commit()
+
+    resp = client.post(f"/authors/{other.id}/delete")
+    assert resp.get_json()["ok"] is True
+    assert item.author_id == ours.id          # the book's own link is untouched
+    assert item.author_status == STATUS_LINKED
+    assert item.suggested_author_id is None   # nothing dangles
+
+
+def test_item_suggestions_returns_stored_proposal_first(client):
+    ours = _author("Mary Doria Russell", source="tentative")
+    other = _author("Mary Doria Russel", source="user_confirmed")
+    item = _add_item("Mary Doria Russell")
+    item.author_id = ours.id
+    item.author_status = "review"
+    item.suggested_author_id = other.id
+    db.session.commit()
+
+    body = client.get(f"/authors/items/{item.id}/suggestions").get_json()
+    assert body["suggestions"][0]["id"] == other.id
+    assert body["suggestions"][0]["proposed"] is True
+    assert body["linked"]["id"] == ours.id
+
+
 def test_confirm_bulk_clears_new_flag(client):
     a = _author("Selma Lagerlöf", source="tentative")
     b = _author("Hjalmar Söderberg", source="tentative")

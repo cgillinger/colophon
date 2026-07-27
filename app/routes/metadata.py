@@ -2045,7 +2045,7 @@ def save_metadata_json(item_id):
         item.file_modified_by_colophon = datetime.utcnow()
     db.session.commit()
 
-    if item.author_status is None:
+    if item.author_status is None or item.author_status == "stale":
         from app.services.author_resolver import resolve_pending_authors
         resolve_pending_authors(db.session, [item])
         db.session.commit()
@@ -2054,6 +2054,20 @@ def save_metadata_json(item_id):
     if not write_result["ok"] and write_result.get("error") not in ("no_fields", "not_installed", "unsupported_format"):
         resp["file_write_warning"] = write_result.get("error")
     return jsonify(resp)
+
+
+def _gc_authors_after_delete(author_ids):
+    """Last-book-deleted lifecycle (DESIGN-robust-author-links.md):
+    tentative entries the deleted book(s) left without books/proposals
+    are auto-removed; confirmed entries persist as standing knowledge."""
+    if not author_ids:
+        return
+    from app.services.author_resolver import gc_orphaned_author
+    removed = False
+    for author_id in author_ids:
+        removed = gc_orphaned_author(db.session, author_id) or removed
+    if removed:
+        db.session.commit()
 
 
 @metadata_bp.route("/metadata/<int:item_id>/delete", methods=["POST"])
@@ -2065,6 +2079,7 @@ def delete_item(item_id):
     title = item.title
     file_path = item.file_path
     cover_path = item.cover_path
+    touched_authors = {item.author_id, item.suggested_author_id} - {None}
 
     if cover_path:
         try:
@@ -2084,6 +2099,7 @@ def delete_item(item_id):
 
     db.session.delete(item)
     db.session.commit()
+    _gc_authors_after_delete(touched_authors)
 
     return jsonify({
         "ok": True,
@@ -2106,6 +2122,7 @@ def bulk_delete():
 
     deleted = 0
     file_errors = 0
+    touched_authors = set()
 
     for raw_id in item_ids:
         try:
@@ -2129,10 +2146,12 @@ def bulk_delete():
             except OSError:
                 file_errors += 1
 
+        touched_authors.update({item.author_id, item.suggested_author_id} - {None})
         db.session.delete(item)
         deleted += 1
 
     db.session.commit()
+    _gc_authors_after_delete(touched_authors)
 
     return jsonify({
         "ok": True,
@@ -2301,12 +2320,14 @@ def delete_item_safe(item_id):
             logger.warning("Could not delete cover %s: %s", cover_path, exc)
 
     try:
+        touched_authors = {item.author_id, item.suggested_author_id} - {None}
         db.session.delete(item)
         db.session.commit()
     except Exception as exc:
         db.session.rollback()
         logger.exception("DB delete failed for item %s", item_id)
         return jsonify({"ok": False, "error": "db_delete_failed", "detail": str(exc)}), 500
+    _gc_authors_after_delete(touched_authors)
 
     return jsonify({
         "ok": True,

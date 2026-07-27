@@ -93,13 +93,26 @@ def item_suggestions(item_id):
     item was flagged)."""
     item = get_item_or_404(item_id)
     suggestions = []
+    seen = set()
+    # The stored merge proposal first — it carries memory context (the
+    # book's own previous entry), so it outranks recomputed cold fuzzy.
+    if item.suggested_author_id:
+        proposed = db.session.get(Author, item.suggested_author_id)
+        if proposed:
+            from app.services.author_authority import fuzzy_similarity
+            score = fuzzy_similarity(item.author or "", proposed.canonical_name)
+            suggestions.append(
+                {**_author_dict(proposed), "score": round(score, 3), "proposed": True}
+            )
+            seen.add(proposed.id)
     if item.author:
-        suggestions = [
+        suggestions.extend(
             {**_author_dict(author), "score": round(score, 3)}
             for author, score in suggest_similar_authors(
                 db.session, item.author, exclude_id=item.author_id
             )
-        ]
+            if author.id not in seen
+        )
     linked = db.session.get(Author, item.author_id) if item.author_id else None
     return jsonify({
         "ok": True,
@@ -186,12 +199,16 @@ def merge(author_id):
 
 
 def _clear_new_flag(author):
-    """author_status 'new' = 'this book created a tentative entry'. Once the
-    entry is confirmed the wait is over — flip those books to 'linked' so the
-    review banner/filter shrink with each confirm."""
+    """Confirming an entry settles its books' open questions: 'new'
+    ('this book created a tentative entry') is done waiting, and 'review'
+    (open merge proposal against another entry) is implicitly rejected —
+    the user just declared this entry a real, distinct author."""
     LibraryItem.query.filter_by(
         author_id=author.id, author_status="new"
     ).update({"author_status": "linked"})
+    LibraryItem.query.filter_by(
+        author_id=author.id, author_status="review"
+    ).update({"author_status": "linked", "suggested_author_id": None})
 
 
 @authors_bp.route("/authors/<int:author_id>/confirm", methods=["POST"])
@@ -285,6 +302,11 @@ def delete(author_id):
     in_use = LibraryItem.query.filter_by(author_id=author.id).count()
     if in_use:
         return jsonify({"ok": False, "error": "in_use", "book_count": in_use}), 409
+    # Removing a proposed merge counterpart rejects those proposals — the
+    # books stay linked to their own entries, nothing dangles.
+    LibraryItem.query.filter_by(suggested_author_id=author.id).update(
+        {"suggested_author_id": None, "author_status": "linked"}
+    )
     from app.models import AuthorAlias
     AuthorAlias.query.filter_by(author_id=author.id).delete()
     db.session.delete(author)
