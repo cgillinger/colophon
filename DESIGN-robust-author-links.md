@@ -1,140 +1,161 @@
-# Design — robusta författarlänkar (länken överlever metadatarättningar)
+# Design v2 — obrytbara författarlänkar ("en bok är alltid länkad")
 
-> Status: **DESIGN, ej byggt.** Skriven 2026-07-27 utifrån ett verkligt haveri i prod
-> (fallet "Mary Doria Russel", se nedan). Bygger ovanpå det shippade författarregistret
-> (`docs/author-authority-design.md`, v1.18–1.21) och ändrar **inte** dess grundprinciper —
-> den täpper till ett hål i dem.
+> Status: **DESIGN, ej byggt.** v1 skrevs 2026-07-27 efter Russell-haveriet (omresolvering
+> med minne). v2 samma dag efter skärpt krav från användaren: länken ska inte kunna brytas
+> av *någon* — inte av berikning, inte av scan, inte av användarens egna redigeringar —
+> utan bara flyttas medvetet, och försvinna först när boken raderas. Systemet ska också
+> hantera att en författares sista bok raderas. Bygger ovanpå det shippade registret
+> (`docs/author-authority-design.md`) och behåller dess järnregel för *sammanslagningar*.
 
-## Invarianten vi ska uppfylla
+## Invarianten
 
-> **En bok som länkats till en författarpost förblir länkad tills (a) boken raderas
-> eller (b) användaren själv byter författare på boken.** En metadatarättning av
-> *stavningen* på samma person får aldrig kapa länken.
+> 1. **En bok med författarsträng är alltid länkad till exakt en registerpost**, från
+>    första resolvering till att boken raderas. Ingen operation lämnar den i limbo.
+> 2. Länken **flyttas** bara av: (a) deterministisk matchning när strängen ändras
+>    (exakt/signatur/alias), (b) användarens medvetna val i comboboxen, (c) en
+>    registersammanslagning. Den **försvinner** bara när boken raderas.
+> 3. Osäkerhet uttrycks som **förslag ovanpå en intakt länk** — aldrig som avsaknad
+>    av länk.
+> 4. När en författares sista bok försvinner: tentativa poster städas bort automatiskt;
+>    bekräftade/auktoritetslänkade består som kunskap (med "Inga böcker"-badgen,
+>    v1.33.1) och återanvänds när en ny bok av personen dyker upp.
 
-Idag gäller i stället: *varje* ändring av `item.author` — oavsett avsändare — nollar
-länken och låter en minneslös omresolvering avgöra. Det är därför länkar "försvinner"
-utan att någon bok raderats.
+Dagens modell bryter mot allt detta: `review`/`NULL` är *olänkade* tillstånd, och
+reset-lyssnaren (`app/models.py:248`) kastar boken dit vid varje strängändring.
 
-## Beviskedjan — fallet "Mary Doria Russel" (prod, 2026-06-12)
+## Beviskedjan (prod 2026-06-12, fullständig)
 
-Rekonstruerad ur DB + fil, allt inom 7 minuter:
+1. **17:06** Sådd. Filens `dc:creator` = **"Russel, Mary Doria"** (efternamn först,
+   felstavad med ett l *i filen*; filnamnet har två — förlagsmetadata ≠ filnamn).
+   Tentativ post 162 skapades, boken (*The Sparrow*, id 387) länkades.
+2. Användaren **döpte om** posten i /authors till "Mary Doria Russel" (bara
+   ordningsbyte, stavningen troget bevarad). Fungerade exakt som designat: kaskaden
+   märkte om boken med länken intakt, båda stavningarna sparades som alias, posten
+   flippades tentativ → `user_confirmed` (rename räknas som bekräftelse,
+   `author_resolver.py:rename_author`).
+3. **17:11** Berikningen valde rättstavade **"Mary Doria Russell"** (två l), skrev DB +
+   fil. Reset-lyssnaren nollade länken. Omresolveringen: ingen exakt/signatur/alias-träff
+   (registret kunde bara en-l-formerna), fuzzy ≥ 0.85 → järnregeln → `review`,
+   `author_id=NULL`. Boken i limbo, posten föräldralös. Marginalen var **en bokstav**.
 
-1. **17:04** Registret såddes. Bokens (`library_items.id=387`, *The Sparrow*) inbäddade
-   `dc:creator` var felstavat **"Mary Doria Russel"** (ett l) → tentativ post
-   `authors.id=162` skapades, boken länkades, `author_status='new'`.
-2. **17:11** Berikningen valde rättstavade **"Mary Doria Russell"** och skrev den till
-   både DB och filen (`file_modified_by_colophon` stämplad — filen är idag korrekt).
-3. `_reset_author_resolution` (`app/models.py:248`) såg att `author` ändrats →
-   nollade `author_id` + `author_status`.
-4. Nästa pending-pass (`resolve_pending_authors`): "Russell" matchar inte "Russel"
-   exakt; signaturen skiljer också (tokenmängderna {mary, doria, russel} ≠
-   {mary, doria, russell}); fuzzy ≥ 0.85 → **järnregeln**: föreslå, länka aldrig →
-   `author_status='review'`, `author_id=NULL`.
-5. Slutresultat: boken evigt i granskningskön, posten föräldralös (0 böcker),
-   och stavfelet "Russel" ligger kvar som kanoniskt namn. ("Timescape" är samma
-   mekanism med annan orsak: titeln låg i författarfältet vid sådden.)
+Lärdomar: (a) användarens åtgärder var aldrig problemet — kaskaderna fungerar;
+(b) felet är att osäkerhet representeras som *bruten länk*; (c) omresolveringen
+slänger sin säkraste information (den befintliga länken) och gissar om från den
+svagaste (kall strängjämförelse).
 
-**Kärnfelet:** steg 3–4 är *minneslösa*. Omresolveringen vet inte att boken nyss var
-länkad till post 162, så järnregeln (rätt för kalla matchningar mellan *okända* namn)
-appliceras på ett fall där vi har stark kontext: *samma bok, samma fält, en
-stavningsvariant från en mer pålitlig källa*.
+## Grundmodellen: sträng och länk är alltid överens
 
-## Designen: omresolvering med minne ("sticky links")
+Ny hård regel i datamodellen:
 
-### 1. Reset-lyssnaren bevarar länken som kontext
+> `item.author` (strängen) är alltid lika med den länkade postens `canonical_name`
+> **eller** ett registrerat alias till den.
 
-`_reset_author_resolution` slutar nolla `author_id`. I stället:
+Därmed kan resolvering aldrig "misslyckas" — värsta fallet är att strängen blir en
+**ny tentativ post** (registret speglar då exakt vad som faktiskt står i böckerna),
+och osäkerheten blir ett **sammanslagningsförslag mellan två registerposter** i
+stället för en olänkad bok:
 
-```
-author_status = 'stale'        # nytt värde: "länkad, men strängen har ändrats"
-author_id     = <orörd>        # minnet — förra länken
-```
+### Regler när `item.author` ändras (av vem som helst: scan, berikning, fritext)
 
-Allt som idag räknar "länkad" (`author_status == 'linked'`) fortsätter fungera;
-`'stale'` plockas upp av pending-passet precis som `NULL` gör idag
-(`resolve_pending_authors`, `app/services/author_resolver.py:147`). Undantagen i
-lyssnaren (combobox sätter båda fälten; `keep_author_links()` för kaskader) behålls
-oförändrade.
+Lyssnaren slutar nolla. Den markerar `author_status='stale'` och **behåller
+`author_id` som minne**. Pending-passet (körs redan direkt efter modal-spar,
+`metadata.py:2048`, samt vid scan/upload) avgör:
 
-### 2. Resolvern får en prioriterad regel för `stale`-poster
+1. **Exakt/signatur/alias-träff mot någon post** → länka den (ev. samma som förut
+   via alias). Deterministisk, som idag. Status `linked`.
+2. **Ingen träff** → **skapa/återanvänd en tentativ post för den bokstavliga
+   strängen och länka den.** Boken är aldrig olänkad. Sedan:
+   - Fanns ett minne (förra länken) och nya strängen fuzzy-matchar (≥ tröskel) den
+     mindes posten → registrera ett **högkonfidens-sammanslagningsförslag**
+     (ny post ↔ mindes post) och sätt `author_status='review'` på boken.
+     Russell-fallet: ny post "Mary Doria Russell" länkad, förslag
+     "Russell (1 bok) ↔ Russel (0 böcker)" överst i /authors dublettpanel —
+     ett klick, kaskaden slår ihop, aliasen konsolideras. Ignoreras förslaget
+     är boken ändå fullt funktionell och rätt märkt.
+   - Annars: kall fuzzy mot registret som idag → ev. vanligt dublettförslag.
+     Inget minne, ingen träff → bara den nya posten, status `new`.
+3. **Tom sträng** → `missing` som idag (avsaknad av författare är inte en bruten
+   länk).
 
-I `resolve_and_link()` (`author_resolver.py:112`), **före** dagens lager, när
-`author_status='stale'` och `author_id` finns:
+**Järnregeln består oförändrad**: inget slås någonsin ihop automatiskt — fuzzy
+*föreslår* sammanslagning, användaren klickar. Skillnaden mot idag är att boken
+väntar *länkad till sin bokstavliga sträng* i stället för i limbo, och att minnet
+gör förslaget träffsäkert (samma boks fält ⇒ nästan säkert samma person).
 
-1. **Exakt/signatur-träff mot någon registerpost** (lager 1–2, som idag) → länka den.
-   Är det en *annan* post än minnet pekar på är det en äkta författarkorrigering —
-   godta den, och GC:a den gamla posten om den blivit föräldralös (se §4).
-2. **Fuzzy-träff (≥ 0.85) mot just den post minnet pekar på** → **behåll länken**:
-   `author_status='linked'`, registrera nya stavningen som alias
-   (`_record_alias`). Detta bryter inte järnregeln — den skyddar mot att slå ihop
-   *två olika personer* vid kall matchning; här dömer vi *samma boks* fält mot
-   *bokens egen tidigare post*, med ny stavning från berikning/användare. Risken är
-   en annan, och priset för dagens beteende (evig granskningskö + föräldralösa
-   poster) är bevisat högre.
-3. **Ingen träff alls** (< 0.85 även mot minnet) → äkta författarbyte: släpp minnet
-   och kör dagens flöde (nytt tentativt / review / missing). GC:a gammal post per §4.
+### Varför detta uppfyller det skärpta kravet
 
-### 3. Tentativa poster följer med rättningen
+- **Fritext i modalen** kan inte bryta länken: texten blir i värsta fall en ny
+  tentativ post som boken länkas till, plus ett förslag. Stavfel = en post till att
+  slå ihop, aldrig en försvunnen koppling.
+- **Berikning/scan** samma väg. Skannervakten (nedan) tar bort även churnen.
+- **Comboboxen** förblir det enda stället där länken *byts medvetet* (sätter
+  `author_id` explicit — lyssnarundantaget består).
+- **Rename/merge** kaskaderar redan med länkar intakta (bevisat i steg 2 ovan).
+- **Radera-knappen i /authors** är redan spärrad för poster med böcker
+  (`authors.py:delete`, 409 vid `in_use`) — den enda vägen att bli av med en
+  länkad post är att först flytta/radera böckerna. Behålls.
 
-I regel 2, om den mindes posten är `source='tentative'` **och** boken är dess enda
-länkade bok: **döp om postens `canonical_name` till den nya stavningen** (via
-`keep_author_links()`-kaskaden så lyssnaren inte triggas). Motivering: posten
-skapades automatiskt ur exakt den här bokens dåliga filmetadata — boken *är* postens
-enda evidens. När evidensen rättas ska posten följa med, inte fossilisera stavfelet.
+## När sista boken försvinner
 
-Har posten fler böcker: behåll namnet, lägg bara alias (de andra böckerna kan
-fortfarande ha gamla stavningen), och låt dublettvyn/AI-domaren föreslå ev. rename.
-Bekräftade/auktoritetslänkade poster byter aldrig namn automatiskt — bara alias.
+Bokradering (UI:t eller scannerns städning av försvunna filer,
+`scanner.py:613`) följs av en GC-krok på den övergivna posten:
 
-### 4. Livscykel för föräldralösa tentativa poster (GC)
+- `source='tentative'` + 0 böcker → **radera post + alias automatiskt.**
+  Autoskapade, DB-only, inget bevarandevärde utan böcker. (Backfill vid deploy
+  städar befintliga — "Timescape" försvinner.)
+- `user_confirmed`/`authority_linked` + 0 böcker → **behåll.** Posten är kuraterad
+  kunskap (stavning, auktoritets-id:n, alias). "Inga böcker"-badgen visar läget,
+  papperskorgen finns för användaren. Laddas en ny bok av personen upp länkar
+  regel 1 den direkt mot den bevarade posten — registret fungerar som stående
+  auktoritetsfil, inte bara som index över nuvarande bestånd.
 
-När en omresolvering (regel 1 eller 3) *lämnar* en post: om posten är
-`source='tentative'` och nu har 0 länkade böcker → **radera den + dess alias**
-(samma logik som delete-endpointens guard, `app/routes/authors.py:268`, fast
-automatiskt). Tentativa poster är DB-only och autoskapade — de har inget
-bevarandevärde utan böcker. Bekräftade poster raderas aldrig automatiskt; de får
-"Inga böcker"-badgen (v1.33.1) och användaren avgör.
+## Schema
 
-Engångsbackfill vid uppstart (mönstret i `app/services/database.py`): GC:a
-befintliga tentativa 0-boksposter ("Timescape" försvinner då av sig själv).
+- `library_items.suggested_author_id` (nullable FK) — sammanslagningsförslagets
+  motpart, satt av regel 2a; visas i granskningskön och rensas när förslaget
+  avgörs (merge eller avvisa). Ersätter dagens "recompute suggestions on demand"
+  som *primär* källa (recompute behålls som fallback i comboboxen).
+- `author_status`-semantik efter bygget: `linked` (allt väl) · `new` (skapade en
+  tentativ post; rensas vid confirm, v1.33.2) · `review` (länkad + öppet förslag) ·
+  `missing` (ingen sträng) · `stale` (väntar på pending-pass, transient).
+  **`NULL` med icke-tom sträng förekommer inte längre.**
 
-### 5. Skannervakt mot flip-flop via alias
+## Skannervakt mot flip-flop
 
-`upsert_library_item` (`app/services/scanner.py:509`) skriver idag alltid över
-`author` från filens `dc:creator`. Det är rätt när filen är sanningen — men om
-filskrivningen är gate:ad (tentativ kanonisk skrivs aldrig till fil) kan filen ligga
-kvar med en äldre stavning och varje omscan då återinföra den → lyssnaren triggas →
-churn. Vakt: **om inkommande författarsträngs `variant_key` är ett känt alias för
-bokens länkade post → hoppa över överskrivningen** (DB:ns kanoniska form vinner;
-filen hinner ikapp vid nästa metadata-skrivning). Okända strängar skrivs över som
-idag.
+Oförändrad från v1: `upsert_library_item` hoppar över author-överskrivning när
+inkommande strängs `variant_key` redan är alias till bokens länkade post (filen
+bär en äldre stavning av samma person; DB:ns form vinner tills filen skrivs om
+vid nästa metadata-skrivning). Okända strängar skrivs över som vanligt och går
+genom reglerna ovan.
 
-## Vad som INTE ändras
+## Migration/backfill (idempotent, `database.py`-mönstret)
 
-- Järnregeln för **kalla** matchningar står kvar orörd: fuzzy föreslår, länkar aldrig,
-  vid sådd/upload/nyresolvering utan minne.
-- Filen förblir sanningskällan; gate:n "tentativ skrivs inte till fil" står kvar.
-- Combobox-/manage-flödena (assign/rename/merge/confirm) oförändrade.
-- `group_key`, Kobo-synk, läsarstate — orörda.
+1. Böcker i limbo idag (`author_status IN ('review') OR (author_id IS NULL AND
+   author != '')`): kör reglerna — skapa/länka bokstavlig post, sätt förslag om
+   fuzzy-kandidat finns. (Prod: *The Sparrow* → ny post "Mary Doria Russell" +
+   förslag mot "Russel"-posten; *ATLANTIS* motsvarande.)
+2. GC tentativa 0-boksposter.
+3. `suggested_author_id`-kolumnen via `ensure_database_columns()`.
 
 ## Implementationsordning
 
-1. **Resolvertest först** (`tests/test_author_resolver.py`): stale-reglerna 1–3 som
-   rena enhetstester, inkl. Russell-kedjan som regressionstest.
-2. `models.py`-lyssnaren (`'stale'` i stället för NULL) + resolverregeln.
-3. Tentativ-rename (§3) + GC (§4) + backfill.
-4. Skannervakten (§5) — separat commit, den rör en het kodväg.
-5. MINOR-bump (beteendeförändring + backfill).
+1. Resolvertester först, med hela Russell-kedjan som regressionstest
+   (sådd → rename → berikning → **länken består**).
+2. Lyssnaren (`stale`, behåll FK) + resolverreglerna + `suggested_author_id`.
+3. GC-kroken vid bokradering + scannerstädning + backfill.
+4. /authors: minnesförslag överst i dublettpanelen (infran finns —
+   `duplicate_pairs` + merge-knapparna); granskningskön visar förslaget i
+   comboboxen förvalt.
+5. Skannervakten (separat commit, het kodväg).
+6. MINOR-bump.
 
-## Öppna beslut (Christians)
+## Öppna beslut (färre än v1 — auto-rename-frågan försvann med modellen)
 
-1. **Tröskeln för "samma person" i regel 2** — återanvända 0.85 (dagens
-   `_FUZZY_THRESHOLD`) eller sätta en egen, t.ex. 0.80, eftersom kontexten
-   (samma boks fält) motiverar generösare gräns?
-2. **Auto-rename av tentativ post (§3)** — ok att kanoniska namnet byts utan
-   bekräftelse när boken är postens enda evidens, eller ska det bli ett
-   "föreslagen rename"-kort i /authors i stället?
-3. **GC-backfillen (§4)** — radera befintliga tentativa 0-boksposter tyst vid
-   deploy, eller lista dem en gång i loggen/UI:t innan?
-4. **Skannervakten (§5)** — räcker alias-matchning, eller ska även
-   signatur-matchning (lager 2) mot länkad post blockera överskrivning?
+1. **Fuzzy-tröskel för minnesförslaget** — 0.85 som `_FUZZY_THRESHOLD`, eller
+   generösare (0.80) givet kontexten samma boks fält? (Rekommendation: 0.85 —
+   förslaget är ändå bara ett förslag.)
+2. **GC-backfillen** — radera tentativa 0-boksposter tyst vid deploy eller logga
+   listan först? (Rekommendation: logga till containerloggen, radera sedan.)
+3. **Skannervaktens räckvidd** — bara alias-träff, eller även signatur-träff mot
+   länkad post? (Rekommendation: börja med alias; signatur är nästan alltid
+   redan alias via `_record_alias`.)
