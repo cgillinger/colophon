@@ -108,25 +108,44 @@ export function initDictLookup(opts) {
         statusEl.hidden = false;
     }
 
-    function renderEntry(container, match) {
-        var div = document.createElement('div');
-        div.className = 'rd-entry';
-        if (match.type === 'h') div.innerHTML = sanitizeEntryHtml(match.text);
+    function renderEntry(container, match, clamp) {
+        var entry = document.createElement('div');
+        entry.className = 'rd-entry';
+        var body = document.createElement('div');
+        if (match.type === 'h') body.innerHTML = sanitizeEntryHtml(match.text);
         else {
-            div.classList.add('rd-pre');
-            div.textContent = match.text.trim();
+            body.classList.add('rd-pre');
+            body.textContent = match.text.trim();
         }
-        container.appendChild(div);
+        entry.appendChild(body);
+        container.appendChild(entry);
+        if (!clamp) return;
+        // Collapse long entries (GCIDE definitions can be essay-length) and
+        // only offer the toggle when something is actually clipped.
+        body.classList.add('rd-clip');
+        requestAnimationFrame(function () {
+            if (body.scrollHeight <= body.clientHeight + 4) return;
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'rd-more';
+            btn.textContent = i18n.dictShowMore || 'Show more';
+            btn.addEventListener('click', function () {
+                var open = entry.classList.toggle('rd-open');
+                btn.textContent = open ? (i18n.dictShowLess || 'Show less')
+                                       : (i18n.dictShowMore || 'Show more');
+            });
+            entry.appendChild(btn);
+        });
     }
 
     function renderMatches(data) {
         var any = false;
         (data.matches || []).forEach(function (m) {
             if (m.kind === 'translation') {
-                renderEntry(transEl, m);
+                renderEntry(transEl, m, false);
                 transRow.hidden = false;
             } else {
-                renderEntry(defsEl, m);
+                renderEntry(defsEl, m, true);
                 defsEl.hidden = false;
             }
             any = true;

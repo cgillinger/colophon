@@ -95,6 +95,10 @@
         }
         .reader-tap.prev { left: 0; }
         .reader-tap.next { right: 0; }
+        /* On touch screens the zones intercept long-presses too, making words
+           near the edges unselectable for the dictionary — keep them narrow
+           there (swiping still turns pages everywhere). */
+        @media (pointer: coarse) { .reader-tap { width: 11%; } }
         .reader-overlay {
             position: absolute; inset: 0; z-index: 10;
             display: flex; align-items: center; justify-content: center;
@@ -228,10 +232,27 @@
         .reader-dict .rd-status { font-size: .9rem; opacity: .75; }
         .reader-dict .rd-status.rd-busy { animation: rdrPulse 1.2s ease-in-out infinite; }
         .reader-dict .rd-entry { font-size: .92rem; line-height: 1.5; overflow-wrap: anywhere; }
-        .reader-dict .rd-entry.rd-pre { white-space: pre-wrap; font-size: .85rem; }
+        .reader-dict .rd-pre { white-space: pre-wrap; font-size: .85rem; }
         .reader-dict .rd-entry a { color: inherit; }
-        .reader-dict .rd-trans-row {
+        /* Definitions (below the translation) collapse to a few lines with a
+           "show more" toggle — GCIDE entries can be essay-length. */
+        .reader-dict .rd-defs {
             border-top: 1px solid var(--rs-line); padding-top: 10px;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .reader-dict .rd-clip {
+            display: -webkit-box; -webkit-box-orient: vertical;
+            -webkit-line-clamp: 5; overflow: hidden;
+        }
+        .reader-dict .rd-entry.rd-open .rd-clip {
+            display: block; -webkit-line-clamp: unset; overflow: visible;
+        }
+        .reader-dict .rd-more {
+            border: none; background: transparent; color: var(--rs-chip-on);
+            font: inherit; font-size: .8rem; font-weight: 600;
+            padding: 2px 0; cursor: pointer; align-self: flex-start;
+        }
+        .reader-dict .rd-trans-row {
             display: flex; gap: 10px; align-items: baseline;
         }
         .reader-dict .rd-trans-tag {
@@ -349,11 +370,13 @@
         <div class="rd-word" id="rdWord"></div>
         <div class="rd-body">
             <div class="rd-status" id="rdStatus" hidden></div>
-            <div class="rd-defs" id="rdDefs" hidden></div>
+            {# Translation first — it's the short answer; the (often essay-length)
+               GCIDE definition sits collapsed below it. #}
             <div class="rd-trans-row" id="rdTransRow" hidden>
                 <span class="rd-trans-tag">{{ _('Swedish') }}</span>
                 <div class="rd-trans" id="rdTrans"></div>
             </div>
+            <div class="rd-defs" id="rdDefs" hidden></div>
             <button type="button" class="rd-ai-btn" id="rdAiBtn" hidden>✦ {{ _('Explain with AI') }}</button>
             <div class="rd-ai-box" id="rdAiBox" hidden>
                 <div class="rd-ai-tag">{{ _('AI — in this sentence') }}</div>
@@ -433,7 +456,9 @@
                 dictNoLanguageNoAi: {{ _('No dictionary for this language yet.')|tojson }},
                 dictError: {{ _('Lookup failed.')|tojson }},
                 dictAiThinking: {{ _('Thinking…')|tojson }},
-                dictAiFailed: {{ _('AI explanation failed.')|tojson }}
+                dictAiFailed: {{ _('AI explanation failed.')|tojson }},
+                dictShowMore: {{ _('Show more')|tojson }},
+                dictShowLess: {{ _('Show less')|tojson }}
             }
         };
 

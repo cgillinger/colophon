@@ -15,3 +15,8 @@ for in-browser PDF rendering.
   ONE local patch: getDocument() passes wasmUrl: pdfjsPath('wasm/') so pdf.js
   can load the vendored WASM image decoders (openjpeg/jbig2/qcms). Without it,
   scanned PDFs whose pages are JPEG2000 images render blank.
+
+paginator.js — ONE local patch (v1.32.1): #onTouchMove() bails while the
+  document has a non-collapsed selection, so dragging iOS/Android selection
+  handles adjusts the selection instead of scrolling/turning pages. Needed by
+  the reader's word-lookup feature (docs/reader-dictionary-lookup.md).

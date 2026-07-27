@@ -833,6 +833,12 @@ export class Paginator extends HTMLElement {
         if (state.pinched) return
         state.pinched = globalThis.visualViewport.scale > 1
         if (this.scrolled || state.pinched) return
+        // Colophon patch (see VENDORED.txt): while text is selected, a touch
+        // drag is the user adjusting the selection handles — let the browser
+        // have it instead of turning it into a page scroll, or word lookup
+        // becomes nearly impossible on iPad.
+        const sel = e.target?.ownerDocument?.getSelection?.()
+        if (sel && !sel.isCollapsed) return
         if (e.touches.length > 1) {
             if (this.#touchScrolled) e.preventDefault()
             return
