@@ -1,12 +1,12 @@
-# Colophon — self-hosted e-book metadata manager with Kobo wireless sync
+# Colophon — self-hosted e-book library manager with Kobo wireless sync
 
-[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.39.2-brightgreen)](https://github.com/cgillinger/colophon/releases) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#setting-up-kobo-sync)
+[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.39.3-brightgreen)](https://github.com/cgillinger/colophon/releases) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#setting-up-kobo-sync)
 
 **Colophon — the e-book manager.** A self-hosted web app that turns a messy folder of e-book files into a clean, browsable library and syncs it to a Kobo e-reader over WiFi. (Not the printing/publishing term — this is the software.)
 
 Colophon scans a folder of e-book files (EPUB, MOBI, AZW3, KEPUB, PDF, CBZ, CBR), fetches and merges metadata from several sources (Google Books, Hardcover, Open Library, Wikidata, Wikipedia, LIBRIS, Calibre), uses AI to detect series, finds cover art, and lets a Kobo e-reader sync the whole library over WiFi.
 
-This is a personal project I built for my own library. I've published it in case someone else has the same problem and can use it as a head start. Runs in one Docker container, MIT-licensed, no telemetry. Think of it as a lightweight, metadata-focused alternative to Calibre and Calibre-Web that plays nicely with Komga, Kavita and other servers that read embedded metadata.
+This is a personal project I built for my own library. I've published it in case someone else has the same problem and can use it as a head start. Runs in one Docker container, MIT-licensed, no telemetry. It started life as a metadata companion to other tools but has grown into a complete library manager in its own right — cataloguing, reading, organising and device sync, no other software required. Think of it as a lightweight alternative to Calibre and Calibre-Web; and because it writes metadata back into the files, it also plays nicely with Komga, Kavita and other servers that read embedded metadata, if you run one.
 
 📖 **New here?** The **[User Handbook](docs/handbook-en.md)** (också på **[svenska](docs/handbook-sv.md)**) walks through every feature in plain language, with a look-up index — so you can jump straight to *Sharing a book*, *Kobo sync*, *Managing authors*, and so on.
 
@@ -199,20 +199,30 @@ two surnames — click it once to dismiss it.
 
 ---
 
-## Local working copy + upstream library
+## Where your books live: local first, server optional
 
-Colophon deliberately works against a **local copy** of your books and only
-touches a server-hosted "master" library (a NAS share, a Komga folder) through
-explicit, user-confirmed sync steps. That split is not an accident — it is the
-answer to a well-known failure mode.
+Out of the box, Colophon is **self-contained**: one container, with your book
+folder and its database on local disk. Scanning, metadata, covers, reading,
+Kobo sync and author folders all work against that one folder — no Calibre, no
+Komga, no NAS required. If that's your setup, this section doesn't apply and
+you're done.
 
+**The optional upstream library.** Many self-hosters keep the *master* copy of
+their books somewhere else — typically a share on a NAS or home server, often
+the same folder a media server like Komga or Kavita serves from. Colophon can
+work as the curation front-end for such a setup: it keeps a local working
+copy, and syncs files to and from the server copy (the "upstream library") on
+your command.
+
+Why a working copy instead of pointing Colophon straight at the share? Because
+keeping a *live* library on a network share is a known way to lose it.
 Calibre's own manual [warns flatly](https://manual.calibre-ebook.com/faq.html):
 *"Do not put your calibre library on a networked drive"* — network filesystems
 have unreliable file locking, and a library database kept on one (or reached by
-two programs at once) ends in corruption. The warning is sound: SQLite over
+two programs at once) ends in corruption. The warning is sound: a database over
 SMB/NFS is exactly where e-book libraries go to die.
 
-Colophon's model sidesteps the problem instead of fighting it:
+Colophon's two-library model sidesteps the problem instead of fighting it:
 
 - **The database and the working library live on fast local disk.** Nothing
   that needs locking ever sits on the network.
@@ -227,9 +237,9 @@ Colophon's model sidesteps the problem instead of fighting it:
   only files Colophon itself put there, only after the new copy is verified in
   place, and shown in the preview first.
 
-The result is Calibre-style curation comfort with a server-hosted library —
-your Komga/Kavita share stays a clean, passive file tree, and the fragile
-moving parts stay local.
+The moving parts — database, file writes, locking — stay on local disk where
+they are safe, while the server share remains a clean, passive file tree that
+any other tool can serve from.
 
 ---
 

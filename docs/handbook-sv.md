@@ -364,8 +364,12 @@ Kobons `.conf` oftast fel; om böcker dyker upp men inte omslag är det
 
 ## 16. Synka till ett uppströmsbibliotek
 
-Om du har ett "master"-bibliotek någon annanstans — till exempel en
-Komga-utdelning på en NAS — kan Colophon skicka upp de filer det ändrat dit.
+Hela den här sektionen är **valfri**: Colophon är fristående, och om dess egen
+bokmapp är ditt enda bibliotek kan du hoppa vidare. Den blir aktuell när du har
+en "master"-kopia av dina böcker någon annanstans — till exempel en utdelning
+på en NAS, kanske serverad av Komga eller Kavita — och vill att Colophon ska
+vara kureringsverktyget för den: Colophon arbetar då mot en lokal kopia och
+skickar upp de filer det ändrat till mastern på ditt kommando.
 
 **Varför två bibliotek över huvud taget?** För att ett levande e-boksbibliotek
 direkt på en nätverksutdelning är ett känt sätt att förlora det. Calibres egen

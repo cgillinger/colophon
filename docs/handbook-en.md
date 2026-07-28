@@ -358,8 +358,12 @@ it's the `image_host`/`image_url_template` lines (they must include the port).
 
 ## 16. Syncing to an upstream library
 
-If you keep a "master" library elsewhere — for example a Komga share on a NAS —
-Colophon can push the files it has changed up to it.
+This whole section is **optional**: Colophon is self-contained, and if its own
+book folder is your only library you can skip ahead. It matters when you keep
+a "master" copy of your books elsewhere — for example a NAS share, perhaps
+served by Komga or Kavita — and want Colophon to act as the curation front-end
+for it: Colophon then works against a local copy and pushes the files it has
+changed up to the master on your command.
 
 **Why two libraries at all?** Because keeping a live e-book library directly on
 a network share is a known way to lose it. Calibre's own manual says it
