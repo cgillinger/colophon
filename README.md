@@ -1,6 +1,6 @@
 # Colophon — self-hosted e-book library manager with Kobo wireless sync
 
-[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.39.3-brightgreen)](https://github.com/cgillinger/colophon/releases) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#setting-up-kobo-sync)
+[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.39.4-brightgreen)](https://github.com/cgillinger/colophon/releases) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#setting-up-kobo-sync)
 
 **Colophon — the e-book manager.** A self-hosted web app that turns a messy folder of e-book files into a clean, browsable library and syncs it to a Kobo e-reader over WiFi. (Not the printing/publishing term — this is the software.)
 
@@ -39,7 +39,7 @@ This is a personal project I built for my own library. I've published it in case
 - Scans a book folder and builds a catalogue
 - Adds books by drag-and-drop or a file picker — batch upload, no rescan needed; freshly added books wear a "New" badge for a while
 - Fetches metadata from seven sources (Google Books, Hardcover, Open Library, Wikidata, Wikipedia, LIBRIS, Calibre) and merges them field by field
-- Detects series with AI (Mistral, OpenAI, DeepSeek, or local Ollama)
+- Uses AI as an optional cataloguing assistant — series detection, metadata suggestions, author disambiguation and in-reader word explanations, always propose-only (Mistral, OpenAI, DeepSeek, or fully local Ollama)
 - Finds covers from Open Library, Google Books, Hardcover, Wikidata, DuckDuckGo
 - Writes metadata back into the files so other tools see the same data
 - Keeps authors consistent — one canonical entry per author, spelling variants auto-linked, typos flagged for review, one-click merge/rename that relabels every book, with optional Wikidata verification
@@ -71,6 +71,7 @@ If you've searched for any of these, Colophon is aimed at you:
 - **Wireless Kobo sync for a self-hosted library** — point a Kobo at your own catalogue instead of the Kobo store, and get covers, downloads and reading-progress sync over WiFi. No cable after setup.
 - **A metadata front-end for Komga or Kavita** — Colophon writes metadata *back into the files*, so the server you already run picks up the same titles, authors, series and covers.
 - **An in-browser reader** (EPUB, MOBI, AZW3, PDF) with reading progress that syncs to and from your Kobo, and word lookup backed by open-source dictionaries.
+- **AI-assisted cataloguing** — series detection, metadata suggestions and author disambiguation with a propose-only guardrail. Bring any OpenAI-compatible provider, or keep it fully private with local Ollama. I haven't found another self-hosted book server that does this.
 
 It is *not* a comics page-reader, a multi-user server, or an internet-facing app — see [What it doesn't do](#what-it-doesnt-do).
 
@@ -142,7 +143,32 @@ Colophon queries these in a progressive flow and merges the results **field by f
 | Wikidata/Commons | No | ISBN |
 | DuckDuckGo | No | Title, author |
 
-## AI providers
+## AI as a librarian's assistant
+
+As far as I know, no other self-hosted book server has this: Colophon uses an
+LLM as a **cataloguing assistant** — for exactly the problems where regular
+metadata sources fall short. It is entirely optional (everything works without
+a key), and deliberately constrained by one rule: **AI proposes, you decide.**
+Every AI suggestion lands in a review view where you approve field by field;
+nothing is ever written to your library or your files on an AI's say-so.
+
+What it helps with:
+
+- **Series detection** — the field databases are worst at. The AI reads the
+  book's title, author and description and proposes the series name and the
+  book's position in it, which you accept or reject per field.
+- **Metadata suggestions** — "Ask AI" on a book (or a whole batch) proposes
+  values for missing fields, presented side by side with what you have.
+- **Author disambiguation** — for likely-duplicate author entries, the AI
+  gives an advisory verdict on whether two spellings are the same person, with
+  its reasoning. Merging remains your click.
+- **A reading companion** — select a word in the in-browser reader and,
+  alongside the dictionary definition, the AI explains what the word means *in
+  that exact sentence*.
+
+Bring any OpenAI-compatible provider — or run it fully local and private with
+Ollama, where no book data ever leaves your machine. Token usage is tracked
+locally in the settings so you can see what it costs you.
 
 | Provider | URL | Free tier |
 |---|---|---|
