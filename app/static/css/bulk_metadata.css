@@ -2724,6 +2724,10 @@
         .modal-box.display-mode .modal-fetch-block,
         .modal-box.display-mode .modal-actions,
         .modal-box.display-mode .modal-corner-delete,
+        .modal-box.display-mode .author-multi-list,
+        .modal-box.display-mode .author-add-btn,
+        .modal-box.display-mode .author-status-hint,
+        .modal-box.display-mode #modalMoveFolderField,
         .modal-box.display-mode #modalProgress {
             display: none !important;
         }
