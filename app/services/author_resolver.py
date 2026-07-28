@@ -569,6 +569,8 @@ def rename_author(session, author, new_name):
     author.canonical_name = _display_form(new_name)
     if author.source == "tentative":
         author.source = "user_confirmed"
+    # A new name needs a fresh looks-multi judgement.
+    author.split_dismissed = False
     new_key = normalize_author_name(author.canonical_name)
     for key in (old_key, new_key):
         if key and not session.query(AuthorAlias).filter_by(variant_key=key).first():
@@ -849,7 +851,10 @@ def authors_overview(session):
             "author": author,
             "book_count": counts.get(author.id, 0),
             "likely_duplicate": author.id in duplicate_ids,
-            "looks_multi": looks_like_multiple_authors(author.canonical_name),
+            "looks_multi": (
+                not author.split_dismissed
+                and looks_like_multiple_authors(author.canonical_name)
+            ),
         }
         for author in authors
     ]

@@ -231,6 +231,17 @@ def split(author_id):
     })
 
 
+@authors_bp.route("/authors/<int:author_id>/dismiss-split", methods=["POST"])
+def dismiss_split(author_id):
+    """'No, this is one person': permanently hide the looks-multi badge
+    for this entry (the comma heuristic flags sort-form names like
+    "Ashton, Edward" too — by design; the human judges). Reset by rename."""
+    author = _get_author_or_404(author_id)
+    author.split_dismissed = True
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
 @authors_bp.route("/authors/<int:author_id>/rename", methods=["POST"])
 def rename(author_id):
     author = _get_author_or_404(author_id)

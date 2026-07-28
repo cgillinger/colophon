@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.36.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.37.0.
 
 ## 🚧 Pågående arbete — fortsätt 2026-06-11
 
@@ -232,7 +232,9 @@ manual (the `/authors` Split dialog), and the decision persists as
 resolver consults so re-scans of still-fused files don't resurrect the fused
 entry. Rules never reference tentative entries (the GC relies on it). The book
 modal renders one combobox row per author + "Lägg till författare" — the user
-never types separator syntax.
+never types separator syntax. The looks-multi badge is deliberately broad
+(commas flag sort-form names too); clicking it dismisses it per entry
+(`Author.split_dismissed`, v1.37.0 — reset on rename).
 
 **`kobo_devices` (KoboDevice)** — registered Kobo e-readers. Each row has a path token used in the device's sync URL (`/kobo/<token>/...`). Revokable from the settings UI.
 
@@ -300,7 +302,7 @@ get their env from docker-compose.
 >   -c "pip install -q pytest && python -m pytest tests/ -q"
 > ```
 
-**Known pre-existing failures (as of v1.36.0):** a clean run is *487 passed, 10
+**Known pre-existing failures (as of v1.37.0):** a clean run is *489 passed, 10
 failed*. The 10 are not regressions — `test_quality.py` (6) and
 `test_scoring.py` (3) assert Swedish reason/warning substrings the code now
 emits in English, and `test_scanner.py::...test_does_not_overwrite_manual_metadata`

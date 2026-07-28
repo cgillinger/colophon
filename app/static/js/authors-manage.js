@@ -129,6 +129,19 @@
         fields.appendChild(row);
     }
 
+    /* "No, this is one person" — permanently dismiss the looks-multi
+       badge (sort-form names trip the comma heuristic by design). */
+    function _dismissSplit(tr, id) {
+        var name = _rowName(tr);
+        if (!window.confirm(_fmt('dismissSplitConfirm', { name: name },
+                '“{name}” is one person — hide the split badge?'))) return;
+        _post('/authors/' + id + '/dismiss-split').then(function (b) {
+            if (!b.ok) { alert(_i18n.actionFailed || 'The action failed.'); return; }
+            var flag = tr.querySelector('.multi-flag');
+            if (flag) flag.remove();
+        });
+    }
+
     function _split(tr, id, btn) {
         var dlg = _splitDialog();
         if (!dlg || typeof dlg.showModal !== 'function') return;
@@ -209,6 +222,7 @@
             else if (act === 'rename') _rename(tr, id);
             else if (act === 'merge') _merge(tr, id);
             else if (act === 'split') _split(tr, id, btn);
+            else if (act === 'dismiss-split') _dismissSplit(tr, id);
             else if (act === 'verify') _verify(tr, id, btn);
             else if (act === 'delete') _delete(tr, id);
         });

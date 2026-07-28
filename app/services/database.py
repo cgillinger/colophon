@@ -402,6 +402,20 @@ def ensure_multi_author_tables():
     """))
     db.session.commit()
 
+    # v1.37.0: "no, this is one person" dismissal of the looks-multi
+    # badge. Same duplicate-column tolerance as ensure_database_columns
+    # (two Gunicorn workers race this on boot).
+    try:
+        db.session.execute(text(
+            "ALTER TABLE authors ADD COLUMN split_dismissed "
+            "BOOLEAN NOT NULL DEFAULT 0"
+        ))
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        if "duplicate column name" not in str(exc).lower():
+            raise
+
     # Backfill: mirror every existing single link as a position-0 row.
     # Idempotent — the NOT IN filter matches nothing on later boots. Books
     # whose fused string should split stay single-linked until their next

@@ -108,7 +108,8 @@
         table.authors tr:last-child td { border-bottom: none; }
         td.author-name { font-weight: 500; }
         td.author-name .ti-alert-triangle { color: var(--accent-yellow); margin-left: 6px; }
-        td.author-name .multi-flag { color: var(--accent-yellow); margin-left: 6px; }
+        td.author-name .multi-flag { color: var(--accent-yellow); margin-left: 6px; background: transparent; border: none; padding: 1px 3px; border-radius: 5px; cursor: pointer; font-size: inherit; }
+        td.author-name .multi-flag:hover { background: var(--bg-tertiary); }
 
         dialog#splitDialog { border: 1px solid var(--border-medium); border-radius: 10px; background: var(--bg-primary); color: var(--text-primary); padding: 20px 22px; width: min(440px, 92vw); }
         dialog#splitDialog::backdrop { background: rgba(0, 0, 0, 0.45); }
@@ -221,7 +222,7 @@
             {% set a = row.author %}
             <tr data-author-id="{{ a.id }}" data-name="{{ a.canonical_name|lower }}" data-source="{{ a.source }}">
                 <td class="col-select"><input type="checkbox" class="author-select" aria-label="{{ _('Select %(name)s', name=a.canonical_name) }}"></td>
-                <td class="author-name">{{ a.canonical_name }}{% if row.likely_duplicate %}<i class="ti ti-alert-triangle" title="{{ _('Nearly identical to another entry') }}"></i>{% endif %}{% if row.looks_multi %}<i class="ti ti-users multi-flag" title="{{ _('Looks like several authors in one entry — use Split') }}"></i>{% endif %}</td>
+                <td class="author-name">{{ a.canonical_name }}{% if row.likely_duplicate %}<i class="ti ti-alert-triangle" title="{{ _('Nearly identical to another entry') }}"></i>{% endif %}{% if row.looks_multi %}<button type="button" class="multi-flag" data-act="dismiss-split" title="{{ _('Looks like several authors in one entry — use Split, or click to dismiss (“no, this is one person”)') }}"><i class="ti ti-users"></i></button>{% endif %}</td>
                 <td>
                     {% if a.source == 'authority_linked' %}
                         <span class="badge info">{{ _('Authority-linked') }}</span>
@@ -303,6 +304,7 @@
             bulkConfirmPrompt: {{ _('Confirm {count} selected authors? They become eligible for file writes.')|tojson }},
             bulkNoTentative: {{ _('None of the selected entries are unconfirmed.')|tojson }},
             splitNeedTwo: {{ _('Enter at least two author names.')|tojson }},
+            dismissSplitConfirm: {{ _('“{name}” is one person — hide the split badge?')|tojson }},
             splitConfirm: {{ _('Split “{name}” into {parts}? All linked books get the new authors.')|tojson }}
         }
     };

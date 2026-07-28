@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Colophon 1.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-07-28 12:46+0200\n"
+"POT-Creation-Date: 2026-07-28 13:03+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: sv\n"
@@ -654,7 +654,7 @@ msgid "%(n)d files awaiting upstream sync (open library to start)"
 msgstr "%(n)d filer väntar på uppströmssynk (öppna biblioteket för att starta)"
 
 #: app/templates/_layout.html:110 app/templates/authors.html:3
-#: app/templates/authors.html:139
+#: app/templates/authors.html:140
 msgid "Authors"
 msgstr "Författare"
 
@@ -710,7 +710,7 @@ msgstr "Ny version tillgänglig"
 msgid "Reload"
 msgstr "Ladda om"
 
-#: app/templates/authors.html:141
+#: app/templates/authors.html:142
 msgid ""
 "Every author in the library, one canonical entry per person. Rename or "
 "merge an entry and all of its books are relabelled in one sweep. "
@@ -722,20 +722,20 @@ msgstr ""
 "Preliminära poster har skapats automatiskt från filernas metadata och "
 "skrivs inte in i filerna förrän de bekräftats."
 
-#: app/templates/authors.html:147
+#: app/templates/authors.html:148
 #, python-format
 msgid "%(count)d books have an author waiting for review."
 msgstr "%(count)d böcker har en författare som väntar på granskning."
 
-#: app/templates/authors.html:148
+#: app/templates/authors.html:149
 msgid "Open the library with the “authors to review” filter."
 msgstr "Öppna biblioteket med filtret ”författare att granska”."
 
-#: app/templates/authors.html:157
+#: app/templates/authors.html:158
 msgid "Likely duplicates"
 msgstr "Troliga dubbletter"
 
-#: app/templates/authors.html:160
+#: app/templates/authors.html:161
 msgid ""
 "These pairs of entries are nearly identical — usually a typo or a "
 "spelling variant that slipped in as its own author. Merging moves all "
@@ -745,93 +745,97 @@ msgstr ""
 "stavningsvariant som slunkit in som egen författare. Ihopslagning flyttar"
 " alla böcker och alias till posten du behåller."
 
-#: app/templates/authors.html:173
+#: app/templates/authors.html:174
 msgid "Ask the AI whether these are the same person"
 msgstr "Fråga AI:n om det är samma person"
 
-#: app/templates/authors.html:174 app/templates/bulk_metadata.html:594
+#: app/templates/authors.html:175 app/templates/bulk_metadata.html:594
 msgid "Ask AI"
 msgstr "Fråga AI"
 
-#: app/templates/authors.html:177 app/templates/authors.html:180
+#: app/templates/authors.html:178 app/templates/authors.html:181
 #, python-format
 msgid "Keep “%(name)s”"
 msgstr "Behåll ”%(name)s”"
 
-#: app/templates/authors.html:192
+#: app/templates/authors.html:193
 msgid "Registry"
 msgstr "Register"
 
-#: app/templates/authors.html:196
+#: app/templates/authors.html:197
 msgid "Filter authors…"
 msgstr "Filtrera författare…"
 
-#: app/templates/authors.html:199
+#: app/templates/authors.html:200
 msgid "Show only unconfirmed"
 msgstr "Visa endast obekräftade"
 
-#: app/templates/authors.html:204
+#: app/templates/authors.html:205
 msgid "Confirm selected"
 msgstr "Bekräfta valda"
 
-#: app/templates/authors.html:205
+#: app/templates/authors.html:206
 msgid "Clear selection"
 msgstr "Rensa markering"
 
-#: app/templates/authors.html:211
+#: app/templates/authors.html:212
 msgid "Select all"
 msgstr "Markera alla"
 
-#: app/templates/authors.html:212 app/templates/bulk_metadata.html:250
+#: app/templates/authors.html:213 app/templates/bulk_metadata.html:250
 #: app/templates/bulk_metadata.html:497 app/templates/bulk_metadata.html:571
 #: app/templates/bulk_metadata.html:667 app/templates/bulk_metadata.html:1066
 #: app/templates/metadata.html:457 app/templates/metadata.html:555
 msgid "Author"
 msgstr "Författare"
 
-#: app/templates/authors.html:213 app/templates/settings_ai.html:310
+#: app/templates/authors.html:214 app/templates/settings_ai.html:310
 #: app/templates/settings_ai.html:350
 msgid "Status"
 msgstr "Status"
 
-#: app/templates/authors.html:214
+#: app/templates/authors.html:215
 msgid "Authority"
 msgstr "Auktoritet"
 
-#: app/templates/authors.html:215
+#: app/templates/authors.html:216
 msgid "Books"
 msgstr "Böcker"
 
-#: app/templates/authors.html:223
+#: app/templates/authors.html:224
 #, python-format
 msgid "Select %(name)s"
 msgstr "Markera %(name)s"
 
-#: app/templates/authors.html:224
+#: app/templates/authors.html:225
 msgid "Nearly identical to another entry"
 msgstr "Nästan identisk med en annan post"
 
-#: app/templates/authors.html:224
-msgid "Looks like several authors in one entry — use Split"
-msgstr "Ser ut som flera författare i en post — använd Dela"
+#: app/templates/authors.html:225
+msgid ""
+"Looks like several authors in one entry — use Split, or click to dismiss "
+"(“no, this is one person”)"
+msgstr ""
+"Ser ut som flera författare i en post — använd Dela, eller klicka för att "
+"avfärda (”nej, det här är en person”)"
 
-#: app/templates/authors.html:227
+#: app/templates/authors.html:228
 msgid "Authority-linked"
 msgstr "Auktoriserad"
 
-#: app/templates/authors.html:229
+#: app/templates/authors.html:230
 msgid "Confirmed"
 msgstr "Bekräftad"
 
-#: app/templates/authors.html:231
+#: app/templates/authors.html:232
 msgid "Tentative"
 msgstr "Preliminär"
 
-#: app/templates/authors.html:243
+#: app/templates/authors.html:244
 msgid "Show this author’s books in the library"
 msgstr "Visa författarens böcker i biblioteket"
 
-#: app/templates/authors.html:245
+#: app/templates/authors.html:246
 msgid ""
 "No books link to this entry — usually a leftover from bad file metadata. "
 "Safe to remove."
@@ -839,57 +843,57 @@ msgstr ""
 "Inga böcker är kopplade till posten — oftast en kvarleva från felaktig "
 "filmetadata. Kan tas bort utan risk."
 
-#: app/templates/authors.html:246
+#: app/templates/authors.html:247
 msgid "No books"
 msgstr "Inga böcker"
 
-#: app/templates/authors.html:251
+#: app/templates/authors.html:252
 msgid "Mark this spelling as correct"
 msgstr "Markera stavningen som korrekt"
 
-#: app/templates/authors.html:251
+#: app/templates/authors.html:252
 msgid "Confirm"
 msgstr "Bekräfta"
 
-#: app/templates/authors.html:253
+#: app/templates/authors.html:254
 msgid "Look the author up in Wikidata and store authority ids"
 msgstr "Slå upp författaren i Wikidata och spara auktoritets-id:n"
 
-#: app/templates/authors.html:253
+#: app/templates/authors.html:254
 msgid "Verify"
 msgstr "Verifiera"
 
-#: app/templates/authors.html:254
+#: app/templates/authors.html:255
 msgid "Rename"
 msgstr "Byt namn"
 
-#: app/templates/authors.html:255
+#: app/templates/authors.html:256
 msgid "Merge…"
 msgstr "Slå ihop…"
 
-#: app/templates/authors.html:256
+#: app/templates/authors.html:257
 msgid "Split this entry into several authors"
 msgstr "Dela upp posten i flera författare"
 
-#: app/templates/authors.html:257
+#: app/templates/authors.html:258
 msgid "Split…"
 msgstr "Dela…"
 
-#: app/templates/authors.html:259
+#: app/templates/authors.html:260
 msgid "Remove unused entry"
 msgstr "Ta bort oanvänd post"
 
-#: app/templates/authors.html:267
+#: app/templates/authors.html:268
 msgid "No authors yet — they appear here after the next scan or upload."
 msgstr ""
 "Inga författare ännu — de dyker upp här efter nästa skanning eller "
 "uppladdning."
 
-#: app/templates/authors.html:272
+#: app/templates/authors.html:273
 msgid "Split author"
 msgstr "Dela författare"
 
-#: app/templates/authors.html:274
+#: app/templates/authors.html:275
 msgid ""
 "One field per person, in the order they should appear. Typed names are "
 "matched against the registry, so existing authors are reused — not "
@@ -901,11 +905,11 @@ msgstr ""
 "Alla länkade böcker länkas om, och beslutet kommer ihåg så att "
 "omskanningar av filerna inte återskapar den hopslagna posten."
 
-#: app/templates/authors.html:276 app/templates/bulk_metadata.html:505
+#: app/templates/authors.html:277 app/templates/bulk_metadata.html:505
 msgid "Add author"
 msgstr "Lägg till författare"
 
-#: app/templates/authors.html:278 app/templates/bulk_metadata.html:702
+#: app/templates/authors.html:279 app/templates/bulk_metadata.html:702
 #: app/templates/bulk_metadata.html:808 app/templates/bulk_metadata.html:956
 #: app/templates/metadata.html:387 app/templates/metadata.html:506
 #: app/templates/metadata_ai_preview.html:359
@@ -913,95 +917,100 @@ msgstr "Lägg till författare"
 msgid "Cancel"
 msgstr "Avbryt"
 
-#: app/templates/authors.html:279
+#: app/templates/authors.html:280
 msgid "Split"
 msgstr "Dela"
 
-#: app/templates/authors.html:288
+#: app/templates/authors.html:289
 #, python-brace-format
 msgid "New name for “{name}”:"
 msgstr "Nytt namn för ”{name}”:"
 
-#: app/templates/authors.html:289
+#: app/templates/authors.html:290
 #, python-brace-format
 msgid "Merge “{name}” into which author? Type the name:"
 msgstr "Slå ihop ”{name}” med vilken författare? Skriv namnet:"
 
-#: app/templates/authors.html:290
+#: app/templates/authors.html:291
 #, python-brace-format
 msgid "No registered author matches “{name}”."
 msgstr "Ingen registrerad författare matchar ”{name}”."
 
-#: app/templates/authors.html:291
+#: app/templates/authors.html:292
 #, python-brace-format
 msgid "Move {count} books from “{source}” to “{target}”? “{source}” is deleted."
 msgstr "Flytta {count} böcker från ”{source}” till ”{target}”? ”{source}” raderas."
 
-#: app/templates/authors.html:292
+#: app/templates/authors.html:293
 msgid "That name already belongs to another entry — merge them instead."
 msgstr "Namnet tillhör redan en annan post — slå ihop dem i stället."
 
-#: app/templates/authors.html:293
+#: app/templates/authors.html:294
 #, python-brace-format
 msgid "Remove the unused entry “{name}”?"
 msgstr "Ta bort den oanvända posten ”{name}”?"
 
-#: app/templates/authors.html:294
+#: app/templates/authors.html:295
 msgid "The action failed."
 msgstr "Åtgärden misslyckades."
 
-#: app/templates/authors.html:295 app/templates/reader.html:524
+#: app/templates/authors.html:296 app/templates/reader.html:524
 msgid "Looking up…"
 msgstr "Slår upp…"
 
-#: app/templates/authors.html:296
+#: app/templates/authors.html:297
 msgid "No confident match found in Wikidata."
 msgstr "Ingen säker träff i Wikidata."
 
-#: app/templates/authors.html:297
+#: app/templates/authors.html:298
 msgid "Asking…"
 msgstr "Frågar…"
 
-#: app/templates/authors.html:298
+#: app/templates/authors.html:299
 #, python-brace-format
 msgid "AI: probably the same person — {reason}"
 msgstr "AI: troligen samma person — {reason}"
 
-#: app/templates/authors.html:299
+#: app/templates/authors.html:300
 #, python-brace-format
 msgid "AI: probably different people — {reason}"
 msgstr "AI: troligen olika personer — {reason}"
 
-#: app/templates/authors.html:300
+#: app/templates/authors.html:301
 #, python-brace-format
 msgid "AI: not sure — {reason}"
 msgstr "AI: osäkert — {reason}"
 
-#: app/templates/authors.html:301
+#: app/templates/authors.html:302
 msgid "AI is not configured (Settings → AI)."
 msgstr "AI är inte konfigurerat (Inställningar → AI)."
 
-#: app/templates/authors.html:302
+#: app/templates/authors.html:303
 #, python-brace-format
 msgid "{count} selected"
 msgstr "{count} valda"
 
-#: app/templates/authors.html:303
+#: app/templates/authors.html:304
 #, python-brace-format
 msgid "Confirm {count} selected authors? They become eligible for file writes."
 msgstr ""
 "Bekräfta {count} markerade författare? De blir då behöriga för "
 "filskrivning."
 
-#: app/templates/authors.html:304
+#: app/templates/authors.html:305
 msgid "None of the selected entries are unconfirmed."
 msgstr "Inga av de markerade posterna är obekräftade."
 
-#: app/templates/authors.html:305
+#: app/templates/authors.html:306
 msgid "Enter at least two author names."
 msgstr "Ange minst två författarnamn."
 
-#: app/templates/authors.html:306
+#: app/templates/authors.html:307
+#, python-brace-format
+msgid "“{name}” is one person — hide the split badge?"
+msgstr "”{name}” är en person — dölj delningsflaggan?"
+
+#: app/templates/authors.html:308
 #, python-brace-format
 msgid "Split “{name}” into {parts}? All linked books get the new authors."
 msgstr "Dela ”{name}” till {parts}? Alla länkade böcker får de nya författarna."

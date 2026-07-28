@@ -359,6 +359,30 @@ def test_set_item_authors_single_records_old_variant_alias(session):
     assert alias.author_id == author.id
 
 
+def test_dismissed_split_badge_hides_and_rename_resets(session):
+    from app.services.author_resolver import authors_overview
+
+    _add_item(session, "Ashton, Edward")
+    resolve_pending_authors(session)
+    session.commit()
+    author = Author.query.one()
+
+    rows, _pairs = authors_overview(session)
+    assert rows[0]["looks_multi"] is True
+
+    author.split_dismissed = True
+    session.commit()
+    rows, _pairs = authors_overview(session)
+    assert rows[0]["looks_multi"] is False
+
+    # A rename needs a fresh judgement — the flag comes back if the new
+    # name still looks fused.
+    rename_author(session, author, "Ashton, Edward J.")
+    session.commit()
+    rows, _pairs = authors_overview(session)
+    assert rows[0]["looks_multi"] is True
+
+
 # --------------------------------------------------------------------------
 # Routes
 # --------------------------------------------------------------------------
@@ -417,6 +441,16 @@ def test_split_endpoint_happy_path(client):
     assert body["ok"] and body["relinked"] == 1
     assert item.author == "Sören Karlsson & Deanne Rauscher"
     assert db.session.get(Author, fused_id) is None
+
+
+def test_dismiss_split_endpoint(client):
+    item = _add_item(db.session, "Conger, Kate")
+    resolve_pending_authors(db.session)
+    db.session.commit()
+
+    resp = client.post(f"/authors/{item.author_id}/dismiss-split")
+    assert resp.get_json()["ok"]
+    assert db.session.get(Author, item.author_id).split_dismissed is True
 
 
 def test_split_endpoint_rejects_single_part(client):

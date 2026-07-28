@@ -163,6 +163,11 @@ class Author(db.Model):
     # 'user_confirmed', 'authority_linked'. Gates file writes.
     source = db.Column(db.String(20), nullable=False, default="tentative")
 
+    # User dismissed the looks-multi badge ("no, this is one person" —
+    # e.g. the sort form "Ashton, Edward" trips the comma heuristic).
+    # Reset on rename, since a new name needs a fresh judgement.
+    split_dismissed = db.Column(db.Boolean, nullable=False, default=False)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
