@@ -44,6 +44,10 @@ def ensure_database_columns():
         "published_date": "ALTER TABLE library_items ADD COLUMN published_date VARCHAR(20)",
         "file_modified_by_colophon": "ALTER TABLE library_items ADD COLUMN file_modified_by_colophon DATETIME",
         "upstream_synced_at": "ALTER TABLE library_items ADD COLUMN upstream_synced_at DATETIME",
+        # Author-folder moves (DESIGN-author-folders.md): last pushed
+        # relative path + old upstream path awaiting orphan cleanup.
+        "upstream_rel_path": "ALTER TABLE library_items ADD COLUMN upstream_rel_path VARCHAR(2000)",
+        "pending_upstream_cleanup": "ALTER TABLE library_items ADD COLUMN pending_upstream_cleanup VARCHAR(2000)",
         "completeness_score": "ALTER TABLE library_items ADD COLUMN completeness_score INTEGER",
         # Phase 3 — Kobo reading state sync. Defaults match the model so
         # books with no progress on Kobo aren't accidentally promoted.

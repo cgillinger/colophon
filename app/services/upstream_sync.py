@@ -128,11 +128,15 @@ def push_to_upstream():
         logger.warning("upstream_sync: upstream directory appears empty, skipping push")
         return
 
+    from app.services.app_settings import upstream_cleanup_enabled
+
     items = _pending_query().all()
 
     total = len(items)
     synced = 0
     errors = 0
+    cleaned = 0
+    cleanup_on = upstream_cleanup_enabled()
 
     for i, item in enumerate(items, start=1):
         try:
@@ -154,7 +158,24 @@ def push_to_upstream():
                 shutil.copy2(item.cover_path, cover_dest)
 
             item.upstream_synced_at = datetime.utcnow()
+            item.upstream_rel_path = rel_path
             synced += 1
+
+            # Surgical orphan cleanup after a local author-folder move
+            # (DESIGN-author-folders.md): new-before-old — the new path
+            # was copied and verified above; only then may the old
+            # Colophon-pushed copy go. Gated by an off-by-default
+            # setting; a pending path survives disabled pushes and is
+            # cleaned retroactively once the user enables it.
+            pending = item.pending_upstream_cleanup
+            if pending and pending == rel_path:
+                item.pending_upstream_cleanup = None  # moved back — moot
+            elif pending and cleanup_on and os.path.isfile(dest_path):
+                removed = _remove_upstream_orphan(upstream_dir, pending)
+                if removed:
+                    cleaned += 1
+                    yield {"type": "cleanup", "file": pending}
+                item.pending_upstream_cleanup = None
 
         except Exception as exc:
             logger.error("upstream_sync: push failed for %r: %s", item.title, exc)
@@ -165,7 +186,49 @@ def push_to_upstream():
         yield {"type": "progress", "file": item.title, "current": i, "total": total}
 
     db.session.commit()
-    yield {"type": "done", "synced": synced, "errors": errors}
+    yield {"type": "done", "synced": synced, "errors": errors, "cleaned": cleaned}
+
+
+def _remove_upstream_orphan(upstream_dir, rel_path):
+    """Remove one Colophon-pushed orphan (old path after a move).
+
+    Safety envelope: the resolved target must sit strictly under the
+    upstream root, only a regular file is removed, cover siblings with
+    the same stem follow, and the parent folder is pruned only when it
+    ends up empty. Returns True when the book file was removed; False
+    when it was already gone (the pending marker is cleared either way —
+    there is nothing left to clean)."""
+    base = os.path.realpath(upstream_dir)
+    target = os.path.realpath(os.path.join(base, rel_path))
+    if not target.startswith(base + os.sep):
+        logger.warning(
+            "upstream_sync: refusing cleanup outside upstream root: %r", rel_path
+        )
+        return False
+    if not os.path.isfile(target):
+        return False
+
+    os.remove(target)
+    logger.info("upstream_sync: removed upstream orphan %s", rel_path)
+
+    stem = os.path.splitext(os.path.basename(target))[0]
+    parent = os.path.dirname(target)
+    for ext in (".jpg", ".jpeg", ".png", ".webp"):
+        cover = os.path.join(parent, stem + ext)
+        if os.path.isfile(cover):
+            try:
+                os.remove(cover)
+                logger.info("upstream_sync: removed orphan cover %s", cover)
+            except OSError:
+                pass
+
+    if parent != base:
+        try:
+            os.rmdir(parent)  # fails (correctly) unless empty
+            logger.info("upstream_sync: pruned empty upstream folder %s", parent)
+        except OSError:
+            pass
+    return True
 
 
 def _pending_query():

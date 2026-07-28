@@ -392,6 +392,24 @@
                 </div>
             </form>
         {% endif %}
+
+        {% if upstream_dir %}
+        <form method="post" action="{{ url_for('settings.save_upstream_cleanup') }}"
+              style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border-light, rgba(0,0,0,0.08));">
+            <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer;">
+                <input type="checkbox" name="enabled" value="1"
+                       {% if upstream_cleanup_on %}checked{% endif %}
+                       onchange="this.form.submit()">
+                <span>
+                    <strong>{{ _('Clean up moved files upstream on push') }}</strong><br>
+                    <span class="hint">{{ _('When a book has been moved to an author folder, the next push removes the old copy upstream — only files Colophon itself has pushed, and only after the new path is verified. Off: old copies stay as duplicates until you enable this (nothing is forgotten).') }}</span>
+                    {% if pending_cleanup_count %}
+                        <br><span class="hint">{{ _('%(count)d file(s) currently await cleanup.', count=pending_cleanup_count) }}</span>
+                    {% endif %}
+                </span>
+            </label>
+        </form>
+        {% endif %}
     </div>
 
     <div class="panel">

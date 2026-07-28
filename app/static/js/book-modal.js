@@ -168,6 +168,7 @@
         document.getElementById('modalDescription').value   = data.description    || '';
 
         if (window.initAuthorCombobox) window.initAuthorCombobox(itemId, data);
+        _populateMoveFolder(itemId, data.author_folder);
 
         document.getElementById('modalAiBtn').style.display = data.ai_configured ? 'inline-flex' : 'none';
         var findSeriesBtn = document.getElementById('modalFindSeriesBtn');
@@ -176,6 +177,54 @@
         _populateDisplayMirror(data, size, ext);
         _populateReadingState(data);
         _populateRating(itemId, data.user_rating || 0);
+    }
+
+    /* "Move to author folder" — shown only for books sitting flat in the
+       library root; enabled once the book has a (primary) author. The
+       move is a deliberate click, never automatic. */
+    function _populateMoveFolder(itemId, af) {
+        var field = document.getElementById('modalMoveFolderField');
+        var btn = document.getElementById('modalMoveFolderBtn');
+        var hint = document.getElementById('modalMoveFolderHint');
+        if (!field || !btn || !hint) return;
+        if (!af || !af.in_root) { field.style.display = 'none'; return; }
+
+        field.style.display = '';
+        btn.disabled = !af.eligible;
+        if (af.eligible) {
+            hint.textContent = (_i18n.moveFolderTarget || 'Target: {path}')
+                .replace('{path}', af.folder + '/');
+        } else if (af.reason === 'no_author') {
+            hint.textContent = _i18n.moveFolderNoAuthor || '';
+        } else if (af.reason === 'target_exists') {
+            hint.textContent = _i18n.moveFolderExists || '';
+        } else {
+            hint.textContent = '';
+        }
+
+        btn.onclick = function () {
+            btn.disabled = true;
+            fetch('/metadata/' + itemId + '/move-to-author-folder', { method: 'POST' })
+                .then(function (r) { return r.json(); })
+                .then(function (b) {
+                    if (!b.ok) {
+                        btn.disabled = false;
+                        setModalFeedback('error', _i18n.moveFolderFailed || 'The move failed.');
+                        return;
+                    }
+                    field.style.display = 'none';
+                    setModalFeedback('success',
+                        (_i18n.moveFolderDone || 'Moved {count} file(s) to “{folder}”.')
+                            .replace('{count}', b.moved).replace('{folder}', b.folder));
+                    setTimeout(clearModalFeedback, 4000);
+                    window._modalDirty = true;
+                    _updateUnsyncedPill(b.moved || 1);
+                })
+                .catch(function () {
+                    btn.disabled = false;
+                    setModalFeedback('error', _i18n.moveFolderFailed || 'The move failed.');
+                });
+        };
     }
 
     /* Star rating: hovering highlights, clicking persists. Click on the
@@ -1282,6 +1331,15 @@
                         authors: data.authors,
                         author_status: data.author_status
                     });
+                }
+                // Root books: the save may just have given the book an
+                // author — refresh the move-to-folder button state.
+                var mfField = document.getElementById('modalMoveFolderField');
+                if (mfField && mfField.style.display !== 'none') {
+                    fetch('/metadata/' + id + '/json')
+                        .then(function (r) { return r.json(); })
+                        .then(function (d) { _populateMoveFolder(id, d.author_folder); })
+                        .catch(function () {});
                 }
                 window._modalDirty = true;
                 _updateUnsyncedPill(1);

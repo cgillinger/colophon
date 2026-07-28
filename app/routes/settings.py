@@ -132,6 +132,12 @@ def ai_settings():
     except Exception:
         pass
 
+    from app.services.app_settings import upstream_cleanup_enabled
+    from app.models import LibraryItem
+    pending_cleanup_count = LibraryItem.query.filter(
+        LibraryItem.pending_upstream_cleanup.isnot(None)
+    ).count()
+
     return render_template(
         "settings_ai.html",
         configured=configured,
@@ -142,6 +148,8 @@ def ai_settings():
         upstream_ok=upstream_ok,
         upstream_file_count=upstream_file_count,
         last_sync=last_sync,
+        upstream_cleanup_on=upstream_cleanup_enabled(),
+        pending_cleanup_count=pending_cleanup_count,
     )
 
 
@@ -165,6 +173,21 @@ def save_upstream():
             else:
                 flash(_("Upstream library removed."), "success")
 
+    return redirect(url_for("settings.ai_settings"))
+
+
+@settings_bp.route("/settings/upstream-cleanup", methods=["POST"])
+def save_upstream_cleanup():
+    """Toggle surgical orphan cleanup on push (off by default — removing
+    files upstream is the one irreversible act in the author-folder
+    flow, so enabling it is a deliberate choice)."""
+    from app.services.app_settings import set_setting as _set
+    enabled = request.form.get("enabled") == "1"
+    _set("UPSTREAM_CLEANUP_ORPHANS", "1" if enabled else "")
+    if enabled:
+        flash(_("Upstream cleanup enabled — the next push removes tracked orphans."), "success")
+    else:
+        flash(_("Upstream cleanup disabled. Pending cleanups are kept for later."), "success")
     return redirect(url_for("settings.ai_settings"))
 
 

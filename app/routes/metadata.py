@@ -1978,6 +1978,7 @@ def metadata_json(item_id):
         "size_bytes": item.size_bytes,
         "cover_path": bool(item.cover_path),
         "ai_configured": ai_is_configured(),
+        "author_folder": _author_folder_info(item),
         "read_status": item.read_status or "ReadyToRead",
         "read_progress": item.read_progress,
         "read_last_modified": item.read_last_modified.isoformat() if item.read_last_modified else None,
@@ -1985,6 +1986,49 @@ def metadata_json(item_id):
         "read_finished_at": item.read_finished_at.isoformat() if item.read_finished_at else None,
         "times_started": int(item.times_started or 0),
         "user_rating": item.user_rating or 0,
+    })
+
+
+def _author_folder_info(item):
+    """Modal-button state for 'move to author folder' (only meaningful
+    for books sitting flat in the library root)."""
+    from app.services.author_folders import describe_move
+
+    info = describe_move(db.session, item)
+    return {
+        "in_root": info["in_root"],
+        "eligible": info["eligible"],
+        "reason": info["reason"],
+        "folder": info["folder"],
+        "file_count": len(info["targets"]),
+    }
+
+
+@metadata_bp.route("/metadata/<int:item_id>/move-to-author-folder", methods=["POST"])
+def move_to_author_folder(item_id):
+    """Deliberate, per-book move of a root book (plus its root format
+    siblings) into its primary author's folder. Disk move + file_path
+    update commit together; the row id — and with it reading state and
+    the Kobo entitlement — is preserved (DESIGN-author-folders.md)."""
+    from app.services.author_folders import move_item_to_author_folder
+
+    item = get_item_or_404(item_id)
+    try:
+        info = move_item_to_author_folder(db.session, item)
+    except Exception:
+        db.session.rollback()
+        logger.exception("author-folder move failed for item %s", item_id)
+        return jsonify({"ok": False, "error": "move_failed"}), 500
+
+    if not info["eligible"]:
+        return jsonify({"ok": False, "error": info["reason"]}), 400
+
+    db.session.commit()
+    return jsonify({
+        "ok": True,
+        "folder": info["folder"],
+        "moved": info["moved"],
+        "author_folder": _author_folder_info(item),
     })
 
 

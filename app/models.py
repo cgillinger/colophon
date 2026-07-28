@@ -70,6 +70,13 @@ class LibraryItem(db.Model):
 
     file_modified_by_colophon = db.Column(db.DateTime, nullable=True)
     upstream_synced_at = db.Column(db.DateTime, nullable=True)
+    # Author-folder move bookkeeping (DESIGN-author-folders.md): the
+    # relative path last pushed upstream, and the old upstream path
+    # awaiting surgical cleanup after a local move (cleared by the push
+    # flow once the orphan is removed; survives restarts and a disabled
+    # cleanup setting).
+    upstream_rel_path = db.Column(db.String(2000), nullable=True)
+    pending_upstream_cleanup = db.Column(db.String(2000), nullable=True)
 
     completeness_score = db.Column(db.Integer, nullable=True)
 
@@ -300,6 +307,12 @@ _DEVICE_CONTENT_COLUMNS = frozenset({
 
 @_sa_event.listens_for(_SASession, "before_flush")
 def _stamp_content_updated_at(session, flush_context, instances):
+    # Author-folder moves change file_path without changing anything a
+    # device can see (Kobo URLs key on item id) — they suppress the
+    # stamp so synced Kobos don't archive + re-download the book. See
+    # services/author_folders.py.
+    if session.info.get("suppress_content_stamp"):
+        return
     # New rows: seed content_updated_at so it never exceeds updated_at.
     for obj in session.new:
         if isinstance(obj, LibraryItem) and obj.content_updated_at is None:

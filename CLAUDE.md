@@ -2,16 +2,22 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.37.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.38.0.
 
-## 🚧 Pågående arbete — fortsätt 2026-06-11
+## Författarmappar (v1.38.0 — byggt)
 
-**Författarundermappar för uppladdade böcker + uppströmsstädning.** Designen är klar och
-nedskriven i [`DESIGN-author-folders.md`](DESIGN-author-folders.md) — börja där. Inget byggt
-ännu. Kort: ladda upp platt i roten (oförändrat), lägg till en "Flytta till författarmapp"-knapp
-i edit-modalen för rot-böcker (aktiv när författare finns), med `authorKey`-konsolidering, säker
-filsystems-sanering, och kirurgisk uppströmsstädning av rsync-orphans kopplad till push. Fyra
-öppna beslut listade i designdokets sista sektion. Pausat av användaren.
+Uppladdning lägger platt i roten (oförändrat). "Flytta till författarmapp"-knappen i
+edit-modalen (rot-böcker, aktiv när författare finns) flyttar hela formatgruppen till
+huvudförfattarens mapp — disk + `file_path` i samma commit, radens `id` bevaras, och
+`content_updated_at` stämplas medvetet INTE (suppression-flagga i `models.py`) så Kobo
+inte laddar om boken. Systermappsåteranvändning via `author_folder_key()` (kosmetisk,
+inte semantisk). Uppströmsstädning: flytten sparar gamla sökvägen i
+`pending_upstream_cleanup`; pushen tar bort den Colophon-pushade dubbletten uppströms
+(nytt-före-gammalt, containment-vaktad, tom mapp beskärs) — men bara när
+`UPSTREAM_CLEANUP_ORPHANS` slagits på (checkbox i inställningarna, **av som default**;
+väntande städningar överlever och tas retroaktivt). Se `DESIGN-author-folders.md` och
+`app/services/author_folders.py`. Beslut: ingen bulk-flytt, ingen massomdöpning av
+befintliga mappar (skjutet upp).
 
 ## Quick reference
 
@@ -107,14 +113,14 @@ app/
     icons/                      # Favicons, app/PWA icons, header logo SVGs (light+dark)
     vendor/tabler-icons/        # Icon font
     vendor/foliate-js/          # Vendored EPUB renderer (MIT) for the reader
-tests/                          # 22 pytest files: metadata_pipeline, calibre_metadata,
+tests/                          # 23 pytest files: metadata_pipeline, calibre_metadata,
                                 # bookf, grouping, kobo_conf, kobo_sync, language,
                                 # quality, reading_state, scanner, scoring,
                                 # source_status, title_clean, wikipedia,
                                 # metadata_merge, metadata_escalation, upload,
                                 # author_authority, author_resolver,
                                 # author_routes, author_lookup, reader_dict,
-                                # multi_author
+                                # multi_author, author_folders
 tools/
   install_calibre_plugins.sh    # Dockerfile build step: Goodreads, FF, FictionDB plugins
   install_kepubify.sh           # Dockerfile build step: kepubify binary for Kobo conversion
@@ -302,7 +308,7 @@ get their env from docker-compose.
 >   -c "pip install -q pytest && python -m pytest tests/ -q"
 > ```
 
-**Known pre-existing failures (as of v1.37.0):** a clean run is *489 passed, 10
+**Known pre-existing failures (as of v1.38.0):** a clean run is *500 passed, 10
 failed*. The 10 are not regressions — `test_quality.py` (6) and
 `test_scoring.py` (3) assert Swedish reason/warning substrings the code now
 emits in English, and `test_scanner.py::...test_does_not_overwrite_manual_metadata`

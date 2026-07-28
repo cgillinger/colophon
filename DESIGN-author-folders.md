@@ -1,6 +1,13 @@
 # Design — författarundermappar för uppladdade böcker + uppströmsstädning
 
-> Status: **DESIGN, ej byggt.** Konverterad från diskussion 2026-06-10. Fortsätter 2026-06-11.
+> Status: **BYGGT i v1.38.0 (2026-07-28).** Implementation: `app/services/author_folders.py`,
+> städning i `app/services/upstream_sync.py`, tester i `tests/test_author_folders.py`.
+> De fyra öppna besluten avgjordes: (1) ingen bulk-flytt (per bok räcker — 8 rot-filer),
+> (2) städning av som default (`UPSTREAM_CLEANUP_ORPHANS`, checkbox i inställningarna),
+> (3) massomdöpning uppskjuten, (4) flytt + städning byggdes ihop. Mappnamnet tas numera
+> från huvudförfattarens (position 0) kanoniska registernamn — flerförfattarstödet i
+> v1.36.0 gjorde `authorKey`-strängtolkningen till enbart fallback/systermappsmatchning.
+> Konverterad från diskussion 2026-06-10.
 > Bygger ovanpå den shippade uppladdningsfunktionen i v1.17.0 (`app/routes/scan.py` `/upload`,
 > `app/static/js/upload.js`).
 

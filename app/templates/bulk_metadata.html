@@ -506,6 +506,14 @@
                     </button>
                     <div id="modalAuthorHint" class="author-status-hint" style="display:none;"></div>
                 </div>
+                <!-- Root books only: deliberate move into the primary
+                     author's folder (DESIGN-author-folders.md). -->
+                <div class="modal-field" id="modalMoveFolderField" style="display:none;">
+                    <button type="button" id="modalMoveFolderBtn" class="author-add-btn">
+                        <i class="ti ti-folder-symlink"></i> {{ _('Move to author folder') }}
+                    </button>
+                    <div class="author-status-hint" id="modalMoveFolderHint" style="display:block;"></div>
+                </div>
                 <div class="modal-field-row">
                     <div class="modal-field">
                         <label for="modalSeries">{{ _('Series') }}</label>
@@ -1135,6 +1143,11 @@
         authorSearchFailed: {{ _('Author search failed.')|tojson }},
         authorRemove: {{ _('Remove author')|tojson }},
         authorFieldPlaceholder: {{ _('Author name')|tojson }},
+        moveFolderTarget: {{ _('Target: {path}')|tojson }},
+        moveFolderNoAuthor: {{ _('Add an author first — the folder is named after the primary author.')|tojson }},
+        moveFolderExists: {{ _('A file with the same name already exists in the target folder.')|tojson }},
+        moveFolderDone: {{ _('Moved {count} file(s) to “{folder}”.')|tojson }},
+        moveFolderFailed: {{ _('The move failed — no files were changed.')|tojson }},
         uploadNothingValid: {{ _('No supported files were selected.')|tojson }},
         newlyAdded: {{ _('New')|tojson }},
         shelfNewBandTitle: {{ _('Newly added')|tojson }},

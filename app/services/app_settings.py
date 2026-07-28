@@ -52,6 +52,18 @@ def set_setting(key, value):
     db.session.commit()
 
 
+def upstream_cleanup_enabled():
+    """Surgical orphan cleanup on push (DESIGN-author-folders.md).
+
+    Default OFF — removing files upstream is the one irreversible act in
+    the author-folder flow, so the user enables it deliberately (settings
+    toggle, or COLOPHON_UPSTREAM_CLEANUP_ORPHANS env). Pending cleanups
+    are kept while disabled and handled retroactively once enabled.
+    """
+    val = str(get_setting("UPSTREAM_CLEANUP_ORPHANS", "") or "").strip().lower()
+    return val in ("1", "true", "on", "yes")
+
+
 def get_upstream_dir():
     """Return upstream dir path: env var wins, then db setting, then None."""
     env_val = os.environ.get("COLOPHON_UPSTREAM_DIR", "").strip()
