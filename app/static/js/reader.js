@@ -24,6 +24,12 @@ import { initDictLookup } from './reader-dict.js';
     var prevZone = document.getElementById('readerPrev');
     var nextZone = document.getElementById('readerNext');
 
+    var scrubEl = document.getElementById('readerScrub');
+    var scrubLabel = document.getElementById('readerScrubLabel');
+    var snapbackBtn = document.getElementById('readerSnapback');
+    var snapbackLabel = document.getElementById('readerSnapbackLabel');
+    var restartBtn = document.getElementById('rsRestart');
+
     var offlineBtn = document.getElementById('readerOfflineBtn');
     var shareBtn = document.getElementById('readerShareBtn');
     var toastEl = document.getElementById('readerToast');
@@ -281,10 +287,104 @@ import { initDictLookup } from './reader-dict.js';
         saveTimer = setTimeout(function () { flush(false); }, SAVE_DEBOUNCE_MS);
     }
 
+    // --- Scrub bar + snapback ---------------------------------------------
+    // The slider makes big jumps one drag instead of hundreds of taps (the
+    // original pain point was long PDFs). Jumping around is safe: the server's
+    // reading state is monotonic (furthest-read-wins), so browsing backward
+    // never regresses real progress, and the snapback chip returns to the
+    // pre-jump position.
+    var lastFraction = 0;    // last relocate fraction (pre-jump baseline)
+    var lastDetail = null;   // last relocate detail (for the position label)
+    var scrubbing = false;   // finger down on the slider — don't fight it
+    var snapTarget = null;   // { fraction, label } to return to, or null
+    var SNAP_DONE_EPSILON = 0.002;   // "close enough to be back" (0.2%)
+
+    // Pre-paginated books (PDF / fixed-layout EPUB) get real page numbers —
+    // foliate maps 1 section = 1 page there; reflowable books get percent.
+    function positionLabel(detail) {
+        var fraction = detail && typeof detail.fraction === 'number' ? detail.fraction : 0;
+        var sec = detail && detail.section;
+        if (view && view.isFixedLayout && sec && sec.total) {
+            return (sec.current + 1) + ' / ' + sec.total;
+        }
+        return Math.round(fraction * 100) + '%';
+    }
+
+    // Label preview while dragging (before any relocate has happened).
+    function previewLabel(fraction) {
+        var total = view && view.isFixedLayout && lastDetail
+            && lastDetail.section && lastDetail.section.total;
+        if (total) return Math.min(total, Math.floor(fraction * total) + 1) + ' / ' + total;
+        return Math.round(fraction * 100) + '%';
+    }
+
+    function clearSnapback() {
+        snapTarget = null;
+        if (snapbackBtn) snapbackBtn.hidden = true;
+    }
+
+    function bindNav() {
+        if (scrubEl) {
+            scrubEl.addEventListener('input', function () {
+                scrubbing = true;
+                if (scrubLabel) scrubLabel.textContent = previewLabel(Number(scrubEl.value) / 1000);
+            });
+            // Navigate on release only — live-seeking would re-render a PDF
+            // page for every pixel of the drag.
+            scrubEl.addEventListener('change', function () {
+                scrubbing = false;
+                if (!view) return;
+                if (!snapTarget) {
+                    snapTarget = { fraction: lastFraction, label: positionLabel(lastDetail) };
+                    if (snapbackLabel) snapbackLabel.textContent = snapTarget.label;
+                    if (snapbackBtn) snapbackBtn.hidden = false;
+                }
+                view.goToFraction(Number(scrubEl.value) / 1000);
+            });
+        }
+        if (snapbackBtn) snapbackBtn.addEventListener('click', function () {
+            var t = snapTarget;
+            clearSnapback();
+            if (t && view) view.goToFraction(t.fraction);
+        });
+        if (restartBtn) restartBtn.addEventListener('click', restartBook);
+    }
+
+    // One-tap "start over": must reset the server state first — the reading
+    // state is furthest-read-wins, so merely jumping to 0 would be undone by
+    // the next sync resurrecting the old position.
+    function restartBook() {
+        if (!window.confirm(i18n.restartConfirm || 'Start over from the beginning?')) return;
+        closeSheet();
+        fetch(cfg.resetUrl, { method: 'POST' })
+            .then(function (r) {
+                if (!r || !r.ok) throw new Error('reset failed');
+                latest = null;
+                lastSaved = null;
+                try { localStorage.removeItem(PROGRESS_KEY); } catch (e) { /* ignore */ }
+                clearSnapback();
+                if (view) view.goToFraction(0);
+            })
+            .catch(function () {
+                showToast(i18n.restartFailed || 'Could not reset reading progress.');
+            });
+    }
+
     function onRelocate(e) {
         var detail = e.detail || {};
         var fraction = typeof detail.fraction === 'number' ? detail.fraction : 0;
+        lastFraction = fraction;
+        lastDetail = detail;
         if (percentEl) percentEl.textContent = Math.round(fraction * 100) + '%';
+        if (!scrubbing) {
+            if (scrubEl) scrubEl.value = String(Math.round(fraction * 1000));
+            if (scrubLabel) scrubLabel.textContent = positionLabel(detail);
+        }
+        // Landing back at (or next to) the snapback target means we're home —
+        // the chip has done its job.
+        if (snapTarget && Math.abs(fraction - snapTarget.fraction) < SNAP_DONE_EPSILON) {
+            clearSnapback();
+        }
         scheduleSave(fractionToState(fraction));
     }
 
@@ -506,6 +606,7 @@ import { initDictLookup } from './reader-dict.js';
 
     async function start() {
         bindControls();
+        bindNav();
         bindSettings();
         window.addEventListener('online', flushUnsynced);
         initOffline();
@@ -551,6 +652,7 @@ import { initDictLookup } from './reader-dict.js';
                 frac = initial / 100;
             }
             await view.goToFraction(frac);
+            if (scrubEl) scrubEl.disabled = false;
 
             if (overlay) overlay.hidden = true;
         } catch (err) {

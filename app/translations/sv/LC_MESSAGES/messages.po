@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Colophon 1.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-07-27 21:18+0200\n"
+"POT-Creation-Date: 2026-07-28 11:10+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: sv\n"
@@ -27,167 +27,167 @@ msgstr ""
 msgid "Title cannot be empty."
 msgstr "Titel får inte vara tom."
 
-#: app/routes/metadata.py:511
+#: app/routes/metadata.py:512
 msgid "Cover was not saved. Use JPG, PNG or WEBP."
 msgstr "Omslaget sparades inte. Använd JPG, PNG eller WEBP."
 
-#: app/routes/metadata.py:590 app/routes/metadata.py:1763
-#: app/routes/metadata.py:1923
+#: app/routes/metadata.py:604 app/routes/metadata.py:1777
+#: app/routes/metadata.py:1937
 msgid "Preview cancelled. Nothing was saved."
 msgstr "Förhandsgranskning avbruten. Inget sparades."
 
-#: app/routes/metadata.py:646
+#: app/routes/metadata.py:660
 #, python-format
 msgid "Cover fetched from %(source)s."
 msgstr "Omslag hämtat från %(source)s."
 
-#: app/routes/metadata.py:648
+#: app/routes/metadata.py:662
 msgid "Cover fetched and saved."
 msgstr "Omslag hämtat och sparat."
 
-#: app/routes/metadata.py:786 app/routes/metadata.py:1818
+#: app/routes/metadata.py:800 app/routes/metadata.py:1832
 msgid "AI is not configured. Open API settings and add an API key."
 msgstr ""
 "AI är inte konfigurerat. Öppna API-inställningar och lägg till en API-"
 "nyckel."
 
-#: app/routes/metadata.py:801
+#: app/routes/metadata.py:815
 msgid "Already has author, synopsis and cover."
 msgstr "Har redan författare, synopsis och omslag."
 
-#: app/routes/metadata.py:845
+#: app/routes/metadata.py:859
 #, python-format
 msgid "Updated: %(count)d"
 msgstr "Uppdaterade: %(count)d"
 
-#: app/routes/metadata.py:847 app/routes/metadata.py:956
+#: app/routes/metadata.py:861 app/routes/metadata.py:970
 #, python-format
 msgid "file write failed: %(count)d"
 msgstr "filskrivning misslyckades: %(count)d"
 
-#: app/routes/metadata.py:849
+#: app/routes/metadata.py:863
 #, python-format
 msgid "no high-confidence suggestions: %(count)d"
 msgstr "inga högsäkra förslag: %(count)d"
 
-#: app/routes/metadata.py:850 app/routes/metadata.py:958
+#: app/routes/metadata.py:864 app/routes/metadata.py:972
 #, python-format
 msgid "skipped: %(count)d"
 msgstr "hoppade över: %(count)d"
 
-#: app/routes/metadata.py:852
+#: app/routes/metadata.py:866
 msgid "AI run complete."
 msgstr "AI-körning klar."
 
-#: app/routes/metadata.py:916 app/routes/metadata.py:941
+#: app/routes/metadata.py:930 app/routes/metadata.py:955
 msgid "Unknown source"
 msgstr "Okänd källa"
 
-#: app/routes/metadata.py:948
+#: app/routes/metadata.py:962
 #, python-format
 msgid "Saved: %(count)d"
 msgstr "Sparade: %(count)d"
 
-#: app/routes/metadata.py:950
+#: app/routes/metadata.py:964
 #, python-format
 msgid "review recommended: %(count)d"
 msgstr "granskning rekommenderas: %(count)d"
 
-#: app/routes/metadata.py:952
+#: app/routes/metadata.py:966
 #, python-format
 msgid "no secure match: %(count)d"
 msgstr "ingen säker träff: %(count)d"
 
-#: app/routes/metadata.py:954
+#: app/routes/metadata.py:968
 #, python-format
 msgid "source errors: %(count)d"
 msgstr "källfel: %(count)d"
 
-#: app/routes/metadata.py:959
+#: app/routes/metadata.py:973
 msgid "Bulk update complete."
 msgstr "Massuppdatering klar."
 
-#: app/routes/metadata.py:1118
+#: app/routes/metadata.py:1132
 msgid "No valid books selected."
 msgstr "Inga giltiga böcker valda."
 
-#: app/routes/metadata.py:1499 app/routes/metadata.py:1595
+#: app/routes/metadata.py:1513 app/routes/metadata.py:1609
 msgid "The book file was not found on disk."
 msgstr "Bokfilen hittades inte på disk."
 
-#: app/routes/metadata.py:1501 app/routes/metadata.py:1599
+#: app/routes/metadata.py:1515 app/routes/metadata.py:1613
 msgid "Metadata fetch only supports EPUB, MOBI, AZW3 and KEPUB."
 msgstr "Metadatahämtning stöder bara EPUB, MOBI, AZW3 och KEPUB."
 
-#: app/routes/metadata.py:1605
+#: app/routes/metadata.py:1619
 msgid "Metadata fetch is already running for this book. Wait until it finishes."
 msgstr "Metadatahämtning körs redan på denna bok. Vänta tills den är klar."
 
-#: app/routes/metadata.py:1640
+#: app/routes/metadata.py:1654
 #, python-format
 msgid "Could not fetch metadata: %(error)s"
 msgstr "Kunde inte hämta metadata: %(error)s"
 
-#: app/routes/metadata.py:1662
+#: app/routes/metadata.py:1676
 msgid "No fetched metadata to review. Run the fetch first."
 msgstr "Ingen hämtad metadata att granska. Kör hämtningen först."
 
-#: app/routes/metadata.py:1708 app/routes/metadata.py:1891
+#: app/routes/metadata.py:1722 app/routes/metadata.py:1905
 msgid "The preview has expired. Run the fetch again."
 msgstr "Förhandsgranskningen har gått ut. Kör hämtningen igen."
 
-#: app/routes/metadata.py:1739
+#: app/routes/metadata.py:1753
 #, python-format
 msgid "%(count)d fields updated"
 msgstr "%(count)d fält uppdaterade"
 
-#: app/routes/metadata.py:1741
+#: app/routes/metadata.py:1755
 msgid "cover replaced"
 msgstr "omslag bytt"
 
-#: app/routes/metadata.py:1743
+#: app/routes/metadata.py:1757
 msgid "file updated"
 msgstr "filen uppdaterad"
 
-#: app/routes/metadata.py:1744
+#: app/routes/metadata.py:1758
 #, python-format
 msgid "Metadata saved (%(parts)s)."
 msgstr "Metadata sparad (%(parts)s)."
 
-#: app/routes/metadata.py:1749 app/routes/metadata.py:1915
+#: app/routes/metadata.py:1763 app/routes/metadata.py:1929
 msgid "No fields selected — nothing was saved."
 msgstr "Inga fält valdes — inget sparades."
 
-#: app/routes/metadata.py:1828 app/templates/bulk_metadata.html:992
+#: app/routes/metadata.py:1842 app/templates/bulk_metadata.html:992
 msgid "The AI service rejected the request. Check the API key."
 msgstr "AI-tjänsten nekade anropet. Kontrollera API-nyckeln."
 
-#: app/routes/metadata.py:1830
+#: app/routes/metadata.py:1844
 msgid "The AI request took too long. Try again."
 msgstr "AI-anropet tog för lång tid. Försök igen."
 
-#: app/routes/metadata.py:1832 app/routes/settings.py:185
+#: app/routes/metadata.py:1846 app/routes/settings.py:185
 msgid "The AI rate limit appears to have been reached. Try again later."
 msgstr "Gränsen för AI-anrop verkar vara nådd. Försök igen senare."
 
-#: app/routes/metadata.py:1834
+#: app/routes/metadata.py:1848
 msgid "The AI service returned a response that could not be parsed."
 msgstr "AI-tjänsten returnerade ett svar som inte kunde tolkas."
 
-#: app/routes/metadata.py:1842
+#: app/routes/metadata.py:1856
 msgid "The AI found no improvements to suggest."
 msgstr "AI:n hittade inga förbättringar att föreslå."
 
-#: app/routes/metadata.py:1854
+#: app/routes/metadata.py:1868
 msgid "No AI suggestions to review. Run the fetch first."
 msgstr "Inga AI-förslag att granska. Kör hämtningen först."
 
-#: app/routes/metadata.py:1913
+#: app/routes/metadata.py:1927
 #, python-format
 msgid "Metadata saved (%(count)d fields updated)."
 msgstr "Metadata sparad (%(count)d fält uppdaterade)."
 
-#: app/routes/metadata.py:2121
+#: app/routes/metadata.py:2147
 msgid "No books selected."
 msgstr "Inga böcker valda."
 
@@ -906,7 +906,7 @@ msgstr "Ta bort den oanvända posten ”{name}”?"
 msgid "The action failed."
 msgstr "Åtgärden misslyckades."
 
-#: app/templates/authors.html:266 app/templates/reader.html:450
+#: app/templates/authors.html:266 app/templates/reader.html:524
 msgid "Looking up…"
 msgstr "Slår upp…"
 
@@ -1230,7 +1230,7 @@ msgstr "Genre"
 #: app/templates/bulk_metadata.html:252 app/templates/bulk_metadata.html:526
 #: app/templates/bulk_metadata.html:570 app/templates/bulk_metadata.html:666
 #: app/templates/bulk_metadata.html:1065 app/templates/metadata.html:487
-#: app/templates/reader.html:328
+#: app/templates/reader.html:391
 msgid "Publisher"
 msgstr "Förlag"
 
@@ -1350,7 +1350,7 @@ msgstr "Radera bok"
 #: app/templates/bulk_metadata.html:603 app/templates/bulk_metadata.html:769
 #: app/templates/bulk_metadata.html:779 app/templates/bulk_metadata.html:786
 #: app/templates/bulk_metadata.html:796 app/templates/bulk_metadata.html:838
-#: app/templates/bulk_metadata.html:915 app/templates/reader.html:368
+#: app/templates/bulk_metadata.html:915 app/templates/reader.html:440
 msgid "Close"
 msgstr "Stäng"
 
@@ -1480,7 +1480,7 @@ msgstr "Eskalerar till fler källor vid behov"
 
 #: app/templates/bulk_metadata.html:583 app/templates/bulk_metadata.html:689
 #: app/templates/bulk_metadata.html:1105 app/templates/metadata.html:525
-#: app/templates/reader.html:339 app/templates/reader.html:348
+#: app/templates/reader.html:402 app/templates/reader.html:411
 msgid "Normal"
 msgstr "Normal"
 
@@ -2812,151 +2812,163 @@ msgstr "Omslag är låst — bocka ur låsning för att byta."
 msgid "Sources:"
 msgstr "Källor:"
 
-#: app/templates/reader.html:22 app/templates/reader.html:283
+#: app/templates/reader.html:22 app/templates/reader.html:332
 msgid "Reader"
 msgstr "Läsare"
 
-#: app/templates/reader.html:280
+#: app/templates/reader.html:329
 msgid "Back"
 msgstr "Tillbaka"
 
-#: app/templates/reader.html:286 app/templates/reader.html:441
+#: app/templates/reader.html:335 app/templates/reader.html:515
 msgid "Save for offline reading"
 msgstr "Spara för offline-läsning"
 
-#: app/templates/reader.html:290
+#: app/templates/reader.html:339
 msgid "Give this book to someone"
 msgstr "Ge den här boken till någon"
 
-#: app/templates/reader.html:295 app/templates/reader.html:304
+#: app/templates/reader.html:344 app/templates/reader.html:367
 msgid "Reading settings"
 msgstr "Läsinställningar"
 
-#: app/templates/reader.html:298
+#: app/templates/reader.html:347
 msgid "Previous page"
 msgstr "Föregående sida"
 
-#: app/templates/reader.html:299
+#: app/templates/reader.html:348
 msgid "Next page"
 msgstr "Nästa sida"
 
-#: app/templates/reader.html:300
+#: app/templates/reader.html:349
 msgid "Loading book…"
 msgstr "Laddar bok…"
 
-#: app/templates/reader.html:308 app/templates/reader.html:309
+#: app/templates/reader.html:356
+msgid "Return to previous position"
+msgstr "Tillbaka till förra positionen"
+
+#: app/templates/reader.html:362
+msgid "Position in book"
+msgstr "Position i boken"
+
+#: app/templates/reader.html:371 app/templates/reader.html:372
 msgid "Theme"
 msgstr "Tema"
 
-#: app/templates/reader.html:310
+#: app/templates/reader.html:373
 msgid "Light"
 msgstr "Ljus"
 
-#: app/templates/reader.html:311
+#: app/templates/reader.html:374
 msgid "Sepia"
 msgstr "Sepia"
 
-#: app/templates/reader.html:312
+#: app/templates/reader.html:375
 msgid "Dark"
 msgstr "Mörk"
 
-#: app/templates/reader.html:317
+#: app/templates/reader.html:380
 msgid "Size"
 msgstr "Storlek"
 
-#: app/templates/reader.html:319
+#: app/templates/reader.html:382
 msgid "Smaller text"
 msgstr "Mindre text"
 
-#: app/templates/reader.html:321
+#: app/templates/reader.html:384
 msgid "Larger text"
 msgstr "Större text"
 
-#: app/templates/reader.html:326 app/templates/reader.html:327
+#: app/templates/reader.html:389 app/templates/reader.html:390
 msgid "Font"
 msgstr "Typsnitt"
 
-#: app/templates/reader.html:329
+#: app/templates/reader.html:392
 msgid "Serif"
 msgstr "Serif"
 
-#: app/templates/reader.html:330
+#: app/templates/reader.html:393
 msgid "Sans"
 msgstr "Sans"
 
-#: app/templates/reader.html:331
+#: app/templates/reader.html:394
 msgid "Dyslexia"
 msgstr "Dyslexi"
 
-#: app/templates/reader.html:336 app/templates/reader.html:337
+#: app/templates/reader.html:399 app/templates/reader.html:400
 msgid "Line spacing"
 msgstr "Radavstånd"
 
-#: app/templates/reader.html:338
+#: app/templates/reader.html:401
 msgid "Tight"
 msgstr "Tät"
 
-#: app/templates/reader.html:340
+#: app/templates/reader.html:403
 msgid "Loose"
 msgstr "Luftig"
 
-#: app/templates/reader.html:345 app/templates/reader.html:346
+#: app/templates/reader.html:408 app/templates/reader.html:409
 msgid "Margins"
 msgstr "Marginaler"
 
-#: app/templates/reader.html:347
+#: app/templates/reader.html:410
 msgid "Narrow"
 msgstr "Smal"
 
-#: app/templates/reader.html:349
+#: app/templates/reader.html:412
 msgid "Wide"
 msgstr "Bred"
 
-#: app/templates/reader.html:354 app/templates/reader.html:355
+#: app/templates/reader.html:417 app/templates/reader.html:418
 msgid "Reading mode"
 msgstr "Läsläge"
 
-#: app/templates/reader.html:356
+#: app/templates/reader.html:419
 msgid "Paged"
 msgstr "Bläddra"
 
-#: app/templates/reader.html:357
+#: app/templates/reader.html:420
 msgid "Scroll"
 msgstr "Rulla"
 
-#: app/templates/reader.html:364 app/templates/reader.html:367
+#: app/templates/reader.html:429
+msgid "Start over from the beginning"
+msgstr "Börja om från början"
+
+#: app/templates/reader.html:436 app/templates/reader.html:439
 msgid "Dictionary"
 msgstr "Ordbok"
 
-#: app/templates/reader.html:376
+#: app/templates/reader.html:448
 msgid "Swedish"
 msgstr "Svenska"
 
-#: app/templates/reader.html:380
+#: app/templates/reader.html:452
 msgid "Explain with AI"
 msgstr "Förklara med AI"
 
-#: app/templates/reader.html:382
+#: app/templates/reader.html:454
 msgid "AI — in this sentence"
 msgstr "AI — i den här meningen"
 
-#: app/templates/reader.html:440
+#: app/templates/reader.html:514
 msgid "Could not open this book."
 msgstr "Kunde inte öppna boken."
 
-#: app/templates/reader.html:442
+#: app/templates/reader.html:516
 msgid "Saving for offline…"
 msgstr "Sparar för offline…"
 
-#: app/templates/reader.html:443
+#: app/templates/reader.html:517
 msgid "Saved — tap to remove offline copy"
 msgstr "Sparad — tryck för att ta bort offline-kopian"
 
-#: app/templates/reader.html:444
+#: app/templates/reader.html:518
 msgid "Could not save for offline"
 msgstr "Kunde inte spara för offline"
 
-#: app/templates/reader.html:445
+#: app/templates/reader.html:519
 msgid ""
 "This book is copy-protected (DRM) and can’t be shared. The recipient "
 "wouldn’t be able to open the file — the protection is tied to your "
@@ -2965,7 +2977,7 @@ msgstr ""
 "Den här boken är kopieringsskyddad (DRM) och kan inte delas. Mottagaren "
 "skulle ändå inte kunna öppna filen — skyddet är låst till ditt konto."
 
-#: app/templates/reader.html:446
+#: app/templates/reader.html:520
 msgid ""
 "Sharing needs a secure (HTTPS) connection. Open Colophon via your "
 "Tailscale address (https://…) instead of the plain http:// address, then "
@@ -2975,7 +2987,7 @@ msgstr ""
 "Tailscale-adress (https://…) i stället för den vanliga http://-adressen "
 "och försök igen."
 
-#: app/templates/reader.html:447
+#: app/templates/reader.html:521
 msgid ""
 "Your browser can’t share files directly — the book will download instead,"
 " so you can send it yourself."
@@ -2983,58 +2995,70 @@ msgstr ""
 "Din webbläsare kan inte dela filer direkt — boken laddas ned i stället, "
 "så att du kan skicka den själv."
 
-#: app/templates/reader.html:448
+#: app/templates/reader.html:522
 msgid "Could not share this book."
 msgstr "Det gick inte att dela boken."
 
-#: app/templates/reader.html:449
+#: app/templates/reader.html:523
 msgid "Preparing book to share…"
 msgstr "Förbereder boken för delning…"
 
-#: app/templates/reader.html:451
+#: app/templates/reader.html:525
 #, python-brace-format
 msgid "Downloading dictionaries ({mb} MB, one-time)…"
 msgstr "Hämtar ordböcker ({mb} MB, engångsnedladdning)…"
 
-#: app/templates/reader.html:452
+#: app/templates/reader.html:526
 msgid "Dictionary download failed — see the server log."
 msgstr "Ordboksnedladdningen misslyckades — se serverloggen."
 
-#: app/templates/reader.html:453
+#: app/templates/reader.html:527
 msgid "No entry found — try the AI explanation."
 msgstr "Ingen träff i ordboken — prova AI-förklaringen."
 
-#: app/templates/reader.html:454
+#: app/templates/reader.html:528
 msgid "No entry found."
 msgstr "Ingen träff i ordboken."
 
-#: app/templates/reader.html:455
+#: app/templates/reader.html:529
 msgid "No dictionary for this language yet — the AI explanation still works."
 msgstr "Ingen ordbok för det här språket ännu — AI-förklaringen fungerar ändå."
 
-#: app/templates/reader.html:456
+#: app/templates/reader.html:530
 msgid "No dictionary for this language yet."
 msgstr "Ingen ordbok för det här språket ännu."
 
-#: app/templates/reader.html:457
+#: app/templates/reader.html:531
 msgid "Lookup failed."
 msgstr "Uppslaget misslyckades."
 
-#: app/templates/reader.html:458
+#: app/templates/reader.html:532
 msgid "Thinking…"
 msgstr "Tänker…"
 
-#: app/templates/reader.html:459
+#: app/templates/reader.html:533
 msgid "AI explanation failed."
 msgstr "AI-förklaringen misslyckades."
 
-#: app/templates/reader.html:460
+#: app/templates/reader.html:534
 msgid "Show more"
 msgstr "Visa mer"
 
-#: app/templates/reader.html:461
+#: app/templates/reader.html:535
 msgid "Show less"
 msgstr "Visa mindre"
+
+#: app/templates/reader.html:536
+msgid ""
+"Start this book over from the beginning? Reading progress is reset "
+"everywhere, including on the Kobo."
+msgstr ""
+"Börja om boken från början? Läsförloppet nollställs överallt, även på "
+"Kobo-läsplattan."
+
+#: app/templates/reader.html:537
+msgid "Could not reset reading progress — are you offline?"
+msgstr "Kunde inte nollställa läsförloppet — är du offline?"
 
 #: app/templates/settings_ai.html:307 app/templates/settings_api.html:462
 #: app/templates/settings_api.html:868

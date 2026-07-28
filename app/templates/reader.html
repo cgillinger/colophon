@@ -107,6 +107,48 @@
         }
         .reader-overlay[hidden] { display: none; }
 
+        /* --- Bottom scrub bar (big jumps without page-tapping) ------------- */
+        .reader-navbar {
+            flex: 0 0 auto; display: flex; align-items: center; gap: .8rem;
+            padding: 6px 14px calc(6px + env(safe-area-inset-bottom, 0));
+            border-top: 1px solid var(--border-light);
+            background: var(--bg-secondary);
+        }
+        html[data-reader-theme="light"] .reader-navbar { background: #f6f7f8; border-color: rgba(0,0,0,.08); }
+        html[data-reader-theme="sepia"] .reader-navbar { background: #ede3cb; border-color: rgba(91,70,54,.18); }
+        html[data-reader-theme="dark"] .reader-navbar { background: #23282e; border-color: rgba(255,255,255,.08); }
+        .reader-scrub {
+            flex: 1 1 auto; min-width: 0; height: 34px; margin: 0;
+            accent-color: #1a6dd0; cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        html[data-reader-theme="sepia"] .reader-scrub { accent-color: #9a6f3f; }
+        html[data-reader-theme="dark"] .reader-scrub { accent-color: #6cb6ff; }
+        .reader-scrub:disabled { opacity: .4; cursor: default; }
+        .reader-scrub-label {
+            flex: 0 0 auto; font-variant-numeric: tabular-nums;
+            font-size: .85rem; color: var(--text-secondary);
+            min-width: 3.4em; text-align: right; white-space: nowrap;
+        }
+        html[data-reader-theme="sepia"] .reader-scrub-label { color: #8a755e; }
+        html[data-reader-theme="dark"] .reader-scrub-label { color: #8b949e; }
+        /* "Return to where I was" chip — appears after a scrub jump so the
+           slider is safe to explore with. */
+        .reader-snapback {
+            position: fixed; right: 14px;
+            bottom: calc(58px + env(safe-area-inset-bottom, 0));
+            z-index: 20; display: inline-flex; align-items: center; gap: 6px;
+            padding: 9px 15px; border: 1px solid var(--border-light);
+            border-radius: 999px; background: var(--bg-secondary);
+            color: var(--text-primary); font: inherit; font-size: .88rem;
+            font-variant-numeric: tabular-nums; cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,.18);
+            -webkit-tap-highlight-color: transparent;
+        }
+        html[data-reader-theme="light"] .reader-snapback { background: #f6f7f8; color: #1a1a1a; }
+        html[data-reader-theme="sepia"] .reader-snapback { background: #ede3cb; color: #5b4636; border-color: rgba(91,70,54,.18); }
+        html[data-reader-theme="dark"] .reader-snapback { background: #23282e; color: #cfd6dc; border-color: rgba(255,255,255,.12); }
+
         /* --- "Aa" reading-settings panel ----------------------------------- */
         .reader-topbar .reader-settings {
             flex: 0 0 auto;
@@ -197,6 +239,13 @@
         .reader-sheet .rs-stepper {
             flex: 1 1 auto; display: flex; align-items: center; gap: 8px;
         }
+        .reader-sheet .rs-restart {
+            width: 100%; display: flex; align-items: center; justify-content: center;
+            gap: 8px; padding: 10px 14px; border: 1px solid var(--rs-line);
+            border-radius: 10px; background: var(--rs-chip); color: inherit;
+            font: inherit; font-size: .9rem; cursor: pointer;
+        }
+        .reader-sheet .rs-restart:hover { border-color: var(--rs-chip-on); }
         .reader-sheet .rs-stepper button {
             width: 44px; height: 40px; border: 1px solid var(--rs-line);
             border-radius: 8px; background: var(--rs-chip); cursor: pointer;
@@ -300,6 +349,20 @@
         <div class="reader-overlay" id="readerOverlay">{{ _('Loading book…') }}</div>
     </div>
 
+    {# Scrub bar: drag to any position; page number for pre-paginated books
+       (PDF/fixed-layout), percent otherwise. The snapback chip returns to the
+       pre-jump position, so scrubbing is never a one-way trip. #}
+    <button type="button" class="reader-snapback" id="readerSnapback" hidden
+            aria-label="{{ _('Return to previous position') }}">
+        <i class="ti ti-arrow-back-up"></i><span id="readerSnapbackLabel"></span>
+    </button>
+    <div class="reader-navbar">
+        <input type="range" class="reader-scrub" id="readerScrub"
+               min="0" max="1000" step="1" value="0" disabled
+               aria-label="{{ _('Position in book') }}">
+        <div class="reader-scrub-label" id="readerScrubLabel">—</div>
+    </div>
+
     <div class="reader-sheet-backdrop" id="readerSheetBackdrop" hidden></div>
     <div class="reader-sheet" id="readerSheet" hidden role="dialog" aria-modal="true" aria-label="{{ _('Reading settings') }}">
         <div class="rs-grip"></div>
@@ -357,6 +420,15 @@
                 <button type="button" data-value="scrolled">⇅ {{ _('Scroll') }}</button>
             </div>
         </div>
+
+        {# One-tap restart: resets the server-side reading state (same endpoint
+           as the library's "Reset reading state") and jumps to the beginning —
+           without it, furthest-read-wins would resurrect the old position. #}
+        <div class="rs-row">
+            <button type="button" class="rs-restart" id="rsRestart">
+                <i class="ti ti-rotate"></i> {{ _('Start over from the beginning') }}
+            </button>
+        </div>
     </div>
 
     {# Dictionary lookup sheet — opened by selecting a single word in the book
@@ -398,6 +470,7 @@
             initialProgress: {{ initial_progress|tojson }},
             readStatus: {{ read_status|tojson }},
             progressModifiedAt: {{ progress_modified_at|tojson }},
+            resetUrl: {{ url_for('metadata.reset_reading_state', item_id=item.id)|tojson }},
             homeUrl: {{ url_for('metadata.index')|tojson }},
             // "Give this book to someone": hand the raw file (EPUB or
             // MOBI/AZW3) to the OS share sheet (AirDrop / Nearby Share /
@@ -459,7 +532,9 @@
                 dictAiThinking: {{ _('Thinking…')|tojson }},
                 dictAiFailed: {{ _('AI explanation failed.')|tojson }},
                 dictShowMore: {{ _('Show more')|tojson }},
-                dictShowLess: {{ _('Show less')|tojson }}
+                dictShowLess: {{ _('Show less')|tojson }},
+                restartConfirm: {{ _('Start this book over from the beginning? Reading progress is reset everywhere, including on the Kobo.')|tojson }},
+                restartFailed: {{ _('Could not reset reading progress — are you offline?')|tojson }}
             }
         };
 
