@@ -107,6 +107,18 @@ samma titel. Metadata-åtgärder gäller hela gruppen.
 Nyss tillagda böcker bär en **Nytillagt**-bricka ett tag (14 dagar som standard)
 så du ser vad som precis kommit in.
 
+**Författarmappar.** Uppladdade böcker hamnar platt i bokmappens rot — med
+flit: Colophon flyttar aldrig dina filer på eget initiativ. När en boks
+metadata är i skick, öppna den — i redigeringsläget finns **Flytta till
+författarmapp** med målsökvägen utskriven (t.ex. `John Hedgecoe/`). Ett klick
+flyttar boken — alla format tillsammans — till huvudförfattarens mapp; en
+befintlig mapp med kosmetiskt annorlunda stavning (`arthur_c_clarke` kontra
+`Arthur C. Clarke`) återanvänds, dubbleras aldrig. Läsförlopp, betyg och
+Kobo-koppling följer med orörda. Filtret **Saknar: författarmapp** i
+biblioteket visar vilka böcker som fortfarande ligger i roten. (Synkar du
+till ett uppströmsbibliotek köar flytten också en städning av den gamla
+uppströmskopian — se §16.)
+
 ## 5. Öppna och redigera en bok
 
 Klicka på en bok (en rad i Tabell, ett omslag i Hyllvy) för att öppna dess
@@ -116,6 +128,12 @@ Klicka på en bok (en rad i Tabell, ett omslag i Hyllvy) för att öppna dess
   förlag, språk, ISBN, genrer, utgivningsdatum. Klicka **Spara** för att skriva
   ändringarna. Att spara skriver också metadatan **tillbaka in i e-boksfilen**,
   så andra verktyg (Komga, Kavita, din Kobo) ser samma data.
+- **Flera författare?** Författardelen visar ett fält per person. **Lägg till
+  författare** ger ett nytt fält; krysset tar bort ett. Ordningen spelar roll —
+  första författaren är bokens huvudförfattare (styr sortering och
+  författarmappar). Du skriver aldrig "och", komman eller `&` — varje person är
+  sitt eget fält, och varje fält föreslår befintliga författare medan du
+  skriver.
 - **Ditt betyg** — ge boken ditt eget betyg 1–5. Detta är *ditt* betyg, hämtas
   aldrig någonstans ifrån.
 - **Läsläge** — se och sätt hur långt du läst (se §13). *Markera som läst* sätter
@@ -224,6 +242,18 @@ Varje författare har en **status** som styr om namnet skrivs in i dina filer:
 
 Preliminära poster skrivs aldrig in i filer förrän du bekräftar dem, så en
 auto-gissad stavning kan inte tyst skriva om ditt bibliotek.
+
+**Böcker med flera författare.** Varje medförfattare är en fullvärdig egen
+registerpost — sökbar, länkbar, med egen författarsida. Vissa filer kommer med
+alla namn hopklistrade i en sträng ("Sören Karlsson och Deanne Rauscher"); de
+blir en enda post med en liten **gruppikon**. Klicka **Dela…** på den posten
+för att rätta det: du får ett fält per person (förifyllt med bästa gissning),
+inskrivna namn matchas mot registret så befintliga författare återanvänds, och
+alla länkade böcker länkas om i ett svep. Beslutet kommer ihåg — en omskanning
+av de oförändrade filerna återskapar inte den hopklistrade posten. Är ikonen
+fel (sorteringsformer som "Ashton, Edward" flaggas med flit — bara en människa
+kan skilja en sorteringsform från två efternamn) klickar du på själva ikonen
+och bekräftar "det här är en person", så försvinner den för gott.
 
 ## 11. Hitta och rensa dubbletter
 
@@ -334,17 +364,41 @@ Kobons `.conf` oftast fel; om böcker dyker upp men inte omslag är det
 
 ## 16. Synka till ett uppströmsbibliotek
 
-Om du har ett "master"-bibliotek någon annanstans — till exempel en Komga-utdelning
-— kan Colophon skicka upp de filer det ändrat dit.
+Om du har ett "master"-bibliotek någon annanstans — till exempel en
+Komga-utdelning på en NAS — kan Colophon skicka upp de filer det ändrat dit.
+
+**Varför två bibliotek över huvud taget?** För att ett levande e-boksbibliotek
+direkt på en nätverksutdelning är ett känt sätt att förlora det. Calibres egen
+manual säger det rakt ut: *"Do not put your calibre library on a networked
+drive"* — nätverksfilsystem har opålitlig fillåsning, och en biblioteksdatabas
+som ligger där (eller öppnas från två håll samtidigt) slutar korrupt. Colophon
+är byggt kring den läxan: databasen och ditt arbetsbibliotek ligger på snabb
+lokal disk där låsning fungerar, och uppströmsbiblioteket behandlas som en
+**passiv filspegel** som Colophon bara rör vid uttryckliga, förhandsgranskade
+synksteg — det lagrar aldrig tillstånd där och skriver aldrig dit i bakgrunden.
+Du får bekvämligheten med ett serverbibliotek utan att satsa dess integritet på
+ett nätverksfilsystem.
 
 - När du redigerat böcker (så att deras filer skiljer sig från uppströms) dyker en
   **Synka till bibliotek**-post upp i sidomenyn med en räknare över väntande filer.
 - Att klicka på den visar en **förhandsgranskning** av vad som ska skickas; du
-  bekräftar, och det synkar (med rsync under huven). Inget lämnar förrän du
-  bekräftar.
+  bekräftar, och det synkar. Inget lämnar förrän du bekräftar.
+- Hämtningar skriver aldrig över filer du ändrat lokalt, och pushar raderar
+  aldrig något uppströms på eget initiativ.
 
 Det här håller servern du faktiskt serverar från (Komga/Kavita) i takt med den
 metadata och de omslag du kurerat i Colophon.
+
+**Städning efter författarmapps-flyttar.** Att flytta en bok till en
+författarmapp (§4) ändrar dess sökväg — så efter nästa push innehåller
+uppströmsbiblioteket både den nya kopian *och* den gamla. Med **Städa flyttade
+filer uppströms vid push** ikryssad (AI-inställningar, under
+uppströmssektionen; av som standard) tar samma push bort den gamla kopian: bara
+filer Colophon själv pushat dit, först när den nya kopian är verifierad på
+plats, och alltid listat i förhandsgranskningen ("N gamla kopior av flyttade
+böcker tas bort uppströms:"). Tills du slår på det ligger gamla kopior helt
+enkelt kvar som dubbletter — inget glöms bort, och städningarna körs
+retroaktivt vid nästa push när du väl aktiverar.
 
 ## 17. Inställningar
 

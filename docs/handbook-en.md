@@ -102,6 +102,18 @@ whole group.
 Newly added books wear a **New** badge for a while (14 days by default) so you
 can spot what just arrived.
 
+**Author folders.** Uploaded books land flat in the root of your book folder —
+deliberately: Colophon never moves your files on its own. When a book's
+metadata is in shape, open it, and in the edit view you'll find **Move to
+author folder** with the target path spelled out (e.g. `John Hedgecoe/`). One
+click moves the book — all its formats together — into its primary author's
+folder; an existing folder with a cosmetically different spelling
+(`arthur_c_clarke` vs `Arthur C. Clarke`) is reused, never duplicated. Your
+reading progress, rating and Kobo pairing follow along untouched. To see which
+books still sit in the root, use the **Missing: author folder** filter in the
+library. (If you sync to an upstream library, the move also queues a cleanup of
+the old upstream copy — see §16.)
+
 ## 5. Opening and editing a book
 
 Click a book (a row in Table, a cover in Shelf) to open its **details**. From
@@ -111,6 +123,11 @@ here you can:
   publisher, language, ISBN, genres, published date. Click **Save** to write
   your changes. Saving also writes the metadata **back into the e-book file**, so
   other tools (Komga, Kavita, your Kobo) see the same data.
+- **Several authors?** The author area shows one field per person. **Add
+  author** gives you a new field; the × removes one. The order matters — the
+  first author is the book's primary author (used for sorting and author
+  folders). You never type "and", commas or `&` — each person is their own
+  field, and each field suggests existing authors as you type.
 - **Your rating** — give the book your own 1–5 stars. This is *your* rating,
   never fetched from anywhere.
 - **Reading state** — see and set how far you've read (see §13). *Mark as
@@ -218,6 +235,18 @@ files:
 
 Tentative entries are never written into files until you confirm them, so an
 auto-guessed spelling can't quietly rewrite your library.
+
+**Books with several authors.** Each co-author is a full registry entry of
+their own — searchable, linkable, with their own author page. Some files
+arrive with all the names mashed into one string ("Sören Karlsson och Deanne
+Rauscher"); those become a single entry wearing a small **group icon**. Click
+**Split…** on that entry to fix it: you get one field per person (pre-filled
+with a best guess), typed names are matched against the registry so existing
+authors are reused, and every linked book is relinked in one sweep. The
+decision is remembered — re-scanning the still-unchanged files won't bring the
+mashed entry back. If the icon is wrong (sort-form names like "Ashton, Edward"
+trip it on purpose — only a human can tell a sort form from two surnames),
+click the icon itself and confirm "this is one person" to dismiss it for good.
 
 ## 11. Finding and clearing duplicates
 
@@ -329,16 +358,40 @@ it's the `image_host`/`image_url_template` lines (they must include the port).
 
 ## 16. Syncing to an upstream library
 
-If you keep a "master" library elsewhere — for example a Komga share — Colophon
-can push the files it has changed up to it.
+If you keep a "master" library elsewhere — for example a Komga share on a NAS —
+Colophon can push the files it has changed up to it.
+
+**Why two libraries at all?** Because keeping a live e-book library directly on
+a network share is a known way to lose it. Calibre's own manual says it
+plainly: *"Do not put your calibre library on a networked drive"* — network
+filesystems have unreliable file locking, and a library database that lives on
+one (or gets opened from two places at once) ends up corrupted. Colophon is
+built around that lesson: the database and your working library stay on fast
+local disk where locking works, and the upstream library is treated as a
+**passive file mirror** that Colophon only touches during explicit,
+previewed sync steps — it never keeps state there and never writes to it in
+the background. You get the convenience of a server-hosted library without
+gambling its integrity on a network filesystem.
 
 - When you've edited books (so their files differ from upstream), a **Sync to
   library** item appears in the sidebar with a count of pending files.
 - Clicking it shows a **preview** of what's about to be pushed; you confirm, and
-  it syncs (using rsync under the hood). Nothing leaves until you confirm.
+  it syncs. Nothing leaves until you confirm.
+- Pulls never overwrite files you've changed locally, and pushes never delete
+  anything upstream on their own.
 
 This keeps the server you actually serve from (Komga/Kavita) in step with the
 metadata and covers you curated in Colophon.
+
+**Cleaning up after author-folder moves.** Moving a book into an author folder
+(§4) changes its path — so after the next push, the upstream library holds the
+new copy *and* the old one. With **Clean up moved files upstream on push**
+enabled (AI settings, under the upstream section; off by default), the same
+push removes the old copy: only files Colophon itself pushed there, only after
+the new copy is verified in place, and always listed in the preview first
+("N old copies of moved books will be removed upstream"). Until you enable it,
+old copies simply stay as duplicates — nothing is forgotten, and the cleanups
+run retroactively at the next push once you switch it on.
 
 ## 17. Settings
 

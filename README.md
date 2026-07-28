@@ -1,6 +1,6 @@
 # Colophon — self-hosted e-book metadata manager with Kobo wireless sync
 
-[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.39.1-brightgreen)](https://github.com/cgillinger/colophon/releases) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#setting-up-kobo-sync)
+[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.39.2-brightgreen)](https://github.com/cgillinger/colophon/releases) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#setting-up-kobo-sync)
 
 **Colophon — the e-book manager.** A self-hosted web app that turns a messy folder of e-book files into a clean, browsable library and syncs it to a Kobo e-reader over WiFi. (Not the printing/publishing term — this is the software.)
 
@@ -43,6 +43,8 @@ This is a personal project I built for my own library. I've published it in case
 - Finds covers from Open Library, Google Books, Hardcover, Wikidata, DuckDuckGo
 - Writes metadata back into the files so other tools see the same data
 - Keeps authors consistent — one canonical entry per author, spelling variants auto-linked, typos flagged for review, one-click merge/rename that relabels every book, with optional Wikidata verification
+- Handles books with several authors — one field per person in the edit view (no separator syntax to learn), every co-author searchable and linkable, and a **Split** tool that turns a mashed-together entry ("A and B") into proper person entries across all their books
+- Organises uploads into per-author folders on demand — a deliberate button per book, never an automatic move — and cleans up the old copy on your upstream library after the move (opt-in, verified, surgical)
 - Groups multiple formats of the same book as one entry
 - Syncs to a Kobo over WiFi — covers, downloads, reading progress
 - Reads EPUB, MOBI, AZW3 and PDF in the browser — themes, fonts (incl. a dyslexia-friendly face) and **save-for-offline** — with reading progress synced to and from your Kobo
@@ -106,6 +108,7 @@ All variables are read from `.env` (loaded via `env_file` in `docker-compose.yml
 | `COLOPHON_AI_API_KEY` | No | — | AI provider API key |
 | `COLOPHON_AI_MODEL` | No | `mistral-small-latest` | AI model name |
 | `COLOPHON_UPSTREAM_DIR` | No | — | Upstream library path inside the container (for sync) |
+| `COLOPHON_UPSTREAM_CLEANUP_ORPHANS` | No | off | Let a push remove the old upstream copy of a book you've moved to an author folder (also a checkbox in AI settings) |
 | `COLOPHON_MAX_UPLOAD_MB` | No | `1024` | Max size per uploaded file (in-app upload) |
 | `COLOPHON_NEW_BADGE_DAYS` | No | `14` | Days a newly added book shows the "New" badge |
 | `COLOPHON_LIBRARY_OWNER` | No | — | Label shown under the wordmark naming whose library this instance shows (e.g. `Christians bibliotek`) |
@@ -180,6 +183,53 @@ What you can do from the page:
 
 Tentative entries are deliberately never written into files until you confirm
 them, so an auto-guessed spelling can't quietly rewrite your library.
+
+**Books with several authors.** The edit view shows **one field per author**
+plus an *Add author* button — you never type separator characters, and every
+co-author gets their own registry entry, author page and filter. Internally
+Colophon uses `&` between names (the same convention Calibre has used for
+years), so files written by either tool round-trip cleanly. Files that arrive
+with several names mashed into one string ("Sören Karlsson och Deanne
+Rauscher") become a single flagged entry; the **Split** action on the Authors
+page turns it into proper person entries, relinks every affected book, and
+remembers the decision so a future re-scan of the same files doesn't
+resurrect the mashed entry. If the flag is wrong — sort-form names like
+"Ashton, Edward" trip it on purpose, since only a human can tell them from
+two surnames — click it once to dismiss it.
+
+---
+
+## Local working copy + upstream library
+
+Colophon deliberately works against a **local copy** of your books and only
+touches a server-hosted "master" library (a NAS share, a Komga folder) through
+explicit, user-confirmed sync steps. That split is not an accident — it is the
+answer to a well-known failure mode.
+
+Calibre's own manual [warns flatly](https://manual.calibre-ebook.com/faq.html):
+*"Do not put your calibre library on a networked drive"* — network filesystems
+have unreliable file locking, and a library database kept on one (or reached by
+two programs at once) ends in corruption. The warning is sound: SQLite over
+SMB/NFS is exactly where e-book libraries go to die.
+
+Colophon's model sidesteps the problem instead of fighting it:
+
+- **The database and the working library live on fast local disk.** Nothing
+  that needs locking ever sits on the network.
+- **The upstream library is a file-only mirror.** Colophon never keeps state
+  there, never holds files open over the network, and never writes to it
+  in the background — a push happens when you click, after a preview of
+  exactly what will be copied.
+- **Pulls never overwrite your local edits** (rsync `--update`), and pushes
+  never delete anything upstream on their own. The one exception is opt-in:
+  after you move a book into an author folder, the old upstream copy becomes a
+  duplicate, and with *upstream cleanup* enabled the next push removes it —
+  only files Colophon itself put there, only after the new copy is verified in
+  place, and shown in the preview first.
+
+The result is Calibre-style curation comfort with a server-hosted library —
+your Komga/Kavita share stays a clean, passive file tree, and the fragile
+moving parts stay local.
 
 ---
 
