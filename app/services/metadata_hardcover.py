@@ -63,7 +63,7 @@ def _candidate_from_document(doc):
     if not title:
         return None
 
-    author = ", ".join(str(a).strip() for a in _as_list(doc.get("author_names")) if str(a).strip())
+    author = " & ".join(str(a).strip() for a in _as_list(doc.get("author_names")) if str(a).strip())
     genres = ", ".join(str(g).strip() for g in _as_list(doc.get("genres")) if str(g).strip())
 
     # Series: the search document carries series name(s) but no reliable

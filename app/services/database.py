@@ -369,6 +369,63 @@ def ensure_author_tables():
     db.session.commit()
 
 
+def ensure_multi_author_tables():
+    """Multi-author support (v1.36.0): ordered book↔author links + split
+    rules. db.create_all() handles fresh databases; this migrates existing
+    ones and backfills one position-0 link per already-linked book so the
+    registry views can count/filter through book_authors alone."""
+    db.session.execute(text("""
+        CREATE TABLE IF NOT EXISTS book_authors (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_id INTEGER NOT NULL REFERENCES library_items(id),
+            author_id INTEGER NOT NULL REFERENCES authors(id),
+            position INTEGER NOT NULL DEFAULT 0,
+            UNIQUE (item_id, position),
+            UNIQUE (item_id, author_id)
+        )
+    """))
+    db.session.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_book_authors_item_id "
+        "ON book_authors (item_id)"
+    ))
+    db.session.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_book_authors_author_id "
+        "ON book_authors (author_id)"
+    ))
+    db.session.execute(text("""
+        CREATE TABLE IF NOT EXISTS author_split_rules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_key VARCHAR(500) NOT NULL UNIQUE,
+            author_ids TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """))
+    db.session.commit()
+
+    # Backfill: mirror every existing single link as a position-0 row.
+    # Idempotent — the NOT IN filter matches nothing on later boots. Books
+    # whose fused string should split stay single-linked until their next
+    # resolve (re-scan) or a manual split; nothing is guessed here.
+    try:
+        result = db.session.execute(text(
+            "INSERT INTO book_authors (item_id, author_id, position) "
+            "SELECT id, author_id, 0 FROM library_items "
+            "WHERE author_id IS NOT NULL "
+            "AND id NOT IN (SELECT item_id FROM book_authors)"
+        ))
+        if result.rowcount:
+            db.session.commit()
+            logger.info(
+                "Backfilled book_authors for %d items", result.rowcount
+            )
+        else:
+            db.session.rollback()
+    except Exception as exc:
+        db.session.rollback()
+        if "unique" not in str(exc).lower():
+            raise
+
+
 def ensure_app_settings_table():
     db.session.execute(text("""
         CREATE TABLE IF NOT EXISTS app_settings (

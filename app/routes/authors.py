@@ -15,10 +15,13 @@ from app.routes.helpers import get_item_or_404
 from app.services.author_resolver import (
     STATUS_LINKED,
     assign_author_to_item,
+    author_from_selection,
     authors_overview,
     find_existing_author,
     merge_authors,
+    remove_author_from_split_rules,
     rename_author,
+    split_author_entity,
     suggest_similar_authors,
 )
 
@@ -46,7 +49,14 @@ def _author_dict(author, book_count=None):
 @authors_bp.route("/authors")
 def manage_authors():
     """The "Manage authors" view — registry backstop (design guard 3)."""
+    from app.services.author_authority import guess_author_parts
+
     rows, pairs = authors_overview(db.session)
+    for row in rows:
+        if row["looks_multi"]:
+            row["split_guess"] = guess_author_parts(
+                row["author"].canonical_name
+            )
     review_count = (
         LibraryItem.query.filter(
             LibraryItem.author_status.in_(["review", "new", "missing"])
@@ -163,6 +173,62 @@ def assign_item_author(item_id):
     db.session.commit()
     return jsonify({"ok": True, "author": _author_dict(author),
                     "author_status": STATUS_LINKED, "created": False})
+
+
+@authors_bp.route("/authors/check", methods=["POST"])
+def check_name():
+    """Guard-only lookup for a typed author name — no mutations.
+
+    The multi-field UIs (book modal, split dialog) run this before save:
+    {"name": "..."} → {"ok": true, "author": {...}} when layers 1-2 match
+    an existing entry, else {"ok": true, "similar": [...]} with fuzzy
+    near-matches for the "sure it's a new author?" ask (design guard 2).
+    """
+    name = ((request.get_json(silent=True) or {}).get("name") or "").strip()
+    if not name:
+        return jsonify({"ok": False, "error": "name_required"}), 400
+    existing = find_existing_author(db.session, name)
+    if existing:
+        return jsonify({"ok": True, "author": _author_dict(existing)})
+    similar = suggest_similar_authors(db.session, name)
+    return jsonify({
+        "ok": True,
+        "author": None,
+        "similar": [
+            {**_author_dict(a), "score": round(s, 3)} for a, s in similar
+        ],
+    })
+
+
+@authors_bp.route("/authors/<int:author_id>/split", methods=["POST"])
+def split(author_id):
+    """Split a fused entry into person entities (the mirror of /merge).
+
+    Body: {"parts": [{"author_id": N} | {"name": "..."}, ...]} in display
+    order, at least two. Every linked book gets the parts in place of the
+    fused entry, split rules make the decision durable across re-scans,
+    and the fused entry is deleted. DB-only — files pick up the new
+    strings at the next metadata-write moment."""
+    fused = _get_author_or_404(author_id)
+    payload = (request.get_json(silent=True) or {}).get("parts") or []
+    parts = []
+    for sel in payload:
+        if not isinstance(sel, dict):
+            continue
+        author = author_from_selection(db.session, sel)
+        if author:
+            parts.append(author)
+    try:
+        count = split_author_entity(db.session, fused, parts)
+    except ValueError as exc:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    db.session.commit()
+    return jsonify({
+        "ok": True,
+        "relinked": count,
+        "authors": [_author_dict(a) for a in parts],
+    })
 
 
 @authors_bp.route("/authors/<int:author_id>/rename", methods=["POST"])
@@ -298,8 +364,14 @@ def adjudicate():
 def delete(author_id):
     """Remove an unused entry (0 books). Entries with books must be
     merged or renamed instead — deletion would orphan the links."""
+    from app.models import AuthorAlias, BookAuthor
+
     author = _get_author_or_404(author_id)
-    in_use = LibraryItem.query.filter_by(author_id=author.id).count()
+    in_use = (
+        db.session.query(BookAuthor.item_id)
+        .filter_by(author_id=author.id).distinct().count()
+        or LibraryItem.query.filter_by(author_id=author.id).count()
+    )
     if in_use:
         return jsonify({"ok": False, "error": "in_use", "book_count": in_use}), 409
     # Removing a proposed merge counterpart rejects those proposals — the
@@ -307,7 +379,7 @@ def delete(author_id):
     LibraryItem.query.filter_by(suggested_author_id=author.id).update(
         {"suggested_author_id": None, "author_status": "linked"}
     )
-    from app.models import AuthorAlias
+    remove_author_from_split_rules(db.session, author.id)
     AuthorAlias.query.filter_by(author_id=author.id).delete()
     db.session.delete(author)
     db.session.commit()

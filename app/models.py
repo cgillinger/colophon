@@ -99,6 +99,16 @@ class LibraryItem(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    # Ordered author links (multi-author, v1.36.0). delete-orphan makes
+    # every session.delete(item) path drop the link rows too, so the GC's
+    # in_use check doesn't see ghosts. Position 0 mirrors author_id.
+    author_links = db.relationship(
+        "BookAuthor",
+        cascade="all, delete-orphan",
+        order_by="BookAuthor.position",
+        lazy="select",
+    )
+
     # Advances only when device-visible content/metadata or the file
     # changes — NOT on reading-progress writes. The Kobo sync delta keys
     # on this (not updated_at) to decide ChangedEntitlement vs
@@ -155,6 +165,55 @@ class Author(db.Model):
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class BookAuthor(db.Model):
+    """Ordered book ↔ author links — multi-author support.
+
+    One row per (book, author) pair; position 0 is the primary author and
+    is mirrored in LibraryItem.author_id (kept in sync by the resolver and
+    curation paths) so single-author call sites keep working. The item's
+    `author` string remains the file-mirroring display form — links are
+    derived from it by the resolver ('&' is the canonical separator, per
+    Calibre convention) and rebuilt whenever it changes.
+    """
+    __tablename__ = "book_authors"
+
+    id = db.Column(db.Integer, primary_key=True)
+    item_id = db.Column(
+        db.Integer, db.ForeignKey("library_items.id"), nullable=False, index=True
+    )
+    author_id = db.Column(
+        db.Integer, db.ForeignKey("authors.id"), nullable=False, index=True
+    )
+    position = db.Column(db.Integer, nullable=False, default=0)
+
+    __table_args__ = (
+        db.UniqueConstraint("item_id", "position", name="uq_book_authors_item_position"),
+        db.UniqueConstraint("item_id", "author_id", name="uq_book_authors_item_author"),
+    )
+
+
+class AuthorSplitRule(db.Model):
+    """Durable memory of a user's split decision.
+
+    When the user splits a fused registry entry ("Sören Karlsson och
+    Deanne Rauscher") into person entities, the fused entry is deleted —
+    but the string still lives in the ebook files, so the next re-scan
+    would recreate it. Rules map the layer-1 normalized fused string (and
+    each of its recorded alias spellings) to the ordered author ids it
+    expands to; the resolver consults them before treating a name as one
+    unit. Rules survive merges (ids rewritten) and are dropped when they
+    lose meaning (fewer than two surviving authors).
+    """
+    __tablename__ = "author_split_rules"
+
+    id = db.Column(db.Integer, primary_key=True)
+    # normalize_author_name() of the fused string
+    source_key = db.Column(db.String(500), nullable=False, unique=True, index=True)
+    # JSON array of author ids, in display order
+    author_ids = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 class AuthorAlias(db.Model):

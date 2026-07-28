@@ -103,6 +103,91 @@
         });
     }
 
+    /* -------------------- split dialog -------------------- *
+     * One free-text field per person (prefilled from the server's
+     * separator guess). Typed names resolve server-side against the
+     * registry (layers 1-2), so existing entries are reused; the split
+     * is remembered as rules keyed on the fused string. */
+
+    var _splitState = null; // { id, name }
+
+    function _splitDialog() { return document.getElementById('splitDialog'); }
+
+    function _splitAddField(value) {
+        var fields = document.getElementById('splitDialogFields');
+        if (!fields) return;
+        var row = document.createElement('div');
+        row.className = 'split-field-row';
+        row.innerHTML =
+            '<input type="text" autocomplete="off">' +
+            '<button type="button" class="split-field-remove" title="&times;">' +
+                '<i class="ti ti-x"></i></button>';
+        row.querySelector('input').value = value || '';
+        row.querySelector('.split-field-remove').addEventListener('click', function () {
+            if (fields.children.length > 2) row.remove();
+        });
+        fields.appendChild(row);
+    }
+
+    function _split(tr, id, btn) {
+        var dlg = _splitDialog();
+        if (!dlg || typeof dlg.showModal !== 'function') return;
+        var name = _rowName(tr);
+        _splitState = { id: id, name: name };
+
+        var source = document.getElementById('splitDialogSource');
+        if (source) source.textContent = name;
+        var fields = document.getElementById('splitDialogFields');
+        if (fields) fields.innerHTML = '';
+
+        var guess = [];
+        try {
+            guess = JSON.parse(btn.dataset.splitGuess || '[]');
+        } catch (e) { /* fall through to empty fields */ }
+        if (!guess || guess.length < 2) guess = ['', ''];
+        guess.forEach(function (part) { _splitAddField(part); });
+
+        dlg.showModal();
+        var first = fields && fields.querySelector('input');
+        if (first) first.focus();
+    }
+
+    (function _bindSplitDialog() {
+        var dlg = _splitDialog();
+        if (!dlg) return;
+        var addBtn = document.getElementById('splitDialogAdd');
+        var cancelBtn = document.getElementById('splitDialogCancel');
+        var saveBtn = document.getElementById('splitDialogSave');
+        if (addBtn) addBtn.addEventListener('click', function () { _splitAddField(''); });
+        if (cancelBtn) cancelBtn.addEventListener('click', function () { dlg.close(); });
+        if (saveBtn) saveBtn.addEventListener('click', function () {
+            if (!_splitState) return;
+            var names = Array.prototype.map.call(
+                dlg.querySelectorAll('#splitDialogFields input'),
+                function (inp) { return inp.value.trim(); }
+            ).filter(Boolean);
+            if (names.length < 2) {
+                alert(_i18n.splitNeedTwo || 'Enter at least two author names.');
+                return;
+            }
+            var msg = _fmt('splitConfirm',
+                { name: _splitState.name, parts: names.join(' + ') },
+                'Split “{name}” into {parts}?');
+            if (!window.confirm(msg)) return;
+            saveBtn.disabled = true;
+            _post('/authors/' + _splitState.id + '/split', {
+                parts: names.map(function (n) { return { name: n }; })
+            }).then(function (b) {
+                saveBtn.disabled = false;
+                if (b.ok) { dlg.close(); location.reload(); }
+                else alert(_i18n.actionFailed || 'The action failed.');
+            }).catch(function () {
+                saveBtn.disabled = false;
+                alert(_i18n.actionFailed || 'The action failed.');
+            });
+        });
+    })();
+
     function _delete(tr, id) {
         var name = _rowName(tr);
         if (!window.confirm(_fmt('deleteConfirm', { name: name }, 'Remove the unused entry “{name}”?'))) return;
@@ -123,6 +208,7 @@
             if (act === 'confirm') _confirm(tr, id);
             else if (act === 'rename') _rename(tr, id);
             else if (act === 'merge') _merge(tr, id);
+            else if (act === 'split') _split(tr, id, btn);
             else if (act === 'verify') _verify(tr, id, btn);
             else if (act === 'delete') _delete(tr, id);
         });

@@ -744,7 +744,16 @@ def bulk_metadata():
 
     base_q = LibraryItem.query
     if author_filter:
-        base_q = base_q.filter(LibraryItem.author_id == author_filter.id)
+        # Through book_authors, so co-author books show too; the
+        # author_id mirror is folded in for not-yet-resolved stragglers.
+        from app.models import BookAuthor
+        base_q = base_q.filter(db.or_(
+            LibraryItem.id.in_(
+                db.session.query(BookAuthor.item_id)
+                .filter(BookAuthor.author_id == author_filter.id)
+            ),
+            LibraryItem.author_id == author_filter.id,
+        ))
     if read_filter == "reading":
         items_q = base_q.filter(LibraryItem.read_status == "Reading")
     elif read_filter == "finished":
@@ -1947,6 +1956,15 @@ def metadata_json(item_id):
         "author": item.author or "",
         "author_id": item.author_id,
         "author_status": item.author_status,
+        # Ordered author links for the modal's multi-field UI. Falls back
+        # to '&'-splitting the string client-side when empty (unresolved).
+        "authors": [
+            {"id": a.id, "name": a.canonical_name, "source": a.source}
+            for a in (
+                db.session.get(Author, link.author_id)
+                for link in item.author_links
+            ) if a
+        ],
         "series": item.series or "",
         "series_index": item.series_index or "",
         "isbn": item.isbn or "",
@@ -2022,8 +2040,18 @@ def save_metadata_json(item_id):
         return jsonify({"ok": False, "error": "title_required"}), 400
 
     item.title = title
-    author_typed = (data.get("author") or "").strip() != (item.author or "")
-    item.author = (data.get("author") or "").strip() or None
+    # Multi-field author UI: the modal sends an ordered `authors` list
+    # ({author_id} for registry picks, {name} for typed entries — the
+    # create-guard already ran client-side). The author string is derived
+    # from it below; the legacy single author/author_id path stays for
+    # older payloads.
+    authors_payload = data.get("authors")
+    if not isinstance(authors_payload, list):
+        authors_payload = None
+    author_typed = False
+    if authors_payload is None:
+        author_typed = (data.get("author") or "").strip() != (item.author or "")
+        item.author = (data.get("author") or "").strip() or None
     item.series = (data.get("series") or "").strip() or None
     item.series_index = (data.get("series_index") or "").strip() or None
     item.isbn = (data.get("isbn") or "").strip() or None
@@ -2032,12 +2060,25 @@ def save_metadata_json(item_id):
     item.description = clean_text(data.get("description") or "") or None
     item.genres = (data.get("genres") or "").strip() or None
     item.published_date = (data.get("published_date") or "").strip()[:10] or None
-    # Combobox confirmation: the modal sends author_id when the user
-    # picked a registry entry. Link + promote; the file write below then
-    # carries the canonical name (user_confirmed — it has earned it).
-    # A free-text author without author_id falls through to the reset
-    # listener and is re-resolved right after the commit.
-    if data.get("author_id") and item.author:
+    if authors_payload is not None:
+        from app.services.author_resolver import set_item_authors
+        selections = [
+            {
+                "author_id": sel.get("author_id"),
+                "name": (sel.get("name") or "").strip(),
+            }
+            for sel in authors_payload
+            if isinstance(sel, dict)
+            and (sel.get("author_id") or (sel.get("name") or "").strip())
+        ]
+        set_item_authors(db.session, item, selections)
+    # Combobox confirmation (legacy single-author payload): the modal
+    # sends author_id when the user picked a registry entry. Link +
+    # promote; the file write below then carries the canonical name
+    # (user_confirmed — it has earned it). A free-text author without
+    # author_id falls through to the reset listener and is re-resolved
+    # right after the commit.
+    elif data.get("author_id") and item.author:
         from app.services.author_resolver import assign_author_to_item
         chosen = db.session.get(Author, data["author_id"])
         if chosen:
@@ -2076,7 +2117,18 @@ def save_metadata_json(item_id):
         item.author_status = "linked"
         db.session.commit()
 
-    resp = {"ok": True, "author_status": item.author_status}
+    resp = {
+        "ok": True,
+        "author_status": item.author_status,
+        "author": item.author or "",
+        "authors": [
+            {"id": a.id, "name": a.canonical_name, "source": a.source}
+            for a in (
+                db.session.get(Author, link.author_id)
+                for link in item.author_links
+            ) if a
+        ],
+    }
     if not write_result["ok"] and write_result.get("error") not in ("no_fields", "not_installed", "unsupported_format"):
         resp["file_write_warning"] = write_result.get("error")
     return jsonify(resp)
@@ -2105,7 +2157,10 @@ def delete_item(item_id):
     title = item.title
     file_path = item.file_path
     cover_path = item.cover_path
-    touched_authors = {item.author_id, item.suggested_author_id} - {None}
+    touched_authors = (
+        {item.author_id, item.suggested_author_id}
+        | {link.author_id for link in item.author_links}
+    ) - {None}
 
     if cover_path:
         try:
@@ -2172,7 +2227,10 @@ def bulk_delete():
             except OSError:
                 file_errors += 1
 
-        touched_authors.update({item.author_id, item.suggested_author_id} - {None})
+        touched_authors.update(
+            ({item.author_id, item.suggested_author_id}
+             | {link.author_id for link in item.author_links}) - {None}
+        )
         db.session.delete(item)
         deleted += 1
 
@@ -2346,7 +2404,10 @@ def delete_item_safe(item_id):
             logger.warning("Could not delete cover %s: %s", cover_path, exc)
 
     try:
-        touched_authors = {item.author_id, item.suggested_author_id} - {None}
+        touched_authors = (
+            {item.author_id, item.suggested_author_id}
+            | {link.author_id for link in item.author_links}
+        ) - {None}
         db.session.delete(item)
         db.session.commit()
     except Exception as exc:

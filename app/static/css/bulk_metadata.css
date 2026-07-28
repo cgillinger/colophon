@@ -4585,3 +4585,52 @@
     cursor: pointer;
 }
 .author-hint-btn:hover { background: var(--bg-tertiary, rgba(0, 0, 0, 0.06)); }
+
+/* Multi-author rows: one combobox per person + remove ×, add-button below. */
+.author-multi-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.author-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.author-row .author-combobox { flex: 1; }
+.author-row-remove {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    font-size: 14px;
+}
+.author-row-remove:hover {
+    background: var(--bg-tertiary, rgba(0, 0, 0, 0.06));
+    color: var(--danger, #c0392b);
+}
+.author-add-btn {
+    margin-top: 6px;
+    padding: 3px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    border: 1px dashed var(--border-medium, #ccc);
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+.author-add-btn:hover {
+    color: var(--accent-primary, #4a6fa5);
+    border-color: var(--accent-primary, #4a6fa5);
+}

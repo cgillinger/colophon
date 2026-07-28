@@ -494,12 +494,16 @@
                     <input type="text" id="modalTitle" class="modal-input">
                 </div>
                 <div class="modal-field">
-                    <label for="modalAuthor">{{ _('Author') }}</label>
-                    <div class="author-combobox" id="modalAuthorCombobox">
-                        <input type="text" id="modalAuthor" class="modal-input" autocomplete="off"
-                               role="combobox" aria-expanded="false" aria-controls="modalAuthorDropdown">
-                        <div id="modalAuthorDropdown" class="author-dropdown" role="listbox" style="display:none;"></div>
-                    </div>
+                    <label>{{ _('Author') }}</label>
+                    <!-- One field per author — no separator syntax for the
+                         user to learn. #modalAuthor keeps the joined ' & '
+                         string for legacy flows (enrichment/AI apply, save
+                         payload); author-combobox.js syncs both ways. -->
+                    <input type="hidden" id="modalAuthor">
+                    <div id="modalAuthorList" class="author-multi-list"></div>
+                    <button type="button" id="modalAuthorAdd" class="author-add-btn">
+                        <i class="ti ti-plus"></i> {{ _('Add author') }}
+                    </button>
                     <div id="modalAuthorHint" class="author-status-hint" style="display:none;"></div>
                 </div>
                 <div class="modal-field-row">
@@ -1129,6 +1133,8 @@
         authorStatusMissing: {{ _('No author in the file — type or pick one.')|tojson }},
         authorNoMatches: {{ _('No registered authors match.')|tojson }},
         authorSearchFailed: {{ _('Author search failed.')|tojson }},
+        authorRemove: {{ _('Remove author')|tojson }},
+        authorFieldPlaceholder: {{ _('Author name')|tojson }},
         uploadNothingValid: {{ _('No supported files were selected.')|tojson }},
         newlyAdded: {{ _('New')|tojson }},
         shelfNewBandTitle: {{ _('Newly added')|tojson }},

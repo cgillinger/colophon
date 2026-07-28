@@ -32,6 +32,53 @@ from difflib import SequenceMatcher
 # Same threshold the duplicate detector has proven in practice.
 FUZZY_SUGGEST_THRESHOLD = 0.85
 
+# Canonical multi-author separator in `author` strings (Calibre's
+# convention: '&' joins people, comma stays free for the sort form
+# "Tolkien, J.R.R."). The scanner joins explicit dc:creator entries with
+# it and the resolver splits on it; the UI never asks the user to type it.
+AUTHOR_SEPARATOR = " & "
+
+# Substrings that make a single name *look* fused ("A och B", "A, B").
+# Used only to badge registry entries for manual splitting — never to
+# split automatically: comma is ambiguous with the sort form, and "och"/
+# "and" can legitimately occur inside titles-as-names. A human judges.
+_MULTI_AUTHOR_RX = re.compile(
+    r"[,;&]|\s(?:och|and|with|med)\s", re.IGNORECASE
+)
+
+
+def split_author_string(name):
+    """Split an author string on the canonical '&' separator.
+
+    Returns the non-empty stripped parts, [] for an empty string. This is
+    the ONLY automatic split — '&' joins people and essentially never
+    occurs inside a person's name, so splitting on it is safe (Calibre
+    has used the same rule for 15+ years). Fused strings using other
+    separators are the manual-split path (see looks_like_multiple_authors).
+    """
+    parts = [p.strip() for p in re.split(r"\s*&\s*", name or "")]
+    return [p for p in parts if p]
+
+
+def looks_like_multiple_authors(name):
+    """Heuristic: does this registry name look like several fused people?
+
+    Deliberately broad (commas also flag sort-form names) — false
+    positives cost the user one glance at a badge, false negatives hide a
+    fused entry. Advisory only; nothing splits automatically on this.
+    """
+    return bool(_MULTI_AUTHOR_RX.search(name or ""))
+
+
+def guess_author_parts(name):
+    """Best-guess split of a fused name, for pre-filling the manual split
+    dialog. Splits on every suspected separator (commas included — the
+    user corrects sort-form false positives by editing the fields).
+    Returns [name] unchanged when no separator is found."""
+    parts = [p.strip() for p in _MULTI_AUTHOR_RX.split(name or "")]
+    parts = [p for p in parts if p]
+    return parts if len(parts) >= 2 else [name]
+
 
 def normalize_author_name(name):
     """Layer 1: light normalisation for exact matching (the alias key).

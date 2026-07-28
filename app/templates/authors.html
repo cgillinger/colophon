@@ -108,6 +108,21 @@
         table.authors tr:last-child td { border-bottom: none; }
         td.author-name { font-weight: 500; }
         td.author-name .ti-alert-triangle { color: var(--accent-yellow); margin-left: 6px; }
+        td.author-name .multi-flag { color: var(--accent-yellow); margin-left: 6px; }
+
+        dialog#splitDialog { border: 1px solid var(--border-medium); border-radius: 10px; background: var(--bg-primary); color: var(--text-primary); padding: 20px 22px; width: min(440px, 92vw); }
+        dialog#splitDialog::backdrop { background: rgba(0, 0, 0, 0.45); }
+        #splitDialog h3 { margin: 0 0 4px; font-size: 16px; }
+        #splitDialog .split-source { color: var(--text-secondary); font-size: 13.5px; margin: 0 0 14px; }
+        #splitDialog .split-desc { color: var(--text-secondary); font-size: 12.5px; line-height: 1.5; margin: 0 0 12px; }
+        .split-field-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+        .split-field-row input { flex: 1; background: var(--bg-secondary); border: 1px solid var(--border-medium); border-radius: 6px; color: var(--text-primary); padding: 8px 12px; font-size: 14px; }
+        .split-field-row input:focus { outline: none; border-color: var(--accent-primary); }
+        .split-field-remove { background: transparent; border: none; color: var(--text-tertiary); cursor: pointer; padding: 4px; border-radius: 6px; }
+        .split-field-remove:hover { color: var(--accent-red); background: var(--bg-tertiary); }
+        .split-add { background: transparent; border: 1px dashed var(--border-medium); border-radius: 6px; color: var(--text-secondary); padding: 4px 10px; font-size: 12.5px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+        .split-add:hover { color: var(--accent-primary); border-color: var(--accent-primary); }
+        .split-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
         td.author-ids a { color: var(--accent-primary); font-size: 12.5px; margin-right: 8px; }
         td.actions { white-space: nowrap; text-align: right; }
         td.count { font-variant-numeric: tabular-nums; }
@@ -206,7 +221,7 @@
             {% set a = row.author %}
             <tr data-author-id="{{ a.id }}" data-name="{{ a.canonical_name|lower }}" data-source="{{ a.source }}">
                 <td class="col-select"><input type="checkbox" class="author-select" aria-label="{{ _('Select %(name)s', name=a.canonical_name) }}"></td>
-                <td class="author-name">{{ a.canonical_name }}{% if row.likely_duplicate %}<i class="ti ti-alert-triangle" title="{{ _('Nearly identical to another entry') }}"></i>{% endif %}</td>
+                <td class="author-name">{{ a.canonical_name }}{% if row.likely_duplicate %}<i class="ti ti-alert-triangle" title="{{ _('Nearly identical to another entry') }}"></i>{% endif %}{% if row.looks_multi %}<i class="ti ti-users multi-flag" title="{{ _('Looks like several authors in one entry — use Split') }}"></i>{% endif %}</td>
                 <td>
                     {% if a.source == 'authority_linked' %}
                         <span class="badge info">{{ _('Authority-linked') }}</span>
@@ -238,6 +253,8 @@
                     <button type="button" class="btn" data-act="verify" title="{{ _('Look the author up in Wikidata and store authority ids') }}"><i class="ti ti-world-search"></i> {{ _('Verify') }}</button>
                     <button type="button" class="btn" data-act="rename"><i class="ti ti-pencil"></i> {{ _('Rename') }}</button>
                     <button type="button" class="btn" data-act="merge"><i class="ti ti-git-merge"></i> {{ _('Merge…') }}</button>
+                    <button type="button" class="btn" data-act="split" title="{{ _('Split this entry into several authors') }}"
+                            {% if row.split_guess %}data-split-guess='{{ row.split_guess|tojson }}'{% endif %}><i class="ti ti-scissors"></i> {{ _('Split…') }}</button>
                     {% if row.book_count == 0 %}
                     <button type="button" class="btn danger" data-act="delete" title="{{ _('Remove unused entry') }}"><i class="ti ti-trash"></i></button>
                     {% endif %}
@@ -250,6 +267,18 @@
     <div class="empty-state">{{ _('No authors yet — they appear here after the next scan or upload.') }}</div>
     {% endif %}
 </div>
+
+<dialog id="splitDialog">
+    <h3><i class="ti ti-scissors"></i> {{ _('Split author') }}</h3>
+    <p class="split-source" id="splitDialogSource"></p>
+    <p class="split-desc">{{ _('One field per person, in the order they should appear. Typed names are matched against the registry, so existing authors are reused — not duplicated. All linked books are relinked, and the decision is remembered so re-scans of the files don’t bring the combined entry back.') }}</p>
+    <div id="splitDialogFields"></div>
+    <button type="button" class="split-add" id="splitDialogAdd"><i class="ti ti-plus"></i> {{ _('Add author') }}</button>
+    <div class="split-actions">
+        <button type="button" class="btn" id="splitDialogCancel">{{ _('Cancel') }}</button>
+        <button type="button" class="btn primary" id="splitDialogSave"><i class="ti ti-scissors"></i> {{ _('Split') }}</button>
+    </div>
+</dialog>
 {% endblock %}
 
 {% block scripts %}
@@ -272,7 +301,9 @@
             aiUnavailable: {{ _('AI is not configured (Settings → AI).')|tojson }},
             selectedCount: {{ _('{count} selected')|tojson }},
             bulkConfirmPrompt: {{ _('Confirm {count} selected authors? They become eligible for file writes.')|tojson }},
-            bulkNoTentative: {{ _('None of the selected entries are unconfirmed.')|tojson }}
+            bulkNoTentative: {{ _('None of the selected entries are unconfirmed.')|tojson }},
+            splitNeedTwo: {{ _('Enter at least two author names.')|tojson }},
+            splitConfirm: {{ _('Split “{name}” into {parts}? All linked books get the new authors.')|tojson }}
         }
     };
 </script>

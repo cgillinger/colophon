@@ -261,9 +261,10 @@
                 bySpan.className = 'by';
                 bySpan.textContent = _i18n.modalBy;
                 authorEl.appendChild(bySpan);
-                // One link per author (names are comma-separated). Clicking
-                // filters the library to that author's books.
-                String(data.author).split(',').map(function (n) {
+                // One link per author (' & ' is the canonical separator;
+                // legacy comma-fused strings stay one link — that is what
+                // the registry entry is). Clicking filters the library.
+                String(data.author).split(' & ').map(function (n) {
                     return n.trim();
                 }).filter(Boolean).forEach(function (name, i) {
                     if (i > 0) authorEl.appendChild(document.createTextNode(', '));
@@ -1227,14 +1228,6 @@
             description:    document.getElementById('modalDescription').value.trim()
         };
 
-        // Registry combobox: a staged pick rides along as author_id; an
-        // explicit "Create new" runs the server-side fuzzy guard first
-        // (and may be cancelled by the user — then the save is aborted).
-        var authorSel = window.getModalAuthorSelection
-            ? window.getModalAuthorSelection()
-            : { author_id: null, create_new: false };
-        if (authorSel.author_id) payload.author_id = authorSel.author_id;
-
         var btn = document.getElementById('modalSaveBtn');
         if (btn) {
             btn._savedOriginalHTML = btn.innerHTML;
@@ -1244,8 +1237,11 @@
         setModalFeedback('info', _mt('saving'));
         _setModalBusy(true);
 
-        var pre = (authorSel.create_new && window.confirmAuthorCreateIfNeeded)
-            ? window.confirmAuthorCreateIfNeeded(id, payload.author)
+        // Multi-field authors: every typed name runs the server-side
+        // fuzzy guard first (a near-duplicate asks; backing out aborts
+        // the save), then the ordered selections ride as `authors`.
+        var pre = window.confirmAuthorCreatesIfNeeded
+            ? window.confirmAuthorCreatesIfNeeded()
             : Promise.resolve(true);
 
         pre.then(function(proceed) {
@@ -1253,9 +1249,14 @@
                 _setModalBusy(false);
                 _saveButtonFeedback(false);
                 clearModalFeedback();
-                var authorInput = document.getElementById('modalAuthor');
-                if (authorInput) authorInput.focus();
+                if (window.focusModalAuthor) window.focusModalAuthor();
                 return;
+            }
+            if (window.getModalAuthorSelections) {
+                payload.authors = window.getModalAuthorSelections();
+                payload.author = payload.authors.map(function (a) {
+                    return a.name;
+                }).join(' & ');
             }
             return fetch('/metadata/' + id + '/save-json', {
                 method: 'POST',
@@ -1270,8 +1271,18 @@
                     _saveButtonFeedback(false);
                     return;
                 }
+                // The server may have canonicalized author spellings —
+                // reflect its final strings in the row and the fields.
+                if (data.author) payload.author = data.author;
                 _updateTableRow(id, payload);
                 if (window.updateRowAuthorFlag) window.updateRowAuthorFlag(id, data.author_status);
+                if (data.authors && window.initAuthorCombobox) {
+                    window.initAuthorCombobox(id, {
+                        author: data.author || '',
+                        authors: data.authors,
+                        author_status: data.author_status
+                    });
+                }
                 window._modalDirty = true;
                 _updateUnsyncedPill(1);
                 setModalFeedback('success', _mt('saved'));

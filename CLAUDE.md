@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.35.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.36.0.
 
 ## 🚧 Pågående arbete — fortsätt 2026-06-11
 
@@ -107,13 +107,14 @@ app/
     icons/                      # Favicons, app/PWA icons, header logo SVGs (light+dark)
     vendor/tabler-icons/        # Icon font
     vendor/foliate-js/          # Vendored EPUB renderer (MIT) for the reader
-tests/                          # 21 pytest files: metadata_pipeline, calibre_metadata,
+tests/                          # 22 pytest files: metadata_pipeline, calibre_metadata,
                                 # bookf, grouping, kobo_conf, kobo_sync, language,
                                 # quality, reading_state, scanner, scoring,
                                 # source_status, title_clean, wikipedia,
                                 # metadata_merge, metadata_escalation, upload,
                                 # author_authority, author_resolver,
-                                # author_routes, author_lookup, reader_dict
+                                # author_routes, author_lookup, reader_dict,
+                                # multi_author
 tools/
   install_calibre_plugins.sh    # Dockerfile build step: Goodreads, FF, FictionDB plugins
   install_kepubify.sh           # Dockerfile build step: kepubify binary for Kobo conversion
@@ -145,7 +146,7 @@ scan-sync.js             # Scan trigger + SSE handling for live progress
 upload.js                # In-app book upload: file picker + window-level drag-and-drop → POST /upload
 cleanup-misc.js          # Misc cleanup actions
 url-state.js             # Mirrors view/search/filters/sort/page to the URL (back + deep links)
-author-combobox.js       # Registry-backed author field in the book modal (typeahead + create-guard)
+author-combobox.js       # Registry-backed multi-author fields in the book modal (one row per author, typeahead + create-guard; hidden #modalAuthor holds the ' & '-joined string for legacy flows)
 authors-manage.js        # /authors page: confirm/rename/merge/verify + AI adjudicator (own page, not the bulk view)
 reader.js                # In-browser reader controller (standalone /reader page, not the bulk view; ES module, loads foliate-js)
 reader-dict.js           # Dictionary-lookup sheet for the reader (select a word → definition + translation + AI)
@@ -201,7 +202,7 @@ and how to add languages in [`docs/reader-dictionary-lookup.md`](docs/reader-dic
 
 ## Models
 
-Five tables in `app/models.py`:
+Seven tables in `app/models.py`:
 
 **`library_items` (LibraryItem)** — the catalogue. Important fields:
 - `manual_metadata` (bool) — locks text fields from auto-overwrite
@@ -217,6 +218,21 @@ Five tables in `app/models.py`:
 control: canonical author entities and observed variant spellings. `source`
 (`tentative`/`user_confirmed`/`authority_linked`) gates file writes — tentative
 entries are DB-only. See `docs/author-authority-design.md`.
+
+**`book_authors` (BookAuthor)** + **`author_split_rules` (AuthorSplitRule)** —
+multi-author support (v1.36.0). Ordered book↔author links; position 0 is the
+primary author, mirrored in `library_items.author_id` so single-author call
+sites keep working. `item.author` stays the file-mirroring display string —
+`' & '` is the canonical separator (Calibre convention; the scanner joins
+explicit `dc:creator` entries with it, the resolver auto-splits on it, and the
+sources join fetched author lists with it). Strings fused with other
+separators ("A och B", "A, B") stay one registry entity — splitting them is
+manual (the `/authors` Split dialog), and the decision persists as
+`author_split_rules` (normalized fused string → ordered author ids) that the
+resolver consults so re-scans of still-fused files don't resurrect the fused
+entry. Rules never reference tentative entries (the GC relies on it). The book
+modal renders one combobox row per author + "Lägg till författare" — the user
+never types separator syntax.
 
 **`kobo_devices` (KoboDevice)** — registered Kobo e-readers. Each row has a path token used in the device's sync URL (`/kobo/<token>/...`). Revokable from the settings UI.
 
@@ -284,7 +300,7 @@ get their env from docker-compose.
 >   -c "pip install -q pytest && python -m pytest tests/ -q"
 > ```
 
-**Known pre-existing failures (as of v1.35.0):** a clean run is *447 passed, 10
+**Known pre-existing failures (as of v1.36.0):** a clean run is *487 passed, 10
 failed*. The 10 are not regressions — `test_quality.py` (6) and
 `test_scoring.py` (3) assert Swedish reason/warning substrings the code now
 emits in English, and `test_scanner.py::...test_does_not_overwrite_manual_metadata`

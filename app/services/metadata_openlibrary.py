@@ -77,7 +77,7 @@ def _doc_to_candidate(doc, with_description=True):
         return None
 
     authors = doc.get("author_name") or []
-    author = ", ".join(a.strip() for a in authors if isinstance(a, str) and a.strip())
+    author = " & ".join(a.strip() for a in authors if isinstance(a, str) and a.strip())
 
     publishers = doc.get("publisher") or []
     publisher = next((p.strip() for p in publishers if isinstance(p, str) and p.strip()), "")

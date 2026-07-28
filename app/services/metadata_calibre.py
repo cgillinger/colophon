@@ -62,7 +62,7 @@ def _parse_opf(xml_string: str) -> dict:
         text = (el.text or "").strip()
         if text:
             creators.append(text)
-    author = ", ".join(creators) if creators else None
+    author = " & ".join(creators) if creators else None
 
     isbn = None
     for el in meta.findall(f"{{{_DC}}}identifier"):

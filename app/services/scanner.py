@@ -138,8 +138,12 @@ def _collect_authors(book):
         if _creator_role(attrs) == "aut":
             explicit_authors.append(text)
 
+    # '&' is the canonical multi-author separator (Calibre convention;
+    # comma stays free for the sort form). Separate dc:creator entries are
+    # explicit fact, so the resolver auto-splits on it — no heuristics.
+    from app.services.author_authority import AUTHOR_SEPARATOR
     chosen = explicit_authors if explicit_authors else all_creators
-    return ", ".join(chosen)
+    return AUTHOR_SEPARATOR.join(chosen)
 
 
 def _is_image_item(item):
@@ -621,7 +625,8 @@ def scan_directory(root_path, db_session=None, on_progress=None, cover_dir=None)
     for existing_item in LibraryItem.query.all():
         if not existing_item.file_path or not Path(existing_item.file_path).exists():
             touched_authors.update(
-                {existing_item.author_id, existing_item.suggested_author_id}
+                ({existing_item.author_id, existing_item.suggested_author_id}
+                 | {link.author_id for link in existing_item.author_links})
                 - {None}
             )
             session.delete(existing_item)

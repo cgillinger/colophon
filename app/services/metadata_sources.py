@@ -143,7 +143,9 @@ def result_from_google_volume(volume):
     authors = info.get("authors", [])
 
     if isinstance(authors, list):
-        author = ", ".join([clean_text(row) for row in authors if clean_text(row)])
+        # ' & ' is the canonical multi-author separator (the resolver
+        # auto-splits on it; comma stays free for sort-form names).
+        author = " & ".join([clean_text(row) for row in authors if clean_text(row)])
     else:
         author = clean_text(authors)
 
