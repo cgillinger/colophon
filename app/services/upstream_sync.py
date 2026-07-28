@@ -279,6 +279,40 @@ def get_unsynced_count() -> int:
     return _pending_query().count()
 
 
+def get_pending_cleanup_count() -> int:
+    """Moved books whose old upstream copy still awaits removal.
+
+    Counted only while cleanup is enabled — with it off a push would not
+    act on them, so they must not summon the sync button on their own.
+    (The markers themselves persist regardless of the setting.)"""
+    from app.models import LibraryItem
+    from app.services.app_settings import upstream_cleanup_enabled
+
+    if not upstream_configured() or not upstream_cleanup_enabled():
+        return 0
+    return LibraryItem.query.filter(
+        LibraryItem.pending_upstream_cleanup.isnot(None)
+    ).count()
+
+
+def list_pending_cleanups() -> list:
+    """The pending upstream cleanups for the sync preview. Same gating
+    as get_pending_cleanup_count(). Each dict: {"id", "title",
+    "old_path"}."""
+    from app.models import LibraryItem
+    from app.services.app_settings import upstream_cleanup_enabled
+
+    if not upstream_configured() or not upstream_cleanup_enabled():
+        return []
+    return [
+        {"id": item.id, "title": item.title,
+         "old_path": item.pending_upstream_cleanup}
+        for item in LibraryItem.query.filter(
+            LibraryItem.pending_upstream_cleanup.isnot(None)
+        ).all()
+    ]
+
+
 def list_pending_items() -> list:
     """Return the items pending upstream push as a list of dicts. No side effects.
 

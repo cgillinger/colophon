@@ -125,8 +125,17 @@ def create_app():
         except Exception:
             total = reading = finished = unread = 0
         try:
-            from app.services.upstream_sync import upstream_configured, get_unsynced_count
-            unsynced = get_unsynced_count() if upstream_configured() else 0
+            from app.services.upstream_sync import (
+                upstream_configured,
+                get_unsynced_count,
+                get_pending_cleanup_count,
+            )
+            # Pending upstream cleanups count as "something to sync" too —
+            # a cleanup-only push must be reachable even when no book has
+            # changed (the button is the only way to trigger a push).
+            unsynced = (
+                get_unsynced_count() + get_pending_cleanup_count()
+            ) if upstream_configured() else 0
         except Exception:
             unsynced = 0
         return {

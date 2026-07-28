@@ -1081,10 +1081,21 @@ def bulk_metadata():
 
 @metadata_bp.route("/sync/pending")
 def sync_pending():
-    """JSON endpoint: list items that would be pushed upstream (no side effects)."""
-    from app.services.upstream_sync import list_pending_items
+    """JSON endpoint: what a push would do (no side effects) — files to
+    copy up, plus old upstream copies of moved books that the same run
+    would remove (only listed while cleanup is enabled)."""
+    from app.services.upstream_sync import (
+        list_pending_cleanups,
+        list_pending_items,
+    )
     items = list_pending_items()
-    return jsonify({"ok": True, "items": items, "count": len(items)})
+    cleanups = list_pending_cleanups()
+    return jsonify({
+        "ok": True,
+        "items": items,
+        "count": len(items),
+        "cleanups": cleanups,
+    })
 
 
 @metadata_bp.route("/sync/push")

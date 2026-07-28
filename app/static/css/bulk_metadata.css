@@ -3732,6 +3732,15 @@
             font-size: 13px;
             color: var(--text-secondary);
         }
+        .sync-cleanup-header {
+            margin-top: 14px;
+            padding-top: 10px;
+            border-top: 0.5px solid var(--border-light);
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .sync-item-cleanup .sync-item-author { word-break: break-all; }
+        .sync-item-cleanup .sync-item-author .ti-trash { color: var(--danger, #c0392b); }
         .sync-item-time {
             font-size: 12px;
             color: var(--text-tertiary);

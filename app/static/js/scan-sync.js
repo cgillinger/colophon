@@ -76,12 +76,15 @@
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 var items = (data && data.items) || [];
-                if (!items.length) {
+                var cleanups = (data && data.cleanups) || [];
+                if (!items.length && !cleanups.length) {
                     header.textContent = '';
                     itemsEl.innerHTML = '<div class="sync-empty">' + _escSync(_i18n.syncNothing) + '</div>';
                     return;
                 }
-                header.textContent = _i18n.syncPreviewHeader.replace('{count}', items.length);
+                header.textContent = items.length
+                    ? _i18n.syncPreviewHeader.replace('{count}', items.length)
+                    : '';
                 var html = '';
                 for (var i = 0; i < items.length; i++) {
                     var it = items[i];
@@ -95,9 +98,26 @@
                     if (whenLabel) html += '<div class="sync-item-time">' + _escSync(whenLabel) + '</div>';
                     html += '</div>';
                 }
+                // Moved books whose old upstream copy the same run removes
+                // (listed only while the cleanup setting is on).
+                if (cleanups.length) {
+                    html += '<div class="sync-cleanup-header">' +
+                        _escSync((_i18n.syncCleanupHeader || '{count} old copies of moved books will be removed upstream:')
+                            .replace('{count}', cleanups.length)) + '</div>';
+                    for (var c = 0; c < cleanups.length; c++) {
+                        html += '<div class="sync-item sync-item-cleanup">';
+                        html +=   '<div class="sync-item-meta">';
+                        html +=     '<div class="sync-item-title">' + _escSync(cleanups[c].title) + '</div>';
+                        html +=     '<div class="sync-item-author"><i class="ti ti-trash"></i> ' + _escSync(cleanups[c].old_path) + '</div>';
+                        html +=   '</div>';
+                        html += '</div>';
+                    }
+                }
                 itemsEl.innerHTML = html;
-                document.getElementById('syncConfirmLabel').textContent =
-                    _i18n.syncConfirmLabel.replace('{count}', items.length);
+                document.getElementById('syncConfirmLabel').textContent = items.length
+                    ? _i18n.syncConfirmLabel.replace('{count}', items.length)
+                    : (_i18n.syncConfirmCleanupOnly || 'Clean up {count} file(s) upstream')
+                        .replace('{count}', cleanups.length);
                 confirmBtn.style.display = 'inline-flex';
             })
             .catch(function (err) {
