@@ -117,6 +117,14 @@ def read_book(item_id):
     item = get_item_or_404(item_id)
     if not _is_readable(item):
         abort(404)
+    # Epoch ms of the server-side reading state (0 = never read). The reader
+    # compares this against the savedAt of its localStorage progress copy so a
+    # "Reset reading state" done in the library (which bumps read_last_modified)
+    # beats a stale-but-further local copy on the next open.
+    modified = item.read_last_modified
+    progress_modified_at = (
+        int((modified - datetime(1970, 1, 1)).total_seconds() * 1000) if modified else 0
+    )
     return render_template(
         "reader.html",
         item=item,
@@ -124,6 +132,7 @@ def read_book(item_id):
         progress_url=url_for("reader.update_progress", item_id=item.id),
         initial_progress=item.read_progress or 0,
         read_status=item.read_status or "ReadyToRead",
+        progress_modified_at=progress_modified_at,
         can_share=_can_share(item),
         share_filename=_share_filename(item),
         share_mimetype=READER_MIMETYPES.get(_share_extension(item), "application/octet-stream"),

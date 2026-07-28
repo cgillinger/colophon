@@ -229,8 +229,12 @@ import { initDictLookup } from './reader-dict.js';
 
     function persistLocal(state, synced) {
         try {
+            // savedAt lets resume compare this copy against the server's
+            // read_last_modified, so a library-side reset isn't undone by a
+            // stale-but-further local copy.
             localStorage.setItem(PROGRESS_KEY, JSON.stringify({
-                percent: state.percent, status: state.status, synced: !!synced
+                percent: state.percent, status: state.status, synced: !!synced,
+                savedAt: Date.now()
             }));
         } catch (e) { /* private mode / quota */ }
     }
@@ -524,13 +528,19 @@ import { initDictLookup } from './reader-dict.js';
 
             var initial = Number(cfg.initialProgress) || 0;
             var status = cfg.readStatus;
-            // Prefer locally-stored progress when it's further along — covers
-            // resuming offline, where the server-rendered initial value is
-            // stale (it can't have received progress made without a connection).
+            // Local copy vs server: an *unsynced* copy is offline progress the
+            // server never saw — furthest wins (it re-syncs via flushUnsynced).
+            // A *synced* copy only wins when it's also newer than the server's
+            // read_last_modified; otherwise a "Reset reading state" done in the
+            // library (or progress made on the Kobo) would lose to a stale
+            // localStorage copy that just happens to be further along.
             var local = readLocalProgress();
             if (local && Number(local.percent) > initial) {
-                initial = Number(local.percent);
-                status = local.status || status;
+                var newerThanServer = (Number(local.savedAt) || 0) > (Number(cfg.progressModifiedAt) || 0);
+                if (local.synced === false || newerThanServer) {
+                    initial = Number(local.percent);
+                    status = local.status || status;
+                }
             }
             var frac = 0;
             // Resume by percent. Don't jump to the end of a finished book —
