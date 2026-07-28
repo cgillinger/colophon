@@ -230,16 +230,12 @@ def test_push_keeps_orphan_when_disabled(app, session, tmp_path, monkeypatch):
     assert (upstream / "moved.epub").is_file()
     assert item.pending_upstream_cleanup == "moved.epub"
 
-    # Enabling later cleans retroactively on the next push.
-    item.file_modified_by_colophon = None
-    session.commit()
-    move_again_marker = item.pending_upstream_cleanup
-    assert move_again_marker == "moved.epub"
-    from datetime import datetime
-    item.file_modified_by_colophon = datetime.utcnow()
-    session.commit()
+    # Enabling later cleans retroactively on the next push — WITHOUT the
+    # book re-entering the push queue (it is already in sync; the
+    # cleanup-only pass must pick it up).
     events = _run_push(app, monkeypatch, upstream, enabled=True)
-    assert [e for e in events if e["type"] == "done"][0]["cleaned"] == 1
+    done = [e for e in events if e["type"] == "done"][0]
+    assert done["synced"] == 0 and done["cleaned"] == 1
     assert not (upstream / "moved.epub").exists()
     assert item.pending_upstream_cleanup is None
 

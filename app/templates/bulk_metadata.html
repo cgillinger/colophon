@@ -192,6 +192,7 @@
                 <option value="series">{{ _('Missing series') }}</option>
                 <option value="description">{{ _('Missing synopsis') }}</option>
                 <option value="author">{{ _('Missing author') }}</option>
+                <option value="authorfolder">{{ _('Missing author folder') }}</option>
                 <option value="cover">{{ _('Missing cover') }}</option>
                 <option value="isbn">{{ _('Missing ISBN') }}</option>
                 <option value="publisher">{{ _('Missing publisher') }}</option>
@@ -274,6 +275,7 @@
                             data-has-publisher="{{ '1' if item.publisher else '0' }}"
                             data-has-genres="{{ '1' if item.genres else '0' }}"
                             data-has-published="{{ '1' if item.published_date else '0' }}"
+                            data-in-folder="{{ '1' if item.in_author_folder else '0' }}"
                             data-unsynced="{{ '1' if item.file_modified_by_colophon and (not item.upstream_synced_at or item.file_modified_by_colophon > item.upstream_synced_at) else '0' }}"
                             data-rating="{{ item.user_rating or 0 }}"
                             data-user-rating="{{ item.user_rating or '' }}"

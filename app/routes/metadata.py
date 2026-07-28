@@ -1030,6 +1030,16 @@ def bulk_metadata():
     finished_count = LibraryItem.query.filter(LibraryItem.read_status == "Finished").count()
     unread_count = total_count - reading_count - finished_count
 
+    # "Missing author folder" filter: mark books sitting flat in the
+    # library root (uploads land there; DESIGN-author-folders.md). Plain
+    # string compare — file_path is always stored absolute under
+    # LIBRARY_DIR, and per-item realpath would cost a syscall each.
+    _lib_root = (current_app.config.get("LIBRARY_DIR", "") or "").rstrip("/")
+    for _it in items:
+        _it.in_author_folder = bool(
+            _it.file_path and os.path.dirname(_it.file_path) != _lib_root
+        )
+
     # Default fetch depth (fast|more|deep) — seeds the per-fetch tier chooser in
     # the single-book modal and the batch wizard. Each fetch can override it.
     from app.services.metadata_pipeline import resolve_fetch_mode

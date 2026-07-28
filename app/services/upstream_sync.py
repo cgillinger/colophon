@@ -185,6 +185,29 @@ def push_to_upstream():
 
         yield {"type": "progress", "file": item.title, "current": i, "total": total}
 
+    # Retroactive cleanup: books moved while cleanup was disabled are
+    # already in sync and never re-enter the push loop above — their
+    # pending markers would otherwise wait forever. Same safety envelope:
+    # the recorded new path must verifiably exist upstream before the old
+    # copy goes; otherwise the marker is kept for a later push.
+    if cleanup_on:
+        for item in LibraryItem.query.filter(
+            LibraryItem.pending_upstream_cleanup.isnot(None)
+        ).all():
+            pending = item.pending_upstream_cleanup
+            if not pending:
+                continue
+            if pending == item.upstream_rel_path:
+                item.pending_upstream_cleanup = None
+                continue
+            if item.upstream_rel_path and os.path.isfile(
+                os.path.join(upstream_dir, item.upstream_rel_path)
+            ):
+                if _remove_upstream_orphan(upstream_dir, pending):
+                    cleaned += 1
+                    yield {"type": "cleanup", "file": pending}
+                item.pending_upstream_cleanup = None
+
     db.session.commit()
     yield {"type": "done", "synced": synced, "errors": errors, "cleaned": cleaned}
 

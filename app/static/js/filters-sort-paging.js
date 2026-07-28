@@ -231,6 +231,7 @@
         'series':         'hasSeries',
         'description':    'hasDescription',
         'author':         'hasAuthor',
+        'authorfolder':   'inFolder',   // '0' = flat in the library root
         'cover':          'hasCover',
         'isbn':           'hasIsbn',
         'publisher':      'hasPublisher',
