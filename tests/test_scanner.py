@@ -224,6 +224,79 @@ class TestExtractLocalMetadata:
 
 
 # ---------------------------------------------------------------------------
+# Serie ur OPF — riktiga EPUB-filer, ingen mock. Mockade tester dolde att
+# ebooklib nycklar <meta>-taggar på name-attributet/None, aldrig på "meta",
+# så inbäddad serieinfo lästes aldrig (fixat i _opf_meta_by_name/_by_property).
+# ---------------------------------------------------------------------------
+
+class TestSeriesFromOpf:
+    _CONTAINER = (
+        '<?xml version="1.0"?><container version="1.0" '
+        'xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles>'
+        '<rootfile full-path="content.opf" media-type="application/oebps-package+xml"/>'
+        '</rootfiles></container>'
+    )
+    _NCX = (
+        '<?xml version="1.0"?><ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" '
+        'version="2005-1"><head/><docTitle><text>x</text></docTitle><navMap>'
+        '<navPoint id="n1" playOrder="1"><navLabel><text>K1</text></navLabel>'
+        '<content src="ch1.xhtml"/></navPoint></navMap></ncx>'
+    )
+
+    def _write_epub(self, path, metadata_xml):
+        import zipfile
+
+        opf = (
+            '<?xml version="1.0" encoding="utf-8"?>'
+            '<package xmlns="http://www.idpf.org/2007/opf" '
+            'unique-identifier="id" version="2.0">'
+            '<metadata xmlns:dc="http://purl.org/dc/elements/1.1/" '
+            'xmlns:opf="http://www.idpf.org/2007/opf">'
+            '<dc:identifier id="id">test-id</dc:identifier>'
+            '<dc:title>Serieboken</dc:title><dc:language>sv</dc:language>'
+            f'{metadata_xml}'
+            '</metadata><manifest>'
+            '<item id="ch1" href="ch1.xhtml" media-type="application/xhtml+xml"/>'
+            '<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>'
+            '</manifest><spine toc="ncx"><itemref idref="ch1"/></spine></package>'
+        )
+        with zipfile.ZipFile(path, "w") as z:
+            z.writestr("mimetype", "application/epub+zip")
+            z.writestr("META-INF/container.xml", self._CONTAINER)
+            z.writestr("content.opf", opf)
+            z.writestr(
+                "ch1.xhtml",
+                '<html xmlns="http://www.w3.org/1999/xhtml"><body><p>x</p></body></html>',
+            )
+            z.writestr("toc.ncx", self._NCX)
+
+    def test_epub2_calibre_series_meta(self, tmp_path):
+        path = tmp_path / "epub2.epub"
+        self._write_epub(
+            path,
+            '<meta name="calibre:series" content="Gamla serien"/>'
+            '<meta name="calibre:series_index" content="3"/>',
+        )
+        result = extract_local_metadata(path)
+        assert result["series"] == "Gamla serien"
+        assert result["series_index"] == "3"
+
+    def test_epub3_belongs_to_collection(self, tmp_path):
+        # ebook-meta skriver serien så här (med opf:-prefix) på
+        # ebooklib-genererade filer.
+        path = tmp_path / "epub3.epub"
+        self._write_epub(
+            path,
+            '<opf:meta property="belongs-to-collection" id="s1">Nya serien</opf:meta>'
+            '<opf:meta refines="#s1" property="collection-type">series</opf:meta>'
+            '<opf:meta refines="#s1" property="group-position">2</opf:meta>',
+        )
+        result = extract_local_metadata(path)
+        assert result["series"] == "Nya serien"
+        assert result["series_index"] == "2"
+
+
+# ---------------------------------------------------------------------------
 # upsert_library_item
 # ---------------------------------------------------------------------------
 

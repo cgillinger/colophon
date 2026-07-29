@@ -22,9 +22,14 @@ logger = logging.getLogger(__name__)
 
 
 def _opf_meta_by_name(book, name):
-    """Hitta <meta name="X" content="Y"/> i OPF-metadata."""
+    """Hitta <meta name="X" content="Y"/> i OPF-metadata (EPUB2-stil).
+
+    ebooklib nycklar dessa på name-attributet, inte på taggen:
+    "calibre:series" hamnar under ("calibre", "series") och "cover"
+    under ("OPF", "cover") — ("OPF", "meta") är alltid tom."""
+    ns, _, key = name.rpartition(":")
     try:
-        for val, attrs in (book.get_metadata("OPF", "meta") or []):
+        for val, attrs in (book.get_metadata(ns or "OPF", key) or []):
             if (attrs or {}).get("name") == name:
                 return (attrs.get("content") or "").strip() or None
     except Exception:
@@ -33,9 +38,12 @@ def _opf_meta_by_name(book, name):
 
 
 def _opf_meta_by_property(book, prop):
-    """Hitta <meta property="X">Y</meta> i OPF-metadata (EPUB3)."""
+    """Hitta <meta property="X">Y</meta> i OPF-metadata (EPUB3).
+
+    Property-metas saknar name-attribut, så ebooklib lägger dem alla
+    under nyckeln None i OPF-namnrymden."""
     try:
-        for val, attrs in (book.get_metadata("OPF", "meta") or []):
+        for val, attrs in (book.get_metadata("OPF", None) or []):
             if (attrs or {}).get("property") == prop:
                 return (val or "").strip() or None
     except Exception:
