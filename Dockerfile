@@ -11,6 +11,7 @@ RUN apt-get update \
         libxml2 \
         libxslt1.1 \
         curl \
+        rsync \
         ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 

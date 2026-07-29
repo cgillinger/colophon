@@ -193,7 +193,13 @@ def _scan_sse():
             try:
                 if upstream_configured():
                     for ev in pull_from_upstream():
-                        ev["type"] = "upstream_pull"
+                        # A pull failure must reach the UI (a missing rsync
+                        # once looked like "nothing new upstream"), but it
+                        # must not stop the local scan below.
+                        if ev.get("type") == "error":
+                            ev["type"] = "upstream_error"
+                        else:
+                            ev["type"] = "upstream_pull"
                         ev_queue.put(ev)
 
                 summary = _scan(

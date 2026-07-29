@@ -95,12 +95,16 @@ def pull_from_upstream():
         if proc.returncode not in (0, 24):  # 24 = partial transfer (vanishing files)
             stderr = proc.stderr.read()
             logger.error("rsync pull failed (rc=%d): %s", proc.returncode, stderr)
+            yield {"type": "error", "message": f"rsync exited with code {proc.returncode}"}
+            return
 
     except FileNotFoundError:
         logger.error("upstream_sync: rsync not found")
+        yield {"type": "error", "message": "rsync is not installed in the container"}
         return
     except Exception as exc:
         logger.exception("upstream_sync: pull failed: %s", exc)
+        yield {"type": "error", "message": str(exc)}
         return
 
     yield {"type": "done", "added": added, "updated": updated, "deleted": 0}

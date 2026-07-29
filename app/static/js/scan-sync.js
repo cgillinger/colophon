@@ -185,19 +185,25 @@
         if (inlineText) inlineText.textContent = _i18n.searchingEbooks;
 
         var source = new EventSource('/scan?progress=1');
+        var pullError = null;
         source.onmessage = function (e) {
             var d = JSON.parse(e.data);
             if (d.type === 'upstream_pull') {
                 if (inlineText) inlineText.textContent = _i18n.fetchingFromLibrary + ' ' + d.file;
+            } else if (d.type === 'upstream_error') {
+                pullError = _i18n.upstreamPullFailed + ' ' + d.message;
+                if (inlineText) inlineText.textContent = pullError;
             } else if (d.type === 'progress') {
                 if (inlineText) inlineText.textContent = _i18n.scanningFile + ' ' + d.file;
             } else if (d.type === 'done') {
-                if (inlineText) inlineText.textContent = _i18n.scanDone
+                var doneMsg = _i18n.scanDone
                     .replace('{added}', d.added)
                     .replace('{updated}', d.updated)
                     .replace('{removed}', d.removed);
+                if (pullError) doneMsg = pullError + ' — ' + doneMsg;
+                if (inlineText) inlineText.textContent = doneMsg;
                 source.close();
-                setTimeout(function () { location.reload(); }, 1200);
+                setTimeout(function () { location.reload(); }, pullError ? 6000 : 1200);
             } else if (d.type === 'error') {
                 if (inlineText) inlineText.textContent = _i18n.scanError + ' ' + d.message;
                 source.close();
