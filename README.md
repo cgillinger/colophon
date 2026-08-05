@@ -1,6 +1,6 @@
 # Colophon — self-hosted e-book library manager with Kobo wireless sync
 
-[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.39.6-brightgreen)](https://github.com/cgillinger/colophon/releases) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#setting-up-kobo-sync)
+[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![GHCR](https://img.shields.io/badge/ghcr.io-prebuilt%20image-2496ED?logo=github&logoColor=white)](https://github.com/cgillinger/colophon/pkgs/container/colophon) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.40.0-brightgreen)](https://github.com/cgillinger/colophon/releases) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#setting-up-kobo-sync)
 
 **Colophon — the e-book manager.** A self-hosted web app that turns a messy folder of e-book files into a clean, browsable library and syncs it to a Kobo e-reader over WiFi. (Not the printing/publishing term — this is the software.)
 
@@ -78,6 +78,44 @@ It is *not* a comics page-reader, a multi-user server, or an internet-facing app
 ---
 
 ## Quick start
+
+### Option 1: prebuilt image (recommended)
+
+A ready-made multi-arch image (x86_64 + ARM64 — works on regular servers, Synology NAS and Raspberry Pi) is published to GitHub Container Registry on every code change: [`ghcr.io/cgillinger/colophon`](https://github.com/cgillinger/colophon/pkgs/container/colophon). No cloning or building needed — save this as `docker-compose.yml` in an empty folder:
+
+```yaml
+services:
+  colophon:
+    image: ghcr.io/cgillinger/colophon:latest
+    container_name: colophon
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./bibliotek:/books:rw   # your book folder
+      - ./data:/data:rw         # database, covers, caches
+    environment:
+      # Generate one: python3 -c "import secrets; print(secrets.token_hex(32))"
+      COLOPHON_SECRET_KEY: change-me
+      # Needed for Kobo sync — the LAN address the Kobo will use:
+      # COLOPHON_PUBLIC_URL: http://192.168.x.x:5000
+    restart: unless-stopped
+```
+
+Then:
+
+```bash
+docker compose up -d
+```
+
+Open `http://localhost:5000`. To update later:
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+`:latest` follows the main branch. Prefer pinned releases? Use a version tag instead, e.g. `ghcr.io/cgillinger/colophon:1.40.0` — every [release](https://github.com/cgillinger/colophon/releases) gets a matching image tag.
+
+### Option 2: build from source
 
 ```bash
 git clone https://github.com/cgillinger/colophon.git
