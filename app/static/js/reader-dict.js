@@ -85,6 +85,8 @@ export function initDictLookup(opts) {
     var moveBtn = document.getElementById('rdMove');
     var moveIcon = document.getElementById('rdMoveIcon');
     var moveLabel = document.getElementById('rdMoveLabel');
+    var resetBtn = document.getElementById('rdReset');
+    var gripEl = sheet.querySelector('.rs-grip');
 
     var DICT_EYEBROW = eyebrow ? eyebrow.textContent : '';
     var STR = {
@@ -97,7 +99,8 @@ export function initDictLookup(opts) {
 
     var current = null;          // { word, sentence }
     var selectedText = '';       // what the copy actions act on
-    var placementPinned = false; // the user moved it; leave it alone until close
+    var placementPinned = false; // flipped by the button; forgotten on close
+    var freePosition = null;     // dragged somewhere; remembered across sessions
     var seq = 0;                 // stale-response guard
     var downloading = false;
     var openedAt = 0;
@@ -112,6 +115,8 @@ export function initDictLookup(opts) {
     // selection is *not* at, and let the grip override when the guess is wrong.
 
     function placeAwayFrom(doc, sel) {
+        // A sheet the reader has parked somewhere stays parked.
+        if (freePosition) { applyFreePosition(freePosition); return; }
         if (placementPinned) return;
         var mid = selectionMidpoint(doc, sel);
         if (mid == null) return;
@@ -143,6 +148,97 @@ export function initDictLookup(opts) {
             var offset = frame ? frame.getBoundingClientRect().top : 0;
             return offset + rect.top + rect.height / 2;
         } catch (e) { return null; }
+    }
+
+    // --- Free positioning --------------------------------------------------
+    // Drag the grip and the sheet goes wherever you put it, remembered across
+    // sessions. Auto-placement only applies while the sheet has never been
+    // moved by hand; "Reset position" hands it back.
+
+    var POS_KEY = 'colophon-reader-sheet-pos';
+
+    function loadPosition() {
+        try {
+            var p = JSON.parse(localStorage.getItem(POS_KEY) || 'null');
+            return (p && typeof p.left === 'number' && typeof p.top === 'number') ? p : null;
+        } catch (e) { return null; }
+    }
+
+    function savePosition(pos) {
+        try {
+            if (pos) localStorage.setItem(POS_KEY, JSON.stringify(pos));
+            else localStorage.removeItem(POS_KEY);
+        } catch (e) { /* private mode */ }
+    }
+
+    // Never let the sheet end up somewhere it can't be grabbed again — after a
+    // rotation, a window resize, or a drag that overshot.
+    function clampIntoView(left, top) {
+        // offsetWidth is 0 while the sheet is hidden, which is exactly when
+        // placement is decided — mirror the CSS width instead.
+        var w = sheet.offsetWidth || Math.min(560, window.innerWidth - 16);
+        var margin = 8;
+        var maxLeft = Math.max(margin, window.innerWidth - w - margin);
+        var maxTop = Math.max(margin, window.innerHeight - 56);   // keep the header reachable
+        return {
+            left: Math.min(Math.max(margin, left), maxLeft),
+            top: Math.min(Math.max(margin, top), maxTop),
+        };
+    }
+
+    function applyFreePosition(pos) {
+        var safe = clampIntoView(pos.left, pos.top);
+        sheet.classList.add('rd-free');
+        sheet.classList.remove('rd-top');
+        sheet.style.left = safe.left + 'px';
+        sheet.style.top = safe.top + 'px';
+        if (resetBtn) resetBtn.hidden = false;
+        if (moveBtn) moveBtn.hidden = true;
+        return safe;
+    }
+
+    function clearFreePosition() {
+        sheet.classList.remove('rd-free');
+        sheet.style.left = '';
+        sheet.style.top = '';
+        freePosition = null;
+        savePosition(null);
+        if (resetBtn) resetBtn.hidden = true;
+        if (moveBtn) moveBtn.hidden = false;
+        syncMoveButton();
+    }
+
+    function startDrag(ev) {
+        if (ev.button != null && ev.button !== 0) return;
+        var rect = sheet.getBoundingClientRect();
+        var grabX = ev.clientX - rect.left;
+        var grabY = ev.clientY - rect.top;
+        sheet.classList.add('rd-free', 'rd-dragging');
+        sheet.classList.remove('rd-top');
+        sheet.style.left = rect.left + 'px';
+        sheet.style.top = rect.top + 'px';
+
+        function onMove(e) {
+            var safe = clampIntoView(e.clientX - grabX, e.clientY - grabY);
+            sheet.style.left = safe.left + 'px';
+            sheet.style.top = safe.top + 'px';
+            freePosition = safe;
+        }
+        function onUp() {
+            sheet.classList.remove('rd-dragging');
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+            window.removeEventListener('pointercancel', onUp);
+            if (freePosition) {
+                savePosition(freePosition);
+                if (resetBtn) resetBtn.hidden = false;
+                if (moveBtn) moveBtn.hidden = true;
+            }
+        }
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+        window.addEventListener('pointercancel', onUp);
+        ev.preventDefault();
     }
 
     function togglePlacement() {
@@ -419,7 +515,20 @@ export function initDictLookup(opts) {
     if (closeBtn) closeBtn.addEventListener('click', close);
     if (aiBtn) aiBtn.addEventListener('click', explain);
     if (moveBtn) moveBtn.addEventListener('click', togglePlacement);
+    if (resetBtn) resetBtn.addEventListener('click', clearFreePosition);
+    if (gripEl) gripEl.addEventListener('pointerdown', startDrag);
+
+    freePosition = loadPosition();
+    if (freePosition) {
+        if (resetBtn) resetBtn.hidden = false;
+        if (moveBtn) moveBtn.hidden = true;
+    }
     syncMoveButton();
+
+    // A rotation or a resized window can strand a parked sheet off-screen.
+    window.addEventListener('resize', function () {
+        if (freePosition && isOpen()) freePosition = applyFreePosition(freePosition);
+    });
     if (copyBtn) copyBtn.addEventListener('click', function () { copyText(false); });
     if (copyCiteBtn) copyCiteBtn.addEventListener('click', function () { copyText(true); });
 

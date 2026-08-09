@@ -5,6 +5,19 @@ PATCH for fixes, MINOR for user-visible features and automatic migrations, MAJOR
 changes that need you to act. Releases before 1.41.0 are summarised from the git log —
 see the [tags](https://github.com/cgillinger/colophon/tags) for the full history.
 
+## [1.47.0] — 2026-08-09
+
+### Added
+- **Put the selection sheet wherever you want it.** Drag it by the handle at
+  its edge and it stays where you drop it — across books and across sessions,
+  not just until you close it. **Reset position** hands it back to placing
+  itself opposite your selection.
+
+  The handle now does what a grab handle looks like it does; the up/down button
+  remains for a one-tap flip and for anyone using a keyboard. A parked sheet is
+  always kept far enough on screen to grab again, including after rotating a
+  tablet or resizing a window.
+
 ## [1.46.2] — 2026-08-09
 
 ### Fixed
