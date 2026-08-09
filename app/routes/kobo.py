@@ -51,8 +51,23 @@ EPUB_EXTENSIONS = (".epub", ".kepub", ".kepub.epub")
 _KOBO_UUID_NAMESPACE = uuid.UUID("4c0fb9b1-2b3b-4a1f-9a8d-0c8b6c1a2b3a")
 
 
-def _book_uuid(item_id: int) -> str:
-    return str(uuid.uuid5(_KOBO_UUID_NAMESPACE, f"book-{item_id}"))
+def _book_uuid(item) -> str:
+    """The device-facing UUID for a book.
+
+    Derived from ``LibraryItem.book_uid``, which survives a row being deleted
+    and re-created — unlike the primary key it replaced. Rows that predate the
+    column are backfilled to ``"book-<id>"``, so this reproduces exactly the
+    UUID they already have on every synced device.
+
+    Accepts an item or a bare id/uid string; the id form is the pre-v1.43.0
+    contract and still resolves to the same UUID for backfilled rows.
+    """
+    uid = getattr(item, "book_uid", None)
+    if not uid:
+        # Either a bare id was passed, or a row created before the backfill ran.
+        raw = getattr(item, "id", item)
+        uid = raw if isinstance(raw, str) else f"book-{raw}"
+    return str(uuid.uuid5(_KOBO_UUID_NAMESPACE, uid))
 
 
 # A Location that contradicts ProgressPercent is worse than no Location at
@@ -494,7 +509,7 @@ def _entitlement_dtos(item: LibraryItem, base_url: str, token: str) -> dict:
     """Build a NewEntitlement wrapper for one LibraryItem."""
     from app.services.kobo_kepub import resolve_kepubify_path
 
-    book_uuid = _book_uuid(item.id)
+    book_uuid = _book_uuid(item)
     last_modified = _iso(item.updated_at)
     created = _iso(item.created_at)
     download_url = f"{base_url}/kobo/{token}/v1/books/{item.id}/file/epub"
@@ -650,9 +665,13 @@ def _changed_reading_state_wrapper(item: LibraryItem, base_url: str, token: str)
     return {"ChangedReadingState": {"ReadingState": dtos["ReadingState"]}}
 
 
-def _deleted_entitlement_wrapper(library_item_id: int) -> dict:
-    """The Kobo expects a minimal BookEntitlement for deletions."""
-    book_uuid = _book_uuid(library_item_id)
+def _deleted_entitlement_wrapper(book_uuid: str) -> dict:
+    """The Kobo expects a minimal BookEntitlement for deletions.
+
+    Takes the UUID rather than an item id: by the time we withdraw a book its
+    row is usually gone, so the identity has to come from what we recorded when
+    we shipped it (``KoboBookState.revision_id``).
+    """
     now = _iso(None)
     return {
         "DeletedEntitlement": {
@@ -731,7 +750,12 @@ def library_sync(device):
         [_new_entitlement_wrapper(item, base_url, token) for item in delta.new_items]
         + [_changed_entitlement_wrapper(item, base_url, token) for item in delta.changed_items]
         + [_changed_reading_state_wrapper(item, base_url, token) for item in delta.reading_state_items]
-        + [_deleted_entitlement_wrapper(item_id) for item_id in delta.deleted_item_ids]
+        + [
+            _deleted_entitlement_wrapper(
+                delta.deleted_revisions.get(item_id) or _book_uuid(item_id)
+            )
+            for item_id in delta.deleted_item_ids
+        ]
     )
 
     # Persist what we just sent so the next sync knows
@@ -858,7 +882,7 @@ def _find_item_by_uuid(image_id: str) -> LibraryItem | None:
     # Otherwise reverse-lookup by computing UUIDs of all EPUBs and
     # comparing. With <10k books this is microseconds; not worth caching.
     for item in _epub_items_query().all():
-        if _book_uuid(item.id) == image_id:
+        if _book_uuid(item) == image_id:
             return item
     return None
 
@@ -877,7 +901,7 @@ def _build_state_response(item: LibraryItem) -> dict:
     """Render a saved LibraryItem as the ReadingState DTO the Kobo expects
     back on GET /v1/library/<uuid>/state. Shape matches the ReadingState
     block we ship in /library/sync entitlements."""
-    book_uuid = _book_uuid(item.id)
+    book_uuid = _book_uuid(item)
     last_modified = _iso(item.read_last_modified or item.updated_at)
     created = _iso(item.created_at)
     current_bookmark = {

@@ -40,6 +40,13 @@ def ensure_database_columns():
         "file_mtime": "ALTER TABLE library_items ADD COLUMN file_mtime REAL",
         "metadata_read_at": "ALTER TABLE library_items ADD COLUMN metadata_read_at DATETIME",
         "group_key": "ALTER TABLE library_items ADD COLUMN group_key VARCHAR(64)",
+        # Device-facing identity, deliberately independent of the primary key.
+        # A row's id is an autoincrement that a delete + re-add changes, and the
+        # Kobo treats a changed id as a different book — losing the reading
+        # position and stranding the old entitlement on the device. book_uid
+        # survives that. See backfill_book_uids() for why existing rows keep
+        # their current UUID.
+        "book_uid": "ALTER TABLE library_items ADD COLUMN book_uid VARCHAR(64)",
         "genres": "ALTER TABLE library_items ADD COLUMN genres TEXT",
         "published_date": "ALTER TABLE library_items ADD COLUMN published_date VARCHAR(20)",
         "file_modified_by_colophon": "ALTER TABLE library_items ADD COLUMN file_modified_by_colophon DATETIME",
@@ -129,6 +136,7 @@ def ensure_database_columns():
 
     backfill_group_keys(force=group_key_added)
     backfill_content_updated_at()
+    backfill_book_uids()
     sanitize_html_descriptions()
     backfill_language_detection()
     normalize_series_index_values()
@@ -281,6 +289,37 @@ def backfill_content_updated_at():
         logger.info("Backfilled content_updated_at for %d rows", result.rowcount)
     else:
         db.session.rollback()
+
+
+def backfill_book_uids():
+    """Give every existing row the uid that reproduces its current Kobo UUID.
+
+    The device identity used to be ``uuid5(NS, f"book-{item.id}")``. Seeding
+    ``book_uid = "book-<id>"`` and hashing *that* keeps every already-synced
+    book's UUID byte-identical across the upgrade — no re-downloads, no
+    stranded entitlements, no lost reading positions. New rows get a random
+    uid instead, so from here on identity no longer rides on the primary key.
+
+    Idempotent — only touches NULLs.
+    """
+    result = db.session.execute(text(
+        "UPDATE library_items SET book_uid = 'book-' || id WHERE book_uid IS NULL"
+    ))
+    if result.rowcount:
+        db.session.commit()
+        logger.info("Backfilled book_uid for %d rows", result.rowcount)
+    else:
+        db.session.rollback()
+
+    try:
+        db.session.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ix_library_items_book_uid "
+            "ON library_items (book_uid)"
+        ))
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        logger.warning("Could not create the book_uid index: %s", exc)
 
 
 def backfill_language_detection():

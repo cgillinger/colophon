@@ -376,7 +376,7 @@ def test_reading_state_put_does_not_trigger_redownload(app, client):
         db.session.add(item)
         db.session.commit()
         item_id = item.id
-        book_uuid = _book_uuid(item_id)
+        book_uuid = _book_uuid(LibraryItem.query.get(item_id))
 
     r1 = client.get(f"/kobo/{token}/v1/library/sync")
     token1 = r1.headers["x-kobo-synctoken"]
@@ -632,7 +632,7 @@ def _make_book(title="Phase 3 Book", **kwargs):
     )
     db.session.add(item)
     db.session.commit()
-    return token, item.id, _book_uuid(item.id)
+    return token, item.id, _book_uuid(item)
 
 
 def test_state_put_unknown_uuid_is_acked(app, client):
@@ -1212,3 +1212,39 @@ def test_plausible_delete_is_not_blocked(app):
         delta = compute_delta(device.id, SyncToken(), _epub_items_query)
         assert delta.deleted_item_ids == [99999]
         assert delta.blocked_mass_delete is False
+
+
+def test_revoking_a_device_forgets_what_it_had_seen(app):
+    """SQLite reuses rowids, so leftover bookkeeping would be inherited.
+
+    A newly paired Kobo would then look like it had already seen the library:
+    every book ships as a change instead of as new, and the device downloads
+    nothing.
+    """
+    from app.models import KoboBookState, LibraryItem, db
+    from app.services.kobo_auth import create_device, revoke_device
+    from app.services.kobo_sync import SyncToken, compute_delta
+    from app.routes.kobo import _epub_items_query
+
+    with app.app_context():
+        device, _ = create_device("Old device")
+        item = LibraryItem(
+            title="Shared Book", file_path="/books/shared.epub",
+            file_name="shared.epub", extension=".epub",
+        )
+        db.session.add(item)
+        db.session.commit()
+        db.session.add(KoboBookState(
+            device_id=device.id, library_item_id=item.id, revision_id="rev",
+        ))
+        db.session.commit()
+        old_id = device.id
+
+        assert revoke_device(old_id) is True
+        assert KoboBookState.query.filter_by(device_id=old_id).count() == 0
+
+        # A new device on the same (reused) id starts from nothing.
+        fresh, _ = create_device("New device")
+        delta = compute_delta(fresh.id, SyncToken(), _epub_items_query)
+        assert [i.id for i in delta.new_items] == [item.id]
+        assert delta.changed_items == []

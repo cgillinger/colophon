@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.42.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.43.0.
 
 ## Författarmappar (v1.38.0 — byggt)
 
@@ -87,7 +87,7 @@ app/
     text_utils.py               # Title cleaning, series extraction from title strings
     language_detect.py          # langdetect-based language identification for EPUBs
     database.py                 # DB migrations (ensure_*_table, backfill_*)
-    kobo_auth.py                # Per-device token generation, lookup, revoke
+    kobo_auth.py                # Per-device token generation, lookup, revoke (+ its bookkeeping)
     kobo_sync.py                # Kobo sync protocol: catalogue, state, deltas
     kobo_kepub.py               # On-the-fly EPUB→KEPUB conversion via kepubify
     kobo_location.py            # Percent ↔ KoboSpan, and the exact character bridge
@@ -213,6 +213,10 @@ and how to add languages in [`docs/reader-dictionary-lookup.md`](docs/reader-dic
 Seven tables in `app/models.py`:
 
 **`library_items` (LibraryItem)** — the catalogue. Important fields:
+- `book_uid` — device-facing identity (v1.43.0), deliberately **not** the PK.
+  `routes/kobo.py:_book_uuid` hashes it; existing rows backfilled to `"book-<id>"`
+  so historical Kobo UUIDs are unchanged. A delete + re-add used to mint a new
+  book on the device and strand the old entitlement.
 - `manual_metadata` (bool) — locks text fields from auto-overwrite
 - `cover_locked` (bool) — locks cover from auto-overwrite
 - `group_key` — format grouping hash
@@ -310,7 +314,7 @@ get their env from docker-compose.
 >   -c "pip install -q pytest && python -m pytest tests/ -q"
 > ```
 
-**Known pre-existing failures (as of v1.42.0):** a clean run is *568 passed, 10
+**Known pre-existing failures (as of v1.43.0):** a clean run is *575 passed, 10
 failed*. The 10 are not regressions — `test_quality.py` (6) and
 `test_scoring.py` (3) assert Swedish reason/warning substrings the code now
 emits in English, and `test_scanner.py::...test_does_not_overwrite_manual_metadata`

@@ -643,6 +643,81 @@ def _file_state(path) -> str:
     return "present"
 
 
+def _reunite_moved_files(session, discovered, known_by_path) -> int:
+    """Re-point rows whose file moved, instead of losing them.
+
+    A file renamed or moved outside Colophon has no connection to its row: the
+    only identity the catalogue keeps is the path string. The delete phase then
+    removes the row — taking the reading position, rating and Kobo identity with
+    it — and the file comes back as a brand-new book the device treats as
+    unrelated. Recognising the move first keeps the row, so nothing is lost and
+    the device never notices.
+
+    A plain move preserves size and mtime exactly, which is a cheap and precise
+    signature — no metadata read, no guessing from titles. To stay safe it is
+    only acted on when it is **unambiguous**: exactly one vanished row and
+    exactly one new file share the signature. Copies made together, or a file
+    edited as well as moved, fall through to the ordinary delete-and-re-add.
+
+    Returns the number of rows re-pointed.
+    """
+    missing = [
+        item for item in known_by_path.values()
+        if item.file_path not in discovered
+        and _file_state(item.file_path) == "missing"
+        and item.size_bytes is not None
+        and item.file_mtime is not None
+    ]
+    new_paths = [p for p in discovered if p not in known_by_path]
+    if not missing or not new_paths:
+        return 0
+
+    def signature_of_path(path):
+        try:
+            st = os.stat(path)
+        except OSError:
+            return None
+        return (os.path.splitext(path)[1].lower(), st.st_size, int(st.st_mtime))
+
+    vanished_by_sig = {}
+    for item in missing:
+        sig = ((item.extension or "").lower(), int(item.size_bytes), int(item.file_mtime))
+        vanished_by_sig.setdefault(sig, []).append(item)
+
+    arrived_by_sig = {}
+    for path in new_paths:
+        sig = signature_of_path(path)
+        if sig:
+            arrived_by_sig.setdefault(sig, []).append(path)
+
+    moved = 0
+    for sig, items in vanished_by_sig.items():
+        paths = arrived_by_sig.get(sig) or []
+        if len(items) != 1 or len(paths) != 1:
+            continue
+        item, new_path = items[0], paths[0]
+        logger.info(
+            "scan: %r moved, keeping its identity and reading state (%s -> %s)",
+            item.title, item.file_path, new_path,
+        )
+        known_by_path.pop(item.file_path, None)
+        item.file_path = new_path
+        item.file_name = os.path.basename(new_path)
+        known_by_path[new_path] = item
+        moved += 1
+
+    if moved:
+        # A move is not a content change. file_path and file_name are device
+        # content columns, so without this the Kobo would archive and
+        # re-download every moved book (see models.py:_stamp_content_updated_at).
+        session.info["suppress_content_stamp"] = True
+        try:
+            session.commit()
+        finally:
+            session.info.pop("suppress_content_stamp", None)
+    return moved
+
+
 def scan_directory(root_path, db_session=None, on_progress=None, cover_dir=None) -> dict:
     session = db_session if db_session is not None else db.session
     root = Path(root_path)
@@ -659,6 +734,14 @@ def scan_directory(root_path, db_session=None, on_progress=None, cover_dir=None)
     # only rules out a *deleted* mountpoint, not an empty one.
     files = discover_ebook_files(root)
     total = len(files)
+
+    result["moved"] = 0
+    if files:
+        # Recognise moved/renamed files before anything is deleted, so a row
+        # keeps its id, its Kobo identity and its reading position.
+        discovered = {str(p.resolve()) for p in files}
+        known_by_path = {i.file_path: i for i in LibraryItem.query.all() if i.file_path}
+        result["moved"] = _reunite_moved_files(session, discovered, known_by_path)
 
     # Remove DB items whose files no longer exist
     touched_authors = set()

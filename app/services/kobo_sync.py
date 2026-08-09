@@ -84,6 +84,9 @@ class SyncDelta:
     changed_items: list[LibraryItem] = field(default_factory=list)
     reading_state_items: list[LibraryItem] = field(default_factory=list)
     deleted_item_ids: list[int] = field(default_factory=list)
+    # item id -> the UUID this device was told, so a withdrawal names the same
+    # book the device actually holds even after its row is gone.
+    deleted_revisions: dict[int, str] = field(default_factory=dict)
     next_token: SyncToken = field(default_factory=SyncToken)
     has_more: bool = False
     # True when the mass-delete guard suppressed a delete signal. Surfaced so
@@ -109,11 +112,14 @@ def compute_delta(
     """
     base_q = epub_items_query()
 
-    # Which items has this device already seen?
-    seen_ids = {
-        row.library_item_id
+    # Which items has this device already seen, and under which UUID? The
+    # revision is what we must quote back when withdrawing a book: by then the
+    # row may be gone, so it cannot be recomputed from the item.
+    seen_revisions = {
+        row.library_item_id: row.revision_id
         for row in KoboBookState.query.filter_by(device_id=device_id).all()
     }
+    seen_ids = set(seen_revisions)
 
     # If we have no record of having sent anything to this device,
     # ignore the incoming token's `since` and re-send everything. The
@@ -219,6 +225,9 @@ def compute_delta(
         changed_items=changed_items,
         reading_state_items=reading_state_items,
         deleted_item_ids=deleted_ids,
+        deleted_revisions={
+            i: seen_revisions[i] for i in deleted_ids if seen_revisions.get(i)
+        },
         next_token=next_token,
         has_more=has_more,
         blocked_mass_delete=blocked_mass_delete,
@@ -243,11 +252,11 @@ def record_sync(device_id: int, items: Iterable[LibraryItem], revision_fn) -> No
                 device_id=device_id,
                 library_item_id=item.id,
                 last_synced_at=now,
-                revision_id=revision_fn(item.id),
+                revision_id=revision_fn(item),
             ))
         else:
             existing.last_synced_at = now
-            existing.revision_id = revision_fn(item.id)
+            existing.revision_id = revision_fn(item)
     db.session.commit()
 
 

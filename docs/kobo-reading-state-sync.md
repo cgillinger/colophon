@@ -182,9 +182,42 @@ bump it (they touch `updated_at` only). Invariant:
 `content_updated_at <= updated_at`. Breaking this re-downloads books on every
 page turn.
 
+## Identity survives the row (v1.43.0)
+
+`_book_uuid()` used to hash `f"book-{item.id}"` — the autoincrement PK. Anything
+that deleted and re-created a row therefore minted a **new book** as far as the
+device was concerned: reading state gone, old entitlement stranded on the Kobo
+holding progress Colophon can no longer resolve.
+
+- `LibraryItem.book_uid` is now the identity, and `_book_uuid()` hashes that.
+  Existing rows are backfilled to `"book-<id>"` (`database.py:backfill_book_uids`)
+  so **every already-synced book keeps its exact UUID** across the upgrade; new
+  rows get a random uid, so identity no longer rides on the PK at all.
+- **Withdrawals quote the recorded UUID.** `compute_delta` returns
+  `deleted_revisions` from `KoboBookState.revision_id` — by the time a book is
+  withdrawn its row is usually gone, so the identity cannot be recomputed. This
+  is also what finally makes that write-only column earn its keep.
+- **`scanner.py:_reunite_moved_files` recognises a moved file before the delete
+  phase runs**, so the row is never destroyed in the first place. A plain move
+  preserves size and mtime exactly; that signature is acted on only when it is
+  unambiguous (exactly one vanished row and one new file share it), so copies
+  and edited files fall through to the ordinary path. The re-point suppresses
+  `content_updated_at` — a move is not a content change, and stamping it would
+  make every renamed book re-download.
+- **`revoke_device` now clears that device's `kobo_book_states`.** SQLite reuses
+  rowids, so a newly paired Kobo would otherwise inherit the revoked device's
+  seen-set and be told the whole library was "changed" rather than new — leaving
+  it with nothing to download.
+
+Still open: two *different* files of the same book (a re-download, a better
+scan) are two rows and reach the device as two books. The duplicate-cleanup UI
+flags them; Colophon deliberately doesn't merge them on its own.
+
 ## Book identity
 
-- `book_uuid = uuid5(NAMESPACE, "book-{item.id}")` — deterministic, **version 5**.
+- `book_uuid = uuid5(NAMESPACE, item.book_uid)` — deterministic, **version 5**.
+  (Before v1.43.0 the input was `"book-{item.id}"`; backfilled rows still hash
+  exactly that, so historical UUIDs are unchanged.)
   Reversed by `app/routes/kobo.py:_find_item_by_uuid` (scans EPUB items).
 - **Sideloaded / Kobo-store books carry a foreign version-4 (random) UUID** that
   Colophon never minted → `_find_item_by_uuid` returns `None` → the state PUT is
@@ -209,6 +242,7 @@ page turn.
 | A book read on the Kobo **never shows as Reading** in Colophon | Either (a) sideloaded → foreign v4 UUID, silently dropped (grep the log for a `state PUT` whose UUID doesn't resolve), or (b) the Kobo hasn't synced since you read it (state is device-local until sync). |
 | A **finished** book the Kobo keeps re-reporting as Reading, logged `dropped (monotonic/older)` | Correct if you finished it — harmless. If you're genuinely re-reading, use the reset action to un-finish it. |
 | The Kobo sits at a **lower percentage than Colophon** and re-syncing never fixes it; log shows repeated `dropped (monotonic/older)` | Two separate causes, both needed fixing. (1) Stale `read_location_json` paired with a newer `read_progress` — the device obeys the location and reports its percentage back, which furthest-read-wins rejects *(v1.41.0)*. (2) Even with a correct DTO, the device discards it while its own `LastModified` is newer than ours *(v1.41.1)*. Compare `GET …/state`'s `LastModified` against `DateLastRead` on the device. |
+| The **same book appears twice** on the device | Two different files of it are in the library (a re-download, a better scan). Check the duplicate-cleanup UI — a rename or move can no longer cause this (v1.43.0). |
 | A book **read on the Kobo** never reaches Colophon, and the device shows only one (correct-looking) copy | A second, **withdrawn** entitlement (`___UserID = 'removed'`, hidden from the library) is the one that recorded the reading, under a UUID Colophon never minted. Grep the log for `unknown book UUID`; confirm in `KoboReader.sqlite`; delete the hidden row. |
 | A book "**re-downloads**" when you open it | Check `IsDownloaded` on the device first — a cloud entitlement that was never fetched downloads on first open. That is not a re-download and not a bug. A real re-download means `content_updated_at` moved (see above). |
 | Colophon browser-reader progress doesn't set the **exact page** on the Kobo | Position syncs exactly since v1.42.0; the *page number* still differs by design, because a Kobo paginates for its own screen and font settings. |
@@ -232,3 +266,6 @@ path overrides instead.
   from distance-to-chapter-start to containment-in-chapter-range.
 - **v1.42.0** — the character bridge: exact position both ways
   (`kobo_location.py:span_for_offset`/`offset_for_span`, `reader.js`).
+- **v1.43.0** — identity moved off the PK (`book_uid`), moved-file detection in
+  the scanner, withdrawals quote the recorded revision, revoke clears its
+  bookkeeping.

@@ -68,9 +68,22 @@ def touch_device(device: KoboDevice, mark_sync: bool = False) -> None:
 
 
 def revoke_device(device_id: int) -> bool:
+    """Forget a device — both its credentials and what we told it.
+
+    Dropping the bookkeeping matters as much as dropping the token. SQLite
+    reuses a rowid once the highest row is deleted, so the next device paired
+    would inherit this one's ``kobo_book_states`` rows: Colophon would believe
+    a brand-new Kobo had already seen the whole library and ship every book as
+    a *change* rather than as new, leaving it with nothing to download.
+    """
+    from app.models import KoboBookState
+
     device = KoboDevice.query.get(device_id)
     if device is None:
         return False
+    KoboBookState.query.filter_by(device_id=device_id).delete(
+        synchronize_session=False
+    )
     db.session.delete(device)
     db.session.commit()
     return True
