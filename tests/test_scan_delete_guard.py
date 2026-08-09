@@ -181,3 +181,159 @@ def test_unreadable_files_are_kept_not_deleted(app, tmp_path):
         # also picked up as a new row — that's the scan doing its normal job.)
         paths = {i.file_path for i in LibraryItem.query.all()}
         assert str(library / "unreadable.epub") in paths
+
+
+# ---------------------------------------------------------------------------
+# Moved files keep their identity
+# ---------------------------------------------------------------------------
+
+def test_renamed_file_keeps_its_row_and_reading_state(app, tmp_path):
+    """The failure this prevents: a file renamed outside Colophon used to be a
+    delete plus an unrelated insert. The reading position died with the old
+    row, and the Kobo — whose identity is derived from it — saw a new book."""
+    from app.models import LibraryItem, db
+    from app.routes.kobo import _book_uuid
+    from app.services.scanner import scan_directory
+
+    library = tmp_path / "books"
+    library.mkdir()
+    original = library / "original.epub"
+    original.write_bytes(b"pretend this is an epub")
+
+    with app.app_context():
+        scan_directory(str(library), db_session=db.session)
+        item = LibraryItem.query.filter_by(file_path=str(original)).one()
+        item.read_status = "Reading"
+        item.read_progress = 60.0
+        db.session.commit()
+        original_id, original_uuid = item.id, _book_uuid(item)
+
+        # Rename the way `mv` does — size and mtime are preserved.
+        renamed = library / "renamed.epub"
+        stat = os.stat(original)
+        original.rename(renamed)
+        os.utime(renamed, (stat.st_atime, stat.st_mtime))
+
+        result = scan_directory(str(library), db_session=db.session)
+
+        assert result["removed"] == 0
+        assert result["moved"] == 1
+        assert LibraryItem.query.count() == 1
+        item = LibraryItem.query.one()
+        assert item.id == original_id
+        assert item.file_path == str(renamed)
+        assert item.file_name == "renamed.epub"
+        assert item.read_progress == 60.0      # position survived
+        assert _book_uuid(item) == original_uuid   # the device sees the same book
+
+
+def test_a_move_does_not_look_like_a_content_change(app, tmp_path):
+    """Otherwise every renamed book is archived and re-downloaded by the Kobo."""
+    from app.models import LibraryItem, db
+    from app.services.scanner import scan_directory
+
+    library = tmp_path / "books"
+    library.mkdir()
+    original = library / "original.epub"
+    original.write_bytes(b"pretend this is an epub")
+
+    with app.app_context():
+        scan_directory(str(library), db_session=db.session)
+        item = LibraryItem.query.one()
+        before = item.content_updated_at
+
+        renamed = library / "elsewhere.epub"
+        stat = os.stat(original)
+        original.rename(renamed)
+        os.utime(renamed, (stat.st_atime, stat.st_mtime))
+        scan_directory(str(library), db_session=db.session)
+
+        assert LibraryItem.query.one().content_updated_at == before
+
+
+def test_ambiguous_moves_are_left_alone(app, tmp_path):
+    """Two files with the same signature can't be told apart, so adopting one
+    would be a coin flip. Fall back to the ordinary delete-and-re-add."""
+    from app.models import LibraryItem, db
+    from app.services.scanner import scan_directory
+
+    library = tmp_path / "books"
+    library.mkdir()
+    a, b = library / "a.epub", library / "b.epub"
+    for p in (a, b):
+        p.write_bytes(b"identical bytes")
+    os.utime(b, (os.stat(a).st_atime, os.stat(a).st_mtime))
+
+    with app.app_context():
+        scan_directory(str(library), db_session=db.session)
+        assert LibraryItem.query.count() == 2
+
+        stat = os.stat(a)
+        a.rename(library / "a-renamed.epub")
+        b.rename(library / "b-renamed.epub")
+        for p in ("a-renamed.epub", "b-renamed.epub"):
+            os.utime(library / p, (stat.st_atime, stat.st_mtime))
+
+        result = scan_directory(str(library), db_session=db.session)
+        assert result["moved"] == 0
+        assert LibraryItem.query.count() == 2
+
+
+def test_an_edited_file_is_not_mistaken_for_a_move(app, tmp_path):
+    """Different bytes means a different signature — no adoption."""
+    from app.models import LibraryItem, db
+    from app.services.scanner import scan_directory
+
+    library = tmp_path / "books"
+    library.mkdir()
+    original = library / "original.epub"
+    original.write_bytes(b"short")
+
+    with app.app_context():
+        scan_directory(str(library), db_session=db.session)
+        original.unlink()
+        (library / "different.epub").write_bytes(b"a considerably longer body")
+
+        result = scan_directory(str(library), db_session=db.session)
+        assert result["moved"] == 0
+        assert {i.file_name for i in LibraryItem.query.all()} == {"different.epub"}
+
+
+# ---------------------------------------------------------------------------
+# book_uid — device identity that outlives the primary key
+# ---------------------------------------------------------------------------
+
+def test_backfilled_uid_reproduces_the_pre_upgrade_uuid(app):
+    """The upgrade must not re-identify a single book already on a device."""
+    import uuid as uuid_mod
+    from app.models import LibraryItem, db
+    from app.routes.kobo import _KOBO_UUID_NAMESPACE, _book_uuid
+    from app.services.database import backfill_book_uids
+
+    with app.app_context():
+        item_id = _add_book("Legacy Book", "/books/legacy.epub")
+        # Simulate a row that predates the column.
+        db.session.execute(
+            db.text("UPDATE library_items SET book_uid = NULL WHERE id = :i"),
+            {"i": item_id},
+        )
+        db.session.commit()
+
+        backfill_book_uids()
+
+        item = LibraryItem.query.get(item_id)
+        assert item.book_uid == f"book-{item_id}"
+        legacy = str(uuid_mod.uuid5(_KOBO_UUID_NAMESPACE, f"book-{item_id}"))
+        assert _book_uuid(item) == legacy
+
+
+def test_new_books_get_an_id_independent_uid(app):
+    from app.models import LibraryItem
+    from app.routes.kobo import _book_uuid
+
+    with app.app_context():
+        first = LibraryItem.query.get(_add_book("A", "/books/a.epub"))
+        assert first.book_uid
+        assert not first.book_uid.startswith("book-")
+        # And the UUID follows the uid, not the row id.
+        assert _book_uuid(first) != _book_uuid(first.id)

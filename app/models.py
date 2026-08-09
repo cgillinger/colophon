@@ -1,4 +1,5 @@
 # Colophon – e-book metadata manager
+import uuid
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 
@@ -61,6 +62,17 @@ class LibraryItem(db.Model):
     cover_locked = db.Column(db.Boolean, default=False)
 
     group_key = db.Column(db.String(64), nullable=True, index=True)
+
+    # The book's identity as far as a synced device is concerned. Deliberately
+    # NOT the primary key: `id` is an autoincrement, so any delete-and-re-add
+    # (a file renamed outside Colophon, "remove from library, keep the file"
+    # followed by a scan, a restore) would mint a new Kobo UUID. The device
+    # then treats it as a different book — the reading position is stranded on
+    # an entitlement Colophon can no longer resolve, and the old copy lingers
+    # as a ghost. Existing rows are backfilled to "book-<id>" so their UUID is
+    # unchanged by the upgrade; see database.py:backfill_book_uids.
+    book_uid = db.Column(db.String(64), nullable=True, unique=True, index=True,
+                         default=lambda: uuid.uuid4().hex)
 
     pipeline_status = db.Column(db.String(50), default="scanned", nullable=False)
     scanned_at = db.Column(db.DateTime, nullable=True)

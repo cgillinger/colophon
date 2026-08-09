@@ -5,6 +5,30 @@ PATCH for fixes, MINOR for user-visible features and automatic migrations, MAJOR
 changes that need you to act. Releases before 1.41.0 are summarised from the git log —
 see the [tags](https://github.com/cgillinger/colophon/tags) for the full history.
 
+## [1.43.0] — 2026-08-09
+
+### Fixed
+- **Renaming or moving a book file no longer loses it.** Colophon identified a
+  book purely by where its file sat, so a file renamed or moved outside the app
+  looked like a deletion followed by an unrelated new book. Your reading
+  position, rating and read history went with the old entry, and a synced Kobo
+  saw a different book — the old one stranded on the device holding progress
+  Colophon could no longer reach. A scan now recognises a moved file and keeps
+  the book intact. It only does so when the match is unambiguous, so a copy or
+  an edited file is never mistaken for a move, and the Kobo isn't told anything
+  changed (no re-download).
+- **A book's identity no longer depends on its position in the database.** It
+  used to be derived from the row's internal number, which changes whenever a
+  book is removed and re-added for any reason — and to a Kobo, a changed
+  identity is a different book. Every book now carries its own permanent
+  identity. Existing books keep exactly the identity they already have on your
+  device, so nothing re-downloads and no reading position moves.
+- **Removing a Kobo now also forgets what it had been sent.** Otherwise the next
+  device you paired could inherit the old one's history, so Colophon would think
+  it had already received the whole library and send it nothing to download.
+- Withdrawing a book from a device now quotes the identity it was actually given
+  when it was sent, rather than recomputing one that may since have changed.
+
 ## [1.42.0] — 2026-08-09
 
 ### Added
