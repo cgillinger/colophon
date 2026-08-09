@@ -350,3 +350,80 @@ def test_a_fabricated_source_from_the_old_bug_is_not_imported(tmp_path):
     assert entry["location_value"] is None
     # The rest of the row is still perfectly usable.
     assert entry["status"] == "Finished" and entry["percent"] == 100.0
+
+
+# ---------------------------------------------------------------------------
+# Detection has to work for the people who actually plug a Kobo in
+# ---------------------------------------------------------------------------
+
+def test_a_device_under_a_media_root_is_found(tmp_path, monkeypatch):
+    """The containerised case. A bind mount of /media into a container shows
+    up in the container's /proc/mounts as ONE entry, not one per device, so a
+    reader plugged in afterwards is invisible to /proc/mounts alone."""
+    from app.services.kobo_usb import connected_mounts
+
+    media = tmp_path / "media" / "someuser"
+    media.mkdir(parents=True)
+    mount, _ = _make_kobo_mount(media, [ROW])
+
+    monkeypatch.setenv("COLOPHON_USB_MOUNT_ROOTS", str(tmp_path / "media"))
+    assert connected_mounts() == [str(mount)]
+
+
+def test_a_device_directly_under_the_root_is_found(tmp_path, monkeypatch):
+    """Some systems mount at /media/KOBOeReader, others at /media/<user>/…"""
+    from app.services.kobo_usb import connected_mounts
+
+    media = tmp_path / "media"
+    media.mkdir()
+    mount, _ = _make_kobo_mount(media, [ROW])
+
+    monkeypatch.setenv("COLOPHON_USB_MOUNT_ROOTS", str(media))
+    assert connected_mounts() == [str(mount)]
+
+
+def test_nothing_plugged_in_finds_nothing(tmp_path, monkeypatch):
+    """The server-only case: no removable media, no panel, no cost."""
+    from app.services.kobo_usb import connected_mounts
+
+    empty = tmp_path / "media"
+    empty.mkdir()
+    (empty / "some-usb-stick" / "Photos").mkdir(parents=True)
+
+    monkeypatch.setenv("COLOPHON_USB_MOUNT_ROOTS", str(empty))
+    assert connected_mounts() == []
+
+
+def test_detection_can_be_switched_off(tmp_path, monkeypatch):
+    from app.services.kobo_usb import connected_mounts
+
+    media = tmp_path / "media"
+    media.mkdir()
+    _make_kobo_mount(media, [ROW])
+
+    monkeypatch.setenv("COLOPHON_USB_MOUNT_ROOTS", "")
+    assert connected_mounts() == []
+
+
+def test_a_missing_root_is_not_an_error(monkeypatch):
+    from app.services.kobo_usb import connected_mounts
+
+    monkeypatch.setenv("COLOPHON_USB_MOUNT_ROOTS", "/definitely/not/here")
+    assert connected_mounts() == []
+
+
+def test_several_roots_are_all_searched(tmp_path, monkeypatch):
+    import os as _os
+    from app.services.kobo_usb import connected_mounts
+
+    first, second = tmp_path / "media", tmp_path / "run-media"
+    first.mkdir()
+    second.mkdir()
+    a, _ = _make_kobo_mount(first, [ROW])
+    b = second / "KOBOeReader"
+    (b / ".kobo").mkdir(parents=True)
+    (b / ".kobo" / "version").write_text("N2,4.9.77\n")
+    (b / ".kobo" / "KoboReader.sqlite").write_bytes(b"")
+
+    monkeypatch.setenv("COLOPHON_USB_MOUNT_ROOTS", _os.pathsep.join([str(first), str(second)]))
+    assert set(connected_mounts()) == {str(a), str(b)}

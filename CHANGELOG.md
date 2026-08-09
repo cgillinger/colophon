@@ -5,6 +5,22 @@ PATCH for fixes, MINOR for user-visible features and automatic migrations, MAJOR
 changes that need you to act. Releases before 1.41.0 are summarised from the git log —
 see the [tags](https://github.com/cgillinger/colophon/tags) for the full history.
 
+## [1.45.0] — 2026-08-09
+
+### Changed
+- **USB import now works for people who run Colophon in Docker on the same
+  machine they plug the reader into.** Detection used to rely purely on the
+  system's mount table, which is enough when Colophon runs directly on your
+  computer but not inside a container: mounting your media folder into a
+  container shows up as a single entry, so a reader plugged in afterwards
+  stayed invisible. Colophon now also looks for a Kobo in the usual media
+  folders. The README says exactly what to add to `docker-compose.yml`, and is
+  honest that a reader plugged into a *different* machine than the one running
+  Colophon can't work at all — that is what wireless sync is for.
+- New `COLOPHON_USB_MOUNT_ROOTS` for a non-standard mount location, or set it
+  empty to switch USB detection off. If you never plug a reader in, nothing
+  changes and nothing is shown; the panel only appears when a Kobo is found.
+
 ## [1.44.0] — 2026-08-09
 
 ### Added

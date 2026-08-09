@@ -64,19 +64,96 @@ def looks_like_kobo(mount_path) -> bool:
     return all(os.path.exists(os.path.join(mount_path, p)) for p in _SIGNATURE_PATHS)
 
 
+"""Where removable media is usually mounted, per platform convention."""
+DEFAULT_MOUNT_ROOTS = ("/media", "/run/media", "/mnt", "/Volumes")
+
+# Don't walk a mount root that turns out to be enormous.
+_MAX_SCAN_ENTRIES = 200
+
+
+def _candidate_roots() -> tuple[str, ...]:
+    """Directories to look under, overridable with ``COLOPHON_USB_MOUNT_ROOTS``.
+
+    Set it to an empty string to switch USB detection off entirely; set it to a
+    ``os.pathsep``-separated list to point at somewhere non-standard (a bind
+    mount inside a container, say).
+    """
+    raw = os.environ.get("COLOPHON_USB_MOUNT_ROOTS")
+    if raw is None:
+        return DEFAULT_MOUNT_ROOTS
+    return tuple(p.strip() for p in raw.split(os.pathsep) if p.strip())
+
+
+def _shallow_dirs(root: str, depth: int = 2):
+    """``root`` and its directories down to ``depth``, cheaply and defensively.
+
+    A Kobo lands at ``/media/KOBOeReader`` on some systems and
+    ``/media/<user>/KOBOeReader`` on others, so two levels covers both.
+    """
+    seen = 0
+    level = [root]
+    for _ in range(depth + 1):
+        nxt = []
+        for path in level:
+            yield path
+            seen += 1
+            if seen >= _MAX_SCAN_ENTRIES:
+                return
+            try:
+                with os.scandir(path) as entries:
+                    for entry in entries:
+                        if entry.is_dir(follow_symlinks=False):
+                            nxt.append(entry.path)
+            except OSError:
+                continue
+        if not nxt:
+            return
+        level = nxt
+
+
 def connected_mounts() -> list[str]:
-    """Mount points that look like a Kobo, read from ``/proc/mounts``.
+    """Mount points that look like a Kobo.
+
+    Searched two ways, because neither is sufficient on its own:
+
+    - ``/proc/mounts`` catches the case where Colophon runs directly on the
+      machine the reader is plugged into.
+    - A shallow scan of the media roots catches the containerised case. A bind
+      mount of ``/media`` into a container appears in the container's
+      ``/proc/mounts`` as a *single* entry, not one per device, so a reader
+      plugged in afterwards is invisible to the first method.
+
+    Both are confined to :func:`_candidate_roots`, so that one setting really
+    is the whole answer to "where do you look" — including switching the search
+    off entirely.
 
     Synchronous and cheap — no background thread, so nothing can pin a Gunicorn
-    worker. Volume labels are deliberately ignored: they are user-editable and
-    unreliable, so identity comes from the device's own files instead.
+    worker, and a handful of ``stat`` calls when nothing is plugged in. Volume
+    labels are deliberately ignored: they are user-editable, so identity comes
+    from the device's own files instead.
     """
-    mounts = []
+    roots = _candidate_roots()
+    if not roots:
+        return []
+
+    mounts: list[str] = []
+
+    def consider(path):
+        if path in mounts:
+            return
+        if not any(path == r or path.startswith(r.rstrip("/") + "/") for r in roots):
+            return
+        try:
+            if looks_like_kobo(path):
+                mounts.append(path)
+        except OSError:
+            pass
+
     try:
         with open("/proc/mounts", "r", encoding="utf-8", errors="replace") as fh:
             lines = fh.readlines()
     except OSError:
-        return mounts
+        lines = []
 
     for line in lines:
         parts = line.split()
@@ -84,13 +161,14 @@ def connected_mounts() -> list[str]:
             continue
         # /proc/mounts octal-escapes spaces and friends.
         target = parts[1].encode("utf-8", "surrogateescape").decode("unicode_escape")
-        if target in mounts:
+        consider(target)
+
+    for root in roots:
+        if not os.path.isdir(root):
             continue
-        try:
-            if looks_like_kobo(target):
-                mounts.append(target)
-        except OSError:
-            continue
+        for path in _shallow_dirs(root):
+            consider(path)
+
     return mounts
 
 
