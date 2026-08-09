@@ -176,8 +176,14 @@ def update_progress(item_id):
     Goes through the shared apply_reading_state() so the monotonic /
     last-write-wins rules are identical to the Kobo PUT path, and bumps
     read_last_modified so the next Kobo sync delta carries the change to the
-    device. We never pass a location: the browser resumes by percent, and not
-    writing read_location avoids clobbering the Kobo's (incompatible) location.
+    device.
+
+    We have no location to pass — the browser resumes by percent, and its CFIs
+    aren't KoboSpans — so we clear the stored one. Leaving it would pair a
+    fresh percentage with a position from an older Kobo session, and the Kobo
+    obeys the position: it would jump back there and report that lower
+    percentage forever. The device instead gets a chapter derived from the
+    percentage (routes/kobo.py:_faithful_location).
     """
     item = get_item_or_404(item_id)
     payload = request.get_json(silent=True) or {}
@@ -198,6 +204,7 @@ def update_progress(item_id):
         status,
         progress=percent,
         modified_at=datetime.utcnow(),
+        clear_location=True,
     )
     if applied:
         db.session.commit()

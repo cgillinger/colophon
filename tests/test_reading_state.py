@@ -175,13 +175,55 @@ def test_string_location_is_legacy_and_leaves_json_untouched():
 
 
 def test_no_location_does_not_touch_location_json():
-    # The in-browser reader passes no location and resumes by percent — it must
-    # never clobber a full Location the Kobo wrote.
+    # A caller with no location and no claim about staleness leaves the Kobo's
+    # full Location alone — a Kobo PUT without a Location must not wipe the
+    # exact span an earlier PUT stored (v1.28.2).
     existing = json.dumps({"Value": "v", "Type": "KoboSpan", "Source": "uuid-1"})
     item = _Item(read_status="Reading", read_progress=10.0,
                  read_location_json=existing, read_last_modified=T0)
     assert apply_reading_state(item, "Reading", 30.0, modified_at=T1) is True
     assert item.read_location_json == existing
+
+
+def test_clear_location_drops_a_position_the_percentage_outran():
+    # The browser reader moves the percentage in a coordinate system that has
+    # no KoboSpan, so the stored position no longer describes where the reader
+    # is. Keeping it makes the Kobo jump back there and report that lower
+    # percentage forever.
+    existing = json.dumps({"Value": "v", "Type": "KoboSpan", "Source": "OEBPS/ch2.xhtml"})
+    item = _Item(read_status="Reading", read_progress=26.0,
+                 read_location="v", read_location_json=existing, read_last_modified=T0)
+    assert apply_reading_state(
+        item, "Reading", 60.0, modified_at=T1, clear_location=True
+    ) is True
+    assert item.read_location_json is None
+    assert item.read_location is None
+    assert item.read_progress == 60.0
+
+
+def test_clear_location_does_not_fire_on_a_dropped_update():
+    # A rejected update must leave every stored field untouched, including the
+    # location it would otherwise have cleared.
+    existing = json.dumps({"Value": "v", "Type": "KoboSpan", "Source": "OEBPS/ch9.xhtml"})
+    item = _Item(read_status="Reading", read_progress=80.0,
+                 read_location="v", read_location_json=existing, read_last_modified=T0)
+    assert apply_reading_state(
+        item, "Reading", 5.0, modified_at=T1, clear_location=True
+    ) is False
+    assert item.read_location_json == existing
+    assert item.read_location == "v"
+
+
+def test_explicit_location_wins_over_clear_location():
+    # Belt and braces: a caller that supplies a location is writing it, not
+    # clearing it, whatever the flag says.
+    loc = {"Value": "new", "Type": "KoboSpan", "Source": "OEBPS/ch3.xhtml"}
+    item = _Item(read_status="Reading", read_progress=10.0, read_last_modified=T0)
+    assert apply_reading_state(
+        item, "Reading", 30.0, location=loc, modified_at=T1, clear_location=True
+    ) is True
+    assert json.loads(item.read_location_json) == loc
+    assert item.read_location == "new"
 
 
 def test_dropped_update_does_not_store_location():

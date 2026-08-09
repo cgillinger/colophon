@@ -33,7 +33,9 @@ def _as_progress(value):
         return None
 
 
-def apply_reading_state(item, status, progress=None, location=None, modified_at=None):
+def apply_reading_state(
+    item, status, progress=None, location=None, modified_at=None, clear_location=False
+):
     """Apply a reading-state update to ``item`` in place.
 
     Rules (identical to the Kobo PUT handler this was extracted from):
@@ -56,6 +58,14 @@ def apply_reading_state(item, status, progress=None, location=None, modified_at=
         ``CurrentBookmark.Location``: Value + Type + Source) is stored verbatim
         in ``read_location_json`` and its ``Value`` mirrored to ``read_location``
         for display; a plain string (legacy) updates ``read_location`` only.
+      - ``clear_location=True`` drops the stored location instead. A caller
+        that moves the percentage but works in a different coordinate system
+        (the browser reader) must say so, because a location left behind by
+        another device no longer describes where the reader is — and shipping
+        that stale pair to a Kobo drags it back to the old position. It's an
+        explicit flag rather than "clear whenever location is falsy" because a
+        Kobo PUT legitimately arrives without a Location and must not wipe the
+        exact span it sent earlier (that would undo v1.28.2).
       - ``read_last_modified`` only ever advances, so an applied older-timestamp
         "furthest page" update can't drag the timeline marker (and the Kobo
         delta it drives) backwards.
@@ -109,6 +119,11 @@ def apply_reading_state(item, status, progress=None, location=None, modified_at=
         else:
             # Legacy/string location (e.g. existing callers/tests).
             item.read_location = location
+    elif clear_location:
+        # The percentage moved under a different coordinate system; whatever
+        # position is stored belongs to an older, now-wrong place in the book.
+        item.read_location_json = None
+        item.read_location = None
     # Timeline marker advances only — never regress it, even when we apply an
     # older-timestamped furthest-page update above.
     incoming_mod = modified_at or datetime.utcnow()

@@ -29,6 +29,7 @@ from sqlalchemy import or_
 from app.models import LibraryItem
 from app.services.kobo_auth import find_device_by_token, touch_device
 from app.services.kobo_kepub import convert_epub_to_kepub
+from app.services.kobo_location import location_for_percent, percent_for_source
 from app.services.reading_state import apply_reading_state
 from app.services.kobo_sync import (
     SyncToken,
@@ -54,24 +55,58 @@ def _book_uuid(item_id: int) -> str:
     return str(uuid.uuid5(_KOBO_UUID_NAMESPACE, f"book-{item_id}"))
 
 
-def _faithful_location(item: LibraryItem) -> dict | None:
-    """The exact ``CurrentBookmark.Location`` object the device last sent
-    (Value + Type + Source), or ``None`` if we have no faithful copy.
+# A Location that contradicts ProgressPercent is worse than no Location at
+# all: the device obeys the position, recomputes a percentage from it, and
+# sends that lower number back — which apply_reading_state then rejects as a
+# regression. Server and device disagree forever, and re-syncing re-sends the
+# same stale position. Hence the tolerance check below.
+LOCATION_CONSISTENCY_TOLERANCE = 5.0  # percentage points
 
-    We NEVER fabricate one. The Kobo's span Location is resolved against its
-    ``Source`` (the content document the span lives in); a synthesized
-    ``Source=book_uuid`` doesn't match anything on the device, so the Kobo
-    can't resolve the span and jumps to the start. When there's no stored
-    full Location we return ``None`` and the DTO sends ``Location: null`` (as
-    Komga does), so the device keeps its own intact local bookmark instead."""
+
+def _faithful_location(item: LibraryItem) -> dict | None:
+    """The ``CurrentBookmark.Location`` to send for ``item``, or ``None``.
+
+    Prefers the exact object the device last sent (Value + Type + Source), so
+    a book read only on the Kobo resumes on the precise span. But that stored
+    location is only meaningful next to the percentage it was captured at: the
+    in-browser reader moves ``read_progress`` without being able to supply a
+    KoboSpan, so a location from an earlier Kobo session can end up paired
+    with a much later percentage. When the two disagree by more than
+    LOCATION_CONSISTENCY_TOLERANCE we derive a fresh chapter-level location
+    from the percentage instead (services/kobo_location.py), which also gives
+    a browser-read book somewhere sensible to open.
+
+    Falls back to ``None`` — the DTO then sends ``Location: null`` (as Komga
+    does) and the device keeps its own local bookmark. We still never invent a
+    ``Source`` out of nothing: the v1.28.2 bug was ``Source=book_uuid``, which
+    resolves to no document on the device, whereas a derived Source is a real
+    entry from this book's own spine."""
     raw = getattr(item, "read_location_json", None)
-    if not raw:
-        return None
-    try:
-        loc = json.loads(raw)
-    except (ValueError, TypeError):
-        return None
-    return loc if isinstance(loc, dict) and loc else None
+    stored = None
+    if raw:
+        try:
+            loc = json.loads(raw)
+        except (ValueError, TypeError):
+            loc = None
+        if isinstance(loc, dict) and loc:
+            stored = loc
+
+    if stored is not None:
+        progress = item.read_progress
+        if progress is None:
+            return stored
+        stored_at = percent_for_source(item, stored.get("Source"))
+        if stored_at is None or abs(stored_at - progress) <= LOCATION_CONSISTENCY_TOLERANCE:
+            # Either we can't judge it (unreadable spine, foreign Source) or
+            # it still agrees with the percentage — echo it back verbatim.
+            return stored
+        logger.info(
+            "Kobo DTO: stored location %s starts at %.1f%% but progress is "
+            "%.1f%% — deriving location from progress instead (item=%s)",
+            stored.get("Source"), stored_at, progress, item.id,
+        )
+
+    return location_for_percent(item, item.read_progress)
 
 
 def _iso(dt: datetime | None) -> str:
@@ -873,6 +908,15 @@ def update_reading_state(device, book_id):
 
     item = _find_item_by_uuid(book_id)
     if item is None:
+        # Not a UUID we ever minted — a sideloaded book, or an entitlement
+        # from an earlier catalogue the device still holds. Its state can
+        # never sync; say so, because silence here makes the book look like
+        # it simply refuses to update (see docs/kobo-reading-state-sync.md).
+        logger.warning(
+            "Kobo state PUT: unknown book UUID %s from device=%s — sideloaded "
+            "or foreign entitlement, reading state dropped",
+            book_id, device.name,
+        )
         return jsonify({}), 200
 
     payload = request.get_json(silent=True) or {}
@@ -926,8 +970,9 @@ def update_reading_state(device, book_id):
     if not applied:
         logger.info(
             "Kobo state PUT: dropped (monotonic/older) book_id=%s device=%s "
-            "current=%s incoming=%s",
-            book_id, device.name, item.read_status, incoming_status,
+            "current=%s/%s incoming=%s/%s",
+            book_id, device.name, item.read_status, item.read_progress,
+            incoming_status, progress,
         )
         return jsonify({}), 200
 

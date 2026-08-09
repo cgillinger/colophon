@@ -59,8 +59,45 @@ together:
 - The **in-browser reader never writes a location** (it resumes by percent via
   `goToFraction`). EPUB CFIs and Kobo KEPUB spans are different coordinate
   systems, so exact position only flows **Kobo → Colophon → Kobo**; a
-  browser-read book has `read_location_json = NULL` and the Kobo keeps its own
-  position.
+  browser-read book has `read_location_json = NULL` and the Kobo gets a
+  chapter derived from the percentage (next section).
+
+## Percent and Location must describe the same place (v1.41.0)
+
+`ProgressPercent` and `Location` travel in the same `CurrentBookmark`, and
+**the device obeys the Location.** If they disagree, the Kobo jumps to the
+Location, recomputes its own percentage from there, and PUTs that *lower*
+number back — where `apply_reading_state` rejects it as a regression. Server
+and device then disagree forever, and each re-sync re-sends the same stale
+position. It looks like "sync does nothing"; it is actually working exactly as
+told.
+
+- *The original bug:* the browser reader advances `read_progress` but has no
+  span to offer, and `apply_reading_state` only wrote a location `if location:`
+  — so a location from an earlier Kobo session survived while the percentage
+  moved on. Live example: `ProgressPercent: 60.0` shipped alongside
+  `Source: OEBPS/chapter020.xhtml`, a document that starts at **26 %**.
+- **Fix, two halves:**
+  1. `reader.py:update_progress` passes `clear_location=True` — a caller that
+     moves the percentage in a foreign coordinate system must drop the stored
+     position. It is an **explicit flag**, not "clear when location is falsy":
+     a Kobo PUT legitimately arrives without a Location and must not wipe the
+     exact span it sent earlier (that would undo v1.28.2).
+  2. `_faithful_location()` cross-checks a stored location against
+     `read_progress` via `services/kobo_location.py:percent_for_source()`. More
+     than `LOCATION_CONSISTENCY_TOLERANCE` (5 pp) apart → derive a fresh one
+     from the percentage with `location_for_percent()`. This **self-heals rows
+     already written**, so no migration was needed.
+- `services/kobo_location.py` weights each spine document by its
+  **uncompressed** size (hence `zipfile`, not ebooklib — `ZipInfo` carries the
+  byte counts) and returns `{Source: <spine doc>, Type: KoboSpan, Value: kobo.1.1}`.
+  `Source` is the OPF's directory joined with the manifest href
+  (`OEBPS/chapter061.xhtml`) — verified against what a real device stores.
+  Resolution is chapter-level; that is all a percentage can carry.
+- This is **not** the fabricated-Source mistake of v1.28.2. That one invented
+  `Source = book_uuid`, which resolves to no document at all. A derived Source
+  is a real entry from the book's own spine. When the spine can't be read we
+  still fall back to `Location: null`.
 
 ## Re-download vs progress-only (don't reset the device)
 
@@ -87,9 +124,11 @@ page turn.
   silently acknowledged (`200 {}`) and **dropped**. Reading state for such books
   can **never** sync — *by design, not a bug*. To sync, the book must be
   delivered to the device **by Colophon** (so the device holds the v5 UUID).
-- *Open follow-up:* there is no log line in the unknown-UUID branch, so this
-  failure is invisible. A one-line `WARNING` there would make a sideloaded book
-  diagnosable instead of a silent mystery.
+- The unknown-UUID branch now logs a `WARNING` (v1.41.0). It used to be silent,
+  which is how a **duplicate** copy of a book — the same title present twice on
+  a device, once under a foreign UUID — could sit there absorbing real reading
+  time while none of it ever reached Colophon. Grep for
+  `unknown book UUID` when a book "won't sync".
 
 ## Symptom → cause (fast triage)
 
@@ -99,7 +138,9 @@ page turn.
 | Progress jumps **backwards** / a quick peek wipes a real position | Equal-status resolution. Should be furthest-read-wins. *(Fixed v1.28.1.)* |
 | A book read on the Kobo **never shows as Reading** in Colophon | Either (a) sideloaded → foreign v4 UUID, silently dropped (grep the log for a `state PUT` whose UUID doesn't resolve), or (b) the Kobo hasn't synced since you read it (state is device-local until sync). |
 | A **finished** book the Kobo keeps re-reporting as Reading, logged `dropped (monotonic/older)` | Correct if you finished it — harmless. If you're genuinely re-reading, use the reset action to un-finish it. |
-| Colophon browser-reader progress doesn't set the **exact page** on the Kobo | By design — only percent + status sync, not exact position (browser CFIs ≠ Kobo spans). |
+| The Kobo sits at a **lower percentage than Colophon** and re-syncing never fixes it; log shows repeated `dropped (monotonic/older)` | Stale `read_location_json` paired with a newer `read_progress`. The device obeys the location and reports its percentage back, which furthest-read-wins rejects. *(Fixed v1.41.0.)* |
+| A book **read on the Kobo** never reaches Colophon, and the same title appears **twice** on the device | One copy carries a foreign UUID Colophon never minted. Grep the log for `unknown book UUID`. Delete the duplicate on the device. |
+| Colophon browser-reader progress doesn't set the **exact page** on the Kobo | By design — percent syncs exactly, position only to chapter granularity (browser CFIs ≠ Kobo spans). |
 
 ## Footgun
 
@@ -112,3 +153,5 @@ path overrides instead.
 - **v1.28.1** — furthest-read-wins (`reading_state.py`).
 - **v1.28.2** — full Location round-trip (`read_location_json` column + both DTO
   sites + the PUT handler; reset clears it).
+- **v1.41.0** — percent/Location consistency (`kobo_location.py`,
+  `clear_location=True` from the browser reader, unknown-UUID `WARNING`).
