@@ -205,6 +205,30 @@
         html[data-reader-theme="dark"]  .reader-sheet { --rs-bg:#23282e; --rs-fg:#e8ecef; --rs-line:rgba(255,255,255,.10); --rs-chip:#30363b; --rs-chip-on:#10b981; }
         .reader-sheet[hidden] { display: none; }
 
+        /* The dictionary sheet is not modal — you are meant to keep reading the
+           passage it is about. Anchored to the bottom it covers exactly the text
+           you just selected whenever that text is low on the page, so it moves
+           to the opposite end instead. Only this sheet: the settings sheet is
+           modal and covering the page is the point. */
+        .reader-sheet.reader-dict.rd-top {
+            top: 0; bottom: auto;
+            border-radius: 0 0 16px 16px;
+            box-shadow: 0 8px 28px rgba(0,0,0,.22);
+            padding: calc(8px + env(safe-area-inset-top, 0)) 18px 18px;
+        }
+        .reader-sheet.reader-dict.rd-top .rs-grip { margin: 4px auto 2px; order: 99; }
+        /* The grip is the manual override, so it has to look pressable. */
+        .reader-sheet.reader-dict .rs-grip {
+            border: none; padding: 8px 0; background: transparent;
+            display: block; width: 100%; cursor: pointer;
+        }
+        .reader-sheet.reader-dict .rs-grip::before {
+            content: ""; display: block; width: 40px; height: 4px;
+            border-radius: 2px; background: var(--rs-line); margin: 0 auto;
+        }
+        .reader-sheet.reader-dict .rs-grip:hover::before { background: var(--rs-chip-on); }
+        .reader-sheet.reader-dict .rs-grip:focus-visible { outline: 2px solid var(--rs-chip-on); outline-offset: 2px; }
+
         .reader-sheet .rs-grip {
             width: 40px; height: 4px; border-radius: 2px;
             background: var(--rs-line); margin: 2px auto 4px;
@@ -443,7 +467,9 @@
     {# Dictionary lookup sheet — opened by selecting a single word in the book
        (static/js/reader-dict.js). Non-modal: reading continues behind it. #}
     <div class="reader-sheet reader-dict" id="readerDictSheet" hidden role="dialog" aria-label="{{ _('Dictionary') }}">
-        <div class="rs-grip"></div>
+        <button type="button" class="rs-grip" id="rdGrip"
+                aria-label="{{ _('Move to the other end of the screen') }}"
+                title="{{ _('Move to the other end of the screen') }}"></button>
         <div class="rd-head">
             <span class="rd-eyebrow">{{ _('Dictionary') }}</span>
             <button type="button" class="rd-close" id="rdClose" aria-label="{{ _('Close') }}"><i class="ti ti-x"></i></button>
