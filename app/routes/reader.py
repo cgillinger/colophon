@@ -25,6 +25,7 @@ Routes:
                               service worker caches for offline reading)
   POST /reader/<id>/progress — persist reading progress (percent + status)
 """
+import json
 import logging
 import os
 import re
@@ -45,6 +46,7 @@ from app.routes.helpers import get_item_or_404
 from app.services import dictionaries
 from app.services.ai_metadata import ai_is_configured, explain_word_in_context
 from app.services.drm import file_has_drm
+from app.services.kobo_location import location_for_offset, offset_for_span
 from app.services.reading_state import apply_reading_state
 
 logger = logging.getLogger(__name__)
@@ -112,6 +114,30 @@ def _can_share(item):
     return not file_has_drm(item.file_path, item.extension)
 
 
+def _resume_anchor(item):
+    """``(href, offset)`` for exact resume, or ``(None, None)``.
+
+    The stored location is in the Kobo's coordinates (a span id inside a
+    content document). Translating it to a character offset hands the browser
+    something it can locate in its own DOM without knowing anything about
+    KoboSpans — see services/kobo_location.py for why the two agree.
+    """
+    raw = getattr(item, "read_location_json", None)
+    if not raw:
+        return None, None
+    try:
+        loc = json.loads(raw)
+    except (ValueError, TypeError):
+        return None, None
+    if not isinstance(loc, dict):
+        return None, None
+    source = loc.get("Source")
+    offset = offset_for_span(item, source, loc.get("Value"))
+    if offset is None:
+        return None, None
+    return source, offset
+
+
 @reader_bp.route("/<int:item_id>")
 def read_book(item_id):
     item = get_item_or_404(item_id)
@@ -125,12 +151,18 @@ def read_book(item_id):
     progress_modified_at = (
         int((modified - datetime(1970, 1, 1)).total_seconds() * 1000) if modified else 0
     )
+    # Exact resume: turn the stored KoboSpan back into "N non-whitespace
+    # characters into this chapter", which the reader can find in its own DOM.
+    # This is the Kobo -> browser direction; percent is the fallback.
+    resume_href, resume_offset = _resume_anchor(item)
     return render_template(
         "reader.html",
         item=item,
         file_url=url_for("reader.book_file", item_id=item.id),
         progress_url=url_for("reader.update_progress", item_id=item.id),
         initial_progress=item.read_progress or 0,
+        resume_href=resume_href,
+        resume_offset=resume_offset,
         read_status=item.read_status or "ReadyToRead",
         progress_modified_at=progress_modified_at,
         can_share=_can_share(item),
@@ -178,12 +210,14 @@ def update_progress(item_id):
     read_last_modified so the next Kobo sync delta carries the change to the
     device.
 
-    We have no location to pass — the browser resumes by percent, and its CFIs
-    aren't KoboSpans — so we clear the stored one. Leaving it would pair a
-    fresh percentage with a position from an older Kobo session, and the Kobo
-    obeys the position: it would jump back there and report that lower
-    percentage forever. The device instead gets a chapter derived from the
-    percentage (routes/kobo.py:_faithful_location).
+    When the reader tells us which chapter it is in and how many non-whitespace
+    characters into it (``href`` + ``offset``), that translates to the exact
+    KoboSpan the device would have used, so the position round-trips precisely.
+    Without it we fall back to clearing the stored location: leaving a position
+    from an older Kobo session next to a fresh percentage makes the Kobo jump
+    back there and report that lower percentage forever, and the device instead
+    gets a chapter derived from the percentage
+    (routes/kobo.py:_faithful_location).
     """
     item = get_item_or_404(item_id)
     payload = request.get_json(silent=True) or {}
@@ -199,12 +233,16 @@ def update_progress(item_id):
         except (TypeError, ValueError):
             percent = None
 
+    location = location_for_offset(
+        item, payload.get("href"), payload.get("offset")
+    )
     applied = apply_reading_state(
         item,
         status,
         progress=percent,
+        location=location,
         modified_at=datetime.utcnow(),
-        clear_location=True,
+        clear_location=location is None,
     )
     if applied:
         db.session.commit()

@@ -223,7 +223,122 @@ import { initDictLookup } from './reader-dict.js';
     }
 
     function sameState(a, b) {
-        return a && b && a.status === b.status && Math.round(a.percent) === Math.round(b.percent);
+        return a && b && a.status === b.status
+            && Math.round(a.percent) === Math.round(b.percent)
+            && a.href === b.href && a.offset === b.offset;
+    }
+
+    // --- Exact position: the character bridge ----------------------------
+    // The Kobo positions a book by span ids that kepubify injects; those don't
+    // exist here. But kepubify preserves the text itself character for
+    // character, so "how many non-whitespace characters into this chapter am
+    // I" means the same thing on both sides, and the server turns it into the
+    // span the device would have used. app/services/kobo_location.py holds the
+    // other half of this rule — the two must not drift apart.
+
+    function dense(text) { return (text || '').replace(/\s+/g, ''); }
+
+    function textWalker(doc) {
+        return doc.createTreeWalker(doc.body || doc, NodeFilter.SHOW_TEXT, {
+            acceptNode: function (node) {
+                for (var p = node.parentNode; p; p = p.parentNode) {
+                    var tag = (p.nodeName || '').toLowerCase();
+                    if (tag === 'script' || tag === 'style') return NodeFilter.FILTER_REJECT;
+                }
+                return NodeFilter.FILTER_ACCEPT;
+            }
+        });
+    }
+
+    // Characters (whitespace excluded) from the top of the document to a point.
+    function denseOffsetOf(doc, container, offsetInNode) {
+        if (!doc || !container) return null;
+        // A range can start on an element rather than a text node; the first
+        // text node at or after it is the honest interpretation.
+        if (container.nodeType !== 3) {
+            var probe = textWalker(doc);
+            var found = null;
+            var n;
+            while ((n = probe.nextNode())) {
+                if (container.contains && container.contains(n)) { found = n; break; }
+            }
+            if (!found) return null;
+            container = found;
+            offsetInNode = 0;
+        }
+        var walker = textWalker(doc);
+        var count = 0;
+        var node;
+        while ((node = walker.nextNode())) {
+            if (node === container) {
+                return count + dense(String(node.data).slice(0, offsetInNode)).length;
+            }
+            count += dense(node.data).length;
+        }
+        return null;
+    }
+
+    // The inverse: a DOM Range at `offset` dense characters into `doc`.
+    function rangeAtDenseOffset(doc, offset) {
+        if (!doc || offset == null) return null;
+        var walker = textWalker(doc);
+        var seen = 0;
+        var node;
+        var last = null;
+        while ((node = walker.nextNode())) {
+            var text = String(node.data);
+            var len = dense(text).length;
+            last = node;
+            if (seen + len > offset) {
+                // Advance through this node until we've passed `need`
+                // non-whitespace characters.
+                var need = offset - seen;
+                var pos = 0;
+                var counted = 0;
+                while (pos < text.length && counted < need) {
+                    if (!/\s/.test(text[pos])) counted++;
+                    pos++;
+                }
+                var range = doc.createRange();
+                range.setStart(node, Math.min(pos, text.length));
+                range.collapse(true);
+                return range;
+            }
+            seen += len;
+        }
+        if (last) {
+            var end = doc.createRange();
+            end.setStart(last, 0);
+            end.collapse(true);
+            return end;
+        }
+        return null;
+    }
+
+    // The archive-relative path of a spine section ("OEBPS/chapter061.xhtml"),
+    // which is the form the Kobo uses for Location.Source.
+    function sectionHref(index) {
+        try {
+            var section = view && view.book && view.book.sections
+                && view.book.sections[index];
+            var href = section && (section.id || section.href);
+            return typeof href === 'string' ? href.split('#')[0] : null;
+        } catch (e) { return null; }
+    }
+
+    function anchorFromRelocate(detail) {
+        try {
+            var index = detail && detail.section && typeof detail.section.current === 'number'
+                ? detail.section.current : null;
+            var range = detail && detail.range;
+            if (index == null || !range || !range.startContainer) return null;
+            var doc = range.startContainer.ownerDocument;
+            var href = sectionHref(index);
+            if (!doc || !href) return null;
+            var offset = denseOffsetOf(doc, range.startContainer, range.startOffset);
+            if (offset == null) return null;
+            return { href: href, offset: offset };
+        } catch (e) { return null; }
     }
 
     // --- Offline-safe progress -------------------------------------------
@@ -385,7 +500,10 @@ import { initDictLookup } from './reader-dict.js';
         if (snapTarget && Math.abs(fraction - snapTarget.fraction) < SNAP_DONE_EPSILON) {
             clearSnapback();
         }
-        scheduleSave(fractionToState(fraction));
+        var state = fractionToState(fraction);
+        var anchor = anchorFromRelocate(detail);
+        if (anchor) { state.href = anchor.href; state.offset = anchor.offset; }
+        scheduleSave(state);
     }
 
     function bindControls() {
@@ -645,13 +763,37 @@ import { initDictLookup } from './reader-dict.js';
             }
             var frac = 0;
             // Resume by percent. Don't jump to the end of a finished book —
-            // start it over instead. Exact paragraph resume across devices is
-            // out of scope (Kobo KEPUB spans vs EPUB CFI differ); percent is
-            // the shared coordinate.
+            // start it over instead.
             if (initial > 0 && initial < 100 && status !== 'Finished') {
                 frac = initial / 100;
             }
-            await view.goToFraction(frac);
+            // Exact resume wins when the server could translate the stored
+            // Kobo position into a character offset — that lands on the same
+            // sentence the Kobo was on, not just the same chapter. Percent
+            // stays the fallback, including when the local copy is further
+            // along (the offset then belongs to an older position).
+            var exact = frac > 0 && cfg.resumeHref && cfg.resumeOffset != null
+                && Math.abs((Number(cfg.initialProgress) || 0) - initial) < 0.5;
+            var placed = false;
+            if (exact) {
+                try {
+                    await view.goTo(cfg.resumeHref);
+                    var contents = view.renderer && view.renderer.getContents
+                        ? view.renderer.getContents() : null;
+                    var doc = contents && contents[0] && contents[0].doc;
+                    var range = rangeAtDenseOffset(doc, Number(cfg.resumeOffset));
+                    var index = view.book.sections.findIndex(function (s) {
+                        return (s.id || s.href || '').split('#')[0] === cfg.resumeHref;
+                    });
+                    if (range && index >= 0) {
+                        var cfi = view.getCFI(index, range);
+                        if (cfi) { await view.goTo(cfi); placed = true; }
+                    }
+                } catch (e) {
+                    console.warn('Reader: exact resume failed, falling back to percent', e);
+                }
+            }
+            if (!placed) await view.goToFraction(frac);
             if (scrubEl) scrubEl.disabled = false;
 
             if (overlay) overlay.hidden = true;
