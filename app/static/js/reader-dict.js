@@ -11,6 +11,9 @@
 // hands us via its per-section 'load' events.
 
 var WORD_RE = /^[\p{L}\p{M}'’ʼ-]{2,64}$/u;
+// Longer than this and the selection is a stray select-all, not a passage
+// someone means to quote. Roughly a page of text.
+var MAX_PASSAGE = 4000;
 var SENTENCE_CAP = 400;
 
 function debounce(fn, ms) {
@@ -74,8 +77,21 @@ export function initDictLookup(opts) {
     var aiBox = document.getElementById('rdAiBox');
     var aiText = document.getElementById('rdAiText');
     var closeBtn = document.getElementById('rdClose');
+    var eyebrow = sheet.querySelector('.rd-eyebrow');
+    var quoteEl = document.getElementById('rdQuote');
+    var actionsEl = document.getElementById('rdActions');
+    var copyBtn = document.getElementById('rdCopyBtn');
+    var copyCiteBtn = document.getElementById('rdCopyCiteBtn');
+
+    var DICT_EYEBROW = eyebrow ? eyebrow.textContent : '';
+    var STR = {
+        passage: i18n.rdPassage || 'Selected text',
+        copied: i18n.rdCopied || 'Copied.',
+        copyFailed: i18n.rdCopyFailed || 'Could not copy. Use your browser’s own copy instead.',
+    };
 
     var current = null;          // { word, sentence }
+    var selectedText = '';       // what the copy actions act on
     var seq = 0;                 // stale-response guard
     var downloading = false;
     var openedAt = 0;
@@ -85,6 +101,8 @@ export function initDictLookup(opts) {
     function close() {
         sheet.hidden = true;
         current = null;
+        selectedText = '';
+        if (actionsEl) actionsEl.hidden = true;
         seq++;
     }
 
@@ -100,6 +118,12 @@ export function initDictLookup(opts) {
         aiText.textContent = '';
         aiBtn.hidden = !cfg.aiConfigured;
         aiBtn.disabled = false;
+        // Passage mode is the exception, not the default: every lookup starts
+        // from the dictionary layout and opts in. The copy actions are NOT
+        // reset here — resetBody runs again when a lookup returns, and they
+        // apply to whatever is selected either way. close() clears them.
+        if (quoteEl) { quoteEl.hidden = true; quoteEl.textContent = ''; }
+        if (eyebrow) eyebrow.textContent = DICT_EYEBROW;
     }
 
     function showStatus(msg, busy) {
@@ -184,6 +208,9 @@ export function initDictLookup(opts) {
         var myseq = ++seq;
         wordEl.textContent = word;
         resetBody();
+        // Copy applies to a single word too — the sheet is already open on it,
+        // and reaching past it for the browser's own menu would be silly.
+        if (actionsEl) actionsEl.hidden = false;
         showStatus(i18n.dictLoading || 'Looking up…', true);
         open();
 
@@ -226,13 +253,86 @@ export function initDictLookup(opts) {
         });
     }
 
+    // --- Passage mode ------------------------------------------------------
+    // A multi-word selection has nothing to look up, and until now it did
+    // nothing at all: the sheet only ever opened for a single word. The
+    // browser's own selection menu can copy the raw text, but it doesn't know
+    // it is holding a book — so what Colophon adds is the passage *with its
+    // source*, which is what you actually want when quoting one.
+
+    function showPassage(text) {
+        seq += 1;                 // cancel any dictionary request in flight
+        resetBody();
+        selectedText = text;
+        if (eyebrow) eyebrow.textContent = STR.passage;
+        if (wordEl) wordEl.textContent = '';
+        if (quoteEl) { quoteEl.textContent = text; quoteEl.hidden = false; }
+        if (actionsEl) actionsEl.hidden = false;
+        // "Explain in this sentence" is a word-level idea; a passage already
+        // is its own context.
+        aiBtn.hidden = true;
+        open();
+    }
+
+    function citation() {
+        var parts = [];
+        if (cfg.bookTitle) parts.push(cfg.bookTitle);
+        if (cfg.bookAuthor) parts.push(cfg.bookAuthor);
+        return parts.join(' — ');
+    }
+
+    function copyText(withSource) {
+        if (!selectedText) return;
+        var payload = selectedText;
+        if (withSource) {
+            var source = citation();
+            payload = '”' + selectedText + '”' + (source ? '\n— ' + source : '');
+        }
+        writeToClipboard(payload).then(function (ok) {
+            showStatus(ok ? STR.copied : STR.copyFailed, false);
+        });
+    }
+
+    // navigator.clipboard needs a secure context, which the reader has over
+    // Tailscale but not on a plain LAN http:// address. Fall back to the old
+    // execCommand path there rather than failing on the machines most likely
+    // to be used at home.
+    function writeToClipboard(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(text)
+                .then(function () { return true; })
+                .catch(function () { return legacyCopy(text); });
+        }
+        return Promise.resolve(legacyCopy(text));
+    }
+
+    function legacyCopy(text) {
+        try {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.cssText = 'position:fixed;top:-1000px;opacity:0;';
+            document.body.appendChild(ta);
+            ta.select();
+            var ok = document.execCommand('copy');
+            document.body.removeChild(ta);
+            return ok;
+        } catch (e) { return false; }
+    }
+
     // --- Selection wiring inside the book iframe --------------------------
     function checkSelection(doc) {
         var sel = doc.getSelection && doc.getSelection();
         if (!sel || sel.isCollapsed) return;
-        var text = sel.toString().trim();
-        if (!WORD_RE.test(text)) return;
-        lookup(text, sentenceAround(sel, text));
+        var text = sel.toString().replace(/\s+/g, ' ').trim();
+        if (!text) return;
+        if (WORD_RE.test(text)) {
+            selectedText = text;
+            lookup(text, sentenceAround(sel, text));
+            return;
+        }
+        if (text.length > MAX_PASSAGE) return;   // a runaway select-all
+        showPassage(text);
     }
 
     function wireDoc(doc) {
@@ -259,6 +359,8 @@ export function initDictLookup(opts) {
 
     if (closeBtn) closeBtn.addEventListener('click', close);
     if (aiBtn) aiBtn.addEventListener('click', explain);
+    if (copyBtn) copyBtn.addEventListener('click', function () { copyText(false); });
+    if (copyCiteBtn) copyCiteBtn.addEventListener('click', function () { copyText(true); });
 
     return { isOpen: isOpen, close: close };
 }

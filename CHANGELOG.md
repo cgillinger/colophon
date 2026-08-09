@@ -5,6 +5,24 @@ PATCH for fixes, MINOR for user-visible features and automatic migrations, MAJOR
 changes that need you to act. Releases before 1.41.0 are summarised from the git log —
 see the [tags](https://github.com/cgillinger/colophon/tags) for the full history.
 
+## [1.46.0] — 2026-08-09
+
+### Added
+- **Copy text out of a book.** Select more than a single word in the reader and
+  a sheet now shows the passage with two actions: **Copy**, and **Copy with
+  source**, which adds the title and author so a quote arrives somewhere else
+  already attributed. Single words get the same actions alongside the
+  dictionary entry.
+
+  Until now, selecting several words did nothing at all — the sheet only ever
+  opened for one word, so a phrase left you reaching for the browser's own
+  menu, which can copy the text but knows nothing about which book it came
+  from.
+
+  Works without an HTTPS connection: where the modern clipboard isn't
+  available, it falls back to the older method rather than failing on exactly
+  the plain-`http://` home setups most likely to be used.
+
 ## [1.45.0] — 2026-08-09
 
 ### Changed

@@ -3,6 +3,31 @@
 Deferred ideas and planned work. Implemented items get removed (the code/git
 history is the record).
 
+## USB sync with channel-aware bookkeeping (port from Bookstation)
+
+**What:** Colophon is wireless-only today. Bookstation has built and
+production-tested the full USB stack — device monitoring, device panel
+(send/import/compare), reading-stats harvesting from `KoboReader.sqlite`
+(including hot-WAL and corrupt-database recovery), and the capstone:
+channel-aware sync (`device_transfers`, v0.19.0) that makes "USB or WiFi,
+both always end up right" a keepable promise. Reference repo is the sibling
+checkout `../bookstation`; the port assignment with reference commits,
+tests-as-spec, design decisions and pitfalls is
+[`docs/usb_synk_uppdrag.md`](usb_synk_uppdrag.md). **Rule one: never build
+the USB import without the channel bookkeeping — that combination is what
+prevents the duplicate-library failure mode.**
+
+## Reader features to fetch from Bookstation (search, PDF zoom, dark PDF, page input)
+
+**What:** A two-way reader comparison (2026-07-29, when Bookstation ported
+our scrub slider + snapback as their v0.20.0) found four things their reader
+has that ours lacks: in-book text search with excerpts (EPUB + PDF — we have
+none), PDF zoom controls (steps + fit-width/fit-page), dark mode that
+inverts the PDF page itself, and a direct page-number input beside the
+scrub. Port assignment with reference commits, files, an important pdf.js
+`wasmUrl` pitfall (query strings break document loading entirely) and
+delivery criteria: [`docs/lasarfunktioner_uppdrag.md`](lasarfunktioner_uppdrag.md).
+
 ## Offline reading — core shipped (v1.26.0), follow-ups deferred
 
 **Done (v1.26.0):** "save for offline" in the reader caches the book file +
@@ -22,6 +47,42 @@ not run the SW. See `app/templates/sw.js`, `app/static/js/reader.js`,
   Home Screen" makes it durable; a UI surfacing this would help.
 - **Download from the book modal** (not just from inside the open reader), so a
   book can be saved for offline without opening it first.
+
+## Annotations — notes and highlights in the reader
+
+**What:** v1.46.0 gave the reader a passage mode: select more than one word and
+a sheet offers the passage back with **Copy** and **Copy with source**. The
+obvious next step is keeping it — highlight a passage, attach a note, and find
+them again later.
+
+**Why it's a small step from here, not a big one:** the hard part is already
+solved. `services/kobo_location.py`'s character bridge (v1.42.0) turns a
+position in the reader into a coordinate that survives — `{Source, offset}` is
+stable across re-renders, font changes and devices, and it is the *same*
+coordinate the Kobo uses. An annotation anchored on a start/end offset pair in a
+named chapter needs no new positioning machinery at all.
+
+**Where it hooks in:**
+- `app/static/js/reader-dict.js` — passage mode already computes the selection;
+  `denseOffsetOf()` in `reader.js` already converts a DOM point to an offset.
+  Add "Save note" beside the copy actions.
+- New table via the usual `services/database.py` `ensure_*_table` pattern:
+  `(item_id, source, start_offset, end_offset, quote, note, colour, created_at)`.
+  Store the quote text too — it's what makes a note readable in a list, and the
+  fallback if a re-scan ever changes the file.
+- Re-rendering highlights on open: walk the chapter to the stored offsets with
+  `rangeAtDenseOffset()` and wrap the range.
+- UI for reading them back: simplest is a section in the book's display modal,
+  next to where the vocabulary list would go.
+
+**Open questions worth settling first:** whether a highlight survives the file
+being replaced (offsets shift — quote text is the recovery anchor); whether
+notes should be exportable (Markdown out is cheap and makes them yours); and
+whether Kobo-side annotations should be imported over USB — the device stores
+them in `Bookmark` in `KoboReader.sqlite`, and `services/kobo_usb.py` already
+knows how to read that database safely.
+
+**Scope:** medium. New user-visible feature + new table → MINOR.
 
 ## Vocabulary list from dictionary lookups (Kindle "Vocabulary Builder" style)
 
