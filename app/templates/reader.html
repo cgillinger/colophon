@@ -278,6 +278,15 @@
             overflow-y: auto; min-height: 0;
             display: flex; flex-direction: column; gap: 10px;
         }
+        /* A passage is quoted, not defined: same serif as the book, set off by
+           a rule rather than a box so the sheet keeps its one visual idea. */
+        .reader-dict .rd-quote {
+            font-family: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+            font-size: .98rem; line-height: 1.55; overflow-wrap: anywhere;
+            border-left: 2px solid var(--rs-line); padding-left: 12px;
+            max-height: 40vh; overflow-y: auto;
+        }
+        .reader-dict .rd-actions { display: flex; flex-wrap: wrap; gap: 8px; }
         .reader-dict .rd-status { font-size: .9rem; opacity: .75; }
         .reader-dict .rd-status.rd-busy { animation: rdrPulse 1.2s ease-in-out infinite; }
         .reader-dict .rd-entry { font-size: .92rem; line-height: 1.5; overflow-wrap: anywhere; }
@@ -441,6 +450,18 @@
         </div>
         <div class="rd-word" id="rdWord"></div>
         <div class="rd-body">
+            {# Passage mode: a multi-word selection has no definition to look
+               up, so the sheet shows the passage itself and what you can do
+               with it. Single words keep the dictionary body below. #}
+            <div class="rd-quote" id="rdQuote" hidden></div>
+            <div class="rd-actions" id="rdActions" hidden>
+                <button type="button" class="rd-ai-btn" id="rdCopyBtn">
+                    <i class="ti ti-copy"></i> {{ _('Copy') }}
+                </button>
+                <button type="button" class="rd-ai-btn" id="rdCopyCiteBtn">
+                    <i class="ti ti-quote"></i> {{ _('Copy with source') }}
+                </button>
+            </div>
             <div class="rd-status" id="rdStatus" hidden></div>
             {# Translation first — it's the short answer; the (often essay-length)
                GCIDE definition sits collapsed below it. #}
@@ -486,6 +507,7 @@
             shareFileName: {{ share_filename|tojson }},
             shareMime: {{ share_mimetype|tojson }},
             bookTitle: {{ (item.title or item.file_name or '')|tojson }},
+            bookAuthor: {{ (item.author or '')|tojson }},
             // Dictionary lookup (docs/reader-dictionary-lookup.md): the book's
             // language picks which dictionaries to query/download; the AI
             // button only renders when a provider is configured.
@@ -526,6 +548,9 @@
                 shareUnsupported: {{ _('Your browser can’t share files directly — the book will download instead, so you can send it yourself.')|tojson }},
                 shareError: {{ _('Could not share this book.')|tojson }},
                 sharePreparing: {{ _('Preparing book to share…')|tojson }},
+                rdPassage: {{ _('Selected text')|tojson }},
+                rdCopied: {{ _('Copied.')|tojson }},
+                rdCopyFailed: {{ _('Could not copy. Use your browser’s own copy instead.')|tojson }},
                 dictLoading: {{ _('Looking up…')|tojson }},
                 dictDownloading: {{ _('Downloading dictionaries ({mb} MB, one-time)…')|tojson }},
                 dictDownloadFailed: {{ _('Dictionary download failed — see the server log.')|tojson }},

@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.45.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.46.0.
 
 ## Författarmappar (v1.38.0 — byggt)
 
@@ -160,7 +160,7 @@ url-state.js             # Mirrors view/search/filters/sort/page to the URL (bac
 author-combobox.js       # Registry-backed multi-author fields in the book modal (one row per author, typeahead + create-guard; hidden #modalAuthor holds the ' & '-joined string for legacy flows)
 authors-manage.js        # /authors page: confirm/rename/merge/verify + AI adjudicator (own page, not the bulk view)
 reader.js                # In-browser reader controller (standalone /reader page, not the bulk view; ES module, loads foliate-js)
-reader-dict.js           # Dictionary-lookup sheet for the reader (select a word → definition + translation + AI)
+reader-dict.js           # Selection sheet for the reader. One word → definition + translation + AI; more than one → passage mode with Copy / Copy with source (v1.46.0). WORD_RE decides which.
 ```
 
 When editing the main view, look in the relevant JS module first — most logic lives there, not in the template.
