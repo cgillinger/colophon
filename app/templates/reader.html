@@ -470,6 +470,11 @@
             initialProgress: {{ initial_progress|tojson }},
             readStatus: {{ read_status|tojson }},
             progressModifiedAt: {{ progress_modified_at|tojson }},
+            {# Exact resume: the stored Kobo span, translated into "N
+               non-whitespace characters into this chapter". Null when there is
+               no stored position or no KEPUB to translate against. #}
+            resumeHref: {{ resume_href|tojson }},
+            resumeOffset: {{ resume_offset|tojson }},
             resetUrl: {{ url_for('metadata.reset_reading_state', item_id=item.id)|tojson }},
             homeUrl: {{ url_for('metadata.index')|tojson }},
             // "Give this book to someone": hand the raw file (EPUB or

@@ -80,11 +80,48 @@ together:
   is driven by `read_location_json`. The **reset path clears
   `read_location_json` too**, else a "re-read from start" resurrects the old
   span on the next sync.
-- The **in-browser reader never writes a location** (it resumes by percent via
-  `goToFraction`). EPUB CFIs and Kobo KEPUB spans are different coordinate
-  systems, so exact position only flows **Kobo → Colophon → Kobo**; a
-  browser-read book has `read_location_json = NULL` and the Kobo gets a
-  chapter derived from the percentage (next section).
+- The in-browser reader **used to** write no location, because EPUB CFIs and
+  Kobo KEPUB spans are different coordinate systems. Since v1.42.0 it writes a
+  real one, via the character bridge below; when that can't resolve, the old
+  behaviour stands and the Kobo gets a chapter derived from the percentage.
+
+## Exact position across readers — the character bridge (v1.42.0)
+
+Percent gets you a chapter. To get the *sentence*, the two readers need a shared
+coordinate, and they appear not to have one: the Kobo positions by `kobo.N.M`
+spans that **kepubify injects**, and those don't exist in the source EPUB the
+browser renders.
+
+They do share one thing, though: **the text**. kepubify wraps it and renames
+nothing. Measured across a real 144-document book — 16,825 spans — the
+whitespace-free text of the KEPUB is *identical* to the source EPUB's body text
+in every single document. So "how many non-whitespace characters into this
+chapter am I" is a coordinate both sides can compute, and it bridges them
+without reimplementing kepubify's segmentation or parsing a CFI.
+
+- **Why whitespace is excluded, not collapsed.** The source has newlines between
+  block elements that belong to no span at all; a collapsing rule drifts by one
+  character per paragraph. Ignoring whitespace sidesteps every such difference.
+  Both halves of the rule must agree: `services/kobo_location.py:dense_text` and
+  the `dense()` in `static/js/reader.js`.
+- **Browser → Kobo:** `reader.js` walks the section's text nodes to the visible
+  range and posts `{href, offset}` alongside the percent;
+  `kobo_location.py:location_for_offset` walks the **cached KEPUB's** spans to
+  the same offset and stores the span it lands in.
+- **Kobo → browser:** `reader.py:_resume_anchor` runs `offset_for_span` and the
+  page hands the reader `resumeHref`/`resumeOffset`; the reader finds that
+  offset in its own DOM, builds a CFI and `goTo`s it.
+- **The KEPUB must be the one the device has.** `kobo_kepub.py` caches on
+  `(item_id, source mtime)`, so an untouched source file means identical bytes
+  and identical span ids. Editing the file invalidates both — the device
+  re-downloads and the span ids are regenerated together, so they stay in step.
+- **Only `koboSpan` elements are counted**, never every text node: kepubify
+  injects a `<style class="kobostylehacks">` block whose CSS would otherwise be
+  counted as body text and shift every offset in the document.
+- Falls back to the chapter-level percent path whenever any of this is
+  unavailable. `tests/test_kobo_location.py` re-checks the premise against the
+  real book when it happens to be mounted — if kepubify ever changes its text
+  handling, that test fails before anyone's position silently drifts.
 
 ## Percent and Location must describe the same place (v1.41.0)
 
@@ -174,7 +211,8 @@ page turn.
 | The Kobo sits at a **lower percentage than Colophon** and re-syncing never fixes it; log shows repeated `dropped (monotonic/older)` | Two separate causes, both needed fixing. (1) Stale `read_location_json` paired with a newer `read_progress` — the device obeys the location and reports its percentage back, which furthest-read-wins rejects *(v1.41.0)*. (2) Even with a correct DTO, the device discards it while its own `LastModified` is newer than ours *(v1.41.1)*. Compare `GET …/state`'s `LastModified` against `DateLastRead` on the device. |
 | A book **read on the Kobo** never reaches Colophon, and the device shows only one (correct-looking) copy | A second, **withdrawn** entitlement (`___UserID = 'removed'`, hidden from the library) is the one that recorded the reading, under a UUID Colophon never minted. Grep the log for `unknown book UUID`; confirm in `KoboReader.sqlite`; delete the hidden row. |
 | A book "**re-downloads**" when you open it | Check `IsDownloaded` on the device first — a cloud entitlement that was never fetched downloads on first open. That is not a re-download and not a bug. A real re-download means `content_updated_at` moved (see above). |
-| Colophon browser-reader progress doesn't set the **exact page** on the Kobo | By design — percent syncs exactly, position only to chapter granularity (browser CFIs ≠ Kobo spans). |
+| Colophon browser-reader progress doesn't set the **exact page** on the Kobo | Position syncs exactly since v1.42.0; the *page number* still differs by design, because a Kobo paginates for its own screen and font settings. |
+| Position lands in the right chapter but the wrong sentence | The character bridge fell back. Check that a KEPUB exists for the item (`kobo_kepub.py` cache) and that `reader.js` posted `href`/`offset` — without them only percent travels. |
 
 ## Footgun
 
@@ -192,3 +230,5 @@ path overrides instead.
 - **v1.41.1** — re-assert `read_last_modified` on a dropped PUT (the device
   resolves by timestamp, we resolve by furthest-read); consistency test changed
   from distance-to-chapter-start to containment-in-chapter-range.
+- **v1.42.0** — the character bridge: exact position both ways
+  (`kobo_location.py:span_for_offset`/`offset_for_span`, `reader.js`).

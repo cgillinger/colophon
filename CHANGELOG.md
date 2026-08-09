@@ -5,6 +5,26 @@ PATCH for fixes, MINOR for user-visible features and automatic migrations, MAJOR
 changes that need you to act. Releases before 1.41.0 are summarised from the git log —
 see the [tags](https://github.com/cgillinger/colophon/tags) for the full history.
 
+## [1.42.0] — 2026-08-09
+
+### Added
+- **Your reading position now moves between devices exactly.** Read a chapter in
+  the browser, pick up the Kobo, sync — and it opens on the same sentence, not
+  just the same chapter. The same in the other direction: a book you were
+  reading on the Kobo opens in the browser where you left off.
+
+  The two readers describe positions in incompatible ways (the Kobo uses
+  markers inserted when a book is converted for it; the browser doesn't have
+  them). But the conversion preserves the text itself character for character,
+  so "how many characters into this chapter am I" means the same thing to both,
+  and that is what now travels between them. Verified against a real 144-chapter
+  book: every chapter's text matches exactly, all 16,825 markers.
+
+  Where an exact position isn't available — a PDF, a book never sent to a Kobo —
+  you still land on the nearest chapter, as before. Note that the *page number*
+  will still differ between devices: a Kobo paginates for its own screen and
+  font settings, so the page is a property of the device, not of the book.
+
 ## [1.41.2] — 2026-08-09
 
 ### Fixed

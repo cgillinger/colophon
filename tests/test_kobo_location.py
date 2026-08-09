@@ -11,6 +11,7 @@ Real EPUBs on disk, because the whole point is reading the spine's byte
 weights out of the zip.
 """
 import json
+import os
 import posixpath
 import zipfile
 
@@ -18,8 +19,12 @@ import pytest
 
 from app.routes.kobo import _faithful_location
 from app.services.kobo_location import (
+    _dense_starts,
+    dense_text,
     location_for_percent,
+    offset_for_span,
     percent_for_source,
+    span_for_offset,
 )
 
 CONTAINER = """<?xml version="1.0"?>
@@ -242,3 +247,136 @@ def test_unreadable_book_with_stored_location_still_echoes_it(tmp_path):
     item = _Item(tmp_path / "missing.epub", read_progress=60.0,
                  read_location_json=json.dumps(stored))
     assert _faithful_location(item) == stored
+
+
+# ---------------------------------------------------------------------------
+# The character-offset bridge (exact position, browser <-> Kobo)
+# ---------------------------------------------------------------------------
+
+KEPUB_CHAPTER = """<html><body><div id="book-columns"><div id="book-inner">
+<style class="kobostylehacks">div#book-inner { margin-top: 0; }</style>
+<h1><span epub:type="pagebreak" id="page278"></span><span class="koboSpan" id="kobo.1.1">11.4</span></h1>
+<p><span class="koboSpan" id="kobo.2.1">First sentence here. </span><span class="koboSpan" id="kobo.2.2">Second one follows. </span><em><span class="koboSpan" id="kobo.2.3">emphasised</span></em><span class="koboSpan" id="kobo.2.4"> and the rest.</span></p>
+<p><span class="koboSpan" id="kobo.3.1">A later paragraph.</span></p>
+</div></div></body></html>"""
+
+
+def test_dense_text_drops_all_whitespace():
+    assert dense_text("a b\n c\t") == "abc"
+    assert dense_text("") == ""
+    assert dense_text(None) == ""
+
+
+def test_dense_starts_are_cumulative_and_ignore_whitespace():
+    # "ab" (2) + "  " (0) + "cd" (2)
+    assert _dense_starts(["ab", "  ", "cd"]) == [0, 2, 2]
+
+
+class _KepubItem:
+    """An item whose kepub is a file we control."""
+
+    def __init__(self, kepub_path):
+        self.id = 7
+        self.file_path = "/books/whatever.epub"
+        self._kepub = str(kepub_path)
+
+
+@pytest.fixture
+def kepub_item(tmp_path, monkeypatch):
+    path = tmp_path / "book.kepub.epub"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("OEBPS/chapter001.xhtml", KEPUB_CHAPTER)
+    item = _KepubItem(path)
+    monkeypatch.setattr(
+        "app.services.kobo_location._kepub_path", lambda it: getattr(it, "_kepub", None)
+    )
+    return item
+
+
+def test_offset_maps_to_the_span_containing_it(kepub_item):
+    # dense stream: "11.4" (4) | "Firstsentencehere." (18) -> 4..21
+    assert span_for_offset(kepub_item, "OEBPS/chapter001.xhtml", 0) == "kobo.1.1"
+    assert span_for_offset(kepub_item, "OEBPS/chapter001.xhtml", 3) == "kobo.1.1"
+    assert span_for_offset(kepub_item, "OEBPS/chapter001.xhtml", 4) == "kobo.2.1"
+    assert span_for_offset(kepub_item, "OEBPS/chapter001.xhtml", 25) == "kobo.2.2"
+
+
+def test_the_injected_stylesheet_is_not_counted_as_text(kepub_item):
+    """kepubify adds a <style class="kobostylehacks"> block and two wrapper
+    divs. Counting the CSS as body text would shift every offset in the
+    document — so walk koboSpans, never every text node."""
+    doc = "OEBPS/chapter001.xhtml"
+    # The last span starts exactly after the dense text of everything before
+    # it, with no room for the ~40 characters of CSS sitting in the markup.
+    preceding = dense_text("11.4First sentence here. Second one follows. emphasised and the rest.")
+    assert offset_for_span(kepub_item, doc, "kobo.3.1") == len(preceding)
+
+
+def test_offset_beyond_the_end_clamps_to_the_last_span(kepub_item):
+    assert span_for_offset(kepub_item, "OEBPS/chapter001.xhtml", 10_000) == "kobo.3.1"
+
+
+def test_span_and_offset_round_trip(kepub_item):
+    for span in ("kobo.1.1", "kobo.2.1", "kobo.2.3", "kobo.3.1"):
+        offset = offset_for_span(kepub_item, "OEBPS/chapter001.xhtml", span)
+        assert span_for_offset(kepub_item, "OEBPS/chapter001.xhtml", offset) == span
+
+
+def test_unknown_span_and_missing_inputs_are_none(kepub_item):
+    assert offset_for_span(kepub_item, "OEBPS/chapter001.xhtml", "kobo.99.9") is None
+    assert offset_for_span(kepub_item, "OEBPS/chapter001.xhtml", None) is None
+    assert span_for_offset(kepub_item, "OEBPS/chapter001.xhtml", None) is None
+    assert span_for_offset(kepub_item, "OEBPS/nope.xhtml", 5) is None
+
+
+def test_no_kepub_yields_none(tmp_path, monkeypatch):
+    monkeypatch.setattr("app.services.kobo_location._kepub_path", lambda it: None)
+    item = _KepubItem(tmp_path / "absent")
+    assert span_for_offset(item, "OEBPS/chapter001.xhtml", 5) is None
+
+
+# ---------------------------------------------------------------------------
+# The premise, checked against real files when they happen to be present
+# ---------------------------------------------------------------------------
+
+REAL_EPUB = "/mnt/komga/Adrian Tchaikovsky/Children of Strife.epub"
+REAL_KEPUB = "/media/christian/KOBOeReader/.kobo/kepub/5d4dd4ba-324c-5198-9fa2-a756f9607786"
+
+
+@pytest.mark.skipif(
+    not (os.path.exists(REAL_EPUB) and os.path.exists(REAL_KEPUB)),
+    reason="needs the real library and a mounted Kobo",
+)
+def test_kepub_and_source_dense_text_match_across_the_whole_book():
+    """The premise the whole bridge rests on.
+
+    If kepubify ever changes its text handling, or a different kepubify
+    version produces different spans, this is where it shows up — as a
+    mismatch, before anyone's reading position silently drifts.
+    """
+    import xml.etree.ElementTree as ET
+    from bs4 import BeautifulSoup
+
+    with zipfile.ZipFile(REAL_EPUB) as zs, zipfile.ZipFile(REAL_KEPUB) as zk:
+        opf = ET.fromstring(zs.read("OEBPS/package.opf"))
+        manifest = {i.get("id"): i.get("href") for i in opf.findall(".//{*}manifest/{*}item")}
+        spine = [
+            "OEBPS/" + manifest[i.get("idref")]
+            for i in opf.findall(".//{*}spine/{*}itemref")
+            if i.get("idref") in manifest
+        ]
+
+        mismatches = []
+        for doc in spine:
+            ks = BeautifulSoup(zk.read(doc).decode("utf-8", "replace"), "html.parser")
+            ss = BeautifulSoup(zs.read(doc).decode("utf-8", "replace"), "html.parser")
+            kepub_dense = dense_text(
+                "".join(e.get_text() for e in ks.find_all("span", class_="koboSpan") if e.get("id"))
+            )
+            for bad in ss.find_all(["script", "style"]):
+                bad.decompose()
+            source_dense = dense_text((ss.body or ss).get_text())
+            if kepub_dense != source_dense:
+                mismatches.append(doc)
+
+    assert mismatches == [], f"{len(mismatches)} of {len(spine)} documents diverged"

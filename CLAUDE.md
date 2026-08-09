@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.41.2.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.42.0.
 
 ## Författarmappar (v1.38.0 — byggt)
 
@@ -90,7 +90,7 @@ app/
     kobo_auth.py                # Per-device token generation, lookup, revoke
     kobo_sync.py                # Kobo sync protocol: catalogue, state, deltas
     kobo_kepub.py               # On-the-fly EPUB→KEPUB conversion via kepubify
-    kobo_location.py            # Percent ↔ KoboSpan Location (spine byte weights)
+    kobo_location.py            # Percent ↔ KoboSpan, and the exact character bridge
     kobo_conf.py                # Render Kobo .conf snippets for the setup UI
     reading_state.py            # Shared monotonic reading-state writer (Kobo + reader)
     dictionaries.py             # Reader word lookup: on-demand StarDict download + server-side lookup
@@ -114,9 +114,9 @@ app/
     icons/                      # Favicons, app/PWA icons, header logo SVGs (light+dark)
     vendor/tabler-icons/        # Icon font
     vendor/foliate-js/          # Vendored EPUB renderer (MIT) for the reader
-tests/                          # 24 pytest files: metadata_pipeline, calibre_metadata,
+tests/                          # 26 pytest files: metadata_pipeline, calibre_metadata,
                                 # bookf, grouping, kobo_conf, kobo_sync,
-                                # kobo_location, language,
+                                # kobo_location, reader_position, language,
                                 # quality, reading_state, scanner, scoring,
                                 # source_status, title_clean, wikipedia,
                                 # metadata_merge, metadata_escalation, upload,
@@ -197,7 +197,7 @@ Both scan and bulk metadata use Server-Sent Events with background threads + `qu
 `reader_bp` (`/reader/<id>`) renders an EPUB in the browser with vendored
 foliate-js (`static/vendor/foliate-js/`, an ES module, no build step). `/reader/<id>/file` serves the **raw** EPUB (not the kepubified Kobo variant); the URL is stable and token-free so a future "download for offline" step can cache it. Step 1 is **online-only** — offline caching of book content is still deferred (see `docs/TODO.md`).
 
-Reading progress is **not** a separate store: the reader writes to the same canonical `LibraryItem` reading-state fields the Kobo sync uses (`read_status`, `read_progress`, …) via the shared `services/reading_state.py:apply_reading_state()`, which both the Kobo PUT handler and `/reader/<id>/progress` call. Because it bumps `read_last_modified`, progress made in the browser rides the existing Kobo delta to the device, and vice versa — no new sync infra. The browser resumes by **percent** (`goToFraction`); it never writes `read_location`, because Kobo's KEPUB-span locations and foliate's EPUB CFIs are different coordinate systems. Since v1.41.0 it **clears** the stored location instead (`clear_location=True`), and the Kobo is sent a chapter derived from the percent by `services/kobo_location.py` — a stale bookmark paired with newer progress used to drag the device back and deadlock the sync. The Kobo's **own** bookmark still round-trips exactly Kobo→Colophon→Kobo (see below). The "Läs" button is a `display-only` element gated to EPUB, so it appears only in the shelf view's passive modal, not the table view's edit modal.
+Reading progress is **not** a separate store: the reader writes to the same canonical `LibraryItem` reading-state fields the Kobo sync uses (`read_status`, `read_progress`, …) via the shared `services/reading_state.py:apply_reading_state()`, which both the Kobo PUT handler and `/reader/<id>/progress` call. Because it bumps `read_last_modified`, progress made in the browser rides the existing Kobo delta to the device, and vice versa — no new sync infra. Position syncs **exactly in both directions** since v1.42.0. Kobo spans (`kobo.N.M`) don't exist in the source EPUB, but kepubify preserves the text character for character, so the shared coordinate is *non-whitespace characters into the chapter*: the reader posts `{href, offset}`, `services/kobo_location.py` walks the cached KEPUB's spans to that offset, and `reader.py:_resume_anchor` runs it backwards for resume. When that can't resolve (PDF, no KEPUB) the reader falls back to percent and **clears** the stored location (`clear_location=True`, v1.41.0), and the Kobo gets a chapter derived from the percent — a stale bookmark paired with newer progress used to drag the device back and deadlock the sync. The "Läs" button is a `display-only` element gated to EPUB, so it appears only in the shelf view's passive modal, not the table view's edit modal.
 
 **Dictionary lookup (v1.32.0)**: selecting a single word in the reader opens a
 bottom sheet with an English definition (GCIDE) + Swedish translation
@@ -310,7 +310,7 @@ get their env from docker-compose.
 >   -c "pip install -q pytest && python -m pytest tests/ -q"
 > ```
 
-**Known pre-existing failures (as of v1.41.2):** a clean run is *553 passed, 10
+**Known pre-existing failures (as of v1.42.0):** a clean run is *568 passed, 10
 failed*. The 10 are not regressions — `test_quality.py` (6) and
 `test_scoring.py` (3) assert Swedish reason/warning substrings the code now
 emits in English, and `test_scanner.py::...test_does_not_overwrite_manual_metadata`
