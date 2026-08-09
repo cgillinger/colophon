@@ -1,6 +1,6 @@
 # Colophon — self-hosted e-book library manager with Kobo wireless sync
 
-[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![GHCR](https://img.shields.io/badge/ghcr.io-prebuilt%20image-2496ED?logo=github&logoColor=white)](https://github.com/cgillinger/colophon/pkgs/container/colophon) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.44.0-brightgreen)](https://github.com/cgillinger/colophon/releases) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#setting-up-kobo-sync)
+[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![GHCR](https://img.shields.io/badge/ghcr.io-prebuilt%20image-2496ED?logo=github&logoColor=white)](https://github.com/cgillinger/colophon/pkgs/container/colophon) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.45.0-brightgreen)](https://github.com/cgillinger/colophon/releases) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#setting-up-kobo-sync)
 
 **Colophon — the e-book manager.** A self-hosted web app that turns a messy folder of e-book files into a clean, browsable library and syncs it to a Kobo e-reader over WiFi. (Not the printing/publishing term — this is the software.)
 
@@ -113,7 +113,7 @@ Open `http://localhost:5000`. To update later:
 docker compose pull && docker compose up -d
 ```
 
-`:latest` follows the main branch. Prefer pinned releases? Use a version tag instead, e.g. `ghcr.io/cgillinger/colophon:1.44.0` — every [release](https://github.com/cgillinger/colophon/releases) gets a matching image tag.
+`:latest` follows the main branch. Prefer pinned releases? Use a version tag instead, e.g. `ghcr.io/cgillinger/colophon:1.45.0` — every [release](https://github.com/cgillinger/colophon/releases) gets a matching image tag.
 
 ### Option 2: build from source
 
@@ -151,6 +151,7 @@ All variables are read from `.env` (loaded via `env_file` in `docker-compose.yml
 | `COLOPHON_MAX_UPLOAD_MB` | No | `1024` | Max size per uploaded file (in-app upload) |
 | `COLOPHON_NEW_BADGE_DAYS` | No | `14` | Days a newly added book shows the "New" badge |
 | `COLOPHON_LIBRARY_OWNER` | No | — | Label shown under the wordmark naming whose library this instance shows (e.g. `Christians bibliotek`) |
+| `COLOPHON_USB_MOUNT_ROOTS` | No | `/media:/run/media:/mnt:/Volumes` | Where to look for a Kobo plugged in by USB. Set to an empty string to switch USB detection off |
 
 All API keys can also be set in the web UI under **Settings → API settings**. UI values take priority over environment variables.
 
@@ -389,6 +390,27 @@ Eject KOBOeReader properly (Finder eject button / right-click → Eject) and wai
 - **"Sync failed".** Restart the Kobo (hold power 8s). Double-check `COLOPHON_PUBLIC_URL` matches what the Kobo can reach.
 - **Remove a device.** Settings → Kobo Sync → trash icon.
 - **Undo and use Kobo's store again.** Restore the `.bak`, or set `api_endpoint=https://storeapi.kobo.com` and delete the `image_*` lines.
+
+### Optional: import reading state over USB
+
+A Kobo that has been off Wi-Fi still knows what you read on it. Plug it into the machine running Colophon and **Settings → Kobo sync** offers to import that reading state — including the exact position, not just a percentage. Colophon only reads the device; it never writes to it.
+
+This needs Colophon to be able to see the mounted reader, so it depends on how you run it:
+
+- **Colophon running directly on your machine** — nothing to do. The reader is found as soon as you plug it in.
+- **Colophon in Docker on the same machine** — the container has to be shown where your system mounts removable media:
+
+  ```yaml
+  services:
+    colophon:
+      volumes:
+        - /media:/media:ro          # or /run/media, or /Volumes on macOS
+  ```
+
+  Add `:rslave` instead of `:ro` if devices plugged in *after* the container starts don't show up.
+- **Colophon on a server, reader plugged into a different machine** — not supported. Nothing on the server can see a device attached to another computer; use wireless sync, which is what it is for.
+
+If you never plug a reader in, this costs nothing and shows nothing: the panel only appears when a Kobo is actually found. Set `COLOPHON_USB_MOUNT_ROOTS=` to switch the search off entirely.
 
 ---
 
