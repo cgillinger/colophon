@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Colophon 1.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-08-09 14:08+0200\n"
+"POT-Creation-Date: 2026-08-09 14:27+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: sv\n"
@@ -983,7 +983,7 @@ msgstr "Ta bort den oanvända posten ”{name}”?"
 msgid "The action failed."
 msgstr "Åtgärden misslyckades."
 
-#: app/templates/authors.html:296 app/templates/reader.html:554
+#: app/templates/authors.html:296 app/templates/reader.html:580
 msgid "Looking up…"
 msgstr "Slår upp…"
 
@@ -1325,7 +1325,7 @@ msgstr "Genre"
 #: app/templates/bulk_metadata.html:253 app/templates/bulk_metadata.html:540
 #: app/templates/bulk_metadata.html:584 app/templates/bulk_metadata.html:680
 #: app/templates/bulk_metadata.html:1082 app/templates/metadata.html:487
-#: app/templates/reader.html:400
+#: app/templates/reader.html:424
 msgid "Publisher"
 msgstr "Förlag"
 
@@ -1445,7 +1445,7 @@ msgstr "Radera bok"
 #: app/templates/bulk_metadata.html:617 app/templates/bulk_metadata.html:783
 #: app/templates/bulk_metadata.html:793 app/templates/bulk_metadata.html:800
 #: app/templates/bulk_metadata.html:810 app/templates/bulk_metadata.html:852
-#: app/templates/bulk_metadata.html:932 app/templates/reader.html:449
+#: app/templates/bulk_metadata.html:932 app/templates/reader.html:475
 msgid "Close"
 msgstr "Stäng"
 
@@ -1579,7 +1579,7 @@ msgstr "Eskalerar till fler källor vid behov"
 
 #: app/templates/bulk_metadata.html:597 app/templates/bulk_metadata.html:703
 #: app/templates/bulk_metadata.html:1122 app/templates/metadata.html:525
-#: app/templates/reader.html:411 app/templates/reader.html:420
+#: app/templates/reader.html:435 app/templates/reader.html:444
 msgid "Normal"
 msgstr "Normal"
 
@@ -2948,171 +2948,175 @@ msgstr "Omslag är låst — bocka ur låsning för att byta."
 msgid "Sources:"
 msgstr "Källor:"
 
-#: app/templates/reader.html:22 app/templates/reader.html:341
+#: app/templates/reader.html:22 app/templates/reader.html:365
 msgid "Reader"
 msgstr "Läsare"
 
-#: app/templates/reader.html:338
+#: app/templates/reader.html:362
 msgid "Back"
 msgstr "Tillbaka"
 
-#: app/templates/reader.html:344 app/templates/reader.html:542
+#: app/templates/reader.html:368 app/templates/reader.html:568
 msgid "Save for offline reading"
 msgstr "Spara för offline-läsning"
 
-#: app/templates/reader.html:348
+#: app/templates/reader.html:372
 msgid "Give this book to someone"
 msgstr "Ge den här boken till någon"
 
-#: app/templates/reader.html:353 app/templates/reader.html:376
+#: app/templates/reader.html:377 app/templates/reader.html:400
 msgid "Reading settings"
 msgstr "Läsinställningar"
 
-#: app/templates/reader.html:356
+#: app/templates/reader.html:380
 msgid "Previous page"
 msgstr "Föregående sida"
 
-#: app/templates/reader.html:357
+#: app/templates/reader.html:381
 msgid "Next page"
 msgstr "Nästa sida"
 
-#: app/templates/reader.html:358
+#: app/templates/reader.html:382
 msgid "Loading book…"
 msgstr "Laddar bok…"
 
-#: app/templates/reader.html:365
+#: app/templates/reader.html:389
 msgid "Return to previous position"
 msgstr "Tillbaka till förra positionen"
 
-#: app/templates/reader.html:371
+#: app/templates/reader.html:395
 msgid "Position in book"
 msgstr "Position i boken"
 
-#: app/templates/reader.html:380 app/templates/reader.html:381
+#: app/templates/reader.html:404 app/templates/reader.html:405
 msgid "Theme"
 msgstr "Tema"
 
-#: app/templates/reader.html:382
+#: app/templates/reader.html:406
 msgid "Light"
 msgstr "Ljus"
 
-#: app/templates/reader.html:383
+#: app/templates/reader.html:407
 msgid "Sepia"
 msgstr "Sepia"
 
-#: app/templates/reader.html:384
+#: app/templates/reader.html:408
 msgid "Dark"
 msgstr "Mörk"
 
-#: app/templates/reader.html:389
+#: app/templates/reader.html:413
 msgid "Size"
 msgstr "Storlek"
 
-#: app/templates/reader.html:391
+#: app/templates/reader.html:415
 msgid "Smaller text"
 msgstr "Mindre text"
 
-#: app/templates/reader.html:393
+#: app/templates/reader.html:417
 msgid "Larger text"
 msgstr "Större text"
 
-#: app/templates/reader.html:398 app/templates/reader.html:399
+#: app/templates/reader.html:422 app/templates/reader.html:423
 msgid "Font"
 msgstr "Typsnitt"
 
-#: app/templates/reader.html:401
+#: app/templates/reader.html:425
 msgid "Serif"
 msgstr "Serif"
 
-#: app/templates/reader.html:402
+#: app/templates/reader.html:426
 msgid "Sans"
 msgstr "Sans"
 
-#: app/templates/reader.html:403
+#: app/templates/reader.html:427
 msgid "Dyslexia"
 msgstr "Dyslexi"
 
-#: app/templates/reader.html:408 app/templates/reader.html:409
+#: app/templates/reader.html:432 app/templates/reader.html:433
 msgid "Line spacing"
 msgstr "Radavstånd"
 
-#: app/templates/reader.html:410
+#: app/templates/reader.html:434
 msgid "Tight"
 msgstr "Tät"
 
-#: app/templates/reader.html:412
+#: app/templates/reader.html:436
 msgid "Loose"
 msgstr "Luftig"
 
-#: app/templates/reader.html:417 app/templates/reader.html:418
+#: app/templates/reader.html:441 app/templates/reader.html:442
 msgid "Margins"
 msgstr "Marginaler"
 
-#: app/templates/reader.html:419
+#: app/templates/reader.html:443
 msgid "Narrow"
 msgstr "Smal"
 
-#: app/templates/reader.html:421
+#: app/templates/reader.html:445
 msgid "Wide"
 msgstr "Bred"
 
-#: app/templates/reader.html:426 app/templates/reader.html:427
+#: app/templates/reader.html:450 app/templates/reader.html:451
 msgid "Reading mode"
 msgstr "Läsläge"
 
-#: app/templates/reader.html:428
+#: app/templates/reader.html:452
 msgid "Paged"
 msgstr "Bläddra"
 
-#: app/templates/reader.html:429
+#: app/templates/reader.html:453
 msgid "Scroll"
 msgstr "Rulla"
 
-#: app/templates/reader.html:438
+#: app/templates/reader.html:462
 msgid "Start over from the beginning"
 msgstr "Börja om från början"
 
-#: app/templates/reader.html:445 app/templates/reader.html:448
+#: app/templates/reader.html:469 app/templates/reader.html:474
 msgid "Dictionary"
 msgstr "Ordbok"
 
-#: app/templates/reader.html:459 app/templates/settings_kobo.html:196
+#: app/templates/reader.html:471 app/templates/reader.html:472
+msgid "Move to the other end of the screen"
+msgstr "Flytta till andra änden av skärmen"
+
+#: app/templates/reader.html:485 app/templates/settings_kobo.html:196
 msgid "Copy"
 msgstr "Kopiera"
 
-#: app/templates/reader.html:462
+#: app/templates/reader.html:488
 msgid "Copy with source"
 msgstr "Kopiera med källa"
 
-#: app/templates/reader.html:469
+#: app/templates/reader.html:495
 msgid "Swedish"
 msgstr "Svenska"
 
-#: app/templates/reader.html:473
+#: app/templates/reader.html:499
 msgid "Explain with AI"
 msgstr "Förklara med AI"
 
-#: app/templates/reader.html:475
+#: app/templates/reader.html:501
 msgid "AI — in this sentence"
 msgstr "AI — i den här meningen"
 
-#: app/templates/reader.html:541
+#: app/templates/reader.html:567
 msgid "Could not open this book."
 msgstr "Kunde inte öppna boken."
 
-#: app/templates/reader.html:543
+#: app/templates/reader.html:569
 msgid "Saving for offline…"
 msgstr "Sparar för offline…"
 
-#: app/templates/reader.html:544
+#: app/templates/reader.html:570
 msgid "Saved — tap to remove offline copy"
 msgstr "Sparad — tryck för att ta bort offline-kopian"
 
-#: app/templates/reader.html:545
+#: app/templates/reader.html:571
 msgid "Could not save for offline"
 msgstr "Kunde inte spara för offline"
 
-#: app/templates/reader.html:546
+#: app/templates/reader.html:572
 msgid ""
 "This book is copy-protected (DRM) and can’t be shared. The recipient "
 "wouldn’t be able to open the file — the protection is tied to your "
@@ -3121,7 +3125,7 @@ msgstr ""
 "Den här boken är kopieringsskyddad (DRM) och kan inte delas. Mottagaren "
 "skulle ändå inte kunna öppna filen — skyddet är låst till ditt konto."
 
-#: app/templates/reader.html:547
+#: app/templates/reader.html:573
 msgid ""
 "Sharing needs a secure (HTTPS) connection. Open Colophon via your "
 "Tailscale address (https://…) instead of the plain http:// address, then "
@@ -3131,7 +3135,7 @@ msgstr ""
 "Tailscale-adress (https://…) i stället för den vanliga http://-adressen "
 "och försök igen."
 
-#: app/templates/reader.html:548
+#: app/templates/reader.html:574
 msgid ""
 "Your browser can’t share files directly — the book will download instead,"
 " so you can send it yourself."
@@ -3139,72 +3143,72 @@ msgstr ""
 "Din webbläsare kan inte dela filer direkt — boken laddas ned i stället, "
 "så att du kan skicka den själv."
 
-#: app/templates/reader.html:549
+#: app/templates/reader.html:575
 msgid "Could not share this book."
 msgstr "Det gick inte att dela boken."
 
-#: app/templates/reader.html:550
+#: app/templates/reader.html:576
 msgid "Preparing book to share…"
 msgstr "Förbereder boken för delning…"
 
-#: app/templates/reader.html:551
+#: app/templates/reader.html:577
 msgid "Selected text"
 msgstr "Markerad text"
 
-#: app/templates/reader.html:552
+#: app/templates/reader.html:578
 msgid "Copied."
 msgstr "Kopierat."
 
-#: app/templates/reader.html:553
+#: app/templates/reader.html:579
 msgid "Could not copy. Use your browser’s own copy instead."
 msgstr "Kunde inte kopiera. Använd webbläsarens egen kopiering i stället."
 
-#: app/templates/reader.html:555
+#: app/templates/reader.html:581
 #, python-brace-format
 msgid "Downloading dictionaries ({mb} MB, one-time)…"
 msgstr "Hämtar ordböcker ({mb} MB, engångsnedladdning)…"
 
-#: app/templates/reader.html:556
+#: app/templates/reader.html:582
 msgid "Dictionary download failed — see the server log."
 msgstr "Ordboksnedladdningen misslyckades — se serverloggen."
 
-#: app/templates/reader.html:557
+#: app/templates/reader.html:583
 msgid "No entry found — try the AI explanation."
 msgstr "Ingen träff i ordboken — prova AI-förklaringen."
 
-#: app/templates/reader.html:558
+#: app/templates/reader.html:584
 msgid "No entry found."
 msgstr "Ingen träff i ordboken."
 
-#: app/templates/reader.html:559
+#: app/templates/reader.html:585
 msgid "No dictionary for this language yet — the AI explanation still works."
 msgstr "Ingen ordbok för det här språket ännu — AI-förklaringen fungerar ändå."
 
-#: app/templates/reader.html:560
+#: app/templates/reader.html:586
 msgid "No dictionary for this language yet."
 msgstr "Ingen ordbok för det här språket ännu."
 
-#: app/templates/reader.html:561
+#: app/templates/reader.html:587
 msgid "Lookup failed."
 msgstr "Uppslaget misslyckades."
 
-#: app/templates/reader.html:562
+#: app/templates/reader.html:588
 msgid "Thinking…"
 msgstr "Tänker…"
 
-#: app/templates/reader.html:563
+#: app/templates/reader.html:589
 msgid "AI explanation failed."
 msgstr "AI-förklaringen misslyckades."
 
-#: app/templates/reader.html:564
+#: app/templates/reader.html:590
 msgid "Show more"
 msgstr "Visa mer"
 
-#: app/templates/reader.html:565
+#: app/templates/reader.html:591
 msgid "Show less"
 msgstr "Visa mindre"
 
-#: app/templates/reader.html:566
+#: app/templates/reader.html:592
 msgid ""
 "Start this book over from the beginning? Reading progress is reset "
 "everywhere, including on the Kobo."
@@ -3212,7 +3216,7 @@ msgstr ""
 "Börja om boken från början? Läsförloppet nollställs överallt, även på "
 "Kobo-läsplattan."
 
-#: app/templates/reader.html:567
+#: app/templates/reader.html:593
 msgid "Could not reset reading progress — are you offline?"
 msgstr "Kunde inte nollställa läsförloppet — är du offline?"
 

@@ -82,6 +82,7 @@ export function initDictLookup(opts) {
     var actionsEl = document.getElementById('rdActions');
     var copyBtn = document.getElementById('rdCopyBtn');
     var copyCiteBtn = document.getElementById('rdCopyCiteBtn');
+    var gripBtn = document.getElementById('rdGrip');
 
     var DICT_EYEBROW = eyebrow ? eyebrow.textContent : '';
     var STR = {
@@ -92,16 +93,52 @@ export function initDictLookup(opts) {
 
     var current = null;          // { word, sentence }
     var selectedText = '';       // what the copy actions act on
+    var placementPinned = false; // the user moved it; leave it alone until close
     var seq = 0;                 // stale-response guard
     var downloading = false;
     var openedAt = 0;
 
     function isOpen() { return !sheet.hidden; }
     function open() { sheet.hidden = false; openedAt = Date.now(); }
+
+    // --- Where the sheet sits ---------------------------------------------
+    // It is not modal: you are meant to keep looking at the passage it is
+    // about. Anchored to the bottom it lands on exactly the text you just
+    // selected whenever that text is low on the page. So put it at the end the
+    // selection is *not* at, and let the grip override when the guess is wrong.
+
+    function placeAwayFrom(doc, sel) {
+        if (placementPinned) return;
+        var mid = selectionMidpoint(doc, sel);
+        if (mid == null) return;
+        sheet.classList.toggle('rd-top', mid > window.innerHeight / 2);
+    }
+
+    // The selection lives inside the book's iframe, so its rectangle is in the
+    // iframe's coordinates — the frame's own offset has to be added to compare
+    // it against the window.
+    function selectionMidpoint(doc, sel) {
+        try {
+            var rect = sel.getRangeAt(0).getBoundingClientRect();
+            if (!rect || (!rect.height && !rect.top)) return null;
+            var frame = doc.defaultView && doc.defaultView.frameElement;
+            var offset = frame ? frame.getBoundingClientRect().top : 0;
+            return offset + rect.top + rect.height / 2;
+        } catch (e) { return null; }
+    }
+
+    function togglePlacement() {
+        sheet.classList.toggle('rd-top');
+        // Honour the override for as long as this sheet is open, then forget
+        // it — a pinned position would fight the next selection at the other
+        // end of the page.
+        placementPinned = true;
+    }
     function close() {
         sheet.hidden = true;
         current = null;
         selectedText = '';
+        placementPinned = false;
         if (actionsEl) actionsEl.hidden = true;
         seq++;
     }
@@ -326,6 +363,9 @@ export function initDictLookup(opts) {
         if (!sel || sel.isCollapsed) return;
         var text = sel.toString().replace(/\s+/g, ' ').trim();
         if (!text) return;
+        // Decide the position before opening, so the sheet never appears over
+        // the selection and then jumps.
+        placeAwayFrom(doc, sel);
         if (WORD_RE.test(text)) {
             selectedText = text;
             lookup(text, sentenceAround(sel, text));
@@ -359,6 +399,7 @@ export function initDictLookup(opts) {
 
     if (closeBtn) closeBtn.addEventListener('click', close);
     if (aiBtn) aiBtn.addEventListener('click', explain);
+    if (gripBtn) gripBtn.addEventListener('click', togglePlacement);
     if (copyBtn) copyBtn.addEventListener('click', function () { copyText(false); });
     if (copyCiteBtn) copyCiteBtn.addEventListener('click', function () { copyText(true); });
 

@@ -5,6 +5,18 @@ PATCH for fixes, MINOR for user-visible features and automatic migrations, MAJOR
 changes that need you to act. Releases before 1.41.0 are summarised from the git log —
 see the [tags](https://github.com/cgillinger/colophon/tags) for the full history.
 
+## [1.46.1] — 2026-08-09
+
+### Fixed
+- **The selection sheet no longer lands on the text you just selected.** It sat
+  at the bottom of the screen always, so selecting anything low on the page
+  covered the very passage you were trying to read or copy. It now opens at
+  whichever end of the screen your selection *isn't* at. If that guess is ever
+  wrong, the grab handle at the sheet's edge moves it to the other end — and
+  that choice is forgotten when the sheet closes, so it can't fight your next
+  selection somewhere else on the page. The settings sheet is unchanged; it is
+  meant to cover the page.
+
 ## [1.46.0] — 2026-08-09
 
 ### Added
