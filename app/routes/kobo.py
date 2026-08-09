@@ -701,9 +701,31 @@ def library_sync(device):
     # Read SYNC_PAGE_SIZE at request time (not at function-def time) so
     # tests can monkeypatch it via the module attribute.
     from app.services import kobo_sync as _kobo_sync
-    delta = compute_delta(
-        device.id, incoming, _epub_items_query, page_size=_kobo_sync.SYNC_PAGE_SIZE
+    from app.services.app_settings import get_setting, set_setting
+
+    # One-shot escape hatch for the mass-delete guard. Without it the guard is
+    # a trap you can't get out of: it suppresses the delete, leaves the stale
+    # bookkeeping rows in place, and re-suppresses the same delete on every
+    # later sync. Armed by the operator when the library really did shrink.
+    allow_mass_delete = str(get_setting("KOBO_ALLOW_MASS_DELETE", "")).lower() in (
+        "1", "true", "yes", "on",
     )
+    delta = compute_delta(
+        device.id,
+        incoming,
+        _epub_items_query,
+        page_size=_kobo_sync.SYNC_PAGE_SIZE,
+        allow_mass_delete=allow_mass_delete,
+    )
+    if allow_mass_delete and delta.deleted_item_ids:
+        # Spend it — a standing permission to mass-delete is the hazard the
+        # guard exists to prevent.
+        set_setting("KOBO_ALLOW_MASS_DELETE", "")
+        logger.warning(
+            "Kobo sync: mass-delete unblock consumed (%d deletes emitted to "
+            "device=%s); the guard is armed again.",
+            len(delta.deleted_item_ids), device.name,
+        )
 
     payload = (
         [_new_entitlement_wrapper(item, base_url, token) for item in delta.new_items]
@@ -729,6 +751,14 @@ def library_sync(device):
         len(delta.deleted_item_ids),
         delta.has_more,
     )
+    if delta.blocked_mass_delete:
+        logger.warning(
+            "Kobo sync: device=%s has stale books Colophon can no longer "
+            "match, but the delete signal was suppressed as implausible. "
+            "Verify the library, then set KOBO_ALLOW_MASS_DELETE to let the "
+            "next sync through.",
+            device.name,
+        )
 
     response = jsonify(payload)
     response.headers["x-kobo-sync"] = "continue" if delta.has_more else "done"

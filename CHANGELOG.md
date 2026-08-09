@@ -5,6 +5,30 @@ PATCH for fixes, MINOR for user-visible features and automatic migrations, MAJOR
 changes that need you to act. Releases before 1.41.0 are summarised from the git log —
 see the [tags](https://github.com/cgillinger/colophon/tags) for the full history.
 
+## [1.41.2] — 2026-08-09
+
+### Fixed
+- **An empty library folder could wipe the entire catalogue.** A scan removes
+  books whose files it can't find, and the only check was that the library
+  folder itself existed — not that there was anything in it. If the folder ever
+  came up empty (a NAS not exported yet, a re-created Docker volume, a bind
+  mount pointing somewhere new), every book was deleted along with its reading
+  progress, and the next scan added them all back as *new* books, which a synced
+  Kobo then treats as different titles. A scan that finds no books at all now
+  refuses to delete anything and says so in the log. The upstream sync has had
+  this guard since it was written; the scanner, which is far more destructive,
+  did not.
+- **A failing disk no longer looks like a deleted book.** A stale network mount,
+  a disconnected share or a permissions error made a file look exactly as
+  missing as a deleted one, and the book was removed. Only a file that is
+  genuinely gone is now treated as gone; anything unreadable is kept and logged.
+- **The Kobo mass-delete safeguard was a trap you couldn't get out of.** When it
+  decided a deletion looked implausible it suppressed the signal but left its
+  bookkeeping untouched, so every later sync reached the same conclusion and
+  suppressed it again — permanently, with no way to say "yes, I really did
+  remove those". There's now a one-shot override (`KOBO_ALLOW_MASS_DELETE`),
+  spent as soon as it's used so it can't become a standing permission.
+
 ## [1.41.1] — 2026-08-09
 
 ### Fixed

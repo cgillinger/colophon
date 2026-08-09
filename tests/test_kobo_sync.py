@@ -1138,3 +1138,77 @@ def test_dropped_put_does_not_reassert_when_our_timestamp_already_wins(app, clie
         item = LibraryItem.query.get(item_id)
         assert item.read_progress == 60.0
         assert item.read_last_modified == ours  # untouched
+
+
+def test_mass_delete_guard_is_escapable(app):
+    """The guard must be a speed bump, not a one-way trap.
+
+    When it fires it suppresses the delete AND leaves the bookkeeping rows in
+    place, so every later sync recomputes the same oversized delete and
+    suppresses it again — forever, with no way out. It has to be unblockable.
+    """
+    from app.models import KoboBookState, LibraryItem, db
+    from app.services.kobo_auth import create_device
+    from app.services.kobo_sync import SyncToken, compute_delta
+    from app.routes.kobo import _epub_items_query
+
+    with app.app_context():
+        device, _token = create_device("Guard test device")
+        # Ten books the device has seen, all now gone from the library.
+        for i in range(10):
+            db.session.add(KoboBookState(
+                device_id=device.id, library_item_id=9000 + i,
+                revision_id=f"rev-{i}",
+            ))
+        # One book that still exists, so the library isn't empty.
+        item = LibraryItem(
+            title="Survivor", file_path="/books/survivor.epub",
+            file_name="survivor.epub", extension=".epub",
+        )
+        db.session.add(item)
+        db.session.commit()
+        db.session.add(KoboBookState(
+            device_id=device.id, library_item_id=item.id, revision_id="rev-s",
+        ))
+        db.session.commit()
+
+        blocked = compute_delta(device.id, SyncToken(), _epub_items_query)
+        assert blocked.deleted_item_ids == []
+        assert blocked.blocked_mass_delete is True
+
+        # Same input, operator says go.
+        allowed = compute_delta(
+            device.id, SyncToken(), _epub_items_query, allow_mass_delete=True
+        )
+        assert len(allowed.deleted_item_ids) == 10
+        assert allowed.blocked_mass_delete is False
+
+
+def test_plausible_delete_is_not_blocked(app):
+    """A small delete goes through untouched and reports nothing blocked."""
+    from app.models import KoboBookState, LibraryItem, db
+    from app.services.kobo_auth import create_device
+    from app.services.kobo_sync import SyncToken, compute_delta
+    from app.routes.kobo import _epub_items_query
+
+    with app.app_context():
+        device, _token = create_device("Small delete device")
+        for i in range(20):
+            item = LibraryItem(
+                title=f"Book {i}", file_path=f"/books/b{i}.epub",
+                file_name=f"b{i}.epub", extension=".epub",
+            )
+            db.session.add(item)
+            db.session.commit()
+            db.session.add(KoboBookState(
+                device_id=device.id, library_item_id=item.id, revision_id=f"r{i}",
+            ))
+        # One extra seen id with no matching row -> a single plausible delete.
+        db.session.add(KoboBookState(
+            device_id=device.id, library_item_id=99999, revision_id="gone",
+        ))
+        db.session.commit()
+
+        delta = compute_delta(device.id, SyncToken(), _epub_items_query)
+        assert delta.deleted_item_ids == [99999]
+        assert delta.blocked_mass_delete is False
