@@ -359,18 +359,73 @@ def kobo_settings():
     from app.services.kobo_auth import list_devices
     from app.services.kobo_kepub import cache_stats, kepubify_status
 
+    from app.services.device_transfers import device_for_mount
+    from app.services.kobo_usb import connected_mounts
+
     devices = list_devices()
     new_token = request.args.get("new_token") or None
     new_name = request.args.get("new_name") or None
+
+    connected = []
+    for mount in connected_mounts():
+        try:
+            device, serial = device_for_mount(mount)
+        except Exception:
+            logger.exception("Could not identify the Kobo mounted at %s", mount)
+            device, serial = None, None
+        connected.append({"mount": mount, "device": device, "serial": serial})
+
     return render_template(
         "settings_kobo.html",
         devices=devices,
+        connected=connected,
         new_token=new_token,
         new_name=new_name,
         host_url=request.host_url.rstrip("/"),
         kepubify=kepubify_status(),
         cache=cache_stats(),
     )
+
+
+@settings_bp.route("/settings/kobo/usb-import", methods=["POST"])
+def kobo_usb_import():
+    """Pull reading state off a connected Kobo.
+
+    The wireless sync only learns what the device tells it, and a device that
+    has been off Wi-Fi for weeks has told it nothing. Plugging it in is the
+    other way in — and because the Kobo's own bookmark is already Colophon's
+    Source/Value pair, this carries the exact position, not just a percentage.
+    """
+    from app.services.kobo_usb import connected_mounts, import_device_state
+
+    mount = (request.form.get("mount") or "").strip()
+    if mount not in connected_mounts():
+        # Never trust a path from the form — only a mount we just verified is
+        # a Kobo may be read.
+        flash(_("That device is no longer connected."), "error")
+        return redirect(url_for("settings.kobo_settings"))
+
+    try:
+        receipt = import_device_state(mount)
+    except Exception:
+        logger.exception("Kobo USB import failed for %s", mount)
+        flash(_("Could not read the device. See the log for details."), "error")
+        return redirect(url_for("settings.kobo_settings"))
+
+    flash(
+        _("Imported reading state: %(applied)d updated, %(skipped)d already "
+          "further along, %(unmatched)d not in the library.",
+          applied=receipt["applied"], skipped=receipt["skipped"],
+          unmatched=len(receipt["unmatched"])),
+        "success",
+    )
+    if receipt["recovered_from_corruption"]:
+        flash(
+            _("The device's database was damaged. What could be read was "
+              "imported, but some books may be missing."),
+            "warning",
+        )
+    return redirect(url_for("settings.kobo_settings"))
 
 
 @settings_bp.route("/settings/kobo/clear-cache", methods=["POST"])

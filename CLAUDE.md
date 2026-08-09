@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.43.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.44.0.
 
 ## Författarmappar (v1.38.0 — byggt)
 
@@ -92,6 +92,8 @@ app/
     kobo_kepub.py               # On-the-fly EPUB→KEPUB conversion via kepubify
     kobo_location.py            # Percent ↔ KoboSpan, and the exact character bridge
     kobo_conf.py                # Render Kobo .conf snippets for the setup UI
+    kobo_usb.py                 # Read a mounted Kobo: detect, harvest reading state
+    device_transfers.py         # USB channel ledger — what WiFi must NOT re-offer
     reading_state.py            # Shared monotonic reading-state writer (Kobo + reader)
     dictionaries.py             # Reader word lookup: on-demand StarDict download + server-side lookup
   templates/
@@ -114,9 +116,10 @@ app/
     icons/                      # Favicons, app/PWA icons, header logo SVGs (light+dark)
     vendor/tabler-icons/        # Icon font
     vendor/foliate-js/          # Vendored EPUB renderer (MIT) for the reader
-tests/                          # 26 pytest files: metadata_pipeline, calibre_metadata,
+tests/                          # 29 pytest files: metadata_pipeline, calibre_metadata,
                                 # bookf, grouping, kobo_conf, kobo_sync,
-                                # kobo_location, reader_position, language,
+                                # kobo_location, reader_position, kobo_usb,
+                                # device_transfers, scan_delete_guard, language,
                                 # quality, reading_state, scanner, scoring,
                                 # source_status, title_clean, wikipedia,
                                 # metadata_merge, metadata_escalation, upload,
@@ -314,7 +317,7 @@ get their env from docker-compose.
 >   -c "pip install -q pytest && python -m pytest tests/ -q"
 > ```
 
-**Known pre-existing failures (as of v1.43.0):** a clean run is *575 passed, 10
+**Known pre-existing failures (as of v1.44.0):** a clean run is *606 passed, 10
 failed*. The 10 are not regressions — `test_quality.py` (6) and
 `test_scoring.py` (3) assert Swedish reason/warning substrings the code now
 emits in English, and `test_scanner.py::...test_does_not_overwrite_manual_metadata`

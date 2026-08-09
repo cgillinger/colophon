@@ -130,6 +130,33 @@ def compute_delta(
     # nothing for an unchanged library.
     effective_since = incoming_token.since if seen_ids else None
 
+    # Channel-aware sync: never offer a cloud entitlement for a book this
+    # device already holds as a USB-transferred file. The Kobo can't tell the
+    # two apart (a sideload's ContentID is a path, an entitlement's is a UUID),
+    # so it would simply show the book twice.
+    #
+    # Only books it has NOT already been sent wirelessly are withheld. One it
+    # already has as a cloud book must keep receiving updates — dropping it
+    # from the delta wouldn't remove it from the device, it would just freeze
+    # its reading state. And `current_ids` below is deliberately left
+    # unfiltered, so withholding a book never reads as "deleted".
+    #
+    # Fails open: a broken ledger should degrade to a possible duplicate, not
+    # to an empty library.
+    try:
+        from app.services.device_transfers import transferred_item_ids
+
+        excluded = transferred_item_ids(device_id) - seen_ids
+    except Exception:
+        logger.debug("kobo_sync: USB ledger lookup failed", exc_info=True)
+        excluded = set()
+    if excluded:
+        base_q = base_q.filter(~LibraryItem.id.in_(excluded))
+        logger.info(
+            "kobo_sync: withholding %d book(s) from device %s — already there via USB",
+            len(excluded), device_id,
+        )
+
     if effective_since is not None:
         base_q = base_q.filter(LibraryItem.updated_at > effective_since)
     base_q = base_q.order_by(LibraryItem.updated_at.asc(), LibraryItem.id.asc())
