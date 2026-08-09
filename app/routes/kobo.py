@@ -29,7 +29,7 @@ from sqlalchemy import or_
 from app.models import LibraryItem
 from app.services.kobo_auth import find_device_by_token, touch_device
 from app.services.kobo_kepub import convert_epub_to_kepub
-from app.services.kobo_location import location_for_percent, percent_for_source
+from app.services.kobo_location import location_for_percent, range_for_source
 from app.services.reading_state import apply_reading_state
 from app.services.kobo_sync import (
     SyncToken,
@@ -59,8 +59,15 @@ def _book_uuid(item_id: int) -> str:
 # all: the device obeys the position, recomputes a percentage from it, and
 # sends that lower number back — which apply_reading_state then rejects as a
 # regression. Server and device disagree forever, and re-syncing re-sends the
-# same stale position. Hence the tolerance check below.
-LOCATION_CONSISTENCY_TOLERANCE = 5.0  # percentage points
+# same stale position. Hence the containment check below.
+#
+# The test is "does the percentage fall inside the document the location points
+# at", not "is it close to where that document starts". A bookmark sits
+# somewhere *within* its document, so reading through a long chapter moves the
+# percentage far past that chapter's start while the location stays perfectly
+# valid. The slack below only absorbs rounding between the device's span
+# arithmetic and our byte-weighted estimate.
+LOCATION_CONSISTENCY_SLACK = 2.0  # percentage points
 
 
 def _faithful_location(item: LibraryItem) -> dict | None:
@@ -71,8 +78,8 @@ def _faithful_location(item: LibraryItem) -> dict | None:
     location is only meaningful next to the percentage it was captured at: the
     in-browser reader moves ``read_progress`` without being able to supply a
     KoboSpan, so a location from an earlier Kobo session can end up paired
-    with a much later percentage. When the two disagree by more than
-    LOCATION_CONSISTENCY_TOLERANCE we derive a fresh chapter-level location
+    with a much later percentage. When the percentage no longer falls inside
+    the document the location names, we derive a fresh chapter-level location
     from the percentage instead (services/kobo_location.py), which also gives
     a browser-read book somewhere sensible to open.
 
@@ -95,15 +102,19 @@ def _faithful_location(item: LibraryItem) -> dict | None:
         progress = item.read_progress
         if progress is None:
             return stored
-        stored_at = percent_for_source(item, stored.get("Source"))
-        if stored_at is None or abs(stored_at - progress) <= LOCATION_CONSISTENCY_TOLERANCE:
-            # Either we can't judge it (unreadable spine, foreign Source) or
-            # it still agrees with the percentage — echo it back verbatim.
+        span = range_for_source(item, stored.get("Source"))
+        if span is None or (
+            span[0] - LOCATION_CONSISTENCY_SLACK
+            <= progress
+            <= span[1] + LOCATION_CONSISTENCY_SLACK
+        ):
+            # Either we can't judge it (unreadable spine, foreign Source) or the
+            # percentage still lands inside that document — echo it verbatim.
             return stored
         logger.info(
-            "Kobo DTO: stored location %s starts at %.1f%% but progress is "
+            "Kobo DTO: stored location %s covers %.1f–%.1f%% but progress is "
             "%.1f%% — deriving location from progress instead (item=%s)",
-            stored.get("Source"), stored_at, progress, item.id,
+            stored.get("Source"), span[0], span[1], progress, item.id,
         )
 
     return location_for_percent(item, item.read_progress)
@@ -974,6 +985,26 @@ def update_reading_state(device, book_id):
             book_id, device.name, item.read_status, item.read_progress,
             incoming_status, progress,
         )
+        # Dropping is only half the job. The Kobo resolves conflicts by
+        # timestamp while we resolve by furthest-read, so whenever we override
+        # the device it will keep ignoring our state until ours looks newer
+        # than its own — and its own keeps getting newer every time it reports.
+        # Re-assert as of now so the next sync out-ranks the device's local
+        # copy. Without this the two never converge: we refuse its lower
+        # progress, it refuses our older timestamp, and every re-sync repeats
+        # the standoff. Progress, status and location are untouched — only the
+        # "as of when do we claim this" marker moves.
+        if incoming_mod is None or not item.read_last_modified or (
+            incoming_mod >= item.read_last_modified
+        ):
+            item.read_last_modified = datetime.utcnow()
+            db.session.commit()
+            logger.info(
+                "Kobo state PUT: re-asserting our state for book_id=%s "
+                "(device timestamp was newer than ours, so it would have "
+                "ignored the correction)",
+                book_id,
+            )
         return jsonify({}), 200
 
     db.session.commit()

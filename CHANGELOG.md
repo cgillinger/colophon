@@ -5,6 +5,24 @@ PATCH for fixes, MINOR for user-visible features and automatic migrations, MAJOR
 changes that need you to act. Releases before 1.41.0 are summarised from the git log —
 see the [tags](https://github.com/cgillinger/colophon/tags) for the full history.
 
+## [1.41.1] — 2026-08-09
+
+### Fixed
+- **The Kobo still ignored the corrected position.** 1.41.0 made Colophon send
+  the right place, but the device kept discarding it. Colophon settles a
+  disagreement by "whoever read furthest wins"; the Kobo settles it by "whoever
+  saved most recently wins". So every time Colophon overrode the device, the
+  device threw the correction away as older than its own copy — and its own got
+  newer each time it reported, so neither side ever moved. Colophon now re-dates
+  its position when it overrules a device, which makes the correction land. Your
+  reading position itself is never changed by this; only the "last updated"
+  stamp.
+- A bookmark in a book with **few, long chapters** could get thrown away as
+  stale. Colophon compared your progress against where the bookmarked chapter
+  *began*, so reading deep into a long chapter looked like drift, and the next
+  sync would rewind you to the chapter boundary. It now checks whether your
+  progress falls anywhere inside that chapter.
+
 ## [1.41.0] — 2026-08-09
 
 ### Fixed

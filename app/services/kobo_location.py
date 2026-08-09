@@ -145,12 +145,18 @@ def location_for_percent(item, percent) -> dict | None:
     return {"Source": source, "Type": KOBO_SPAN_TYPE, "Value": FIRST_SPAN}
 
 
-def percent_for_source(item, source) -> float | None:
-    """Where ``source`` starts, as a percentage of the whole book.
+def range_for_source(item, source) -> tuple[float, float] | None:
+    """The ``(start, end)`` percentages ``source`` spans in the whole book.
 
-    The inverse of :func:`location_for_percent`, used to check whether a stored
-    location still agrees with the stored percentage. Returns ``None`` when the
-    spine can't be read or ``source`` isn't part of it.
+    Used to judge whether a stored location still agrees with the stored
+    percentage. It must be a *range*, not just the start: a bookmark sits
+    somewhere inside its document, so reading through a long chapter legitimately
+    moves the percentage far past where that chapter began. Comparing against
+    the start alone would call a perfectly good position stale and rewind the
+    reader to the chapter boundary on every sync — the worse the fewer chapters
+    a book has.
+
+    Returns ``None`` when the spine can't be read or ``source`` isn't part of it.
     """
     if not source:
         return None
@@ -159,7 +165,13 @@ def percent_for_source(item, source) -> float | None:
         return None
 
     wanted = posixpath.normpath(str(source).split("#", 1)[0])
-    for candidate, start, _end in _bounds(weights):
+    for candidate, start, end in _bounds(weights):
         if candidate == wanted:
-            return start
+            return start, end
     return None
+
+
+def percent_for_source(item, source) -> float | None:
+    """Where ``source`` starts, as a percentage of the whole book."""
+    span = range_for_source(item, source)
+    return None if span is None else span[0]

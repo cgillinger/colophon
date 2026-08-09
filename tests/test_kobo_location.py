@@ -177,12 +177,27 @@ def test_stale_stored_location_is_replaced_by_one_derived_from_progress(book):
     assert loc["Value"] == "kobo.1.1"
 
 
-def test_drift_within_tolerance_keeps_the_exact_span(book):
-    """Paging inside one chapter moves the percentage past the chapter start;
-    that must not throw away the device's precise position."""
+@pytest.mark.parametrize("progress", [50.0, 54.0, 59.9, 60.0])
+def test_progress_anywhere_inside_the_document_keeps_the_exact_span(book, progress):
+    """A bookmark sits *within* its document, so reading through a chapter
+    legitimately moves the percentage far past where that chapter began.
+    Judging staleness against the chapter's start instead of its whole range
+    would discard a perfectly good position and rewind the reader to the
+    chapter boundary on every sync — worse the fewer chapters a book has."""
     path, sources = book
-    stored = {"Source": sources[5], "Type": "KoboSpan", "Value": "kobo.90.1"}  # starts at 50 %
-    item = _Item(path, read_progress=54.0, read_location_json=json.dumps(stored))
+    stored = {"Source": sources[5], "Type": "KoboSpan", "Value": "kobo.90.1"}  # spans 50–60 %
+    item = _Item(path, read_progress=progress, read_location_json=json.dumps(stored))
+    assert _faithful_location(item) == stored
+
+
+def test_long_chapters_do_not_trigger_a_false_stale_verdict(tmp_path):
+    """The regression this range check exists for: 4 chapters of 25 % each.
+    Reading to 45 % sits deep inside chapter 2, which starts at 25 % — a
+    start-only comparison would call that 20 pp of drift and rewind."""
+    path = tmp_path / "few-long-chapters.epub"
+    sources = _make_epub(path, chapter_count=4)
+    stored = {"Source": sources[1], "Type": "KoboSpan", "Value": "kobo.310.2"}  # 25–50 %
+    item = _Item(path, read_progress=45.0, read_location_json=json.dumps(stored))
     assert _faithful_location(item) == stored
 
 
