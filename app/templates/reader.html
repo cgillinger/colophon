@@ -217,6 +217,36 @@
             padding: calc(8px + env(safe-area-inset-top, 0)) 18px 18px;
         }
         .reader-sheet.reader-dict.rd-top .rs-grip { margin: 4px auto 2px; order: 99; }
+
+        /* Dragged free of the top/bottom anchoring. left/top come from the
+           drag; width has to be fixed too, because left:0;right:0 is what
+           gave the sheet its size. */
+        .reader-sheet.reader-dict.rd-free {
+            right: auto; bottom: auto; margin: 0;
+            /* left:0;right:0 is what gave the anchored sheet its size, so a
+               free one needs an explicit width. In CSS rather than JS because
+               placement is decided while the sheet is still hidden, where
+               offsetWidth reads 0. */
+            width: min(560px, calc(100vw - 16px));
+            border-radius: 16px;
+            box-shadow: 0 10px 34px rgba(0,0,0,.28);
+            padding: 8px 18px 18px;
+        }
+        .reader-sheet.reader-dict.rd-free .rs-grip { order: 0; margin: 2px auto 4px; }
+        /* The grip is the drag handle — the thing a grab handle is actually
+           for. touch-action stops the browser scrolling the page instead. */
+        .reader-sheet.reader-dict .rs-grip {
+            cursor: grab; touch-action: none;
+            width: 100%; height: auto; background: none;
+            padding: 6px 0; margin: 0 0 2px;
+        }
+        .reader-sheet.reader-dict .rs-grip::before {
+            content: ""; display: block; width: 44px; height: 4px;
+            border-radius: 2px; background: var(--rs-line); margin: 0 auto;
+        }
+        .reader-sheet.reader-dict .rs-grip:hover::before { background: var(--rs-chip-on); }
+        .reader-sheet.reader-dict.rd-dragging { transition: none; cursor: grabbing; }
+        .reader-sheet.reader-dict.rd-dragging .rs-grip { cursor: grabbing; }
         /* The override sits beside the close button, because that is where a
            control on this sheet is already expected to be. Labelled, not just
            an icon — the decorative grab handle it replaces was invisible as a
@@ -478,6 +508,12 @@
             <button type="button" class="rd-move" id="rdMove">
                 <i class="ti ti-arrow-bar-to-up" id="rdMoveIcon"></i>
                 <span id="rdMoveLabel">{{ _('Move up') }}</span>
+            </button>
+            {# Only shown once the sheet has been dragged somewhere: the way
+               back to letting it place itself. #}
+            <button type="button" class="rd-move" id="rdReset" hidden>
+                <i class="ti ti-arrow-back-up"></i>
+                <span>{{ _('Reset position') }}</span>
             </button>
             <button type="button" class="rd-close" id="rdClose" aria-label="{{ _('Close') }}"><i class="ti ti-x"></i></button>
         </div>
