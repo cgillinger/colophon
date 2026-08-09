@@ -21,9 +21,10 @@ see the [tags](https://github.com/cgillinger/colophon/tags) for the full history
   themselves on the next sync — no migration needed.
 - Kobo reading-state updates for a book UUID Colophon never issued are still
   ignored (they can't be matched to anything), but now log a warning instead of
-  vanishing silently. This is what makes a *duplicate* copy of a book on a device
-  — the same title present twice, one under a foreign UUID quietly absorbing your
-  reading time — diagnosable at all.
+  vanishing silently. Without it the failure is invisible from both ends: a
+  withdrawn entitlement disappears from the Kobo's library while still recording
+  everything you read on it, so the device looks normal and Colophon simply never
+  hears about the reading.
 - The "dropped" sync log line now records the progress values it compared, not
   just the read status, so it's clear *why* an update lost.
 
