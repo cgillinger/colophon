@@ -5,6 +5,17 @@ PATCH for fixes, MINOR for user-visible features and automatic migrations, MAJOR
 changes that need you to act. Releases before 1.41.0 are summarised from the git log —
 see the [tags](https://github.com/cgillinger/colophon/tags) for the full history.
 
+## [1.46.2] — 2026-08-09
+
+### Fixed
+- **The move control is now something you can actually see.** 1.46.1 put it on
+  the small grab handle at the sheet's edge — which is a decoration, not a
+  button, and nobody found it. It is now a labelled button beside the close
+  button, where a control on that sheet is expected to be. It names where it
+  will send the sheet rather than where the sheet is: **Move up** when the sheet
+  is at the bottom, **Move down** when it's at the top, with the icon following
+  suit.
+
 ## [1.46.1] — 2026-08-09
 
 ### Fixed

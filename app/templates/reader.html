@@ -217,17 +217,19 @@
             padding: calc(8px + env(safe-area-inset-top, 0)) 18px 18px;
         }
         .reader-sheet.reader-dict.rd-top .rs-grip { margin: 4px auto 2px; order: 99; }
-        /* The grip is the manual override, so it has to look pressable. */
-        .reader-sheet.reader-dict .rs-grip {
-            border: none; padding: 8px 0; background: transparent;
-            display: block; width: 100%; cursor: pointer;
+        /* The override sits beside the close button, because that is where a
+           control on this sheet is already expected to be. Labelled, not just
+           an icon — the decorative grab handle it replaces was invisible as a
+           control. */
+        .reader-dict .rd-move {
+            flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px;
+            border: 1px solid var(--rs-line); background: var(--rs-chip);
+            color: inherit; font: inherit; font-size: .74rem; font-weight: 600;
+            padding: 4px 9px; border-radius: 999px; cursor: pointer;
         }
-        .reader-sheet.reader-dict .rs-grip::before {
-            content: ""; display: block; width: 40px; height: 4px;
-            border-radius: 2px; background: var(--rs-line); margin: 0 auto;
-        }
-        .reader-sheet.reader-dict .rs-grip:hover::before { background: var(--rs-chip-on); }
-        .reader-sheet.reader-dict .rs-grip:focus-visible { outline: 2px solid var(--rs-chip-on); outline-offset: 2px; }
+        .reader-dict .rd-move:hover { border-color: var(--rs-chip-on); color: var(--rs-chip-on); }
+        .reader-dict .rd-move:focus-visible { outline: 2px solid var(--rs-chip-on); outline-offset: 2px; }
+        .reader-dict .rd-move i { font-size: .95rem; }
 
         .reader-sheet .rs-grip {
             width: 40px; height: 4px; border-radius: 2px;
@@ -467,11 +469,16 @@
     {# Dictionary lookup sheet — opened by selecting a single word in the book
        (static/js/reader-dict.js). Non-modal: reading continues behind it. #}
     <div class="reader-sheet reader-dict" id="readerDictSheet" hidden role="dialog" aria-label="{{ _('Dictionary') }}">
-        <button type="button" class="rs-grip" id="rdGrip"
-                aria-label="{{ _('Move to the other end of the screen') }}"
-                title="{{ _('Move to the other end of the screen') }}"></button>
+        <div class="rs-grip"></div>
         <div class="rd-head">
             <span class="rd-eyebrow">{{ _('Dictionary') }}</span>
+            {# The sheet places itself away from the selection, but the guess
+               can be wrong — this is the override, and it has to look like a
+               control. Icon and label both flip to name the destination. #}
+            <button type="button" class="rd-move" id="rdMove">
+                <i class="ti ti-arrow-bar-to-up" id="rdMoveIcon"></i>
+                <span id="rdMoveLabel">{{ _('Move up') }}</span>
+            </button>
             <button type="button" class="rd-close" id="rdClose" aria-label="{{ _('Close') }}"><i class="ti ti-x"></i></button>
         </div>
         <div class="rd-word" id="rdWord"></div>
@@ -575,6 +582,8 @@
                 shareError: {{ _('Could not share this book.')|tojson }},
                 sharePreparing: {{ _('Preparing book to share…')|tojson }},
                 rdPassage: {{ _('Selected text')|tojson }},
+                rdMoveUp: {{ _('Move up')|tojson }},
+                rdMoveDown: {{ _('Move down')|tojson }},
                 rdCopied: {{ _('Copied.')|tojson }},
                 rdCopyFailed: {{ _('Could not copy. Use your browser’s own copy instead.')|tojson }},
                 dictLoading: {{ _('Looking up…')|tojson }},

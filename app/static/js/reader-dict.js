@@ -82,13 +82,17 @@ export function initDictLookup(opts) {
     var actionsEl = document.getElementById('rdActions');
     var copyBtn = document.getElementById('rdCopyBtn');
     var copyCiteBtn = document.getElementById('rdCopyCiteBtn');
-    var gripBtn = document.getElementById('rdGrip');
+    var moveBtn = document.getElementById('rdMove');
+    var moveIcon = document.getElementById('rdMoveIcon');
+    var moveLabel = document.getElementById('rdMoveLabel');
 
     var DICT_EYEBROW = eyebrow ? eyebrow.textContent : '';
     var STR = {
         passage: i18n.rdPassage || 'Selected text',
         copied: i18n.rdCopied || 'Copied.',
         copyFailed: i18n.rdCopyFailed || 'Could not copy. Use your browser’s own copy instead.',
+        moveUp: i18n.rdMoveUp || 'Move up',
+        moveDown: i18n.rdMoveDown || 'Move down',
     };
 
     var current = null;          // { word, sentence }
@@ -112,6 +116,20 @@ export function initDictLookup(opts) {
         var mid = selectionMidpoint(doc, sel);
         if (mid == null) return;
         sheet.classList.toggle('rd-top', mid > window.innerHeight / 2);
+        syncMoveButton();
+    }
+
+    // The button names where it will go, not where the sheet is — a control
+    // labelled with its own state makes you work out the consequence yourself.
+    function syncMoveButton() {
+        if (!moveBtn) return;
+        var atTop = sheet.classList.contains('rd-top');
+        if (moveLabel) moveLabel.textContent = atTop ? STR.moveDown : STR.moveUp;
+        if (moveIcon) {
+            moveIcon.className = atTop
+                ? 'ti ti-arrow-bar-to-down'
+                : 'ti ti-arrow-bar-to-up';
+        }
     }
 
     // The selection lives inside the book's iframe, so its rectangle is in the
@@ -129,6 +147,7 @@ export function initDictLookup(opts) {
 
     function togglePlacement() {
         sheet.classList.toggle('rd-top');
+        syncMoveButton();
         // Honour the override for as long as this sheet is open, then forget
         // it — a pinned position would fight the next selection at the other
         // end of the page.
@@ -399,7 +418,8 @@ export function initDictLookup(opts) {
 
     if (closeBtn) closeBtn.addEventListener('click', close);
     if (aiBtn) aiBtn.addEventListener('click', explain);
-    if (gripBtn) gripBtn.addEventListener('click', togglePlacement);
+    if (moveBtn) moveBtn.addEventListener('click', togglePlacement);
+    syncMoveButton();
     if (copyBtn) copyBtn.addEventListener('click', function () { copyText(false); });
     if (copyCiteBtn) copyCiteBtn.addEventListener('click', function () { copyText(true); });
 
