@@ -1051,3 +1051,90 @@ def test_state_put_route_shadows_catchall(app, client):
         item = LibraryItem.query.get(item_id)
         assert item.read_status == "Reading"
         assert item.read_progress == 12.5
+
+
+def test_dropped_put_reasserts_our_timestamp(app, client):
+    """Dropping the device's lower progress is only half the job.
+
+    The Kobo resolves conflicts by timestamp; we resolve by furthest-read. So
+    after we override it, the device keeps ignoring our state until ours looks
+    newer than its own — and its own advances every time it reports. Without
+    re-asserting, the two never converge: we refuse its progress, it refuses
+    our timestamp, and every re-sync repeats the standoff (the v1.41.0 field
+    report: server on 60 %, device stuck on 31 %, sync after sync).
+    """
+    from datetime import datetime
+    from app.models import LibraryItem
+
+    stale = datetime(2026, 8, 7, 17, 21, 47)
+    with app.app_context():
+        token, item_id, book_uuid = _make_book(
+            "Standoff book",
+            read_status="Reading",
+            read_progress=60.0,
+            read_last_modified=stale,
+            read_started_at=stale,
+            times_started=1,
+        )
+
+    # Device reports a *lower* progress with a *newer* timestamp.
+    resp = client.put(
+        f"/kobo/{token}/v1/library/{book_uuid}/state",
+        json={
+            "StatusInfo": {"Status": "Reading", "LastModified": "2026-08-09T09:46:42.000Z"},
+            "CurrentBookmark": {
+                "ProgressPercent": 31.0,
+                "LastModified": "2026-08-09T09:46:42.000Z",
+            },
+            "LastModified": "2026-08-09T09:46:42.000Z",
+        },
+    )
+    assert resp.status_code == 200
+
+    with app.app_context():
+        item = LibraryItem.query.get(item_id)
+        # Our reading position is untouched...
+        assert item.read_progress == 60.0
+        assert item.read_status == "Reading"
+        # ...but we now claim it as of *now*, so the next DTO out-ranks the
+        # device's local copy instead of losing the timestamp comparison.
+        assert item.read_last_modified > stale
+
+    state = client.get(f"/kobo/{token}/v1/library/{book_uuid}/state").get_json()
+    reading_state = state["ReadingStates"][0]
+    assert reading_state["CurrentBookmark"]["ProgressPercent"] == 60.0
+    assert reading_state["LastModified"] > "2026-08-09T09:46:42.000Z"
+
+
+def test_dropped_put_does_not_reassert_when_our_timestamp_already_wins(app, client):
+    """No pointless write when the device would already accept our state."""
+    from datetime import datetime
+    from app.models import LibraryItem
+
+    ours = datetime(2026, 8, 10, 12, 0, 0)
+    with app.app_context():
+        token, item_id, book_uuid = _make_book(
+            "Already winning book",
+            read_status="Reading",
+            read_progress=60.0,
+            read_last_modified=ours,
+            read_started_at=ours,
+            times_started=1,
+        )
+
+    client.put(
+        f"/kobo/{token}/v1/library/{book_uuid}/state",
+        json={
+            "StatusInfo": {"Status": "Reading", "LastModified": "2026-08-09T09:46:42.000Z"},
+            "CurrentBookmark": {
+                "ProgressPercent": 31.0,
+                "LastModified": "2026-08-09T09:46:42.000Z",
+            },
+            "LastModified": "2026-08-09T09:46:42.000Z",
+        },
+    )
+
+    with app.app_context():
+        item = LibraryItem.query.get(item_id)
+        assert item.read_progress == 60.0
+        assert item.read_last_modified == ours  # untouched

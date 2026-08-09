@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.41.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.41.1.
 
 ## Författarmappar (v1.38.0 — byggt)
 
@@ -310,7 +310,7 @@ get their env from docker-compose.
 >   -c "pip install -q pytest && python -m pytest tests/ -q"
 > ```
 
-**Known pre-existing failures (as of v1.41.0):** a clean run is *533 passed, 10
+**Known pre-existing failures (as of v1.41.1):** a clean run is *539 passed, 10
 failed*. The 10 are not regressions — `test_quality.py` (6) and
 `test_scoring.py` (3) assert Swedish reason/warning substrings the code now
 emits in English, and `test_scanner.py::...test_does_not_overwrite_manual_metadata`

@@ -30,6 +30,30 @@ through one helper so the rules can't drift:
     **backwards** — a stray `progress=0.0` PUT (a cover-reset / sync echo from
     the device) with a newer timestamp wiped a real position (e.g. 24% → 0%).
 
+## The two devices resolve conflicts differently (v1.41.1)
+
+**We resolve by furthest-read; the Kobo resolves by timestamp.** That asymmetry
+is a deadlock generator, and fixing the *content* of the DTO is not enough:
+
+- We refuse the device's lower progress (furthest-read-wins) — correct.
+- The device refuses our state because its own `LastModified` is newer — also
+  correct, by its rules. And its own gets newer every time it reports.
+- Neither side ever moves. `docker logs` shows `dropped (monotonic/older)`
+  forever while the device sits on the old position, and the correction we
+  worked so hard to compute is discarded unread.
+
+So when a device PUT is dropped **and the device's timestamp would beat ours**,
+`routes/kobo.py:update_reading_state` re-stamps `read_last_modified = utcnow()`
+— progress, status and location untouched, only "as of when do we claim this".
+The next DTO then out-ranks the device's local copy and the correction lands.
+It is self-terminating: once the device accepts, it reports a matching (or
+higher) progress, which applies normally and stops the drops.
+
+*Field report that produced this:* server on 60 %, device stuck on 31 %. The DTO
+was already correct (v1.41.0 fixed the location) and the delta shipped it
+(`reading=1`), but the device's state was ~2 days newer than
+`read_last_modified`, so it threw ours away every single sync.
+
 ## Location round-trip (v1.28.2)
 
 The Kobo's `CurrentBookmark.Location` has **three** fields that must be kept
@@ -94,6 +118,12 @@ told.
   `Source` is the OPF's directory joined with the manifest href
   (`OEBPS/chapter061.xhtml`) — verified against what a real device stores.
   Resolution is chapter-level; that is all a percentage can carry.
+- The consistency test is **containment, not distance**: does the percentage
+  fall inside the document the location names (`range_for_source`, ±2 pp slack)?
+  A bookmark sits *within* its document, so reading through a long chapter moves
+  the percentage far past that chapter's start while the location stays valid.
+  Comparing against the start alone would rewind the reader to the chapter
+  boundary on every sync — worse the fewer chapters a book has.
 - This is **not** the fabricated-Source mistake of v1.28.2. That one invented
   `Source = book_uuid`, which resolves to no document at all. A derived Source
   is a real entry from the book's own spine. When the spine can't be read we
@@ -141,7 +171,7 @@ page turn.
 | Progress jumps **backwards** / a quick peek wipes a real position | Equal-status resolution. Should be furthest-read-wins. *(Fixed v1.28.1.)* |
 | A book read on the Kobo **never shows as Reading** in Colophon | Either (a) sideloaded → foreign v4 UUID, silently dropped (grep the log for a `state PUT` whose UUID doesn't resolve), or (b) the Kobo hasn't synced since you read it (state is device-local until sync). |
 | A **finished** book the Kobo keeps re-reporting as Reading, logged `dropped (monotonic/older)` | Correct if you finished it — harmless. If you're genuinely re-reading, use the reset action to un-finish it. |
-| The Kobo sits at a **lower percentage than Colophon** and re-syncing never fixes it; log shows repeated `dropped (monotonic/older)` | Stale `read_location_json` paired with a newer `read_progress`. The device obeys the location and reports its percentage back, which furthest-read-wins rejects. *(Fixed v1.41.0.)* |
+| The Kobo sits at a **lower percentage than Colophon** and re-syncing never fixes it; log shows repeated `dropped (monotonic/older)` | Two separate causes, both needed fixing. (1) Stale `read_location_json` paired with a newer `read_progress` — the device obeys the location and reports its percentage back, which furthest-read-wins rejects *(v1.41.0)*. (2) Even with a correct DTO, the device discards it while its own `LastModified` is newer than ours *(v1.41.1)*. Compare `GET …/state`'s `LastModified` against `DateLastRead` on the device. |
 | A book **read on the Kobo** never reaches Colophon, and the device shows only one (correct-looking) copy | A second, **withdrawn** entitlement (`___UserID = 'removed'`, hidden from the library) is the one that recorded the reading, under a UUID Colophon never minted. Grep the log for `unknown book UUID`; confirm in `KoboReader.sqlite`; delete the hidden row. |
 | A book "**re-downloads**" when you open it | Check `IsDownloaded` on the device first — a cloud entitlement that was never fetched downloads on first open. That is not a re-download and not a bug. A real re-download means `content_updated_at` moved (see above). |
 | Colophon browser-reader progress doesn't set the **exact page** on the Kobo | By design — percent syncs exactly, position only to chapter granularity (browser CFIs ≠ Kobo spans). |
@@ -159,3 +189,6 @@ path overrides instead.
   sites + the PUT handler; reset clears it).
 - **v1.41.0** — percent/Location consistency (`kobo_location.py`,
   `clear_location=True` from the browser reader, unknown-UUID `WARNING`).
+- **v1.41.1** — re-assert `read_last_modified` on a dropped PUT (the device
+  resolves by timestamp, we resolve by furthest-read); consistency test changed
+  from distance-to-chapter-start to containment-in-chapter-range.
