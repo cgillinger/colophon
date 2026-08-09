@@ -125,10 +125,13 @@ page turn.
   can **never** sync — *by design, not a bug*. To sync, the book must be
   delivered to the device **by Colophon** (so the device holds the v5 UUID).
 - The unknown-UUID branch now logs a `WARNING` (v1.41.0). It used to be silent,
-  which is how a **duplicate** copy of a book — the same title present twice on
-  a device, once under a foreign UUID — could sit there absorbing real reading
-  time while none of it ever reached Colophon. Grep for
-  `unknown book UUID` when a book "won't sync".
+  and the failure is **invisible on the device too**: a withdrawn entitlement
+  gets `___UserID = 'removed'` in `KoboReader.sqlite` and disappears from the
+  library, while still holding the reading history it accumulated. Seen in the
+  wild: ~4 h of Kobo reading recorded on a hidden row whose v4 UUID Colophon had
+  never minted, so not one page of it ever synced — with no second book visible
+  to hint at what was happening. Grep for `unknown book UUID` when a book
+  "won't sync", and check `SELECT ___UserID … WHERE Title LIKE …` on the device.
 
 ## Symptom → cause (fast triage)
 
@@ -139,7 +142,8 @@ page turn.
 | A book read on the Kobo **never shows as Reading** in Colophon | Either (a) sideloaded → foreign v4 UUID, silently dropped (grep the log for a `state PUT` whose UUID doesn't resolve), or (b) the Kobo hasn't synced since you read it (state is device-local until sync). |
 | A **finished** book the Kobo keeps re-reporting as Reading, logged `dropped (monotonic/older)` | Correct if you finished it — harmless. If you're genuinely re-reading, use the reset action to un-finish it. |
 | The Kobo sits at a **lower percentage than Colophon** and re-syncing never fixes it; log shows repeated `dropped (monotonic/older)` | Stale `read_location_json` paired with a newer `read_progress`. The device obeys the location and reports its percentage back, which furthest-read-wins rejects. *(Fixed v1.41.0.)* |
-| A book **read on the Kobo** never reaches Colophon, and the same title appears **twice** on the device | One copy carries a foreign UUID Colophon never minted. Grep the log for `unknown book UUID`. Delete the duplicate on the device. |
+| A book **read on the Kobo** never reaches Colophon, and the device shows only one (correct-looking) copy | A second, **withdrawn** entitlement (`___UserID = 'removed'`, hidden from the library) is the one that recorded the reading, under a UUID Colophon never minted. Grep the log for `unknown book UUID`; confirm in `KoboReader.sqlite`; delete the hidden row. |
+| A book "**re-downloads**" when you open it | Check `IsDownloaded` on the device first — a cloud entitlement that was never fetched downloads on first open. That is not a re-download and not a bug. A real re-download means `content_updated_at` moved (see above). |
 | Colophon browser-reader progress doesn't set the **exact page** on the Kobo | By design — percent syncs exactly, position only to chapter granularity (browser CFIs ≠ Kobo spans). |
 
 ## Footgun
