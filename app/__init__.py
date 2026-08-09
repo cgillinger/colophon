@@ -25,6 +25,7 @@ from app.services.database import (
     ensure_app_settings_table,
     ensure_author_tables,
     ensure_database_columns,
+    ensure_device_transfers_table,
     ensure_kobo_book_states_table,
     ensure_kobo_devices_table,
     ensure_multi_author_tables,
@@ -222,6 +223,7 @@ def create_app():
         ensure_ai_usage_log_table()
         ensure_kobo_devices_table()
         ensure_kobo_book_states_table()
+        ensure_device_transfers_table()
         # After create_all + ensure_database_columns: needs both
         # library_items.author_id (for the backfill) and the authors table.
         ensure_multi_author_tables()

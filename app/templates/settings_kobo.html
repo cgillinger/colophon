@@ -153,6 +153,40 @@
         {% endif %}
     {% endwith %}
 
+    {% if connected %}
+    <div class="panel">
+        <div class="panel-title">
+            <span class="panel-title-left">
+                <i class="ti ti-usb"></i> {{ _('Connected over USB') }}
+            </span>
+            <span class="badge ok">{{ connected|length }}</span>
+        </div>
+        <p class="panel-desc">
+            {{ _('A Kobo that has been off Wi-Fi still knows what you read on it. Plug it in and import that reading state — including the exact position, not just a percentage.') }}
+        </p>
+        {% for entry in connected %}
+        <div class="field">
+            <label>
+                {% if entry.device %}{{ entry.device.name }}{% else %}{{ _('Unregistered Kobo') }}{% endif %}
+            </label>
+            <p class="panel-desc" style="margin-bottom: 10px;">
+                <code>{{ entry.mount }}</code>
+                {% if entry.serial %} &middot; {{ _('Serial') }}: <code>{{ entry.serial }}</code>{% endif %}
+                {% if not entry.device %}
+                <br>{{ _('This device is not paired for wireless sync. Reading state can still be imported.') }}
+                {% endif %}
+            </p>
+            <form method="post" action="{{ url_for('settings.kobo_usb_import') }}">
+                <input type="hidden" name="mount" value="{{ entry.mount }}">
+                <button type="submit" class="btn primary">
+                    <i class="ti ti-download"></i> {{ _('Import reading state') }}
+                </button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     {% if new_token %}
     <div class="new-key-banner">
         <h3>&#10003; {{ _('Device created: %(name)s', name=new_name) }}</h3>

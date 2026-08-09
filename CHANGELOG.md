@@ -5,6 +5,35 @@ PATCH for fixes, MINOR for user-visible features and automatic migrations, MAJOR
 changes that need you to act. Releases before 1.41.0 are summarised from the git log —
 see the [tags](https://github.com/cgillinger/colophon/tags) for the full history.
 
+## [1.44.0] — 2026-08-09
+
+### Added
+- **Import reading state from a Kobo over USB.** A reader that has been off
+  Wi-Fi for weeks still knows what you read on it, and now you can plug it in
+  and take that back — including the **exact position**, not just a percentage,
+  because the Kobo's own bookmark turns out to be in the same form Colophon
+  stores. Connected devices appear on the Kobo settings page.
+
+  It never writes to the reader, and it reads the device's database from a
+  private copy rather than in place: a Kobo unplugged mid-write leaves the
+  database in a state that looks corrupt unless its journal is copied along
+  with it. A genuinely damaged database is salvaged page by page rather than
+  abandoned, and the receipt says so instead of pretending the result is
+  complete.
+
+  Imports follow the same "furthest read wins" rule as wireless sync, so a
+  device that is behind can never drag your progress backwards. Bookmarks left
+  on the device by a bug fixed in 1.28.2 are recognised and ignored rather than
+  imported back in.
+
+### Groundwork
+- Colophon now keeps a record of which books it has put on which device by USB,
+  and wireless sync withholds those books from that device. This exists before
+  any USB transfer feature does, deliberately: a Kobo cannot tell a
+  copied-over file from a wirelessly-synced one, so sending a book both ways
+  makes it appear twice. Building the transfer without the bookkeeping *is* the
+  duplicate bug — the reason this is in place first.
+
 ## [1.43.0] — 2026-08-09
 
 ### Fixed

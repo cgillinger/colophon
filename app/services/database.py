@@ -514,6 +514,48 @@ def ensure_kobo_devices_table():
     db.session.commit()
 
 
+def ensure_device_transfers_table():
+    """The USB channel ledger (see services/device_transfers.py).
+
+    Additive and idempotent, like every other ensure_* here: two Gunicorn
+    workers boot concurrently and both run it.
+    """
+    db.session.execute(text("""
+        CREATE TABLE IF NOT EXISTS device_transfers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_id INTEGER NOT NULL REFERENCES library_items(id) ON DELETE CASCADE,
+            device_id INTEGER REFERENCES kobo_devices(id) ON DELETE CASCADE,
+            device_serial VARCHAR(64),
+            device_label VARCHAR(200),
+            method VARCHAR(16) NOT NULL DEFAULT 'usb',
+            transferred_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """))
+    for sql in (
+        "CREATE INDEX IF NOT EXISTS ix_device_transfers_item_id "
+        "ON device_transfers (item_id)",
+        "CREATE INDEX IF NOT EXISTS ix_device_transfers_device_id "
+        "ON device_transfers (device_id)",
+        "CREATE INDEX IF NOT EXISTS ix_device_transfers_device_serial "
+        "ON device_transfers (device_serial)",
+    ):
+        db.session.execute(text(sql))
+    db.session.commit()
+
+    # Serial number on the device row — the fallback identity for a Kobo that
+    # was never paired wirelessly. Tolerate the duplicate-column race the same
+    # way ensure_database_columns does.
+    try:
+        db.session.execute(text(
+            "ALTER TABLE kobo_devices ADD COLUMN device_serial VARCHAR(64)"
+        ))
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        if "duplicate column name" not in str(exc).lower():
+            raise
+
+
 def ensure_kobo_book_states_table():
     db.session.execute(text("""
         CREATE TABLE IF NOT EXISTS kobo_book_states (

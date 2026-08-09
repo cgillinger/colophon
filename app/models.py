@@ -266,6 +266,50 @@ class KoboDevice(db.Model):
     last_sync_at = db.Column(db.DateTime, nullable=True)
     sync_count = db.Column(db.Integer, default=0)
     revoked = db.Column(db.Boolean, default=False)
+    # Learned from .kobo/version when the device is mounted over USB, and from
+    # the SerialNumber in the wireless handshake. It is the only handle on a
+    # device that was never paired wirelessly, so USB bookkeeping written
+    # before pairing can still be matched to it afterwards.
+    device_serial = db.Column(db.String(64), nullable=True, index=True)
+
+
+class DeviceTransfer(db.Model):
+    """One book Colophon put on one device over USB.
+
+    The Kobo cannot dedupe a sideloaded file against a cloud entitlement, so a
+    book sent both ways appears twice. This ledger is what lets the wireless
+    sync skip books that already went by USB — see services/device_transfers.py.
+
+    ``device_id`` is the confident identity; ``device_serial`` covers a device
+    that was never paired wirelessly. A row keeps whichever it was created with
+    and gains the other as we learn it.
+    """
+    __tablename__ = "device_transfers"
+
+    id = db.Column(db.Integer, primary_key=True)
+    item_id = db.Column(
+        db.Integer,
+        db.ForeignKey("library_items.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    device_id = db.Column(
+        db.Integer,
+        db.ForeignKey("kobo_devices.id", ondelete="CASCADE"),
+        nullable=True, index=True,
+    )
+    device_serial = db.Column(db.String(64), nullable=True, index=True)
+    device_label = db.Column(db.String(200), nullable=True)
+    method = db.Column(db.String(16), nullable=False, default="usb")
+    transferred_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # SQLite doesn't enforce the FKs above unless PRAGMA foreign_keys is on,
+    # which Colophon never sets. The ORM-level cascade is what actually keeps
+    # the ledger from outliving its book — a stale row would silently exclude
+    # a book from the wireless sync forever.
+    item = db.relationship(
+        "LibraryItem",
+        backref=db.backref("device_transfers", cascade="all, delete-orphan"),
+    )
 
 
 class KoboBookState(db.Model):

@@ -182,6 +182,64 @@ bump it (they touch `updated_at` only). Invariant:
 `content_updated_at <= updated_at`. Breaking this re-downloads books on every
 page turn.
 
+## USB: reading state off a mounted device (v1.44.0)
+
+`services/kobo_usb.py`. Three rules, two of them ported from Bookstation's
+production experience and one that only shows up on a real device:
+
+- **Never read `KoboReader.sqlite` in place.** `immutable=1` tells SQLite to
+  ignore the journal, so a device unplugged mid-write leaves a hot WAL and the
+  main file reads as *malformed* — a healthy database reported as corrupt. Copy
+  the database **and its `-wal`/`-shm`/`-journal` sidecars** to a private
+  writable temp dir and read the copy.
+- **Genuinely corrupt databases exist.** Re-read in rowid ranges, then row by
+  row within a failing range; rows on healthy pages survive. Pure Python —
+  sqlite3's `.recover` is missing from some builds, and unlike `.dump` this
+  salvages rows *after* the first bad page. The receipt carries
+  `recovered_from_corruption` so the UI can say the result may be incomplete.
+- **Reject a `Source` that isn't a document.** Devices still carry bookmarks
+  Colophon gave them before v1.28.2, where `Source` was the *book UUID*. Seen
+  live: `12f45e84-…-5b593b9f47a5#kobo.1.1`. Importing one would reintroduce the
+  bug, so the final path segment must have a file extension.
+
+**Position, not just percent.** The reference implementation imports only
+status and percent. Colophon imports the position too, because
+`ChapterIDBookmarked` is `OEBPS/chapter026.xhtml#kobo.8.1` — already our
+`Source`/`Value` pair. It's a split on `#`, not a translation.
+
+Writes go through `apply_reading_state`, never raw SQL: same monotonic and
+furthest-read rules as the wireless path, and no chance of stamping
+`content_updated_at` and making every imported book re-download.
+
+Matching a device row to a library book: cloud books carry the UUID we minted
+(exact); sideloads carry a path, so fall back to filename (`.kepub.epub` →
+`.epub`) and then to a unique `group_key`. **Measured on a real device: 21 of
+21 matched, all by UUID.**
+
+## The USB ledger (v1.44.0)
+
+`device_transfers` records every book Colophon puts on a device by USB, and
+`compute_delta` withholds those books from that device's wireless sync. The
+Kobo cannot dedupe a sideloaded file (ContentID = a path) against a cloud
+entitlement (ContentID = a UUID), so a book sent both ways simply appears
+twice — this is what stops that. **The ledger ships before any transfer
+feature does; building the transfer without it *is* the duplicate bug.**
+
+- Only books **not already sent wirelessly** are withheld. One the device
+  already holds as a cloud book must keep receiving updates — dropping it from
+  the delta wouldn't remove it, it would just freeze its reading state.
+- `current_ids` is deliberately left unfiltered, so withholding never reads as
+  a deletion. The filter is applied **in the query**, not after it, or
+  `OFFSET`-based pagination would drift.
+- Fails open: a broken ledger degrades to a possible duplicate, not an empty
+  library.
+- Device identity, in order: the token in the device's own
+  `Kobo eReader.conf` (hashed and matched against `api_key_hash` — Colophon
+  stores no plaintext tokens), then the serial from `.kobo/version` for a
+  device never paired wirelessly. Read the conf through `kobo_conf:decode_conf`
+  — they turn up UTF-16-with-BOM, and a UTF-8 read makes the regex miss so the
+  device looks unconfigured.
+
 ## Identity survives the row (v1.43.0)
 
 `_book_uuid()` used to hash `f"book-{item.id}"` — the autoincrement PK. Anything
@@ -269,3 +327,5 @@ path overrides instead.
 - **v1.43.0** — identity moved off the PK (`book_uid`), moved-file detection in
   the scanner, withdrawals quote the recorded revision, revoke clears its
   bookkeeping.
+- **v1.44.0** — USB: `kobo_usb.py` (detect, harvest reading state incl. exact
+  position) and the `device_transfers` channel ledger + its sync exclusion.
