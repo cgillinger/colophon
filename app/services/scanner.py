@@ -619,6 +619,30 @@ def upsert_library_item(file_path, metadata: dict, existing=None, db_session=Non
 # Scan orchestration
 # ---------------------------------------------------------------------------
 
+def _file_state(path) -> str:
+    """``present`` / ``missing`` / ``unreadable`` for one catalogue path.
+
+    The distinction matters because the caller *deletes the row* on anything
+    that isn't present. ``Path.exists()`` collapses every failure into False:
+    a stale NFS handle, a disconnected SMB share, an EACCES on a parent
+    directory and a genuinely deleted file all look identical through it. Only
+    ``FileNotFoundError`` actually means the book is gone; everything else
+    means we couldn't tell, and a row we can't judge must survive.
+    """
+    if not path:
+        return "missing"
+    try:
+        os.stat(path)
+    except FileNotFoundError:
+        return "missing"
+    except NotADirectoryError:
+        # A path component stopped being a directory — the file cannot exist.
+        return "missing"
+    except OSError:
+        return "unreadable"
+    return "present"
+
+
 def scan_directory(root_path, db_session=None, on_progress=None, cover_dir=None) -> dict:
     session = db_session if db_session is not None else db.session
     root = Path(root_path)
@@ -628,10 +652,33 @@ def scan_directory(root_path, db_session=None, on_progress=None, cover_dir=None)
     if not root.exists():
         return result
 
+    # Discover before deleting. The delete phase below reads "file not found"
+    # as "the user removed this book", so it must never run against a library
+    # that is merely unreadable — a mount that came up empty, a NAS that isn't
+    # exported yet, a bind mount pointing at a fresh directory. root.exists()
+    # only rules out a *deleted* mountpoint, not an empty one.
+    files = discover_ebook_files(root)
+    total = len(files)
+
     # Remove DB items whose files no longer exist
     touched_authors = set()
-    for existing_item in LibraryItem.query.all():
-        if not existing_item.file_path or not Path(existing_item.file_path).exists():
+    if not files and LibraryItem.query.count():
+        # Same guard the upstream puller already has (upstream_sync.py).
+        logger.warning(
+            "scan: library directory %s contains no ebooks but the catalogue "
+            "has %d items — skipping the delete phase. An empty or unmounted "
+            "volume must not be read as 'every book was deleted'.",
+            root, LibraryItem.query.count(),
+        )
+    else:
+        unreadable = 0
+        for existing_item in LibraryItem.query.all():
+            state = _file_state(existing_item.file_path)
+            if state == "unreadable":
+                unreadable += 1
+                continue
+            if state == "present":
+                continue
             touched_authors.update(
                 ({existing_item.author_id, existing_item.suggested_author_id}
                  | {link.author_id for link in existing_item.author_links})
@@ -639,6 +686,12 @@ def scan_directory(root_path, db_session=None, on_progress=None, cover_dir=None)
             )
             session.delete(existing_item)
             result["removed"] += 1
+        if unreadable:
+            logger.warning(
+                "scan: %d item(s) kept because their files could not be read "
+                "(I/O error, stale mount or permissions) — not deleted.",
+                unreadable,
+            )
     session.commit()
     if touched_authors:
         # Last-book-deleted lifecycle: auto-created (tentative) entries
@@ -651,9 +704,6 @@ def scan_directory(root_path, db_session=None, on_progress=None, cover_dir=None)
 
     # Build one in-memory index instead of querying per file
     existing_by_path = {item.file_path: item for item in LibraryItem.query.all()}
-
-    files = discover_ebook_files(root)
-    total = len(files)
 
     touched_items = []
 

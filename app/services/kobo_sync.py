@@ -86,6 +86,12 @@ class SyncDelta:
     deleted_item_ids: list[int] = field(default_factory=list)
     next_token: SyncToken = field(default_factory=SyncToken)
     has_more: bool = False
+    # True when the mass-delete guard suppressed a delete signal. Surfaced so
+    # the caller can tell the operator there is something to unblock — without
+    # it the guard is a silent one-way trap: the stale KoboBookState rows are
+    # never cleared, so every later sync recomputes and re-suppresses the same
+    # oversized delete, forever.
+    blocked_mass_delete: bool = False
 
 
 def compute_delta(
@@ -93,6 +99,7 @@ def compute_delta(
     incoming_token: SyncToken,
     epub_items_query,
     page_size: int = SYNC_PAGE_SIZE,
+    allow_mass_delete: bool = False,
 ) -> SyncDelta:
     """Return the entitlements that should be sent to one device for
     one sync request.
@@ -152,6 +159,7 @@ def compute_delta(
     # Deletion detection only on the first page of a paginated sync —
     # otherwise we'd emit deletes once per page.
     deleted_ids: list[int] = []
+    blocked_mass_delete = False
     if incoming_token.page == 0 and seen_ids:
         current_ids = {
             row.id
@@ -166,17 +174,26 @@ def compute_delta(
         # Without this, a transient DB-read failure mid-sync could tell the
         # Kobo "every book is gone" → device withdraws downloaded copies.
         MASS_DELETE_THRESHOLD = 0.20  # 20 %
-        if proposed_deletes and len(proposed_deletes) > max(
+        oversized = proposed_deletes and len(proposed_deletes) > max(
             5, int(len(seen_ids) * MASS_DELETE_THRESHOLD)
-        ):
+        )
+        if oversized and not allow_mass_delete:
             logger.warning(
                 "kobo_sync: refusing mass-delete signal (%d of %d seen items "
                 "would be marked deleted; >%.0f%% threshold). Treating as a "
-                "glitch — operator should verify the library before unblocking.",
+                "glitch. If the library really did shrink this much, set "
+                "KOBO_ALLOW_MASS_DELETE to unblock the next sync.",
                 len(proposed_deletes), len(seen_ids), MASS_DELETE_THRESHOLD * 100,
             )
             deleted_ids = []
+            blocked_mass_delete = True
         else:
+            if oversized:
+                logger.warning(
+                    "kobo_sync: emitting an oversized delete signal (%d of %d "
+                    "seen items) because the operator unblocked it.",
+                    len(proposed_deletes), len(seen_ids),
+                )
             deleted_ids = proposed_deletes
 
     # Compute outgoing token
@@ -204,6 +221,7 @@ def compute_delta(
         deleted_item_ids=deleted_ids,
         next_token=next_token,
         has_more=has_more,
+        blocked_mass_delete=blocked_mass_delete,
     )
 
 
