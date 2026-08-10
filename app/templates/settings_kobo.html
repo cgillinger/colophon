@@ -182,6 +182,31 @@
                     <i class="ti ti-download"></i> {{ _('Import reading state') }}
                 </button>
             </form>
+
+            {% if entry.inventory %}
+            {% set inv = entry.inventory %}
+            <p class="panel-desc" style="margin-top:12px;">
+                {{ _('This device holds %(total)d books. %(known)d match your library.',
+                     total=inv.on_device, known=inv.known) }}
+            </p>
+
+            {% if inv.orphans %}
+            <div class="hint" style="margin-top:6px; padding:10px 12px; border-left:3px solid var(--accent-amber, #c98a2b); background:var(--surface-2, rgba(0,0,0,.03));">
+                <p style="margin:0 0 6px 0;">
+                    <strong>{{ _('%(n)d entries are left over from an earlier library rebuild.', n=inv.orphans) }}</strong>
+                    {{ _('They are almost always duplicates of books you still have. Colophon cannot recognise them, so it can neither update nor remove them.') }}
+                </p>
+                {% if inv.orphans_with_reading %}
+                <p style="margin:0 0 6px 0;">
+                    {{ _('%(n)d of them have reading progress that never reached your library. Use "Import reading state" above — it matches by title and will bring that progress across.', n=inv.orphans_with_reading) }}
+                </p>
+                {% endif %}
+                <p style="margin:0;">
+                    {{ _('They are harmless: no space, no slowdown, only clutter in the reader\'s own book list. The only reliable way to remove them is a factory reset of the reader — Settings → Device information → Factory reset on the Kobo itself. That erases the reader and re-downloads your books from Colophon, which keeps every reading position, so nothing is lost but time. Import reading state first if any of the entries above still hold progress.') }}
+                </p>
+            </div>
+            {% endif %}
+            {% endif %}
         </div>
         {% endfor %}
     </div>

@@ -52,6 +52,30 @@ _STATE_QUERY = """
       AND (___PercentRead > 0 OR ReadStatus > 0)
 """
 
+# Every cloud entitlement the device holds, regardless of whether it has been
+# opened. _STATE_QUERY deliberately narrows to books with reading activity;
+# this one is for *counting* what is on the device, which is a different
+# question and the one nobody could answer before.
+_INVENTORY_QUERY = """
+    SELECT ContentID, Title, Attribution, ReadStatus, ___PercentRead,
+           ChapterIDBookmarked, DateLastRead
+    FROM content
+    WHERE ContentType = 6
+      AND BookID IS NULL
+      AND ___UserID IS NOT NULL
+      AND ___UserID != ''
+"""
+
+# Same, for firmware whose schema lacks ___UserID. Counts a handful of store
+# demo rows as well; better a slightly high number than no answer at all.
+_INVENTORY_QUERY_FALLBACK = """
+    SELECT ContentID, Title, Attribution, ReadStatus, ___PercentRead,
+           ChapterIDBookmarked, DateLastRead
+    FROM content
+    WHERE ContentType = 6
+      AND BookID IS NULL
+"""
+
 _SALVAGE_CHUNK = 512
 
 
@@ -288,6 +312,80 @@ def read_device_state(mount_path) -> tuple[list[dict], bool]:
             "date_last_read": row["DateLastRead"] or None,
         })
     return entries, recovered
+
+
+def inspect_device(mount_path) -> dict | None:
+    """What this device is actually carrying, compared to the library.
+
+    Read-only, and the answer to a question nothing else could answer: a
+    device can hold entitlements Colophon no longer recognises — left behind
+    by an earlier library-wide delete-and-rescan, which minted new ids and
+    therefore new UUIDs. They are invisible from both ends. Colophon has no
+    record of them, and on the device they look like ordinary books, usually
+    duplicating one you still have.
+
+    Withdrawing them over the air does not work (see
+    docs/kobo-reading-state-sync.md), so this only *reports*. Nothing here
+    writes to the device.
+
+    Returns None when the device holds no database we can read.
+    """
+    db_path = find_kobo_db(mount_path)
+    if not db_path:
+        return None
+
+    rows = []
+    recovered = False
+    with tempfile.TemporaryDirectory(prefix="colophon-koboinspect-") as tmp_dir:
+        db_copy = os.path.join(tmp_dir, "KoboReader.sqlite")
+        shutil.copy2(db_path, db_copy)
+        for suffix in ("-wal", "-shm", "-journal"):
+            sidecar = db_path + suffix
+            if os.path.isfile(sidecar):
+                shutil.copy2(sidecar, db_copy + suffix)
+
+        conn = sqlite3.connect(db_copy)
+        conn.row_factory = sqlite3.Row
+        try:
+            try:
+                rows = conn.execute(_INVENTORY_QUERY).fetchall()
+            except sqlite3.OperationalError:
+                # Older/odd firmware without ___UserID.
+                rows = conn.execute(_INVENTORY_QUERY_FALLBACK).fetchall()
+            except sqlite3.DatabaseError:
+                logger.warning("Kobo USB: could not inventory the device database")
+                return None
+        finally:
+            conn.close()
+
+    known = 0
+    orphans = []
+    for row in rows:
+        entry = {
+            "content_id": row["ContentID"] or "",
+            "title": row["Title"] or "",
+            "author": row["Attribution"] or "",
+            "percent": float(row["___PercentRead"] or 0),
+            "status": _STATUS_BY_RANK.get(row["ReadStatus"] or 0, "ReadyToRead"),
+        }
+        if _item_for_entry(entry) is not None:
+            known += 1
+        else:
+            orphans.append(entry)
+
+    # Orphans that were read are the ones that actually cost the user
+    # something: that reading never reached the library.
+    unread_orphans = [o for o in orphans if o["percent"] <= 0 and o["status"] == "ReadyToRead"]
+
+    return {
+        "on_device": len(rows),
+        "known": known,
+        "orphans": len(orphans),
+        "orphans_unread": len(unread_orphans),
+        "orphans_with_reading": len(orphans) - len(unread_orphans),
+        "sample": sorted(orphans, key=lambda o: -o["percent"])[:5],
+        "recovered_from_corruption": recovered,
+    }
 
 
 def _item_for_entry(entry):
