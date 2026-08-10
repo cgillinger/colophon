@@ -144,7 +144,7 @@ logo/                           # Brand source: master SVGs + export specs. Favi
 `bulk_metadata.html` used to hold ~6000 lines of inline JS. It's now ~1000 lines of Jinja markup. Styles live in `app/static/css/bulk_metadata.css`; behaviour is split across `app/static/js/`:
 
 ```
-core.js                  # Bootstrap, shared state, i18n string map
+core.js                  # Bootstrap, shared state, i18n lookup (reads window.__colophonConfig.i18n)
 filters-sort-paging.js   # Search, filters, sort, pagination
 selection.js             # Row selection + multi-select helpers
 shelf-view.js            # Gallery/shelf layout
@@ -310,6 +310,21 @@ pybabel update -i messages.pot -d app/translations
 pybabel compile -d app/translations
 ```
 
+`babel.cfg` extracts **Python and Jinja only** — no JavaScript. JS strings reach
+the frontend through `window.__colophonConfig.i18n`, rendered by Jinja in
+`bulk_metadata.html`, so they are extracted from the template like any other
+`_()` call.
+
+> ⚠️ **Before adding a `[javascript: …]` line to `babel.cfg`**, know that
+> Babel's JS extractor stops silently at a regex literal containing a quote —
+> everything after it in that file is skipped, with no warning and nothing
+> looking wrong. Five of our modules already carry the pattern
+> (`.replace(/'/g, '&#39;')` around lines 23–45 of `upload.js`,
+> `author-combobox.js`, `reading-now.js`, `scan-sync.js`, `shelf-view.js`), so
+> enabling JS extraction today would quietly lose most of those files. A
+> character class (`/[']/g`) avoids it. Reported by the Bookstation project,
+> who lost nine strings to it; verified present here 2026-08-10.
+
 ## Testing
 
 ```bash
@@ -369,7 +384,7 @@ separate cleanup.
 1. **Never spawn subprocesses per-file for reading metadata** — use ebooklib. Subprocesses + Gunicorn sync workers = timeouts.
 2. **Docker cache** — always `--no-cache` on rebuild. Cached layers have hidden stale code.
 3. **Blueprint references** — only `metadata.*`, `authors.*`, `scan.*`, `settings.*`, `kobo.*`, `reader.*` exist. Any `url_for('library.*')` etc. will crash.
-4. **Main view is split** — `bulk_metadata.html` is the Jinja shell (~1000 lines); behaviour lives in `app/static/js/*.js` and styling in `app/static/css/bulk_metadata.css`. The i18n string map for JS lives in `core.js`. Edit the right file — don't add new logic back into the template.
+4. **Main view is split** — `bulk_metadata.html` is the Jinja shell (~1000 lines); behaviour lives in `app/static/js/*.js` and styling in `app/static/css/bulk_metadata.css`. The i18n string map for JS is **rendered by Jinja** into `window.__colophonConfig.i18n` in `bulk_metadata.html` (search for `i18n: {`); `core.js` only reads it. Add a new JS string there, not in a `.js` file. Edit the right file — don't add new logic back into the template.
 5. **Settings priority**: DB value > `COLOPHON_*` env > legacy `COLOPHON_MISTRAL_*` env > default.
 6. **Gunicorn timeout**: 300s. Long operations (bulk enrichment) use SSE streaming, not blocking requests.
 
