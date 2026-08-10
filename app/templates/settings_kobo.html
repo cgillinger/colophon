@@ -277,6 +277,25 @@
         {% else %}
         <div class="empty-state">{{ _('No devices yet. Add one below to start syncing.') }}</div>
         {% endif %}
+
+        {% if devices %}
+        <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border);">
+            {% if mass_delete_armed %}
+            <p style="margin:0 0 8px 0;">
+                <i class="ti ti-lock-open" style="color:var(--accent-green);"></i>
+                {{ _('A large delete signal is unlocked and will be sent on the next sync.') }}
+            </p>
+            {% else %}
+            <p class="hint" style="margin:0 0 8px 0;">
+                {{ _('Colophon refuses to tell a device that more than a fifth of its books are gone — that is usually a glitch, such as an unmounted library, rather than your intent. If the library really did shrink that much, unlock it here.') }}
+            </p>
+            <form method="post" action="{{ url_for('settings.kobo_allow_mass_delete') }}"
+                  onsubmit="return confirm({{ _('Let the next sync withdraw a large number of books from your devices? Verify your library looks right first. The unlock is one-time.')|tojson }});">
+                <button type="submit" class="btn"><i class="ti ti-lock-open"></i> {{ _('Allow one large deletion') }}</button>
+            </form>
+            {% endif %}
+        </div>
+        {% endif %}
     </div>
 
     <!-- ============ Add device ============ -->

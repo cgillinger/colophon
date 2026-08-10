@@ -64,6 +64,21 @@ def test_iso_format():
     assert _iso(None).endswith("Z")
 
 
+def test_iso_keeps_milliseconds():
+    """Hard-coding .000 echoed back an OLDER timestamp than the device sent.
+
+    The device then saw the server as behind, pushed the same state again,
+    furthest-read-wins dropped it, and the pair looped forever.
+    """
+    from app.routes.kobo import _iso
+
+    assert _iso(datetime(2026, 5, 22, 10, 30, 45, 750000)) == "2026-05-22T10:30:45.750Z"
+    assert _iso(datetime(2026, 5, 22, 10, 30, 45, 1000)) == "2026-05-22T10:30:45.001Z"
+    # Sub-millisecond precision floors rather than rounding up past the stored
+    # value — we may never claim to be newer than we are.
+    assert _iso(datetime(2026, 5, 22, 10, 30, 45, 999999)) == "2026-05-22T10:30:45.999Z"
+
+
 # ---------------------------------------------------------------------------
 # Integration — Flask app with in-memory SQLite
 # ---------------------------------------------------------------------------
@@ -470,6 +485,49 @@ def test_reading_state_put_does_not_trigger_redownload(app, client):
     assert len(payload) == 1
     assert "ChangedReadingState" in payload[0]
     assert "ChangedEntitlement" not in payload[0]
+
+
+def test_state_roundtrip_preserves_the_devices_timestamp(app, client):
+    """What we echo back must not be older than what the device sent.
+
+    With milliseconds hard-coded to .000 a device reporting 10:00:00.750
+    got 10:00:00.000 back. It read that as the server being behind, pushed
+    again, furthest-read-wins dropped it as not-newer, and the two never
+    converged.
+    """
+    import json
+    from app.models import LibraryItem, db
+    from app.routes.kobo import _book_uuid
+    from app.services.kobo_auth import create_device
+
+    with app.app_context():
+        _, token = create_device("Timestamp roundtrip")
+        item = LibraryItem(
+            title="Millisecond Book",
+            file_path="/books/ms.epub",
+            file_name="ms.epub",
+            extension=".epub",
+        )
+        db.session.add(item)
+        db.session.commit()
+        book_uuid = _book_uuid(LibraryItem.query.get(item.id))
+
+    stamp = "2026-05-28T10:00:00.750Z"
+    put = client.put(
+        f"/kobo/{token}/v1/library/{book_uuid}/state",
+        json={"ReadingStates": [{
+            "StatusInfo": {"Status": "Reading", "LastModified": stamp},
+            "CurrentBookmark": {"ProgressPercent": 33.0, "LastModified": stamp},
+            "LastModified": stamp,
+        }]},
+    )
+    assert put.status_code == 200
+
+    resp = client.get(f"/kobo/{token}/v1/library/{book_uuid}/state")
+    assert resp.status_code == 200
+    echoed = json.dumps(resp.get_json())
+    assert ".750Z" in echoed, echoed
+    assert "10:00:00.000Z" not in echoed
 
 
 def test_deleted_book_emits_DeletedEntitlement(app, client):

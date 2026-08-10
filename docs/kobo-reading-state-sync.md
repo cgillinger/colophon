@@ -313,17 +313,39 @@ are real and present in **both** codebases. None of them prevents a sync from
 completing, which is why they could be ruled out as the cause of "cover phase
 never finishes" — but they cost round-trips forever.
 
-1. **`_iso()` truncates to `.000Z`** (`routes/kobo.py`) while
-   `read_last_modified` is stored with microseconds. We therefore echo back a
-   systematically *older* timestamp than the device sent. The device sees the
-   server as behind, pushes again, furthest-read-wins drops it, nothing
-   changes — and the same books are PUT forever. Symptom: `dropped (older
-   timestamp)` on the same book id, round after round. **The single most
-   worthwhile follow-up here.**
+1. ~~**`_iso()` truncates to `.000Z`**~~ — **fixed in v1.49.0.** It now emits
+   real milliseconds. Before that we echoed back a systematically *older*
+   timestamp than the device sent, so the device saw the server as behind,
+   pushed again, furthest-read-wins dropped it, and the same books were PUT
+   forever. Guarded by `test_iso_keeps_milliseconds` and
+   `test_state_roundtrip_preserves_the_devices_timestamp` (both verified red
+   against the old code).
 2. **`PUT /v1/library/<id>/state` answers `{}`** with no `RequestResult` /
    `UpdateResults`. Komga returns a per-part acknowledgement structure.
 3. **`Statistics.SpentReadingMinutes` is hard-coded `0`**. The device reports
    its reading time, gets zero back, and pushes it again.
+
+## `DeletedEntitlement` does not work (found 2026-08-10)
+
+Withdrawing a book from a device has never worked, in Colophon **or**
+Bookstation — the path had simply never been exercised against real hardware.
+
+Measured: 381 withdrawals were emitted in one sync response (166 880 bytes,
+`200 OK`, `deleted=381`). The device's `content` table was afterwards
+**completely unchanged** — `___SyncTime` still on the old date, no
+`___UserID='removed'`, nothing.
+
+The likely cause: our `_deleted_entitlement_wrapper` is a guess (its docstring
+says *"The Kobo expects a minimal BookEntitlement for deletions"*), and the
+firmware ignores it. **calibre-web builds no `DeletedEntitlement` at all** —
+it marks the book archived through an ordinary `ChangedEntitlement` carrying
+`IsRemoved: true`. That is the shape to copy if this is ever picked up.
+
+Note for whoever does: an orphaned entitlement has no `LibraryItem`, so the
+DTO has to be synthesised from the ledger row (`revision_id`) rather than
+built from an item. Until then, a factory reset + re-pair is the only reliable
+way to clear stale entitlements off a device — Colophon owns the reading state,
+so nothing is lost by doing that.
 
 ## Footgun
 
@@ -348,6 +370,8 @@ path overrides instead.
   bookkeeping.
 - **v1.44.0** — USB: `kobo_usb.py` (detect, harvest reading state incl. exact
   position) and the `device_transfers` channel ledger + its sync exclusion.
+- **v1.49.0** — `_iso()` emits real milliseconds (see above); the mass-delete
+  guard can be unlocked from Settings → Kobo instead of only from a shell.
 - **v1.48.0** — the six findings ported back from Bookstation: markdown in two
   resource values (which Colophon had been writing onto physical devices);
   keyset pagination on `id` + `high_water` ceiling; ledger-based

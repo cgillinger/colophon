@@ -359,10 +359,14 @@ def kobo_settings():
     from app.services.kobo_auth import list_devices
     from app.services.kobo_kepub import cache_stats, kepubify_status
 
+    from app.services.app_settings import get_setting
     from app.services.device_transfers import device_for_mount
     from app.services.kobo_usb import connected_mounts
 
     devices = list_devices()
+    mass_delete_armed = str(get_setting("KOBO_ALLOW_MASS_DELETE", "")).lower() in (
+        "1", "true", "yes", "on",
+    )
     new_token = request.args.get("new_token") or None
     new_name = request.args.get("new_name") or None
 
@@ -379,6 +383,7 @@ def kobo_settings():
         "settings_kobo.html",
         devices=devices,
         connected=connected,
+        mass_delete_armed=mass_delete_armed,
         new_token=new_token,
         new_name=new_name,
         host_url=request.host_url.rstrip("/"),
@@ -479,6 +484,27 @@ def kobo_force_resync(device_id):
     flash(
         _("Full resync queued for %(name)s — %(count)d book(s) will be sent "
           "again on the next sync.", name=device.name, count=count),
+        "success",
+    )
+    return redirect(url_for("settings.kobo_settings"))
+
+
+@settings_bp.route("/settings/kobo/allow-mass-delete", methods=["POST"])
+def kobo_allow_mass_delete():
+    """Let the next sync send a large delete signal — once.
+
+    The guard refuses a signal that would withdraw more than 20 % of what a
+    device knows about, because that is more often a glitch (an unmounted
+    library, a failed scan) than the user's intent. But it could only be
+    unblocked from a shell, which made a correct guard feel like a dead end.
+    The unlock is one-shot: the next sync that uses it spends it.
+    """
+    from app.services.app_settings import set_setting
+
+    set_setting("KOBO_ALLOW_MASS_DELETE", "1")
+    flash(
+        _("The next sync may send a large delete signal. This is a one-time "
+          "unlock — it is spent by the sync that uses it."),
         "success",
     )
     return redirect(url_for("settings.kobo_settings"))

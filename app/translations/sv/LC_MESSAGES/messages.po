@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Colophon 1.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-08-10 15:16+0200\n"
+"POT-Creation-Date: 2026-08-10 16:34+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: sv\n"
@@ -23,171 +23,171 @@ msgstr ""
 "Metadata sparades i biblioteket, men kunde inte skrivas till e-boksfilen "
 "(%(label)s)."
 
-#: app/routes/metadata.py:492 app/templates/bulk_metadata.html:1018
+#: app/routes/metadata.py:439 app/templates/bulk_metadata.html:1018
 msgid "Title cannot be empty."
 msgstr "Titel får inte vara tom."
 
-#: app/routes/metadata.py:512
+#: app/routes/metadata.py:459
 msgid "Cover was not saved. Use JPG, PNG or WEBP."
 msgstr "Omslaget sparades inte. Använd JPG, PNG eller WEBP."
 
-#: app/routes/metadata.py:604 app/routes/metadata.py:1807
-#: app/routes/metadata.py:1967
+#: app/routes/metadata.py:551 app/routes/metadata.py:1754
+#: app/routes/metadata.py:1914
 msgid "Preview cancelled. Nothing was saved."
 msgstr "Förhandsgranskning avbruten. Inget sparades."
 
-#: app/routes/metadata.py:660
+#: app/routes/metadata.py:607
 #, python-format
 msgid "Cover fetched from %(source)s."
 msgstr "Omslag hämtat från %(source)s."
 
-#: app/routes/metadata.py:662
+#: app/routes/metadata.py:609
 msgid "Cover fetched and saved."
 msgstr "Omslag hämtat och sparat."
 
-#: app/routes/metadata.py:809 app/routes/metadata.py:1862
+#: app/routes/metadata.py:756 app/routes/metadata.py:1809
 msgid "AI is not configured. Open API settings and add an API key."
 msgstr ""
 "AI är inte konfigurerat. Öppna API-inställningar och lägg till en API-"
 "nyckel."
 
-#: app/routes/metadata.py:824
+#: app/routes/metadata.py:771
 msgid "Already has author, synopsis and cover."
 msgstr "Har redan författare, synopsis och omslag."
 
-#: app/routes/metadata.py:868
+#: app/routes/metadata.py:815
 #, python-format
 msgid "Updated: %(count)d"
 msgstr "Uppdaterade: %(count)d"
 
-#: app/routes/metadata.py:870 app/routes/metadata.py:979
+#: app/routes/metadata.py:817 app/routes/metadata.py:926
 #, python-format
 msgid "file write failed: %(count)d"
 msgstr "filskrivning misslyckades: %(count)d"
 
-#: app/routes/metadata.py:872
+#: app/routes/metadata.py:819
 #, python-format
 msgid "no high-confidence suggestions: %(count)d"
 msgstr "inga högsäkra förslag: %(count)d"
 
-#: app/routes/metadata.py:873 app/routes/metadata.py:981
+#: app/routes/metadata.py:820 app/routes/metadata.py:928
 #, python-format
 msgid "skipped: %(count)d"
 msgstr "hoppade över: %(count)d"
 
-#: app/routes/metadata.py:875
+#: app/routes/metadata.py:822
 msgid "AI run complete."
 msgstr "AI-körning klar."
 
-#: app/routes/metadata.py:939 app/routes/metadata.py:964
+#: app/routes/metadata.py:886 app/routes/metadata.py:911
 msgid "Unknown source"
 msgstr "Okänd källa"
 
-#: app/routes/metadata.py:971
+#: app/routes/metadata.py:918
 #, python-format
 msgid "Saved: %(count)d"
 msgstr "Sparade: %(count)d"
 
-#: app/routes/metadata.py:973
+#: app/routes/metadata.py:920
 #, python-format
 msgid "review recommended: %(count)d"
 msgstr "granskning rekommenderas: %(count)d"
 
-#: app/routes/metadata.py:975
+#: app/routes/metadata.py:922
 #, python-format
 msgid "no secure match: %(count)d"
 msgstr "ingen säker träff: %(count)d"
 
-#: app/routes/metadata.py:977
+#: app/routes/metadata.py:924
 #, python-format
 msgid "source errors: %(count)d"
 msgstr "källfel: %(count)d"
 
-#: app/routes/metadata.py:982
+#: app/routes/metadata.py:929
 msgid "Bulk update complete."
 msgstr "Massuppdatering klar."
 
-#: app/routes/metadata.py:1162
+#: app/routes/metadata.py:1109
 msgid "No valid books selected."
 msgstr "Inga giltiga böcker valda."
 
-#: app/routes/metadata.py:1543 app/routes/metadata.py:1639
+#: app/routes/metadata.py:1490 app/routes/metadata.py:1586
 msgid "The book file was not found on disk."
 msgstr "Bokfilen hittades inte på disk."
 
-#: app/routes/metadata.py:1545 app/routes/metadata.py:1643
+#: app/routes/metadata.py:1492 app/routes/metadata.py:1590
 msgid "Metadata fetch only supports EPUB, MOBI, AZW3 and KEPUB."
 msgstr "Metadatahämtning stöder bara EPUB, MOBI, AZW3 och KEPUB."
 
-#: app/routes/metadata.py:1649
+#: app/routes/metadata.py:1596
 msgid "Metadata fetch is already running for this book. Wait until it finishes."
 msgstr "Metadatahämtning körs redan på denna bok. Vänta tills den är klar."
 
-#: app/routes/metadata.py:1684
+#: app/routes/metadata.py:1631
 #, python-format
 msgid "Could not fetch metadata: %(error)s"
 msgstr "Kunde inte hämta metadata: %(error)s"
 
-#: app/routes/metadata.py:1706
+#: app/routes/metadata.py:1653
 msgid "No fetched metadata to review. Run the fetch first."
 msgstr "Ingen hämtad metadata att granska. Kör hämtningen först."
 
-#: app/routes/metadata.py:1752 app/routes/metadata.py:1935
+#: app/routes/metadata.py:1699 app/routes/metadata.py:1882
 msgid "The preview has expired. Run the fetch again."
 msgstr "Förhandsgranskningen har gått ut. Kör hämtningen igen."
 
-#: app/routes/metadata.py:1783
+#: app/routes/metadata.py:1730
 #, python-format
 msgid "%(count)d fields updated"
 msgstr "%(count)d fält uppdaterade"
 
-#: app/routes/metadata.py:1785
+#: app/routes/metadata.py:1732
 msgid "cover replaced"
 msgstr "omslag bytt"
 
-#: app/routes/metadata.py:1787
+#: app/routes/metadata.py:1734
 msgid "file updated"
 msgstr "filen uppdaterad"
 
-#: app/routes/metadata.py:1788
+#: app/routes/metadata.py:1735
 #, python-format
 msgid "Metadata saved (%(parts)s)."
 msgstr "Metadata sparad (%(parts)s)."
 
-#: app/routes/metadata.py:1793 app/routes/metadata.py:1959
+#: app/routes/metadata.py:1740 app/routes/metadata.py:1906
 msgid "No fields selected — nothing was saved."
 msgstr "Inga fält valdes — inget sparades."
 
-#: app/routes/metadata.py:1872 app/templates/bulk_metadata.html:1009
+#: app/routes/metadata.py:1819 app/templates/bulk_metadata.html:1009
 msgid "The AI service rejected the request. Check the API key."
 msgstr "AI-tjänsten nekade anropet. Kontrollera API-nyckeln."
 
-#: app/routes/metadata.py:1874
+#: app/routes/metadata.py:1821
 msgid "The AI request took too long. Try again."
 msgstr "AI-anropet tog för lång tid. Försök igen."
 
-#: app/routes/metadata.py:1876 app/routes/settings.py:208
+#: app/routes/metadata.py:1823 app/routes/settings.py:208
 msgid "The AI rate limit appears to have been reached. Try again later."
 msgstr "Gränsen för AI-anrop verkar vara nådd. Försök igen senare."
 
-#: app/routes/metadata.py:1878
+#: app/routes/metadata.py:1825
 msgid "The AI service returned a response that could not be parsed."
 msgstr "AI-tjänsten returnerade ett svar som inte kunde tolkas."
 
-#: app/routes/metadata.py:1886
+#: app/routes/metadata.py:1833
 msgid "The AI found no improvements to suggest."
 msgstr "AI:n hittade inga förbättringar att föreslå."
 
-#: app/routes/metadata.py:1898
+#: app/routes/metadata.py:1845
 msgid "No AI suggestions to review. Run the fetch first."
 msgstr "Inga AI-förslag att granska. Kör hämtningen först."
 
-#: app/routes/metadata.py:1957
+#: app/routes/metadata.py:1904
 #, python-format
 msgid "Metadata saved (%(count)d fields updated)."
 msgstr "Metadata sparad (%(count)d fält uppdaterade)."
 
-#: app/routes/metadata.py:2267
+#: app/routes/metadata.py:2214
 msgid "No books selected."
 msgstr "Inga böcker valda."
 
@@ -238,70 +238,78 @@ msgstr "AI-anslutningstest misslyckades (%(error)s)."
 msgid "API settings saved."
 msgstr "API-inställningar sparade."
 
-#: app/routes/settings.py:405
+#: app/routes/settings.py:410
 msgid "That device is no longer connected."
 msgstr "Enheten är inte ansluten längre."
 
-#: app/routes/settings.py:412
+#: app/routes/settings.py:417
 msgid "Could not read the device. See the log for details."
 msgstr "Kunde inte läsa enheten. Se loggen för detaljer."
 
-#: app/routes/settings.py:416
+#: app/routes/settings.py:421
 #, python-format
 msgid ""
 "Imported reading state: %(applied)d updated, %(skipped)d already further "
 "along, %(unmatched)d not in the library."
 msgstr ""
 
-#: app/routes/settings.py:424
+#: app/routes/settings.py:429
 msgid ""
 "The device's database was damaged. What could be read was imported, but "
 "some books may be missing."
 msgstr ""
 
-#: app/routes/settings.py:435
+#: app/routes/settings.py:440
 #, python-format
 msgid "Cleared %(n)d cached KEPUB files."
 msgstr "Rensade %(n)d cachade KEPUB-filer."
 
-#: app/routes/settings.py:455
+#: app/routes/settings.py:460
 msgid "Device revoked."
 msgstr "Enheten återkallad."
 
-#: app/routes/settings.py:457 app/routes/settings.py:475
+#: app/routes/settings.py:462 app/routes/settings.py:480
 msgid "Device not found."
 msgstr "Enheten hittades inte."
 
-#: app/routes/settings.py:480
+#: app/routes/settings.py:485
 #, python-format
 msgid ""
 "Full resync queued for %(name)s — %(count)d book(s) will be sent again on"
 " the next sync."
 msgstr ""
-"Full omsynk köad för %(name)s — %(count)d bok/böcker skickas om vid nästa "
-"synk."
+"Full omsynk köad för %(name)s — %(count)d bok/böcker skickas om vid nästa"
+" synk."
 
-#: app/routes/settings.py:511
+#: app/routes/settings.py:506
+msgid ""
+"The next sync may send a large delete signal. This is a one-time unlock —"
+" it is spent by the sync that uses it."
+msgstr ""
+"Nästa synk får skicka en stor raderingssignal. Upplåsningen är engångs — den "
+"förbrukas av den synk som utnyttjar den."
+
+#: app/routes/settings.py:537
 msgid "Invalid or missing device token."
 msgstr "Ogiltig eller saknad enhetstoken."
 
-#: app/routes/settings.py:516
+#: app/routes/settings.py:542
 msgid "Device not found — was it revoked?"
 msgstr "Enheten hittades inte — har den återkallats?"
 
-#: app/routes/settings.py:521
+#: app/routes/settings.py:547
 msgid "No file uploaded."
 msgstr "Ingen fil uppladdad."
 
-#: app/routes/settings.py:526
+#: app/routes/settings.py:552
 msgid "Uploaded file was empty."
 msgstr "Den uppladdade filen var tom."
 
-#: app/routes/settings.py:529
+#: app/routes/settings.py:555
 msgid "Uploaded file is too large to be a Kobo conf (max 200 KB)."
 msgstr "Den uppladdade filen är för stor för att vara en Kobo-conf (max 200 KB)."
 
-#: app/routes/settings.py:537
+#: app/routes/settings.py:563
 #, python-format
 msgid "Could not patch the file: %(msg)s"
 msgstr "Kunde inte patcha filen: %(msg)s"
@@ -2003,7 +2011,7 @@ msgstr "bok"
 msgid "file"
 msgstr "fil"
 
-#: app/templates/bulk_metadata.html:942 app/templates/settings_kobo.html:333
+#: app/templates/bulk_metadata.html:942 app/templates/settings_kobo.html:352
 msgid "files"
 msgstr "filer"
 
@@ -3674,7 +3682,7 @@ msgstr "Calibre"
 msgid "Installed"
 msgstr "Installerat"
 
-#: app/templates/settings_api.html:702 app/templates/settings_kobo.html:312
+#: app/templates/settings_api.html:702 app/templates/settings_kobo.html:331
 msgid "Not installed"
 msgstr "Inte installerat"
 
@@ -3987,8 +3995,8 @@ msgid ""
 "it receives the book anew."
 msgstr ""
 "Skicka hela biblioteket till den här enheten igen? Använd det när omslag "
-"eller metadata på enheten är inaktuella — Kobon uppdaterar bara ett omslag "
-"när den får boken på nytt."
+"eller metadata på enheten är inaktuella — Kobon uppdaterar bara ett "
+"omslag när den får boken på nytt."
 
 #: app/templates/settings_kobo.html:261
 msgid "Force full resync"
@@ -4010,11 +4018,39 @@ msgstr "Återkalla"
 msgid "No devices yet. Add one below to start syncing."
 msgstr "Inga enheter än. Lägg till en nedan för att börja synka."
 
-#: app/templates/settings_kobo.html:287
+#: app/templates/settings_kobo.html:286
+msgid "A large delete signal is unlocked and will be sent on the next sync."
+msgstr "En stor raderingssignal är upplåst och skickas vid nästa synk."
+
+#: app/templates/settings_kobo.html:290
+msgid ""
+"Colophon refuses to tell a device that more than a fifth of its books are"
+" gone — that is usually a glitch, such as an unmounted library, rather "
+"than your intent. If the library really did shrink that much, unlock it "
+"here."
+msgstr ""
+"Colophon vägrar säga till en enhet att mer än en femtedel av dess böcker är "
+"borta — det är oftast ett fel, till exempel ett omonterat bibliotek, snarare "
+"än din avsikt. Har biblioteket verkligen krympt så mycket låser du upp det "
+"här."
+
+#: app/templates/settings_kobo.html:293
+msgid ""
+"Let the next sync withdraw a large number of books from your devices? "
+"Verify your library looks right first. The unlock is one-time."
+msgstr ""
+"Låta nästa synk dra tillbaka ett stort antal böcker från dina enheter? "
+"Kontrollera först att biblioteket ser rätt ut. Upplåsningen är engångs."
+
+#: app/templates/settings_kobo.html:294
+msgid "Allow one large deletion"
+msgstr "Tillåt en stor radering"
+
+#: app/templates/settings_kobo.html:306
 msgid "Add device"
 msgstr "Lägg till enhet"
 
-#: app/templates/settings_kobo.html:291
+#: app/templates/settings_kobo.html:310
 msgid ""
 "Each Kobo needs its own URL. Generate one here, then enter it on the "
 "device (see setup guide below)."
@@ -4022,27 +4058,27 @@ msgstr ""
 "Varje Kobo behöver en egen URL. Generera en här och lägg sedan in den på "
 "enheten (se setup-guiden nedan)."
 
-#: app/templates/settings_kobo.html:295
+#: app/templates/settings_kobo.html:314
 msgid "Device name"
 msgstr "Enhetsnamn"
 
-#: app/templates/settings_kobo.html:296
+#: app/templates/settings_kobo.html:315
 msgid "e.g. Libra 2 in the kitchen"
 msgstr "t.ex. Libra 2 i köket"
 
-#: app/templates/settings_kobo.html:298
+#: app/templates/settings_kobo.html:317
 msgid "Generate URL"
 msgstr "Generera URL"
 
-#: app/templates/settings_kobo.html:307
+#: app/templates/settings_kobo.html:326
 msgid "KEPUB conversion"
 msgstr "KEPUB-konvertering"
 
-#: app/templates/settings_kobo.html:310
+#: app/templates/settings_kobo.html:329
 msgid "Available"
 msgstr "Tillgänglig"
 
-#: app/templates/settings_kobo.html:317
+#: app/templates/settings_kobo.html:336
 msgid ""
 "Books are converted from EPUB to KEPUB on the fly when the Kobo downloads"
 " them. KEPUB gives the device accurate reading-position tracking."
@@ -4050,7 +4086,7 @@ msgstr ""
 "Böcker konverteras från EPUB till KEPUB direkt när Kobon laddar ner dem. "
 "KEPUB ger enheten exakt lägesspårning."
 
-#: app/templates/settings_kobo.html:319
+#: app/templates/settings_kobo.html:338
 msgid ""
 "kepubify converts EPUB to KEPUB on the fly, which gives the Kobo accurate"
 " reading-position tracking. Colophon will auto-download a pinned release "
@@ -4062,47 +4098,47 @@ msgstr ""
 "första bok-nedladdningen. Om nedladdningen misslyckas serveras böckerna "
 "som rå EPUB (fortfarande läsbara, bara mindre exakt lägesspårning)."
 
-#: app/templates/settings_kobo.html:324
+#: app/templates/settings_kobo.html:343
 msgid "Binary"
 msgstr "Binär"
 
-#: app/templates/settings_kobo.html:327
+#: app/templates/settings_kobo.html:346
 msgid "Version"
 msgstr "Version"
 
-#: app/templates/settings_kobo.html:331
+#: app/templates/settings_kobo.html:350
 msgid "Cache"
 msgstr "Cache"
 
-#: app/templates/settings_kobo.html:335
+#: app/templates/settings_kobo.html:354
 msgid "cap"
 msgstr "tak"
 
-#: app/templates/settings_kobo.html:340
+#: app/templates/settings_kobo.html:359
 msgid "Clear the KEPUB cache? Files will be regenerated on next download."
 msgstr "Töm KEPUB-cachen? Filerna regenereras vid nästa nedladdning."
 
-#: app/templates/settings_kobo.html:341
+#: app/templates/settings_kobo.html:360
 msgid "Clear cache"
 msgstr "Töm cache"
 
-#: app/templates/settings_kobo.html:349
+#: app/templates/settings_kobo.html:368
 msgid "How do I connect my Kobo?"
 msgstr "Hur ansluter jag min Kobo?"
 
-#: app/templates/settings_kobo.html:352
+#: app/templates/settings_kobo.html:371
 msgid "Generate a URL above and copy it."
 msgstr "Generera en URL ovan och kopiera den."
 
-#: app/templates/settings_kobo.html:353
+#: app/templates/settings_kobo.html:372
 msgid "Connect your Kobo to a computer via USB. A KOBOeReader drive appears."
 msgstr "Anslut din Kobo till en dator via USB. En KOBOeReader-disk dyker upp."
 
-#: app/templates/settings_kobo.html:354
+#: app/templates/settings_kobo.html:373
 msgid "On that drive, open this exact file in a text editor:"
 msgstr "På den disken, öppna exakt denna fil i en texteditor:"
 
-#: app/templates/settings_kobo.html:356
+#: app/templates/settings_kobo.html:375
 msgid ""
 "Note the leading dot — the .kobo folder is hidden on most operating "
 "systems. The file lives a few levels deep; do not edit any other .conf "
@@ -4114,7 +4150,7 @@ msgstr ""
 ".conf du råkar hitta. Valfritt men rekommenderat: kopiera filen till Kobo"
 " eReader.conf.bak först som backup."
 
-#: app/templates/settings_kobo.html:357
+#: app/templates/settings_kobo.html:376
 msgid ""
 "Find the [OneStoreServices] section. Replace the existing api_endpoint= "
 "line with:"
@@ -4122,13 +4158,13 @@ msgstr ""
 "Hitta sektionen [OneStoreServices]. Ersätt den befintliga "
 "api_endpoint=-raden med:"
 
-#: app/templates/settings_kobo.html:359
+#: app/templates/settings_kobo.html:378
 msgid ""
 "In the same [OneStoreServices] section, delete these three lines if they "
 "exist:"
 msgstr "I samma [OneStoreServices]-sektion, ta bort dessa tre rader om de finns:"
 
-#: app/templates/settings_kobo.html:363
+#: app/templates/settings_kobo.html:382
 msgid ""
 "Stale values here (often left over from a previous Komga or Calibre-Web "
 "setup) silently override the ones Colophon sends, which is the #1 cause "
@@ -4141,7 +4177,7 @@ msgstr ""
 " radera dem låter Colophon förse enheten med färska värden vid nästa "
 "synk."
 
-#: app/templates/settings_kobo.html:364
+#: app/templates/settings_kobo.html:383
 msgid ""
 "Save the file. Eject the Kobo safely — wait a few seconds first so the "
 "device finishes flushing the write."
@@ -4149,7 +4185,7 @@ msgstr ""
 "Spara filen. Mata ut Kobon säkert — vänta några sekunder först så att "
 "enheten hinner skriva färdigt."
 
-#: app/templates/settings_kobo.html:365
+#: app/templates/settings_kobo.html:384
 msgid ""
 "On the Kobo: Settings → Sync now. Books from Colophon appear in your "
 "Library."
@@ -4157,7 +4193,7 @@ msgstr ""
 "På Kobon: Inställningar → Synka nu. Böcker från Colophon dyker upp i ditt"
 " bibliotek."
 
-#: app/templates/settings_kobo.html:366
+#: app/templates/settings_kobo.html:385
 msgid ""
 "First sync of a large library can take a few minutes — covers and books "
 "arrive in batches. Keep the device awake until the Devices table above "
@@ -4167,7 +4203,7 @@ msgstr ""
 "böcker kommer i batcher. Håll enheten vaken tills Enheter-tabellen ovan "
 "visar att synkräknaren tickar upp."
 
-#: app/templates/settings_kobo.html:369
+#: app/templates/settings_kobo.html:388
 msgid ""
 "To undo: restore api_endpoint=https://storeapi.kobo.com in the .conf file"
 " and sync again. The device returns to the official Kobo store."
@@ -4175,11 +4211,11 @@ msgstr ""
 "För att ångra: återställ api_endpoint=https://storeapi.kobo.com i .conf-"
 "filen och synka igen. Enheten återgår till den officiella Kobo-butiken."
 
-#: app/templates/settings_kobo.html:378
+#: app/templates/settings_kobo.html:397
 msgid "What syncs (and what does not)"
 msgstr "Vad synkas (och vad gör det inte)"
 
-#: app/templates/settings_kobo.html:380
+#: app/templates/settings_kobo.html:399
 msgid ""
 "Colophon implements the parts of the Kobo OneStore protocol that matter "
 "for a personal library. Some things the device tries to do still go to "
@@ -4191,7 +4227,7 @@ msgstr ""
 "göra går fortfarande till Kobos riktiga servrar (och misslyckas tyst), "
 "eller är inte implementerade än."
 
-#: app/templates/settings_kobo.html:382
+#: app/templates/settings_kobo.html:401
 msgid ""
 "EPUB and KEPUB books — sent automatically. Other formats (MOBI, AZW3, "
 "PDF) stay in your Colophon library but are not shipped to the Kobo."
@@ -4199,7 +4235,7 @@ msgstr ""
 "EPUB- och KEPUB-böcker — skickas automatiskt. Andra format (MOBI, AZW3, "
 "PDF) ligger kvar i ditt Colophon-bibliotek men skickas inte till Kobon."
 
-#: app/templates/settings_kobo.html:383
+#: app/templates/settings_kobo.html:402
 msgid ""
 "Cover images, title, author, series, ISBN, publisher, language, genre, "
 "publication date, synopsis."
@@ -4207,11 +4243,11 @@ msgstr ""
 "Omslag, titel, författare, serie, ISBN, förlag, språk, genre, "
 "utgivningsdatum, synopsis."
 
-#: app/templates/settings_kobo.html:384
+#: app/templates/settings_kobo.html:403
 msgid "Reading progress in both directions — see below."
 msgstr "Lässtatus i båda riktningar — se nedan."
 
-#: app/templates/settings_kobo.html:385
+#: app/templates/settings_kobo.html:404
 msgid ""
 "The Kobo&rsquo;s built-in series view is empty for Colophon books. Use "
 "Colophon&rsquo;s series view in the library instead."
@@ -4219,7 +4255,7 @@ msgstr ""
 "Kobons inbyggda serievy är tom för Colophon-böcker. Använd Colophons egen"
 " serievy i biblioteket istället."
 
-#: app/templates/settings_kobo.html:386
+#: app/templates/settings_kobo.html:405
 msgid ""
 "Store browsing, recommendations, wishlist, audiobooks, subscriptions — "
 "these UI areas on the Kobo do nothing useful while pointed at Colophon."
@@ -4228,11 +4264,11 @@ msgstr ""
 "prenumerationer — de UI-områdena på Kobon gör inget meningsfullt när den "
 "pekar mot Colophon."
 
-#: app/templates/settings_kobo.html:395
+#: app/templates/settings_kobo.html:414
 msgid "Reading progress sync"
 msgstr "Synk av lässtatus"
 
-#: app/templates/settings_kobo.html:397
+#: app/templates/settings_kobo.html:416
 msgid ""
 "Phase 3 keeps reading state in sync between Colophon and every connected "
 "Kobo. Status is one of: Unread, Reading, Finished."
@@ -4240,7 +4276,7 @@ msgstr ""
 "Phase 3 håller lässtatus synkad mellan Colophon och varje ansluten Kobo. "
 "Statusen är någon av: Oläst, Läser, Läst."
 
-#: app/templates/settings_kobo.html:399
+#: app/templates/settings_kobo.html:418
 msgid ""
 "Read a book on the Kobo → progress lands in Colophon on the next Sync "
 "now. Refresh the library page to see the updated bar in shelf view."
@@ -4248,7 +4284,7 @@ msgstr ""
 "Läs en bok på Kobon → progressen landar i Colophon vid nästa Synka nu. "
 "Ladda om bibliotekssidan för att se den uppdaterade baren i hyllvyn."
 
-#: app/templates/settings_kobo.html:400
+#: app/templates/settings_kobo.html:419
 msgid ""
 "Open any book in Colophon → the Reading state box at the top of the modal"
 " shows status, percent, started/finished dates."
@@ -4256,7 +4292,7 @@ msgstr ""
 "Öppna en bok i Colophon → lässtatus-rutan högst upp i modalen visar "
 "status, procent och datum för påbörjad/läst."
 
-#: app/templates/settings_kobo.html:401
+#: app/templates/settings_kobo.html:420
 msgid ""
 "Mark as read manually on a book → next Sync now on the Kobo flips it to "
 "Finished there as well."
@@ -4264,7 +4300,7 @@ msgstr ""
 "Markera som läst manuellt på en bok → nästa Synka nu på Kobon flippar den"
 " till Läst där också."
 
-#: app/templates/settings_kobo.html:402
+#: app/templates/settings_kobo.html:421
 msgid ""
 "Reset reading state on a book → clears it back to Unread everywhere, "
 "useful if a sync got stuck or you want to re-read."
@@ -4272,7 +4308,7 @@ msgstr ""
 "Nollställ lässtatus på en bok → rensar tillbaka till Oläst överallt, "
 "användbart om en synk fastnat eller om du vill läsa om."
 
-#: app/templates/settings_kobo.html:403
+#: app/templates/settings_kobo.html:422
 msgid ""
 "Status is monotonic — once a book is Finished it stays Finished, even if "
 "a device later reports it as Reading. Use Reset to override deliberately."
@@ -4280,7 +4316,7 @@ msgstr ""
 "Statusen är monoton — en bok som är Läst förblir Läst, även om en enhet "
 "senare rapporterar Läser. Använd Nollställ för att åsidosätta medvetet."
 
-#: app/templates/settings_kobo.html:404
+#: app/templates/settings_kobo.html:423
 msgid ""
 "Pair a second Kobo and it inherits all reading state on first sync — no "
 "per-device merge step."
@@ -4288,7 +4324,7 @@ msgstr ""
 "Anslut en till Kobo och den ärver all lässtatus vid första synken — ingen"
 " sammanslagning per enhet behövs."
 
-#: app/templates/settings_kobo.html:406
+#: app/templates/settings_kobo.html:425
 msgid ""
 "The All / Unread / Reading / Finished tabs at the top of the library let "
 "you filter on status."
@@ -4296,15 +4332,15 @@ msgstr ""
 "Flikarna Alla / Oläst / Läser / Läst högst upp i biblioteket låter dig "
 "filtrera på status."
 
-#: app/templates/settings_kobo.html:414
+#: app/templates/settings_kobo.html:433
 msgid "Troubleshooting"
 msgstr "Felsökning"
 
-#: app/templates/settings_kobo.html:416
+#: app/templates/settings_kobo.html:435
 msgid "Sync runs but no books appear on the Kobo."
 msgstr "Synken körs men inga böcker dyker upp på Kobon."
 
-#: app/templates/settings_kobo.html:417
+#: app/templates/settings_kobo.html:436
 msgid ""
 "Confirm the Devices table above shows the sync count incrementing after "
 "you press Sync now. If it does, the Kobo received data but is filtering "
@@ -4318,11 +4354,11 @@ msgstr ""
 "KEPUB. Om räknaren inte tickar upp är .conf-radens api_endpoint fel eller"
 " så når enheten inte Colophon på nätverket."
 
-#: app/templates/settings_kobo.html:419
+#: app/templates/settings_kobo.html:438
 msgid "Books appear but covers stay blank."
 msgstr "Böckerna dyker upp men omslagen förblir tomma."
 
-#: app/templates/settings_kobo.html:420
+#: app/templates/settings_kobo.html:439
 msgid ""
 "This is almost always a wrong base URL in the configuration: the Kobo "
 "strips the port from the Host header on some firmware, so cover URLs end "
@@ -4339,11 +4375,11 @@ msgstr ""
 ".conf, ta bort eventuella image_host/image_url_template-rader, spara, "
 "synka."
 
-#: app/templates/settings_kobo.html:422
+#: app/templates/settings_kobo.html:441
 msgid "The Kobo was previously paired with Komga or Calibre-Web."
 msgstr "Kobon var tidigare ansluten till Komga eller Calibre-Web."
 
-#: app/templates/settings_kobo.html:423
+#: app/templates/settings_kobo.html:442
 msgid ""
 "Old entitlements live in the device&rsquo;s KoboReader.sqlite. They "
 "appear alongside Colophon books and will 404 when opened. To fully clean "
@@ -4357,11 +4393,11 @@ msgstr ""
 "köra sin första-uppstarts-setup igen (du behöver logga in på ett Kobo-"
 "konto igen). Mindre drastiskt: ignorera de trasiga posterna."
 
-#: app/templates/settings_kobo.html:425
+#: app/templates/settings_kobo.html:444
 msgid "Reading progress from the Kobo never updates in Colophon."
 msgstr "Lässtatus från Kobon uppdateras aldrig i Colophon."
 
-#: app/templates/settings_kobo.html:426
+#: app/templates/settings_kobo.html:445
 msgid ""
 "Make sure you press Sync now (or close the book) on the Kobo — state is "
 "pushed in sync windows, not on every page turn. If still nothing arrives,"
@@ -4376,11 +4412,11 @@ msgstr ""
 "den saknas skickar enheten ingen state alls (ovanligt; oftast en fastnad "
 "lokal cache som löser sig efter omstart av enheten)."
 
-#: app/templates/settings_kobo.html:428
+#: app/templates/settings_kobo.html:447
 msgid "Start over from scratch."
 msgstr "Börja om från början."
 
-#: app/templates/settings_kobo.html:429
+#: app/templates/settings_kobo.html:448
 msgid ""
 "Restore api_endpoint=https://storeapi.kobo.com in the .conf, sync, then "
 "come back and edit it again. The Devices table here can be used to revoke"
@@ -4390,7 +4426,7 @@ msgstr ""
 "sedan tillbaka och redigera om. Enheter-tabellen här kan användas för att"
 " återkalla en gammal URL-nyckel om du genererat en ny."
 
-#: app/templates/settings_kobo.html:457 app/templates/settings_kobo.html:466
+#: app/templates/settings_kobo.html:476 app/templates/settings_kobo.html:485
 msgid "URL copied to clipboard."
 msgstr "URL kopierad till urklipp."
 

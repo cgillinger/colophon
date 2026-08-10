@@ -141,11 +141,21 @@ def _faithful_location(item: LibraryItem) -> dict | None:
 
 
 def _iso(dt: datetime | None) -> str:
+    """ISO 8601 with millisecond precision — the format the device sends.
+
+    The milliseconds used to be hard-coded to ``.000``, which silently
+    discarded up to 999 ms. ``read_last_modified`` is stored at full
+    precision, so we echoed back a timestamp *older* than the one the device
+    had just sent. The device read that as the server being behind, pushed
+    the same state again, our furthest-read-wins dropped it as not-newer, and
+    the two looped forever — visible as ``dropped (monotonic/older)`` on the
+    same book id round after round.
+    """
     if dt is None:
         dt = datetime.utcnow()
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
-    return dt.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    return dt.strftime("%Y-%m-%dT%H:%M:%S.") + f"{dt.microsecond // 1000:03d}Z"
 
 
 def _parse_iso(raw) -> datetime | None:
