@@ -91,6 +91,10 @@ def ensure_database_columns():
             "ALTER TABLE library_items ADD COLUMN suggested_author_id "
             "INTEGER REFERENCES authors(id)"
         ),
+        # The device-facing UUID, cached so a thumbnail request is an indexed
+        # lookup instead of a full table scan computing uuid5 per book. Filled
+        # lazily when the entitlement is built — no backfill needed.
+        "kobo_book_id": "ALTER TABLE library_items ADD COLUMN kobo_book_id TEXT",
     }
 
     changed = False
@@ -129,6 +133,16 @@ def ensure_database_columns():
         db.session.execute(text(
             "CREATE INDEX IF NOT EXISTS ix_library_items_author_id "
             "ON library_items (author_id)"
+        ))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+    # The Kobo cover phase looks this up once per thumbnail request.
+    try:
+        db.session.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_library_items_kobo_book_id "
+            "ON library_items (kobo_book_id)"
         ))
         db.session.commit()
     except Exception:

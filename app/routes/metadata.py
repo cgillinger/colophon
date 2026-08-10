@@ -241,11 +241,15 @@ def set_user_rating(item_id):
     return jsonify({"ok": True, "rating": item.user_rating})
 
 
-# Allowlisted thumbnail widths. A requested ?w= snaps up to the smallest of
-# these so the on-disk cache can never explode into one file per arbitrary
-# width. 320 covers the shelf (--cover-width:160px @2x) and is crisp for the
-# 80px table cell; 160/640 are kept for smaller widgets / future retina needs.
-_THUMB_WIDTHS = (160, 320, 640)
+# The downscaler lives in services/cover_thumbs.py — the Kobo endpoint needs
+# the same one, and a device fetching originals is what makes its cover phase
+# look hung. Re-exported under the old private names so this module reads
+# unchanged.
+from app.services.cover_thumbs import (  # noqa: E402
+    THUMB_WIDTHS as _THUMB_WIDTHS,
+    get_or_make_thumbnail as _get_or_make_thumbnail,
+    snap_width as _snap_width,
+)
 
 
 def _resolve_cover_source(item):
@@ -293,59 +297,6 @@ def _resolve_cover_source(item):
     return None
 
 
-def _get_or_make_thumbnail(src_path, width):
-    """Return a path to a cached downscaled JPEG of *src_path* at *width*, or
-    None if Pillow is unavailable or generation fails (caller falls back to
-    the original).
-
-    The cache key is derived from the source file's identity (realpath + mtime
-    + size) and the width, so it changes automatically whenever a cover is
-    replaced or rewritten. That means none of the (many) ``cover_path`` write
-    sites need explicit invalidation — a new cover simply misses the old thumb.
-    Thumbnails live in a dedicated ``thumbs/`` subdir; originals are untouched.
-    """
-    try:
-        from PIL import Image, ImageOps
-    except Exception:
-        return None
-    try:
-        st = os.stat(src_path)
-    except OSError:
-        return None
-
-    key = "%s|%d|%d|%d" % (
-        os.path.realpath(src_path), st.st_mtime_ns, st.st_size, width,
-    )
-    name = hashlib.sha1(key.encode("utf-8")).hexdigest() + ".jpg"
-    thumb_dir = os.path.join(current_app.config["COVER_DIR"], "thumbs")
-    dest = os.path.join(thumb_dir, name)
-    if os.path.exists(dest):
-        return dest
-
-    try:
-        os.makedirs(thumb_dir, exist_ok=True)
-        with Image.open(src_path) as im:
-            im = ImageOps.exif_transpose(im)  # respect embedded orientation
-            # Flatten any transparency onto white so JPEG output is sane.
-            if im.mode in ("RGBA", "LA", "P"):
-                im = im.convert("RGBA")
-                bg = Image.new("RGB", im.size, (255, 255, 255))
-                bg.paste(im, mask=im.split()[-1])
-                im = bg
-            else:
-                im = im.convert("RGB")
-            if im.width > width:
-                height = max(1, round(im.height * width / im.width))
-                im = im.resize((width, height), Image.LANCZOS)
-            tmp = dest + ".tmp"
-            im.save(tmp, "JPEG", quality=82, optimize=True, progressive=True)
-            os.replace(tmp, dest)  # atomic publish; concurrent workers are safe
-        return dest
-    except Exception:
-        logger.exception("thumbnail generation failed for %s", src_path)
-        return None
-
-
 @metadata_bp.route("/cover/<int:item_id>")
 def cover_item(item_id):
     item = get_item_or_404(item_id)
@@ -360,11 +311,7 @@ def cover_item(item_id):
     # picker) or if thumbnailing is unavailable.
     requested = request.args.get("w", type=int)
     if requested and requested > 0:
-        width = min(
-            (w for w in _THUMB_WIDTHS if w >= requested),
-            default=_THUMB_WIDTHS[-1],
-        )
-        thumb = _get_or_make_thumbnail(source, width)
+        thumb = _get_or_make_thumbnail(source, _snap_width(requested))
         if thumb:
             # Short max_age cuts repeat round-trips during a browse session;
             # the URL is stable across cover changes, so it's kept short and the

@@ -74,6 +74,12 @@ class LibraryItem(db.Model):
     book_uid = db.Column(db.String(64), nullable=True, unique=True, index=True,
                          default=lambda: uuid.uuid4().hex)
 
+    # The UUID we hand the device, cached so a Kobo thumbnail request is an
+    # indexed lookup instead of a full scan computing uuid5 per book. Filled
+    # lazily when the entitlement is built; derived from book_uid, never
+    # authoritative.
+    kobo_book_id = db.Column(db.Text, nullable=True, index=True)
+
     pipeline_status = db.Column(db.String(50), default="scanned", nullable=False)
     scanned_at = db.Column(db.DateTime, nullable=True)
     enriched_at = db.Column(db.DateTime, nullable=True)

@@ -20,13 +20,14 @@ from functools import wraps
 from flask import (
     Blueprint,
     abort,
+    current_app,
     jsonify,
     request,
     send_file,
 )
-from sqlalchemy import or_
+from sqlalchemy import or_, text
 
-from app.models import LibraryItem
+from app.models import LibraryItem, db
 from app.services.kobo_auth import find_device_by_token, touch_device
 from app.services.kobo_kepub import convert_epub_to_kepub
 from app.services.kobo_location import location_for_percent, range_for_source
@@ -515,7 +516,9 @@ def _entitlement_dtos(item: LibraryItem, base_url: str, token: str) -> dict:
     """Build a NewEntitlement wrapper for one LibraryItem."""
     from app.services.kobo_kepub import resolve_kepubify_path
 
-    book_uuid = _book_uuid(item)
+    # Cache the UUID in its indexed column while we have the item in hand —
+    # the device is about to ask for this book's cover by exactly this value.
+    book_uuid = _stamp_kobo_book_id(item)
     last_modified = _iso(item.updated_at)
     created = _iso(item.created_at)
     download_url = f"{base_url}/kobo/{token}/v1/books/{item.id}/file/epub"
@@ -870,30 +873,87 @@ def book_file(device, book_id):
 @kobo_bp.route("/<token>/v1/books/<book_id>/thumbnail/<int:width>/<int:height>/<int:quality>/<is_grey>/image.jpg")
 @require_device
 def book_thumbnail(device, book_id, width, height, is_grey, quality=85):
-    """Serve the existing cover image. We ignore the requested
-    width/height/quality and let the Kobo scale — keeps Phase 1
-    free of image-processing dependencies."""
+    """Serve the book's cover, downscaled to the width the Kobo asked for.
+
+    Originals are large — several MB is common — and the device fetches one
+    cover per book. A few hundred books is then hundreds of MB over WiFi,
+    which is exactly why the cover phase feels hung. get_or_make_thumbnail
+    caches on disk and returns None if Pillow is missing or generation
+    fails; then we send the original.
+    """
+    from app.services.cover_thumbs import get_or_make_thumbnail, snap_width
+
     item = _find_item_by_uuid(book_id)
-    if item is None or not item.cover_path or not os.path.exists(item.cover_path):
+    cover_path = _cover_file(item) if item is not None else None
+    if cover_path is None:
         abort(404)
-    return send_file(item.cover_path, mimetype="image/jpeg")
+
+    # Snap against the allowlist — the device asks for arbitrary widths and
+    # each unique one would otherwise be its own cache file.
+    thumb = get_or_make_thumbnail(cover_path, snap_width(width))
+    return send_file(thumb or cover_path, mimetype="image/jpeg")
+
+
+def _cover_file(item) -> str | None:
+    """Absolute path to the cover, or None. cover_path is absolute in
+    practice, but resolve relative values against COVER_DIR so a stat() can
+    never silently miss."""
+    path = getattr(item, "cover_path", None)
+    if not path:
+        return None
+    if not os.path.isabs(path):
+        path = os.path.join(current_app.config["COVER_DIR"], path)
+    return path if os.path.exists(path) else None
 
 
 def _find_item_by_uuid(image_id: str) -> LibraryItem | None:
     """Image IDs in the protocol are the UUIDs we minted in _book_uuid.
-    Reverse the lookup by scanning candidates. Cheap for small libraries
-    (hundreds of books); Phase 2 can add a uuid→id cache table if needed."""
-    # Try integer first (some Kobo paths still use raw IDs)
+
+    The brute-force reverse lookup used to run on *every* thumbnail request:
+    a full table load plus a uuid5 per book, thousands of times over during
+    one cover phase. The UUID is stamped into an indexed column when the
+    entitlement is built, so the common path is now a single indexed hit;
+    brute force stays as the fallback and stamps as it goes.
+    """
+    if not image_id:
+        return None
+
+    row = db.session.execute(
+        text("SELECT id FROM library_items WHERE kobo_book_id = :bid LIMIT 1"),
+        {"bid": image_id},
+    ).fetchone()
+    if row:
+        item = LibraryItem.query.get(row[0])
+        if item is not None:
+            return item
+
+    # Some Kobo paths still use raw IDs.
     if image_id.isdigit():
         item = LibraryItem.query.get(int(image_id))
         if item:
             return item
-    # Otherwise reverse-lookup by computing UUIDs of all EPUBs and
-    # comparing. With <10k books this is microseconds; not worth caching.
+
     for item in _epub_items_query().all():
         if _book_uuid(item) == image_id:
+            _stamp_kobo_book_id(item)
+            db.session.commit()
             return item
     return None
+
+
+def _stamp_kobo_book_id(item) -> str:
+    """Record the item's device-facing UUID in the indexed column.
+
+    Does not commit — the caller owns the transaction (the sync route
+    commits once via record_sync).
+    """
+    bid = _book_uuid(item)
+    if getattr(item, "kobo_book_id", None) != bid:
+        db.session.execute(
+            text("UPDATE library_items SET kobo_book_id = :bid WHERE id = :iid"),
+            {"bid": bid, "iid": item.id},
+        )
+    return bid
 
 
 # ---------------------------------------------------------------------------
