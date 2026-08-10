@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.50.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.50.1.
 
 ## Författarmappar (v1.38.0 — byggt)
 
@@ -356,7 +356,7 @@ Note: `Pillow` is in `requirements.txt` but was missing from an older local
 `.venv`, which silently *skipped* the cover tests instead of failing. If
 `tests/test_kobo_covers.py` reports skips, `pip install Pillow`.
 
-**Known pre-existing failures (as of v1.50.0):** a clean run is *638 passed, 10
+**Known pre-existing failures (as of v1.50.1):** a clean run is *639 passed, 10
 failed*. The 10 are not regressions — `test_quality.py` (6) and
 `test_scoring.py` (3) assert Swedish reason/warning substrings the code now
 emits in English, and `test_scanner.py::...test_does_not_overwrite_manual_metadata`

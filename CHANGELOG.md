@@ -5,6 +5,17 @@ PATCH for fixes, MINOR for user-visible features and automatic migrations, MAJOR
 changes that need you to act. Releases before 1.41.0 are summarised from the git log —
 see the [tags](https://github.com/cgillinger/colophon/tags) for the full history.
 
+## [1.50.1] — 2026-08-10
+
+### Fixed
+- **One unwithdrawable book could take a whole sync down.** When Colophon
+  tells a reader that a book is gone it has to quote the id the reader was
+  given — the book's own row is long deleted by then. If that id had never
+  been recorded, the fallback crashed the request, so the reader got a server
+  error instead of a sync. It now skips that one withdrawal, says so in the
+  log, and delivers everything else. Nothing in a healthy library reaches this
+  path; it is a safety net, not a repair.
+
 ## [1.50.0] — 2026-08-10
 
 ### Added

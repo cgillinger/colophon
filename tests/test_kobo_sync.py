@@ -572,6 +572,48 @@ def test_deleted_book_emits_DeletedEntitlement(app, client):
     assert r3.get_json() == []
 
 
+def test_a_withdrawal_without_a_recorded_revision_does_not_kill_the_sync(app, client):
+    """A ledger row with no revision cannot be named — but must not 500.
+
+    The withdrawal quotes the UUID we recorded when the book was shipped,
+    because the book's row is gone by then. The old fallback called
+    _book_uuid() with an integer, which reads .book_uid off an int: one
+    unnameable row took the entire sync down rather than costing one
+    withdrawal.
+    """
+    from app.models import KoboBookState, LibraryItem, db
+    from app.services.kobo_auth import create_device
+
+    with app.app_context():
+        device, token = create_device("Nameless withdrawal")
+        for i in range(6):
+            db.session.add(LibraryItem(
+                title=f"Present {i}",
+                file_path=f"/books/present{i}.epub",
+                file_name=f"present{i}.epub",
+                extension=".epub",
+            ))
+        db.session.commit()
+        # Seed one ledger row for a book that no longer exists, with no
+        # revision recorded — the shape the old code crashed on.
+        db.session.add(KoboBookState(
+            device_id=device.id, library_item_id=987654, revision_id=None,
+        ))
+        db.session.commit()
+
+    resp = client.get(f"/kobo/{token}/v1/library/sync")
+
+    assert resp.status_code == 200
+    payload = resp.get_json()
+    assert not any("DeletedEntitlement" in w for w in payload)
+    # The other six books still ship normally.
+    assert sum(1 for w in payload if "NewEntitlement" in w) == 6
+
+    # And the unnameable row is dropped, so it does not recur every sync.
+    with app.app_context():
+        assert KoboBookState.query.filter_by(library_item_id=987654).count() == 0
+
+
 def test_sync_pagination(app, client, monkeypatch):
     from app.models import LibraryItem, db
     from app.services import kobo_sync
