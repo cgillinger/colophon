@@ -740,6 +740,7 @@ def library_sync(device):
         incoming,
         _epub_items_query,
         page_size=_kobo_sync.SYNC_PAGE_SIZE,
+        scan_budget=_kobo_sync.SYNC_SCAN_BUDGET,
         allow_mass_delete=allow_mass_delete,
     )
     if allow_mass_delete and delta.deleted_item_ids:
@@ -773,12 +774,14 @@ def library_sync(device):
     forget_items(device.id, delta.deleted_item_ids)
 
     logger.info(
-        "Kobo sync: device=%s new=%d changed=%d reading=%d deleted=%d more=%s",
+        "Kobo sync: device=%s new=%d changed=%d reading=%d deleted=%d "
+        "scanned=%d more=%s",
         device.name,
         len(delta.new_items),
         len(delta.changed_items),
         len(delta.reading_state_items),
         len(delta.deleted_item_ids),
+        delta.scanned,
         delta.has_more,
     )
     if delta.blocked_mass_delete:

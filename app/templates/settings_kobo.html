@@ -255,6 +255,13 @@
                     <td>{{ d.last_seen_at.strftime('%Y-%m-%d %H:%M') if d.last_seen_at else '—' }}</td>
                     <td>{{ d.sync_count or 0 }}</td>
                     <td style="text-align: right;">
+                        <form method="post" action="{{ url_for('settings.kobo_force_resync', device_id=d.id) }}"
+                              style="display:inline;"
+                              onsubmit="return confirm({{ _('Send the whole library to this device again? Use this when covers or metadata on the device are stale — the Kobo only refreshes a cover when it receives the book anew.')|tojson }});">
+                            <button type="submit" class="btn" title="{{ _('Force full resync') }}">
+                                <i class="ti ti-refresh"></i>
+                            </button>
+                        </form>
                         <form method="post" action="{{ url_for('settings.kobo_revoke_device', device_id=d.id) }}"
                               style="display:inline;"
                               onsubmit="return confirm({{ _('Revoke this device? The Kobo will stop being able to sync until reconfigured.')|tojson }});">

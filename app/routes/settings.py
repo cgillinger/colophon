@@ -458,6 +458,32 @@ def kobo_revoke_device(device_id):
     return redirect(url_for("settings.kobo_settings"))
 
 
+@settings_bp.route("/settings/kobo/force-resync/<int:device_id>", methods=["POST"])
+def kobo_force_resync(device_id):
+    """Clear the ledger — the next sync delivers the whole library again.
+
+    Needed because the protocol has no "just refresh the cover" signal: the
+    device fetches a cover only when it ingests an entitlement, so books
+    already on it keep showing whatever cover they cached. Re-shipping them
+    is the only way to hand over a corrected cover address.
+    """
+    from app.models import KoboDevice
+    from app.services.kobo_sync import clear_ledger
+
+    device = KoboDevice.query.get(device_id)
+    if device is None:
+        flash(_("Device not found."), "warning")
+        return redirect(url_for("settings.kobo_settings"))
+
+    count = clear_ledger(device_id)
+    flash(
+        _("Full resync queued for %(name)s — %(count)d book(s) will be sent "
+          "again on the next sync.", name=device.name, count=count),
+        "success",
+    )
+    return redirect(url_for("settings.kobo_settings"))
+
+
 @settings_bp.route("/settings/kobo/patch-conf", methods=["POST"])
 def kobo_patch_conf():
     """Accept a Kobo eReader.conf upload, rewrite the [OneStoreServices]

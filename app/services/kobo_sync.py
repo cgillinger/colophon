@@ -4,13 +4,36 @@
 A sync token is opaque to the Kobo client — it just echoes it back on
 the next request. Internally we use a small JSON document:
 
-    {"v": 1, "since": "2026-05-22T10:14:33.000Z", "page": 0}
+    {"v": 2, "since": "...", "hw": "...", "cur": 417, "full": false}
 
-`since` is the highest `updated_at` we've already returned to this
-device. `page` lets us paginate within a single sync run.
+`since` is the watermark from the last *completed* round. `hw`
+(high_water) is the ceiling of the round currently in flight — None
+means no round is in flight. `cur` is the keyset cursor: the last
+LibraryItem.id we walked past. `full` means this round ignores `since`
+and sweeps everything below the ceiling.
 
-The protocol bumps `v` if we ever change the shape; an unknown
-version is treated as "no token" (= full re-sync).
+Two properties are load-bearing, and both were bugs before v1.48.0:
+
+**The cursor keys on `id`, not on `updated_at`.** The Kobo PUTs reading
+state between page fetches, which bumps `updated_at` (it has `onupdate`)
+and moves the row to the end of an `ORDER BY updated_at` sort. With
+OFFSET everything after it slid one step and the row on the page
+boundary was skipped — permanently, because `since` was then advanced
+past it. `id` is immutable and no concurrent write can reorder it. The
+`high_water` ceiling, set once when the round begins and carried in the
+token, additionally makes the row set monotonically shrinking: a row can
+leave the window but never enter it, so the walk terminates.
+
+**The ledger, not the token's `since`, decides what we say about a
+book.** Deriving "the content changed" from `since` means a device that
+lost its token gets ChangedEntitlement for the entire library — the very
+download storm the delta sync exists to prevent. We ask
+`kobo_book_states` instead, so an interrupted or restarted walk never
+costs more than what is actually missing.
+
+Version 1 (`{"v":1,"since":...,"page":N}`) is spent: a device mid-walk
+through an old round echoes it back after the upgrade, and it must be
+rejected as "no token" rather than misread as round state.
 """
 import base64
 import binascii
@@ -24,14 +47,21 @@ from app.models import KoboBookState, LibraryItem, db
 
 logger = logging.getLogger(__name__)
 
+# Max number of wrappers in one response.
 SYNC_PAGE_SIZE = 100
-TOKEN_VERSION = 1
+# Max rows examined per request. Without a budget a round over an unchanged
+# library returns one empty page per 100 rows; with it the whole thing is
+# settled in a single request answering [] + done.
+SYNC_SCAN_BUDGET = 2000
+TOKEN_VERSION = 2
 
 
 @dataclass
 class SyncToken:
     since: datetime | None = None
-    page: int = 0
+    high_water: datetime | None = None
+    cursor: int = 0
+    full: bool = False
 
     @classmethod
     def parse(cls, header_value: str | None) -> "SyncToken":
@@ -43,18 +73,22 @@ class SyncToken:
         except (binascii.Error, ValueError, UnicodeDecodeError) as exc:
             logger.info("Kobo sync: unparseable token, treating as full sync: %s", exc)
             return cls()
-        if data.get("v") != TOKEN_VERSION:
+        if not isinstance(data, dict) or data.get("v") != TOKEN_VERSION:
             return cls()
-        since_str = data.get("since")
-        since = _parse_iso(since_str) if since_str else None
-        page = int(data.get("page") or 0)
-        return cls(since=since, page=page)
+        return cls(
+            since=_parse_iso(data["since"]) if data.get("since") else None,
+            high_water=_parse_iso(data["hw"]) if data.get("hw") else None,
+            cursor=int(data.get("cur") or 0),
+            full=bool(data.get("full")),
+        )
 
     def encode(self) -> str:
         payload = {
             "v": TOKEN_VERSION,
             "since": _format_iso(self.since) if self.since else None,
-            "page": self.page,
+            "hw": _format_iso(self.high_water) if self.high_water else None,
+            "cur": int(self.cursor or 0),
+            "full": bool(self.full),
         }
         return base64.urlsafe_b64encode(
             json.dumps(payload, separators=(",", ":")).encode("utf-8")
@@ -95,6 +129,9 @@ class SyncDelta:
     # never cleared, so every later sync recomputes and re-suppresses the same
     # oversized delete, forever.
     blocked_mass_delete: bool = False
+    # Rows examined this request. Diagnostic only — an unchanged library
+    # scans many rows and emits nothing, and that should be visible in logs.
+    scanned: int = 0
 
 
 def compute_delta(
@@ -102,6 +139,7 @@ def compute_delta(
     incoming_token: SyncToken,
     epub_items_query,
     page_size: int = SYNC_PAGE_SIZE,
+    scan_budget: int = SYNC_SCAN_BUDGET,
     allow_mass_delete: bool = False,
 ) -> SyncDelta:
     """Return the entitlements that should be sent to one device for
@@ -110,25 +148,31 @@ def compute_delta(
     `epub_items_query` is a callable returning a base SQLAlchemy query
     over the EPUB LibraryItems (injected so this stays unit-testable).
     """
-    base_q = epub_items_query()
-
-    # Which items has this device already seen, and under which UUID? The
-    # revision is what we must quote back when withdrawing a book: by then the
-    # row may be gone, so it cannot be recomputed from the item.
-    seen_revisions = {
-        row.library_item_id: row.revision_id
+    # Which items has this device already seen, under which UUID, and in
+    # what shape? The revision is what we must quote back when withdrawing a
+    # book: by then the row may be gone, so it cannot be recomputed from the
+    # item. The two timestamps are what the classifier compares against.
+    ledger = {
+        row.library_item_id: row
         for row in KoboBookState.query.filter_by(device_id=device_id).all()
     }
-    seen_ids = set(seen_revisions)
+    seen_ids = set(ledger)
 
-    # If we have no record of having sent anything to this device,
-    # ignore the incoming token's `since` and re-send everything. The
-    # device may still be holding a token from a previous sync that
-    # we've since lost track of (eg. operator cleared kobo_book_states
-    # manually, or the row got dropped). Without this, every sync would
-    # come back empty because the filter `updated_at > since` matches
-    # nothing for an unchanged library.
-    effective_since = incoming_token.since if seen_ids else None
+    # A new round sets the ceiling once; a continuing one carries it.
+    if incoming_token.high_water is None:
+        high_water = datetime.utcnow()
+        cursor = 0
+    else:
+        high_water = incoming_token.high_water
+        cursor = int(incoming_token.cursor or 0)
+
+    since = incoming_token.since
+    # An empty ledger means we have no record of having sent this device
+    # anything — it may still hold a token from a sync we've since lost track
+    # of (operator cleared kobo_book_states, row dropped). Sweep everything;
+    # the ledger decides what is actually said about each book, so a full
+    # sweep over an already-synced library emits nothing, it just costs a scan.
+    full = bool(incoming_token.full) or not seen_ids
 
     # Channel-aware sync: never offer a cloud entitlement for a book this
     # device already holds as a USB-transferred file. The Kobo can't tell the
@@ -151,49 +195,16 @@ def compute_delta(
         logger.debug("kobo_sync: USB ledger lookup failed", exc_info=True)
         excluded = set()
     if excluded:
-        base_q = base_q.filter(~LibraryItem.id.in_(excluded))
         logger.info(
             "kobo_sync: withholding %d book(s) from device %s — already there via USB",
             len(excluded), device_id,
         )
 
-    if effective_since is not None:
-        base_q = base_q.filter(LibraryItem.updated_at > effective_since)
-    base_q = base_q.order_by(LibraryItem.updated_at.asc(), LibraryItem.id.asc())
-
-    offset = incoming_token.page * page_size
-    fetched = base_q.offset(offset).limit(page_size + 1).all()
-    has_more = len(fetched) > page_size
-    items_this_page = fetched[:page_size]
-
-    new_items: list[LibraryItem] = []
-    changed_items: list[LibraryItem] = []
-    reading_state_items: list[LibraryItem] = []
-    for item in items_this_page:
-        if item.id not in seen_ids:
-            new_items.append(item)
-            continue
-        # Already on the device. Distinguish a content/file change (must
-        # re-ship the whole entitlement, device may re-download) from a
-        # reading-progress-only change (must NOT, or the Kobo archives the
-        # local file and re-downloads on next open). content_updated_at
-        # advances only on content changes and is kept <= updated_at, so an
-        # item that landed in this page purely because reading progress
-        # bumped updated_at has content_updated_at <= effective_since.
-        content_at = item.content_updated_at or item.updated_at
-        content_changed = effective_since is None or (
-            content_at is not None and content_at > effective_since
-        )
-        if content_changed:
-            changed_items.append(item)
-        else:
-            reading_state_items.append(item)
-
-    # Deletion detection only on the first page of a paginated sync —
-    # otherwise we'd emit deletes once per page.
+    # Deletion detection only on the first page of a round — otherwise we'd
+    # emit deletes once per page.
     deleted_ids: list[int] = []
     blocked_mass_delete = False
-    if incoming_token.page == 0 and seen_ids:
+    if cursor == 0 and seen_ids:
         current_ids = {
             row.id
             for row in epub_items_query().with_entities(LibraryItem.id).all()
@@ -229,23 +240,66 @@ def compute_delta(
                 )
             deleted_ids = proposed_deletes
 
-    # Compute outgoing token
+        # Completeness repair: if the library holds something the ledger
+        # doesn't know about, `since` cannot be trusted this round. The
+        # ledger decides what is said about each book anyway, so an extra
+        # sweep only costs scan time.
+        if current_ids - seen_ids - excluded:
+            full = True
+
+    new_items: list[LibraryItem] = []
+    changed_items: list[LibraryItem] = []
+    reading_state_items: list[LibraryItem] = []
+    scanned = 0
+    has_more = False
+
+    base_q = epub_items_query()
+    if excluded:
+        base_q = base_q.filter(~LibraryItem.id.in_(excluded))
+    base_q = base_q.filter(LibraryItem.updated_at <= high_water)
+    if not full and since is not None:
+        base_q = base_q.filter(LibraryItem.updated_at > since)
+    base_q = base_q.order_by(LibraryItem.id.asc())
+
+    while True:
+        chunk = base_q.filter(LibraryItem.id > cursor).limit(page_size).all()
+        if not chunk:
+            break
+        for item in chunk:
+            cursor = item.id
+            scanned += 1
+            sent = ledger.get(item.id)
+            if sent is None:
+                new_items.append(item)
+            else:
+                # Already on the device. Distinguish a content change (must
+                # re-ship the whole entitlement, device may re-download) from
+                # a reading-progress-only change (must NOT, or the Kobo
+                # archives the local file and re-downloads on next open).
+                content_at = item.content_updated_at or item.updated_at
+                if _newer(content_at, sent.sent_content_at):
+                    changed_items.append(item)
+                elif _newer(item.updated_at, sent.sent_updated_at):
+                    reading_state_items.append(item)
+            emitted = len(new_items) + len(changed_items) + len(reading_state_items)
+            if emitted >= page_size:
+                break
+        emitted = len(new_items) + len(changed_items) + len(reading_state_items)
+        if emitted >= page_size or scanned >= scan_budget:
+            has_more = bool(
+                base_q.filter(LibraryItem.id > cursor).limit(1).all()
+            )
+            break
+
     if has_more:
-        next_token = SyncToken(since=effective_since, page=incoming_token.page + 1)
-    else:
-        # Done. Advance `since` to the latest updated_at we've seen,
-        # falling back to the effective_since value if we sent nothing.
-        max_seen = max(
-            (i.updated_at for i in items_this_page if i.updated_at is not None),
-            default=None,
+        next_token = SyncToken(
+            since=since, high_water=high_water, cursor=cursor, full=full
         )
-        if max_seen is None:
-            new_since = effective_since
-        elif effective_since is None or max_seen > effective_since:
-            new_since = max_seen
-        else:
-            new_since = effective_since
-        next_token = SyncToken(since=new_since, page=0)
+    else:
+        # Round complete. `since` becomes the ceiling, NOT max(updated_at):
+        # anything that failed to be reported has, by construction,
+        # updated_at > high_water and is caught by the next round.
+        next_token = SyncToken(since=high_water, high_water=None, cursor=0, full=False)
 
     return SyncDelta(
         new_items=new_items,
@@ -253,12 +307,29 @@ def compute_delta(
         reading_state_items=reading_state_items,
         deleted_item_ids=deleted_ids,
         deleted_revisions={
-            i: seen_revisions[i] for i in deleted_ids if seen_revisions.get(i)
+            i: ledger[i].revision_id
+            for i in deleted_ids
+            if i in ledger and ledger[i].revision_id
         },
         next_token=next_token,
         has_more=has_more,
         blocked_mass_delete=blocked_mass_delete,
+        scanned=scanned,
     )
+
+
+def _newer(value: datetime | None, reference: datetime | None) -> bool:
+    """value > reference, where a missing reference means "yes".
+
+    A ledger row without timestamps predates the columns and is re-emitted
+    once; the backfill in services/database.py exists so that never happens
+    to a whole library at upgrade time.
+    """
+    if value is None:
+        return False
+    if reference is None:
+        return True
+    return value > reference
 
 
 def record_sync(device_id: int, items: Iterable[LibraryItem], revision_fn) -> None:
@@ -271,6 +342,10 @@ def record_sync(device_id: int, items: Iterable[LibraryItem], revision_fn) -> No
         return
     now = datetime.utcnow()
     for item in items:
+        # Capture the shape we are shipping, so the next round can tell a
+        # content change from a page turn without consulting the token.
+        sent_updated = item.updated_at
+        sent_content = item.content_updated_at or item.updated_at
         existing = KoboBookState.query.filter_by(
             device_id=device_id, library_item_id=item.id
         ).first()
@@ -280,10 +355,14 @@ def record_sync(device_id: int, items: Iterable[LibraryItem], revision_fn) -> No
                 library_item_id=item.id,
                 last_synced_at=now,
                 revision_id=revision_fn(item),
+                sent_updated_at=sent_updated,
+                sent_content_at=sent_content,
             ))
         else:
             existing.last_synced_at = now
             existing.revision_id = revision_fn(item)
+            existing.sent_updated_at = sent_updated
+            existing.sent_content_at = sent_content
     db.session.commit()
 
 
@@ -298,3 +377,19 @@ def forget_items(device_id: int, item_ids: Iterable[int]) -> None:
         KoboBookState.library_item_id.in_(ids),
     ).delete(synchronize_session=False)
     db.session.commit()
+
+
+def clear_ledger(device_id: int) -> int:
+    """Forget everything we've told this device. The next sync delivers the
+    whole library again.
+
+    The operator escape hatch behind "Force full resync". Needed because the
+    protocol has no "just refresh the cover" signal: the device only fetches
+    a cover when it ingests an entitlement, so a library that already has
+    wrong covers out on a device can only be repaired by re-shipping.
+    """
+    count = KoboBookState.query.filter(
+        KoboBookState.device_id == device_id
+    ).delete(synchronize_session=False)
+    db.session.commit()
+    return count or 0

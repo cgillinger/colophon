@@ -327,6 +327,13 @@ class KoboBookState(db.Model):
     last_synced_at = db.Column(db.DateTime, default=datetime.utcnow)
     revision_id = db.Column(db.String(64), nullable=True)
 
+    # What the item looked like when we last shipped it. These are what the
+    # delta classifier compares against — NOT the sync token's `since`. A
+    # device that lost its token then gets only what it is actually missing,
+    # instead of the whole library re-sent as ChangedEntitlement.
+    sent_updated_at = db.Column(db.DateTime, nullable=True)
+    sent_content_at = db.Column(db.DateTime, nullable=True)
+
     # Phase 3 fields (populated by reading-state writes from the device):
     status = db.Column(db.String(50), nullable=True)
     current_bookmark = db.Column(db.Text, nullable=True)  # JSON blob

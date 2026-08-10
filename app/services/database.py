@@ -557,6 +557,14 @@ def ensure_device_transfers_table():
 
 
 def ensure_kobo_book_states_table():
+    """The ledger of what each device has actually been told about.
+
+    The delta sync (services/kobo_sync.py) asks this table — not the sync
+    token's `since` — what to say about a book: no row => NewEntitlement,
+    content newer than what we shipped => ChangedEntitlement, only reading
+    state newer => ChangedReadingState. A device that lost its token
+    therefore triggers no download storm; it gets only what it lacks.
+    """
     db.session.execute(text("""
         CREATE TABLE IF NOT EXISTS kobo_book_states (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -564,6 +572,8 @@ def ensure_kobo_book_states_table():
             library_item_id INTEGER NOT NULL,
             last_synced_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             revision_id VARCHAR(64),
+            sent_updated_at DATETIME,
+            sent_content_at DATETIME,
             status VARCHAR(50),
             current_bookmark TEXT,
             statistics TEXT,
@@ -580,6 +590,50 @@ def ensure_kobo_book_states_table():
         "ON kobo_book_states (library_item_id)"
     ))
     db.session.commit()
+
+    # Upgrades: the table predates the two columns above.
+    for sql in (
+        "ALTER TABLE kobo_book_states ADD COLUMN sent_updated_at DATETIME",
+        "ALTER TABLE kobo_book_states ADD COLUMN sent_content_at DATETIME",
+    ):
+        try:
+            db.session.execute(text(sql))
+            db.session.commit()
+        except Exception as exc:
+            db.session.rollback()
+            if "duplicate column name" not in str(exc).lower():
+                raise
+
+    backfill_kobo_sent_timestamps()
+
+
+def backfill_kobo_sent_timestamps():
+    """Seed sent_* from last_synced_at for rows that predate the columns.
+
+    This one matters. Unlike Bookstation, which built its ledger from
+    nothing, Colophon has had a populated kobo_book_states all along. The
+    classifier treats a NULL reference as "yes, newer" — so leaving these
+    NULL would ship the ENTIRE library as ChangedEntitlement on the first
+    sync after upgrade, which is precisely the download storm the delta sync
+    exists to prevent.
+
+    last_synced_at is the semantically right seed: the device was told about
+    the book at that moment, so anything changed since then legitimately
+    re-ships, and nothing else does.
+    """
+    result = db.session.execute(text(
+        "UPDATE kobo_book_states "
+        "   SET sent_updated_at = last_synced_at, "
+        "       sent_content_at = last_synced_at "
+        " WHERE sent_updated_at IS NULL OR sent_content_at IS NULL"
+    ))
+    if result.rowcount:
+        db.session.commit()
+        logger.info(
+            "Backfilled Kobo ledger timestamps for %d row(s)", result.rowcount
+        )
+    else:
+        db.session.rollback()
 
 
 def ensure_ai_usage_log_table():

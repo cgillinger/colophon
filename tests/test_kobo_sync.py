@@ -266,11 +266,14 @@ def test_sync_token_roundtrip():
     from datetime import datetime
     from app.services.kobo_sync import SyncToken
 
-    original = SyncToken(since=datetime(2026, 5, 22, 10, 30, 45, 123000), page=3)
-    encoded = original.encode()
-    decoded = SyncToken.parse(encoded)
-    assert decoded.since == original.since
-    assert decoded.page == original.page
+    original = SyncToken(
+        since=datetime(2026, 5, 22, 10, 30, 45, 123000),
+        high_water=datetime(2026, 5, 22, 11, 30, 45, 654321),
+        cursor=417,
+        full=True,
+    )
+    decoded = SyncToken.parse(original.encode())
+    assert decoded == original
 
 
 def test_sync_token_handles_empty_and_garbage():
@@ -279,6 +282,21 @@ def test_sync_token_handles_empty_and_garbage():
     assert SyncToken.parse("").since is None
     assert SyncToken.parse("not-base64!!!").since is None
     assert SyncToken.parse("Zm9vYmFy").since is None  # b64 but not our JSON
+
+
+def test_legacy_v1_token_is_rejected():
+    """v1 was {"v":1,"since":...,"page":N}. A device mid-walk through an old
+    round echoes it back after the upgrade; it must start a clean round
+    rather than be misread as round state."""
+    import base64
+    import json
+    from app.services.kobo_sync import SyncToken
+
+    legacy = base64.urlsafe_b64encode(
+        json.dumps({"v": 1, "since": "2026-05-22T10:30:45.123000Z", "page": 3}).encode()
+    ).decode()
+
+    assert SyncToken.parse(legacy) == SyncToken()
 
 
 def test_second_sync_returns_only_changed(app, client):
@@ -534,6 +552,185 @@ def test_sync_pagination(app, client, monkeypatch):
     assert pages == 3  # 3 + 3 + 1
     assert len(seen_titles) == 7
     assert sorted(seen_titles) == [f"Book {i:02d}" for i in range(7)]
+
+
+def _wrapper_uuid(wrapper):
+    """The book UUID a sync wrapper refers to, whatever its shape."""
+    body = wrapper[next(iter(wrapper))]
+    if "BookEntitlement" in body:
+        return body["BookEntitlement"]["Id"]
+    if "ReadingState" in body:
+        return body["ReadingState"]["EntitlementId"]
+    return body.get("Id")
+
+
+def _walk(client, token, max_pages=20):
+    """One full sync round, driven the way well-behaved firmware drives it:
+    echo back the x-kobo-synctoken and stop when the server says done."""
+    wrappers = []
+    synctoken = None
+    pages = 0
+    while pages < max_pages:
+        headers = {"x-kobo-synctoken": synctoken} if synctoken else {}
+        resp = client.get(f"/kobo/{token}/v1/library/sync", headers=headers)
+        assert resp.status_code == 200
+        wrappers.extend(resp.get_json())
+        pages += 1
+        synctoken = resp.headers["x-kobo-synctoken"]
+        if resp.headers["x-kobo-sync"] != "continue":
+            break
+    else:
+        raise AssertionError("pagination did not terminate")
+    return wrappers, pages, synctoken
+
+
+def test_state_put_between_pages_does_not_skip_books(app, client, monkeypatch):
+    """The device PUTs reading state between page fetches.
+
+    With OFFSET over an `ORDER BY updated_at` sort that is fatal: updated_at
+    has onupdate, so each such PUT moves the book to the end of the sort,
+    everything after it slides one step, and the row sitting on the page
+    boundary is skipped — permanently, because `since` is then advanced past
+    it. The cursor therefore keys on `id`, which is immutable.
+    """
+    from app.models import LibraryItem, db
+    from app.routes.kobo import _book_uuid
+    from app.services import kobo_sync
+    from app.services.kobo_auth import create_device
+
+    monkeypatch.setattr(kobo_sync, "SYNC_PAGE_SIZE", 10)
+
+    with app.app_context():
+        _, token = create_device("Interleaved PUT test")
+        for i in range(25):
+            db.session.add(LibraryItem(
+                title=f"Bok {i:03d}",
+                file_path=f"/books/skew{i:03d}.epub",
+                file_name=f"skew{i:03d}.epub",
+                extension=".epub",
+            ))
+        db.session.commit()
+        expected = {
+            _book_uuid(it) for it in LibraryItem.query.all()
+        }
+
+    # Page 0.
+    r1 = client.get(f"/kobo/{token}/v1/library/sync")
+    seen = list(r1.get_json())
+    synctoken = r1.headers["x-kobo-synctoken"]
+    assert r1.headers["x-kobo-sync"] == "continue"
+
+    # The device reports reading on a book it just received.
+    first_uuid = _wrapper_uuid(seen[0])
+    put = client.put(
+        f"/kobo/{token}/v1/library/{first_uuid}/state",
+        json={"ReadingStates": [{
+            "StatusInfo": {"Status": "Reading", "LastModified": "2026-08-10T10:00:00.000Z"},
+            "CurrentBookmark": {
+                "ProgressPercent": 42.0,
+                "LastModified": "2026-08-10T10:00:00.000Z",
+            },
+            "LastModified": "2026-08-10T10:00:00.000Z",
+        }]},
+    )
+    assert put.status_code == 200
+
+    # ...and then keeps walking.
+    pages = 1
+    while pages < 20:
+        resp = client.get(
+            f"/kobo/{token}/v1/library/sync",
+            headers={"x-kobo-synctoken": synctoken},
+        )
+        seen.extend(resp.get_json())
+        pages += 1
+        synctoken = resp.headers["x-kobo-synctoken"]
+        if resp.headers["x-kobo-sync"] != "continue":
+            break
+    else:
+        raise AssertionError("pagination did not terminate")
+
+    delivered = {_wrapper_uuid(w) for w in seen}
+    missing = expected - delivered
+    assert not missing, f"{len(missing)} book(s) lost in the walk"
+
+
+def test_sync_without_a_token_does_not_resend_the_library(app, client):
+    """A device that lost its token must get only what it lacks.
+
+    Classifying against the token's `since` meant `since is None` made every
+    book content-changed, so the whole library went out as
+    ChangedEntitlement — which carries DownloadUrls, so the device archives
+    and re-downloads everything. The ledger carries the decision now.
+    """
+    from app.models import LibraryItem, db
+    from app.services.kobo_auth import create_device
+
+    with app.app_context():
+        _, token = create_device("Tokenless test")
+        for i in range(5):
+            db.session.add(LibraryItem(
+                title=f"Tokenless {i}",
+                file_path=f"/books/tl{i}.epub",
+                file_name=f"tl{i}.epub",
+                extension=".epub",
+            ))
+        db.session.commit()
+
+    first, _, _ = _walk(client, token)
+    assert len(first) == 5
+
+    # Second round with NO x-kobo-synctoken at all — the device forgot it.
+    resp = client.get(f"/kobo/{token}/v1/library/sync")
+    assert resp.get_json() == []
+    assert resp.headers["x-kobo-sync"] == "done"
+
+
+def test_ledger_backfill_prevents_an_upgrade_storm(app, client):
+    """Rows written before sent_updated_at/sent_content_at existed.
+
+    A NULL reference reads as "newer", so without the backfill the first
+    sync after upgrading would ship the entire library as
+    ChangedEntitlement — the very storm the delta sync exists to prevent.
+    """
+    from sqlalchemy import text
+    from app.models import LibraryItem, db
+    from app.services.database import ensure_kobo_book_states_table
+    from app.services.kobo_auth import create_device
+
+    with app.app_context():
+        _, token = create_device("Backfill test")
+        for i in range(4):
+            db.session.add(LibraryItem(
+                title=f"Pre-upgrade {i}",
+                file_path=f"/books/bf{i}.epub",
+                file_name=f"bf{i}.epub",
+                extension=".epub",
+            ))
+        db.session.commit()
+
+    first, _, _ = _walk(client, token)
+    assert len(first) == 4
+
+    # Simulate the pre-upgrade ledger shape.
+    with app.app_context():
+        db.session.execute(text(
+            "UPDATE kobo_book_states "
+            "SET sent_updated_at = NULL, sent_content_at = NULL"
+        ))
+        db.session.commit()
+
+        ensure_kobo_book_states_table()
+        ensure_kobo_book_states_table()  # idempotent
+
+        missing = db.session.execute(text(
+            "SELECT COUNT(*) FROM kobo_book_states WHERE sent_updated_at IS NULL"
+        )).scalar()
+        assert missing == 0
+
+    # An unchanged library must now be silent.
+    resp = client.get(f"/kobo/{token}/v1/library/sync")
+    assert resp.get_json() == []
 
 
 # ---------------------------------------------------------------------------
