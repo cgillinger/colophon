@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.47.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.48.0.
 
 ## Författarmappar (v1.38.0 — byggt)
 
@@ -89,6 +89,7 @@ app/
     database.py                 # DB migrations (ensure_*_table, backfill_*)
     kobo_auth.py                # Per-device token generation, lookup, revoke (+ its bookkeeping)
     kobo_sync.py                # Kobo sync protocol: catalogue, state, deltas
+    cover_thumbs.py             # Shared cover downscaler (web UI + Kobo endpoint)
     kobo_kepub.py               # On-the-fly EPUB→KEPUB conversion via kepubify
     kobo_location.py            # Percent ↔ KoboSpan, and the exact character bridge
     kobo_conf.py                # Render Kobo .conf snippets for the setup UI
@@ -116,8 +117,8 @@ app/
     icons/                      # Favicons, app/PWA icons, header logo SVGs (light+dark)
     vendor/tabler-icons/        # Icon font
     vendor/foliate-js/          # Vendored EPUB renderer (MIT) for the reader
-tests/                          # 29 pytest files: metadata_pipeline, calibre_metadata,
-                                # bookf, grouping, kobo_conf, kobo_sync,
+tests/                          # 30 pytest files: metadata_pipeline, calibre_metadata,
+                                # bookf, grouping, kobo_conf, kobo_sync, kobo_covers,
                                 # kobo_location, reader_position, kobo_usb,
                                 # device_transfers, scan_delete_guard, language,
                                 # quality, reading_state, scanner, scoring,
@@ -195,6 +196,40 @@ Multiple formats of the same book (EPUB + MOBI + AZW3) share a `group_key` = SHA
 
 Both scan and bulk metadata use Server-Sent Events with background threads + `queue.SimpleQueue`. Single shared `_abort_event` for cancellation.
 
+### Kobo delta sync (v1.48.0)
+
+Six bugs found by Bookstation's file-by-file comparison against Colophon
+(their Kobo never finished "downloading book covers" on 639 books; ours did,
+so the differences were the suspects). All six are fixed here. Two invariants
+are load-bearing — don't undo them:
+
+**The pagination cursor keys on `id`, never on `updated_at`.** `updated_at`
+has `onupdate` and the Kobo PUTs reading state *between* page fetches, so an
+OFFSET walk over an `updated_at` sort loses the row on the page boundary —
+permanently. Each round carries a `high_water` ceiling set when it began, so
+the row set shrinks monotonically and the walk terminates; at the end
+`since := high_water`, **not** `max(updated_at)`. Regression test:
+`test_state_put_between_pages_does_not_skip_books` (verify it red before
+touching the walk — it fails with "1 book lost" against the old code).
+
+**The ledger decides the wrapper, not the token.** No row → `NewEntitlement`;
+`content_updated_at > sent_content_at` → `ChangedEntitlement` (carries
+`DownloadUrls`, device re-downloads); `updated_at > sent_updated_at` →
+`ChangedReadingState` (must *not* carry them); otherwise nothing. `since` is
+now a pure optimisation. Sync token is **v2** (`since`/`hw`/`cur`/`full`); v1
+is rejected as "no token".
+
+`CoverImageId` carries the cover file's mtime (`<uuid>-v<mtime>`) because the
+device caches by that id and never revalidates; `_find_item_by_uuid` strips
+the suffix, so devices on the old form still work. It cannot repair a book
+already on the device — there is no cover-only signal in the protocol —
+so Settings → Kobo → **Force full resync** (`clear_ledger`) is the remedy.
+
+Adding a column to `kobo_book_states` means updating **three** hand-maintained
+places: the model, the `CREATE TABLE` body in `database.py`, and an `ALTER
+TABLE` for upgrades — plus a backfill. A NULL `sent_*` reads as "newer", so a
+missing backfill re-ships the entire library once.
+
 ### In-browser reader + reading-state sync (v1.5.0)
 
 `reader_bp` (`/reader/<id>`) renders an EPUB in the browser with vendored
@@ -253,7 +288,7 @@ never types separator syntax. The looks-multi badge is deliberately broad
 
 **`kobo_devices` (KoboDevice)** — registered Kobo e-readers. Each row has a path token used in the device's sync URL (`/kobo/<token>/...`). Revokable from the settings UI.
 
-**`kobo_book_states` (KoboBookState)** — per-device record of which `library_items` the device has been told about, plus reading progress / finished state that the Kobo sends back on sync.
+**`kobo_book_states` (KoboBookState)** — the ledger: a per-device record of which `library_items` the device has been told about, and **in what shape** (`sent_updated_at` / `sent_content_at`, v1.48.0). The ledger — not the sync token's `since` — decides what is said about a book, so a device that lost its token gets only what it lacks instead of the whole library as `ChangedEntitlement`. See "Kobo delta sync" below.
 
 ## Tech stack
 
@@ -317,7 +352,11 @@ get their env from docker-compose.
 >   -c "pip install -q pytest && python -m pytest tests/ -q"
 > ```
 
-**Known pre-existing failures (as of v1.45.0):** a clean run is *612 passed, 10
+Note: `Pillow` is in `requirements.txt` but was missing from an older local
+`.venv`, which silently *skipped* the cover tests instead of failing. If
+`tests/test_kobo_covers.py` reports skips, `pip install Pillow`.
+
+**Known pre-existing failures (as of v1.48.0):** a clean run is *632 passed, 10
 failed*. The 10 are not regressions — `test_quality.py` (6) and
 `test_scoring.py` (3) assert Swedish reason/warning substrings the code now
 emits in English, and `test_scanner.py::...test_does_not_overwrite_manual_metadata`

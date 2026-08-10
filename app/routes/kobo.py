@@ -13,6 +13,7 @@ THIRD_PARTY_LICENSES.md. No code copied; DTOs rebuilt in Python.
 import json
 import logging
 import os
+import re
 import uuid
 from datetime import datetime, timezone
 from functools import wraps
@@ -50,6 +51,9 @@ EPUB_EXTENSIONS = (".epub", ".kepub", ".kepub.epub")
 # the UUIDs the Kobo protocol expects. Keep stable forever — changing
 # it would cause every Kobo to re-download every book.
 _KOBO_UUID_NAMESPACE = uuid.UUID("4c0fb9b1-2b3b-4a1f-9a8d-0c8b6c1a2b3a")
+
+# Version suffix on CoverImageId: "-v" + the cover file's mtime.
+_COVER_VERSION_SUFFIX = re.compile(r"-v\d+$")
 
 
 def _book_uuid(item) -> str:
@@ -589,7 +593,7 @@ def _entitlement_dtos(item: LibraryItem, base_url: str, token: str) -> dict:
         "Categories": ["00000000-0000-0000-0000-000000000001"],
         "Contributors": contributors,
         "ContributorRoles": contributor_roles,
-        "CoverImageId": book_uuid,
+        "CoverImageId": _cover_image_id(item, book_uuid),
         "CrossRevisionId": book_uuid,
         "CurrentDisplayPrice": {"CurrencyCode": "USD", "TotalAmount": 0},
         "CurrentLoveDisplayPrice": {"TotalAmount": 0},
@@ -894,6 +898,34 @@ def book_thumbnail(device, book_id, width, height, is_grey, quality=85):
     return send_file(thumb or cover_path, mimetype="image/jpeg")
 
 
+def _cover_image_id(item, book_uuid: str) -> str:
+    """The ImageId for this book's cover — versioned with the file's mtime.
+
+    The device builds the thumbnail URL out of this value and the template
+    it got from /v1/initialization. A constant value means a constant
+    address, and then the Kobo has no reason to re-fetch an image it already
+    has: it shows its cached cover forever, even after we fixed the file on
+    the server.
+
+    The protocol allows it — ImageId is "whatever you put in
+    BookMetadata.CoverImageId" (implementation guide §4.7), and Komga sends
+    non-UUID values itself. _find_item_by_uuid strips the suffix, so devices
+    already carrying the old unversioned form keep working.
+
+    Note this cannot repair a book already on the device on its own: the
+    Kobo fetches covers only when it ingests an entitlement, and the
+    protocol has no cover-only signal. Settings → Kobo → "Force full
+    resync" is the one-time remedy for a library with wrong covers out.
+    """
+    path = _cover_file(item)
+    if not path:
+        return book_uuid
+    try:
+        return f"{book_uuid}-v{int(os.stat(path).st_mtime)}"
+    except OSError:
+        return book_uuid
+
+
 def _cover_file(item) -> str | None:
     """Absolute path to the cover, or None. cover_path is absolute in
     practice, but resolve relative values against COVER_DIR so a stat() can
@@ -915,6 +947,11 @@ def _find_item_by_uuid(image_id: str) -> LibraryItem | None:
     entitlement is built, so the common path is now a single indexed hit;
     brute force stays as the fallback and stamps as it goes.
     """
+    # Cover requests carry a versioned id (<uuid>-v<mtime>, see
+    # _cover_image_id) so a swapped cover gets a new address. Strip it here;
+    # the book's identity is still the UUID. Anchored and digits-only, so a
+    # UUID can never match it — "v" is not a hex digit.
+    image_id = _COVER_VERSION_SUFFIX.sub("", image_id or "")
     if not image_id:
         return None
 

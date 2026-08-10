@@ -367,10 +367,26 @@ class KoboBookState(db.Model):
 from sqlalchemy import event as _sa_event, inspect as _sa_inspect  # noqa: E402
 from sqlalchemy.orm import Session as _SASession  # noqa: E402
 
+# Columns a synced Kobo actually sees in the entitlement DTO, plus the file's
+# identity. Change one of them and the book is a different book to the device.
+#
+# `file_path` is deliberately NOT here: a file move (author folder,
+# reorganisation) changes nothing the device can see, because the download URL
+# keys on item.id. It used to be listed, which is why author_folders.py and
+# scanner.py both had to suppress the stamp around their moves — those escape
+# hatches stay, since they also guard `file_name`.
+#
+# `cover_path` IS here, and that is a deliberate divergence from Bookstation,
+# which dropped it. The protocol has no "just refresh the cover" signal, so a
+# repaired cover can only reach a device by re-shipping the entitlement. Paired
+# with the versioned CoverImageId (routes/kobo.py:_cover_image_id) that makes
+# cover fixes propagate on their own. The cost is that a bulk cover fetch
+# re-ships those books; covers are rarely bulk-replaced, and the alternative is
+# that a fixed cover never arrives at all.
 _DEVICE_CONTENT_COLUMNS = frozenset({
     "title", "author", "description", "series", "series_index", "isbn",
     "publisher", "language", "genres", "published_date",
-    "file_path", "file_name", "extension", "cover_path", "size_bytes",
+    "file_name", "extension", "cover_path", "size_bytes",
 })
 
 

@@ -173,6 +173,106 @@ def test_sync_stamps_the_uuid(app, client, book_with_cover):
         assert LibraryItem.query.get(item_id).kobo_book_id == image_id
 
 
+def test_cover_image_id_changes_when_the_cover_changes(app, book_with_cover):
+    """The core of it: swap the cover and the address must change.
+
+    The device builds the thumbnail URL out of CoverImageId. Constant value,
+    constant URL — and then the Kobo shows its cached cover forever, even
+    after we fixed the image on the server.
+    """
+    from app.models import LibraryItem
+    from app.routes.kobo import _book_uuid, _cover_image_id
+
+    item_id, cover, _ = book_with_cover
+    with app.app_context():
+        item = LibraryItem.query.get(item_id)
+        book_uuid = _book_uuid(item)
+        before = _cover_image_id(item, book_uuid)
+
+        os.utime(cover, (0, 1234567890))  # a "new" cover at the same path
+        after = _cover_image_id(item, book_uuid)
+
+    assert before != after
+    assert after == f"{book_uuid}-v1234567890"
+
+
+def test_versioned_id_still_resolves_to_the_book(app, client, book_with_cover):
+    """The suffix must not make the cover unfetchable."""
+    item_id, _, token = book_with_cover
+    image_id = _uuid_for(app, item_id)
+
+    resp = client.get(_thumb_url(token, f"{image_id}-v1234567890"))
+
+    assert resp.status_code == 200
+
+
+def test_unversioned_id_still_works(app, client, book_with_cover):
+    """Devices already carrying the old form keep working."""
+    item_id, _, token = book_with_cover
+    image_id = _uuid_for(app, item_id)
+
+    assert client.get(_thumb_url(token, image_id)).status_code == 200
+
+
+def test_sync_ships_the_versioned_cover_id(app, client, book_with_cover):
+    """End to end: the id in the sync response carries the version."""
+    item_id, _, token = book_with_cover
+    image_id = _uuid_for(app, item_id)
+
+    body = client.get(f"/kobo/{token}/v1/library/sync").get_json()
+    ids = [
+        w["NewEntitlement"]["BookMetadata"]["CoverImageId"]
+        for w in body if "NewEntitlement" in w
+    ]
+
+    assert ids and all(i.startswith(f"{image_id}-v") for i in ids)
+
+
+def test_book_without_cover_keeps_a_plain_id(app, book_with_cover):
+    from app.models import LibraryItem
+    from app.routes.kobo import _book_uuid, _cover_image_id
+
+    item_id, _, _ = book_with_cover
+    with app.app_context():
+        item = LibraryItem.query.get(item_id)
+        item.cover_path = None
+        assert _cover_image_id(item, _book_uuid(item)) == _book_uuid(item)
+
+
+def test_a_file_move_does_not_re_ship_the_book(app, book_with_cover):
+    """file_path is invisible to the device — the download URL keys on id.
+
+    Listing it as a content column made every author-folder move look like a
+    content change, which is why those code paths had to suppress the stamp.
+    """
+    from app.models import LibraryItem, db
+
+    item_id, _, _ = book_with_cover
+    with app.app_context():
+        item = LibraryItem.query.get(item_id)
+        before = item.content_updated_at
+        item.file_path = "/books/moved/elsewhere.epub"
+        db.session.commit()
+        assert item.content_updated_at == before
+
+
+def test_a_cover_swap_still_re_ships_the_book(app, book_with_cover):
+    """cover_path stays a content column, deliberately.
+
+    The protocol has no cover-only signal, so a repaired cover reaches the
+    device only by re-shipping the entitlement.
+    """
+    from app.models import LibraryItem, db
+
+    item_id, _, _ = book_with_cover
+    with app.app_context():
+        item = LibraryItem.query.get(item_id)
+        before = item.content_updated_at
+        item.cover_path = "/data/covers/replacement.jpg"
+        db.session.commit()
+        assert item.content_updated_at > before
+
+
 def test_second_request_is_served_from_cache(app, client, book_with_cover):
     item_id, _, token = book_with_cover
     image_id = _uuid_for(app, item_id)

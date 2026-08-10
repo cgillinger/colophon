@@ -306,6 +306,25 @@ flags them; Colophon deliberately doesn't merge them on its own.
 | Colophon browser-reader progress doesn't set the **exact page** on the Kobo | Position syncs exactly since v1.42.0; the *page number* still differs by design, because a Kobo paginates for its own screen and font settings. |
 | Position lands in the right chapter but the wrong sentence | The character bridge fell back. Check that a KEPUB exists for the item (`kobo_kepub.py` cache) and that `reader.js` posted `href`/`offset` — without them only percent travels. |
 
+## Known-and-unfixed (documented so the next investigation skips them)
+
+Found during Bookstation's comparison against Colophon (2026-08-10). All three
+are real and present in **both** codebases. None of them prevents a sync from
+completing, which is why they could be ruled out as the cause of "cover phase
+never finishes" — but they cost round-trips forever.
+
+1. **`_iso()` truncates to `.000Z`** (`routes/kobo.py`) while
+   `read_last_modified` is stored with microseconds. We therefore echo back a
+   systematically *older* timestamp than the device sent. The device sees the
+   server as behind, pushes again, furthest-read-wins drops it, nothing
+   changes — and the same books are PUT forever. Symptom: `dropped (older
+   timestamp)` on the same book id, round after round. **The single most
+   worthwhile follow-up here.**
+2. **`PUT /v1/library/<id>/state` answers `{}`** with no `RequestResult` /
+   `UpdateResults`. Komga returns a per-part acknowledgement structure.
+3. **`Statistics.SpentReadingMinutes` is hard-coded `0`**. The device reports
+   its reading time, gets zero back, and pushes it again.
+
 ## Footgun
 
 **Never run `pytest` inside the live `colophon` / `colophon2` container** — the
@@ -329,3 +348,9 @@ path overrides instead.
   bookkeeping.
 - **v1.44.0** — USB: `kobo_usb.py` (detect, harvest reading state incl. exact
   position) and the `device_transfers` channel ledger + its sync exclusion.
+- **v1.48.0** — the six findings ported back from Bookstation: markdown in two
+  resource values (which Colophon had been writing onto physical devices);
+  keyset pagination on `id` + `high_water` ceiling; ledger-based
+  classification (`sent_updated_at` / `sent_content_at`); cover downscaling on
+  the Kobo endpoint; indexed `kobo_book_id` instead of a per-request table
+  scan; versioned `CoverImageId`. Plus "Force full resync" per device.
