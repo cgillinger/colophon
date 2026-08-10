@@ -395,8 +395,14 @@ def initialization(device):
         "sign_in_page": "https://auth.kobobooks.com/ActivateOnWeb",
         "social_authorization_host": "https://social.kobobooks.com:8443",
         "social_host": "https://social.kobobooks.com",
-        "store_home": "[www.kobo.com/{region}/{language}](https://www.kobo.com/{region}/{language})",
-        "store_host": "[www.kobo.com](https://www.kobo.com)",
+        # Plain hostname form, not markdown. These two values were once
+        # copied out of a *rendered* version of the protocol documentation,
+        # where the URL had been auto-linked, and the syntax came along. The
+        # Kobo persists the Resources map into its own Kobo eReader.conf, so
+        # "[www.kobo.com](https://www.kobo.com)" got written onto users'
+        # physical devices, where it stays. Found in a conf from the field.
+        "store_home": "www.kobo.com/{region}/{language}",
+        "store_host": "www.kobo.com",
         "store_newreleases": "https://www.kobo.com/{region}/{language}/List/new-releases/961XUjtsU0qxkFItWOutGA",
         "store_search": "https://www.kobo.com/{region}/{language}/Search?Query={query}",
         "store_top50": "https://www.kobo.com/{region}/{language}/ebooks/Top",

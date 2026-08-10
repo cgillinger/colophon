@@ -168,6 +168,53 @@ def test_initialization_returns_resources_map(app, client):
     assert data["Resources"]["use_one_store"] == "True"
 
 
+def _resources_map(app, client):
+    from app.services.kobo_auth import create_device
+
+    with app.app_context():
+        _, token = create_device("Resource test")
+    resp = client.get(
+        f"/kobo/{token}/v1/initialization",
+        headers={"Authorization": "Bearer dummy"},
+    )
+    assert resp.status_code == 200
+    return resp.get_json()["Resources"]
+
+
+def test_no_resource_value_is_a_markdown_link(app, client):
+    """The Kobo persists the Resources map into its own conf, so a malformed
+    value here gets written onto the user's physical device and stays there.
+
+    store_home and store_host had once been copied out of a rendered version
+    of the protocol guide, where the URL was auto-linked, and carried the
+    markdown syntax with them. Confirmed on a real device in the field.
+    """
+    resources = _resources_map(app, client)
+
+    bad = {k: v for k, v in resources.items() if isinstance(v, str) and "](" in v}
+    assert bad == {}
+    assert resources["store_host"] == "www.kobo.com"
+    assert resources["store_home"] == "www.kobo.com/{region}/{language}"
+
+
+def test_only_the_three_image_keys_point_at_colophon(app, client):
+    """The device follows api_endpoint; the rest of the map is decoration.
+
+    Rerouting the other keys lands the device on our catch-all, which answers
+    {} — a malformed response the firmware accepts and then chokes on, where
+    a real Kobo host would fail at transport level and be handled cleanly as
+    "feature absent". Bookstation had rerouted 18 of them and suffocated the
+    firmware; we must not drift that way.
+    """
+    resources = _resources_map(app, client)
+
+    base = resources["image_host"]
+    ours = {k for k, v in resources.items() if isinstance(v, str) and base in v}
+    assert ours == {"image_host", "image_url_template", "image_url_quality_template"}
+    for key in ("library_sync", "get_download_link", "tags", "reading_state"):
+        assert resources[key].startswith("https://storeapi.kobo.com/"), key
+
+
 def test_library_sync_returns_epubs(app, client):
     from app.models import LibraryItem, db
     from app.services.kobo_auth import create_device
