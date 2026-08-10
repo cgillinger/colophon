@@ -427,3 +427,90 @@ def test_several_roots_are_all_searched(tmp_path, monkeypatch):
 
     monkeypatch.setenv("COLOPHON_USB_MOUNT_ROOTS", _os.pathsep.join([str(first), str(second)]))
     assert set(connected_mounts()) == {str(a), str(b)}
+
+
+# ---------------------------------------------------------------------------
+# Device inspection — read-only, and the only place orphans are visible
+# ---------------------------------------------------------------------------
+
+def test_inspect_separates_known_books_from_leftovers(app, tmp_path):
+    """A device can hold entitlements Colophon no longer recognises.
+
+    They come from an earlier library-wide delete-and-rescan, which minted new
+    ids and therefore new UUIDs. Nothing else in Colophon can see them: it has
+    no record of them, and on the device they look like ordinary books.
+    """
+    from app.routes.kobo import _book_uuid
+    from app.services.kobo_usb import inspect_device
+
+    with app.app_context():
+        mine = _add_book("A Book I Still Have", "/books/mine.epub")
+        known_uuid = _book_uuid(mine)
+
+    mount, _ = _make_kobo_mount(tmp_path, [
+        (known_uuid, "A Book I Still Have", "Someone", 1, 20, "#", None, "x"),
+        ("11111111-1111-5111-8111-111111111111", "Leftover One", "Someone", 0, 0, "#", None, "x"),
+        ("22222222-2222-5222-8222-222222222222", "Leftover Two", "Someone", 0, 0, "#", None, "x"),
+    ])
+
+    with app.app_context():
+        inv = inspect_device(str(mount))
+
+    assert inv["on_device"] == 3
+    assert inv["known"] == 1
+    assert inv["orphans"] == 2
+    assert inv["orphans_with_reading"] == 0
+
+
+def test_inspect_flags_leftovers_that_were_read(app, tmp_path):
+    """Reading stranded on an unrecognised entry never reached the library.
+
+    That is the only part of the mess that costs the user anything, so it is
+    counted separately — the rest is clutter.
+    """
+    from app.services.kobo_usb import inspect_device
+
+    mount, _ = _make_kobo_mount(tmp_path, [
+        ("33333333-3333-5333-8333-333333333333", "Read On A Leftover", "X", 1, 40, "#", None, "x"),
+        ("44444444-4444-5444-8444-444444444444", "Never Opened", "X", 0, 0, "#", None, "x"),
+    ])
+
+    with app.app_context():
+        inv = inspect_device(str(mount))
+
+    assert inv["orphans"] == 2
+    assert inv["orphans_with_reading"] == 1
+    assert inv["orphans_unread"] == 1
+    # The sample leads with the furthest-read one, so the report names what matters.
+    assert inv["sample"][0]["title"] == "Read On A Leftover"
+
+
+def test_inspect_counts_books_the_reader_never_opened(app, tmp_path):
+    """Unlike the import, the inventory must not filter on reading activity.
+
+    _STATE_QUERY narrows to books with progress, which is right for importing
+    and wrong for counting — it is what made the situation invisible.
+    """
+    from app.services.kobo_usb import inspect_device, read_device_state
+
+    rows = [
+        (f"5555555{i}-5555-5555-8555-55555555555{i}", f"Untouched {i}", "X", 0, 0, "#", None, "x")
+        for i in range(4)
+    ]
+    mount, _ = _make_kobo_mount(tmp_path, rows)
+
+    entries, _ = read_device_state(str(mount))
+    with app.app_context():
+        inv = inspect_device(str(mount))
+
+    assert entries == []          # the importer correctly sees nothing to import
+    assert inv["on_device"] == 4  # the inventory still knows they are there
+
+
+def test_inspect_without_a_database_says_so(app, tmp_path):
+    from app.services.kobo_usb import inspect_device
+
+    empty = tmp_path / "NotAKobo"
+    empty.mkdir()
+    with app.app_context():
+        assert inspect_device(str(empty)) is None

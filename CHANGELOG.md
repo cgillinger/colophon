@@ -5,6 +5,83 @@ PATCH for fixes, MINOR for user-visible features and automatic migrations, MAJOR
 changes that need you to act. Releases before 1.41.0 are summarised from the git log —
 see the [tags](https://github.com/cgillinger/colophon/tags) for the full history.
 
+## [1.50.0] — 2026-08-10
+
+### Added
+- **See what your reader is actually carrying.** Plug a Kobo in over USB and
+  Settings → Kobo now tells you how many books it holds and how many Colophon
+  recognises. If the two disagree, it says why: entries left behind by an
+  earlier library rebuild, which look like ordinary books on the reader but
+  which Colophon can neither update nor remove.
+
+  It also counts how many of those hold reading progress that never reached
+  your library — the only part of the situation that costs you anything — and
+  points at **Import reading state**, which matches by title and brings that
+  progress across. The panel explains the one reliable way to clear the rest
+  (a factory reset of the reader, which loses nothing because Colophon keeps
+  every position).
+
+  Read-only. Colophon never writes to your reader's database.
+
+## [1.49.0] — 2026-08-10
+
+### Fixed
+- **The same books stopped being reported over and over.** Timestamps sent to
+  the reader had their milliseconds hard-coded to zero, so Colophon echoed
+  back a moment up to a second *older* than the one the reader had just sent.
+  The reader read that as the server lagging behind, sent the same state
+  again, Colophon declined it as not-newer, and the two never agreed. Visible
+  in the log as the same book being dropped round after round.
+
+### Added
+- **The mass-delete guard can be unlocked from the settings page.** Colophon
+  refuses to tell a reader that more than a fifth of its books are gone,
+  because that is usually a fault rather than your intent — but until now the
+  only way to say "yes, really" was a shell. There is a button for it, and it
+  stays a one-time unlock.
+
+## [1.48.0] — 2026-08-10
+
+Six bugs found by comparing Colophon against its sibling project Bookstation,
+after a reader there never finished downloading covers on a large library.
+
+### Fixed
+- **Colophon was writing broken values onto your reader.** Two entries in the
+  configuration Colophon hands the device were malformed — copied long ago out
+  of a rendered document, bringing its link markup with them. The reader
+  stores that configuration itself, so the damage persisted on the hardware.
+  Confirmed on a real device. Fixed values are written on the next sync.
+- **Books could be skipped during a sync and never arrive.** Pages were sliced
+  by position over a list ordered by last-changed time — but the reader reports
+  reading progress *between* page fetches, which reorders that list. Whatever
+  sat on a page boundary was passed over, permanently. The walk now keys on
+  something that cannot move.
+- **A reader that lost its place re-downloaded the whole library.** What to say
+  about a book was derived from the sync token rather than from what had
+  actually been delivered, so a device without a token was told every book had
+  changed. Colophon now keeps a per-device record of what it shipped and in
+  what state.
+- **Covers were sent at full size.** The reader asks for a thumbnail and got
+  the original — several megabytes each, one per book, on every sync. Measured
+  on a real library: 187 MB down to 20 MB.
+- **Every cover request scanned the whole library.** The reverse lookup from a
+  cover id to a book walked every book and recomputed its identity, thousands
+  of times over during one cover phase. It is an indexed lookup now.
+- **A replaced cover never reached the reader.** The cover's address never
+  changed, so the device had no reason to fetch the image again and showed its
+  cached copy forever. The address now changes with the file.
+
+### Added
+- **Force full resync**, per device, in Settings → Kobo. Needed to push
+  corrected covers to books a reader already holds — the protocol has no way
+  to refresh a cover on its own.
+
+### Known
+- Withdrawing a book from a reader does not work, and never has. Colophon
+  sends the withdrawal and the device ignores it. Documented in
+  `docs/kobo-reading-state-sync.md`; a factory reset is the way to clear stale
+  entries in the meantime.
+
 ## [1.47.0] — 2026-08-09
 
 ### Added

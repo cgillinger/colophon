@@ -370,6 +370,8 @@ def kobo_settings():
     new_token = request.args.get("new_token") or None
     new_name = request.args.get("new_name") or None
 
+    from app.services.kobo_usb import inspect_device
+
     connected = []
     for mount in connected_mounts():
         try:
@@ -377,7 +379,17 @@ def kobo_settings():
         except Exception:
             logger.exception("Could not identify the Kobo mounted at %s", mount)
             device, serial = None, None
-        connected.append({"mount": mount, "device": device, "serial": serial})
+        # Read-only. Reading a few hundred rows off a mounted device is cheap,
+        # and it is the only place the orphan situation is visible at all.
+        try:
+            inventory = inspect_device(mount)
+        except Exception:
+            logger.exception("Could not inspect the Kobo mounted at %s", mount)
+            inventory = None
+        connected.append({
+            "mount": mount, "device": device, "serial": serial,
+            "inventory": inventory,
+        })
 
     return render_template(
         "settings_kobo.html",
