@@ -770,16 +770,34 @@ def library_sync(device):
             len(delta.deleted_item_ids), device.name,
         )
 
+    # A withdrawal has to quote the UUID the device was given, and by now the
+    # book's row is gone — so the only source is what we recorded when we
+    # shipped it. A ledger row without one cannot be named at all. There is no
+    # fallback: the previous code called _book_uuid(item_id) with an integer,
+    # which reads .book_uid off an int and takes the whole sync down with a
+    # 500 rather than losing one withdrawal.
+    withdrawals = []
+    unnameable = []
+    for item_id in delta.deleted_item_ids:
+        revision = delta.deleted_revisions.get(item_id)
+        if not revision:
+            unnameable.append(item_id)
+            continue
+        withdrawals.append(_deleted_entitlement_wrapper(revision))
+    if unnameable:
+        logger.warning(
+            "Kobo sync: skipped %d withdrawal(s) for device=%s — no revision "
+            "was recorded when those books were sent, so there is no id to "
+            "quote. Their bookkeeping is dropped below so this does not "
+            "repeat every sync; the entitlements stay on the device.",
+            len(unnameable), device.name,
+        )
+
     payload = (
         [_new_entitlement_wrapper(item, base_url, token) for item in delta.new_items]
         + [_changed_entitlement_wrapper(item, base_url, token) for item in delta.changed_items]
         + [_changed_reading_state_wrapper(item, base_url, token) for item in delta.reading_state_items]
-        + [
-            _deleted_entitlement_wrapper(
-                delta.deleted_revisions.get(item_id) or _book_uuid(item_id)
-            )
-            for item_id in delta.deleted_item_ids
-        ]
+        + withdrawals
     )
 
     # Persist what we just sent so the next sync knows
