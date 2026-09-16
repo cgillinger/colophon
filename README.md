@@ -201,8 +201,9 @@ AI's say-so.
   reads the book's title, author and description and proposes the series name
   and the book's position in it, which you accept or reject per field.
 - **Ordering a whole series in one pass** — asking book by book is what makes
-  series numbering drift: seven questions about *Foundation* give you seven
-  answers that don't agree. Colophon asks about the series once, then
+  series numbering drift: seven books of one series, asked one at a time, give
+  you seven answers that don't agree with each other. Colophon asks about the
+  series once, then
   **cross-checks the answer against Wikidata** before showing you anything.
   Every row says where it stands — *Confirmed* (AI and Wikidata agree),
   *Suggested* (the AI alone), *Differs from what is recorded* (never

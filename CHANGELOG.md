@@ -38,7 +38,7 @@ Most useful first. The handbook explains each in full — also
 | **Check language** — reads the text inside your EPUBs and reports only the books whose recorded language the text contradicts | **Tools → Check language** | [§9c](docs/handbook-en.md#9c-checking-language) | 1.52.0 |
 | **Rename a series** — deterministic, no AI; gathers the spelling variants onto one name and leaves every book's number alone | Series view → a card's **Rename** | [§9f](docs/handbook-en.md#9f-renaming-a-series) | 1.55.0 |
 | **AI suggestions that know your library** — the model is shown the series names and subjects you already use, and a proposed series that matches one of them is snapped to your spelling instead of becoming variant number four | Wherever the AI proposes metadata | [§7](docs/handbook-en.md#7-ai-features) | 1.51.0 |
-| **The Authority column says who** — "British science fiction writer" rather than `Q31191175`, plus **Verify selected** so the column can actually be filled | Authors page | [§10](docs/handbook-en.md#10-managing-authors) | 1.57.0 |
+| **The Authority column says who** — a plain-language description of the person ("British science fiction writer") rather than a bare Wikidata id, plus **Verify selected** so the column can actually be filled | Authors page | [§10](docs/handbook-en.md#10-managing-authors) | 1.57.0 |
 
 ### Fixes worth knowing about
 
@@ -56,9 +56,11 @@ Most useful first. The handbook explains each in full — also
 
 - **Aligning spellings that have already diverged.** 1.51.0 makes *new*
   suggestions converge on what your library already says, but it does nothing
-  for the four spellings of "The Expanse" that are in there today. A cleanup
-  view that clusters near-duplicate series and subject values, the way
-  `/authors` does for names, is the plan — asked for in
+  about the variants sitting in there today — one series spelled three
+  different ways across its own books, a subject that exists as "sci-fi",
+  "science fiction" and "SF". A cleanup view that clusters near-duplicate
+  series and subject values, the way `/authors` already does for names, is the
+  plan — asked for in
   [#173](https://github.com/cgillinger/colophon/issues/173).
 - **Bulk file and folder moves.** Deliberately out: they interact badly with
   Kobo sync and upstream syncing. There is a per-book *Move to author folder*
@@ -120,16 +122,18 @@ Per-release detail follows.
 
 ### Fixed
 - **Your own bookshelf now decides who an author is.** The profession filter
-  added in 1.58.0 kept the wrong Dennis Taylor out but found no one to put in
-  his place, because the right person was never a candidate: Wikidata answers
-  that name with a snooker player, a racing driver and a footballer, while the
-  novelist is filed as "Dennis E. Taylor". Colophon now asks Wikidata which of
-  the candidates is credited as author of a title *you already have on the
-  shelf*, and that one wins — having written a book in your library is a fact,
-  a listed profession is a guess. When the name gets nowhere at all, it
-  searches on one of your titles instead and reads the author off the work.
-  Evidence, never a condition: if any of it fails, verification carries on as
-  before.
+  added in 1.58.0 kept the wrong person out but found nobody to put in their
+  place, because the right one was never a candidate to begin with. Search
+  Wikidata for an everyday name and it answers with whoever is most famous —
+  sportspeople, politicians, a disambiguation page — while the novelist you
+  actually mean may be filed under a middle initial and never appear at all.
+  No filter can rule out the wrong person if the right one was never on the
+  list. Colophon now asks Wikidata which of the candidates is credited as the
+  author of a book *you already have on the shelf*, and that one wins: having
+  written something in your library is a fact, a listed profession is a guess.
+  When the name gets nowhere at all, it searches on one of your titles instead
+  and reads the author off the work. Evidence, never a condition — if any of
+  it fails, verification carries on as before.
 
 ## [1.58.0] — 2026-09-16
 
@@ -143,8 +147,8 @@ Per-release detail follows.
 ### Fixed
 - **A name is not a person.** Author verification searched Wikidata for the
   name and took the first human whose name matched. Wikidata ranks by fame, so
-  a Canadian science fiction novelist was anchored to a British snooker
-  player — and because an authority-linked entry is allowed to write to your
+  a novelist could end up anchored to a sportsman who happens to share the
+  name — and because an authority-linked entry is allowed to write to your
   files, a wrong anchor is worse than none. A candidate must now also have a
   writing profession, and the search walks past those who don't instead of
   stopping at the first name match. It is a mitigation, not a cure: a namesake
@@ -162,9 +166,9 @@ Per-release detail follows.
   Gunicorn's five-minute limit with nothing to show.
 
 ### Changed
-- **The Authority column says who, not which code.** `Q31191175` doesn't answer
-  the only question you have after pressing Verify: did it find the right
-  person? The lookup already received a label and a description from Wikidata
+- **The Authority column says who, not which code.** A bare Wikidata id — the
+  letter Q and eight digits — doesn't answer the only question you have after
+  pressing Verify: did it find the right person? The lookup already received a label and a description from Wikidata
   and threw them away. The cell now reads "British science fiction writer",
   with the identifiers moved into the tooltips of named links. Entries verified
   before this release keep their identifiers and stay without a description
@@ -175,8 +179,8 @@ Per-release detail follows.
 
 ### Changed
 - **The author row's actions moved into a ⋯ menu.** Six filled buttons per row
-  became over a hundred on a page of 17 authors, wrapped unevenly and were
-  unusable on a phone. The row now shows only the action it actually needs —
+  became well over a hundred on a single page of authors, wrapped unevenly
+  and were unusable on a phone. The row now shows only the action it actually needs —
   Confirm, when the entry is tentative — and the rest live in the menu.
 - **The sidebar's VIEWS section stays put.** It was filled only by the library
   page, where Table/Shelf/Series are JavaScript toggles, so on every other page
@@ -190,8 +194,9 @@ Per-release detail follows.
   beside a cover read as bolted-on hardware in a view that is otherwise airy.
   They are now text with an icon, dimmed until you point at them — but never
   hidden, since there is no hover on an iPad.
-- **"NyChildren of Memory".** The series card read titles straight out of the
-  list, "New" badge and all.
+- **The "New" badge ran into the title.** The series card read its titles
+  straight out of the list markup, badge and all, so a recently added book
+  turned up with the word New welded to the front of its name.
 
 ## [1.55.0] — 2026-09-16
 
@@ -238,10 +243,10 @@ Per-release detail follows.
 
 ### Fixed
 - **It is the model that isn't in the free plan, not your quota.** A correction
-  to 1.53.1, which blamed the account. Asking Mistral's API directly shows the
-  key listing 46 models, with `ministral-3b/8b/14b` answering normally while
+  to 1.53.1, which blamed the account. Asking Mistral's API directly settles
+  it: the `ministral-*` models answer normally on a free key, while
   `mistral-small`, `mistral-medium` and `magistral-small` all return 429 with a
-  ceiling of zero and `mistral-large` returns 403. The account is healthy — the
+  ceiling of zero requests per minute, and `mistral-large` returns 403. The account is healthy — the
   `mistral-*` family is no longer included in the free plan. The message now
   points at the model and tells you to pick another one under Settings → AI.
 
@@ -385,7 +390,7 @@ Per-release detail follows.
 ## [1.48.0] — 2026-08-10
 
 Six bugs found by comparing Colophon against its sibling project Bookstation,
-after a reader there never finished downloading covers on a large library.
+after an e-reader there never finished downloading covers on a large library.
 
 ### Fixed
 - **Colophon was writing broken values onto your reader.** Two entries in the
