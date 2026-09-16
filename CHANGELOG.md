@@ -414,23 +414,26 @@ after an e-reader there never finished downloading covers on a large library.
   them. The reader keeps that configuration itself, so the damage stayed on
   the hardware.
   Confirmed on a real device. Fixed values are written on the next sync.
-- **Books could be skipped during a sync and never arrive.** Pages were sliced
-  by position over a list ordered by last-changed time — but the reader reports
-  reading progress *between* page fetches, which reorders that list. Whatever
-  sat on a page boundary was passed over, permanently. The walk now keys on
-  something that cannot move.
-- **A reader that lost its place re-downloaded the whole library.** What to say
-  about a book was worked out from the note the reader hands back at the start
-  of each sync, rather than from what Colophon had actually sent it. A reader
-  that turned up without that note was therefore told every single book had
-  changed. Colophon now keeps its own record, per device, of what it sent and
-  in what shape.
+- **Books could be skipped during a sync and never arrive.** The library is
+  handed over in batches, and Colophon counted its way through them against a
+  list sorted by what had changed most recently. But the reader sends its
+  reading progress *between* those batches, which reshuffles that list — so a
+  book sitting on the seam between two of them was stepped over, and never
+  offered again. The counting now follows something that cannot move.
+- **A reader that lost its place re-downloaded the whole library.** What
+  Colophon said about a book depended on what the device claimed to already
+  know, instead of on what Colophon had actually sent it. So a reader that
+  turned up knowing nothing — after a reset, or a fresh setup — was told that
+  every book in the library had changed, and dutifully fetched all of them
+  again. Colophon now keeps its own record, for each device, of what it sent
+  and in what shape.
 - **Covers were sent at full size.** The reader asks for a thumbnail and got
   the original — several megabytes each, one per book, on every sync. Measured
   on a real library: 187 MB down to 20 MB.
-- **Every cover request scanned the whole library.** The reverse lookup from a
-  cover id to a book walked every book and recomputed its identity, thousands
-  of times over during one cover phase. It is an indexed lookup now.
+- **Every cover request searched the whole library.** Working out which book a
+  requested cover belonged to meant going through every book in turn and
+  working out its identity again — thousands of times over while a reader
+  fetched its covers. Colophon now looks it up directly.
 - **A replaced cover never reached the reader.** The cover's address never
   changed, so the device had no reason to fetch the image again and showed its
   cached copy forever. The address now changes with the file.
