@@ -828,3 +828,169 @@ def propose_series_order(books, series_hint=None, known_series=None) -> dict:
         "not_in_series": not_in_series,
         "unranked": unranked,
     }
+
+
+_AUTHOR_SERIES_PROMPT = """These books are all by the same author, taken from one e-book library. Group them into the series they belong to, and put each series in reading order.
+
+Books — id, title, and what the library currently records:
+{book_lines}
+{library_series}
+Rules:
+- Use each series' own volume numbering (the publisher's), not publication date, when the two disagree.
+- A book that belongs to no series goes in "standalone" and gets no number. Omnibus editions and companion volumes outside a sequence belong there too.
+- Do not invent a series to hold a single book. If you are not sure a book belongs to a named series this author actually wrote, put it in "standalone".
+- "confidence": "high" only when you recognise this specific book and its place in the sequence; "medium" when the order follows from the titles or from numbering already recorded; "low" when you are guessing.
+- "reason": one short sentence in English saying what the number rests on.
+- Do not invent books. Every id you return must be one of the ids above, and each id must appear exactly once — in one series or in "standalone".
+
+Respond with JSON only:
+{{"series": [{{"name": "<the series' name>", "books": [{{"id": <id>, "index": "<number as a string, e.g. 1 or 2.5>", "confidence": "high"|"medium"|"low", "reason": "<one sentence>"}}]}}], "standalone": [<id>, ...]}}"""
+
+
+def propose_author_series(books, known_series=None) -> dict:
+    """Ask the AI to group one author's books into series and order each.
+
+    `books` is [{"id", "title", "author", "series", "series_index",
+    "published_date", "file_name"}, ...]. `known_series` is a dict of
+    normalized name -> library spelling, used to snap each proposed
+    series' name back to what the library already calls it.
+
+    Returns {"ok": True, "series": [{"name", "name_snapped", "books":
+    [{"id", "index", "confidence", "reason"}]}], "standalone": [id],
+    "unranked": [id]} or {"ok": False, "error": "..."}.
+
+    Sanitizing the model's answer matters more than the HTTP call: ids
+    the model invented are dropped, ids it repeated are kept once (the
+    first place that claims them wins), series entries left with no
+    surviving books are dropped, series the model split under two
+    spellings are merged back into one by normalized (snapped) name,
+    and an id the model placed in both a series and "standalone" lands
+    only in "standalone" — the safest reading, since it never puts a
+    number on a book the model itself was unsure belonged to a series.
+    """
+    if not books:
+        return {"ok": False, "error": "no_books"}
+    if len(books) > MAX_SERIES_BOOKS:
+        return {"ok": False, "error": "too_many"}
+    if not ai_is_configured():
+        return {"ok": False, "error": "not_configured"}
+
+    known_series = known_series or {}
+
+    book_lines = "\n".join(_series_order_book_line(b) for b in books)
+    if known_series:
+        names = "\n".join(f"- {name}" for name in list(known_series.values())[:60])
+        library_series = f"\nSeries names already used in this library:\n{names}\n"
+    else:
+        library_series = ""
+
+    api_url = (get_setting("AI_API_URL") or _DEFAULT_API_URL).strip()
+    api_key = (get_setting("AI_API_KEY") or "").strip()
+    model = (get_setting("AI_MODEL") or _DEFAULT_MODEL).strip()
+
+    payload = {
+        "model": model,
+        "messages": [{
+            "role": "user",
+            "content": _AUTHOR_SERIES_PROMPT.format(
+                book_lines=book_lines, library_series=library_series,
+            ),
+        }],
+        "response_format": {"type": "json_object"},
+    }
+
+    try:
+        resp = requests.post(api_url, json=payload,
+                             headers=_build_headers(api_key), timeout=60)
+    except requests.Timeout:
+        return {"ok": False, "error": "timeout"}
+    except requests.RequestException as exc:
+        logger.warning("AI author-series request error: %s", exc)
+        return {"ok": False, "error": "request_failed"}
+
+    if resp.status_code in (401, 403):
+        return {"ok": False, "error": "auth"}
+    if resp.status_code == 429:
+        return _rate_limit_error(resp)
+    if not resp.ok:
+        return {"ok": False, "error": "api_error"}
+
+    try:
+        body = resp.json()
+        parsed = json.loads(body["choices"][0]["message"]["content"])
+    except (KeyError, IndexError, json.JSONDecodeError, ValueError):
+        return {"ok": False, "error": "invalid_json"}
+
+    usage = body.get("usage", {})
+    if usage:
+        _log_usage(provider=_detect_provider(api_url), model=model, usage=usage)
+
+    input_ids = [b.get("id") for b in books]
+    input_id_set = set(input_ids)
+
+    claimed = set()
+
+    standalone = []
+    for book_id in parsed.get("standalone") or []:
+        if book_id in input_id_set and book_id not in claimed:
+            standalone.append(book_id)
+            claimed.add(book_id)
+
+    out_series = []
+    by_key = {}
+    for entry in parsed.get("series") or []:
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name") or "").strip()
+        if not name:
+            continue
+        key = _norm_key(name)
+        if key in known_series:
+            name = known_series[key]
+            name_snapped = True
+        else:
+            name_snapped = False
+
+        entry_books = []
+        for book_entry in entry.get("books") or []:
+            if not isinstance(book_entry, dict):
+                continue
+            book_id = book_entry.get("id")
+            if book_id not in input_id_set or book_id in claimed:
+                continue
+            index = str(book_entry.get("index") if book_entry.get("index") is not None else "").strip()
+            if not index:
+                continue
+            confidence = book_entry.get("confidence")
+            if confidence not in ("high", "medium", "low"):
+                confidence = "low"
+            reason = str(book_entry.get("reason") or "")[:200]
+            claimed.add(book_id)
+            entry_books.append({
+                "id": book_id, "index": index,
+                "confidence": confidence, "reason": reason,
+            })
+
+        if not entry_books:
+            continue
+
+        merge_key = _norm_key(name)
+        existing = by_key.get(merge_key)
+        if existing is not None:
+            existing["books"].extend(entry_books)
+        else:
+            series_out = {
+                "name": name, "name_snapped": name_snapped,
+                "books": entry_books,
+            }
+            by_key[merge_key] = series_out
+            out_series.append(series_out)
+
+    unranked = [book_id for book_id in input_ids if book_id not in claimed]
+
+    return {
+        "ok": True,
+        "series": out_series,
+        "standalone": standalone,
+        "unranked": unranked,
+    }

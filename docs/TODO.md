@@ -237,6 +237,23 @@ authors do — not before.
 **Not in scope:** file/folder management driven by AI. Author folders exist
 (v1.38.0) and bulk moves/renames were deliberately deferred.
 
+## A "standalone" flag on a book
+
+**What:** "Order the author's series" (v1.54.0) asks the AI which of an
+author's books belong to no series at all. That answer is shown and then
+thrown away — there is no field to record it, so the next run asks again,
+and a book the user has already judged standalone keeps appearing in the
+last group.
+
+**How:** a boolean on `LibraryItem` (plus migration + backfill), set when
+the user confirms it in the review modal, read back by
+`series_batch.build_author_proposal` so confirmed standalone books are
+shown settled rather than re-proposed. Keep it out of
+`_DEVICE_CONTENT_COLUMNS` — it changes nothing a Kobo renders, so it must
+not trigger a re-download.
+
+**Scope:** small, but it is a schema change → MINOR.
+
 ## Author authority control (canonical author registry)
 
 **What:** Reconcile author spellings to one canonical form per author, so the

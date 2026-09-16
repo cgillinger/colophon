@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.53.2.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.54.0.
 
 ## Författarmappar (v1.38.0 — byggt)
 
@@ -150,7 +150,9 @@ filters-sort-paging.js   # Search, filters, sort, pagination
 selection.js             # Row selection + multi-select helpers
 shelf-view.js            # Gallery/shelf layout
 series-view.js           # Series grouping layout (+ the "Order the series" button)
-series-order.js          # Series-order review: one block per group, ticked rows only
+series-order.js          # Series-order review: one block per group, ticked rows only.
+                         #   Two entry points — one series (series card) and a whole
+                         #   author (/authors row, author-filter banner)
 book-modal.js            # Single-book edit modal (large)
 batch.js                 # Batch wizard (large — bulk enrichment, AI, covers)
 bulk-result-modal.js     # Post-batch summary modal
@@ -255,6 +257,42 @@ re-downloads the book even with "Write to the files too" unticked. The modal
 says so in a line under the table rather than pretending otherwise. The review
 component takes a **list** of groups (`groups: [...]`) even though step 4 only
 ever sends one — step 5 sends several, and the renderer already loops.
+
+### Ordering an author's series (v1.54.0)
+
+The fourth scenario flow, and the last one the plan called for. Same
+review modal, same statuses, same apply route as "Order the series" — the
+only wider thing is the selection: every format group by one author, and
+the AI is asked to do the **grouping** as well as the ordering
+(`ai_metadata.propose_author_series`).
+
+The status logic now lives in one place, `series_batch._build_group`, and
+both flows call it. The priority order is unchanged and still binding:
+`not_in_series`/`standalone` → `unknown` → `unchanged` → `conflict` →
+`confirmed` → `ai_only`. The single-unconfirmed downgrade is applied
+**per group**, so a thin series in an author's shelf cannot arrive
+pre-ticked on the strength of a thicker one beside it.
+
+Books the model places in no series land in a final group with
+`standalone: true` and `series_name: null`. Rows there carry status
+`standalone` and get **no checkbox** — that, not a rule in the apply
+path, is what stops this flow putting an index on a standalone book.
+Books the model never mentioned share that group as `unknown`.
+
+`_WIKIDATA_BUDGET_SECONDS` (90 s) is deliberately **not** reset per
+group: one deadline covers the whole proposal. An author with many series
+is exactly the case the budget exists for, and per-group budgets would
+let a large shelf hold a blocking POST open past Gunicorn's 300 s. Past
+the deadline rows simply stay `ai_only`.
+
+Two entry points, one modal. The author-filter banner on
+`/metadata/bulk?author=<id>` calls `openAuthorSeriesOrder()` directly;
+the `/authors` row button is a plain link to
+`/metadata/bulk?author=<id>&order_series=1`, and `series-order.js`
+captures that parameter **at script-evaluation time** because
+`url-state.js` loads later and rewrites the query string to its own known
+keys. `/authors` is a separate page with its own i18n block — duplicating
+the modal there was not worth it.
 
 ### Completeness traffic light (v1.52.0)
 

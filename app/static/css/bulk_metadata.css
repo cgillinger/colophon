@@ -4774,7 +4774,10 @@
         .so-conflict             { color: var(--accent-red); }
         .so-unchanged::before,
         .so-not-in-series::before,
-        .so-unknown::before      { background: var(--text-secondary); }
+        .so-unknown::before,
+        .so-standalone::before   { background: var(--text-secondary); }
         .so-unchanged,
         .so-not-in-series,
-        .so-unknown              { color: var(--text-secondary); }
+        .so-unknown,
+        .so-standalone           { color: var(--text-secondary); }
+        .so-coauthored { font-size: 12px; color: var(--text-secondary); }

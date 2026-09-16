@@ -289,6 +289,34 @@ läsplatta laddar om böckerna även om du inte kryssar **Skriv även till filer
 Rutan är avkryssad som standard här — filerna behöver bara ändras om du också
 vill att en annan läsare än Colophon ska se serien.
 
+## 9e. Ordna en författares serier
+
+Samma granskning som ovan, fast över ett helt författarskap. Du når den på
+två ställen:
+
+- På **Författare**-sidan, knappen **Ordna serier** på författarens rad.
+- I bokvyn när du filtrerat på en författare, knappen i den blå raden högst
+  upp.
+
+Skillnaden mot **Ordna serien** är att AI:n här också avgör *vilka* serier
+som finns. Du får ett block per föreslagen serie, och sist ett block
+**Ingår inte i någon serie** med de böcker som AI:n placerar utanför alla
+serier — och de böcker den inte svarade om. Raderna där har ingen kryssruta
+alls, så en fristående bok kan inte få ett nummer av misstag.
+
+Statusfärgerna, varningarna om dubbletter och luckor, och kryssrutan för
+filskrivning fungerar precis som i **Ordna serien**. Varje block bedöms för
+sig: en serie med bara en bok och ingen Wikidata-bekräftelse kommer aldrig
+förkryssad, även om AI:n säger sig vara säker.
+
+Böcker skrivna tillsammans med någon annan märks **samförfattad**. Colophon
+hindrar dig inte, men serien är inte den här författarens ensak.
+
+Wikidata-avstämningen har en tidsgräns på 90 sekunder för hela förslaget. En
+författare med många serier hinner inte få allt bekräftat — de raderna visas
+som **Förslag** i stället för **Bekräftad**. Inget går fel, du får bara
+mindre ryggstöd på de sista raderna.
+
 ## 10. Hantera författare
 
 Colophon håller **en kanonisk post per författare**, så varje bok av samma person

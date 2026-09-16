@@ -14,6 +14,13 @@
 (function (window, document) {
     'use strict';
 
+    // Captured now, not inside a DOMContentLoaded handler: url-state.js
+    // loads after this file and rewrites the query string (mirroring
+    // filters/sort/page into the URL), so by the time DOMContentLoaded
+    // fires the param this deep link relies on may already be gone.
+    var _boot = new URLSearchParams(window.location.search);
+    var _bootAuthor = _boot.get('order_series') === '1' ? _boot.get('author') : null;
+
     var _i18n = (window.__colophonConfig && window.__colophonConfig.i18n) || {};
     function t(key, fallback) { return _i18n[key] || fallback; }
 
@@ -40,13 +47,15 @@
         conflict:      'seriesOrderStatusConflict',
         unchanged:     'seriesOrderStatusUnchanged',
         not_in_series: 'seriesOrderStatusNotInSeries',
-        unknown:       'seriesOrderStatusUnknown'
+        unknown:       'seriesOrderStatusUnknown',
+        standalone:    'seriesOrderStatusStandalone'
     };
 
     var _ERROR_KEYS = {
         not_configured: 'seriesOrderNotConfigured',
         too_many:       'seriesOrderTooMany',
-        no_books:       'seriesOrderNoBooks'
+        no_books:       'seriesOrderNoBooks',
+        no_author:      'seriesOrderNoAuthor'
     };
 
     // Shared "AI is rate-limited" message picker: quota exhaustion beats a
@@ -67,7 +76,7 @@
     }
 
     function _hasCheckbox(status) {
-        return status !== 'not_in_series' && status !== 'unknown';
+        return status !== 'not_in_series' && status !== 'unknown' && status !== 'standalone';
     }
 
     function _preTicked(row) {
@@ -100,17 +109,26 @@
             var snappedHtml = group.series_name_snapped
                 ? '<div class="so-warnings">' + _esc(t('seriesOrderSnapped', 'Spelling follows the library.')) + '</div>'
                 : '';
+            // The standalone group has no series name to rename, so it gets
+            // a fixed heading and no rename-all checkbox — that control
+            // would mean nothing for books the AI placed in no series.
+            var headingText = group.standalone
+                ? t('seriesOrderStandaloneGroup', 'Not in a series')
+                : group.series_name;
+            var renameToggleHtml = group.standalone
+                ? ''
+                : '<label class="so-rename-toggle">' +
+                      '<input type="checkbox" class="so-rename-all" data-group-index="' + groupIndex + '">' +
+                      '<span>' + _esc(t('seriesOrderRenameAll', 'Change the series spelling on all of them')) + '</span>' +
+                  '</label>';
 
             html += '<div class="so-group" data-group-index="' + groupIndex + '">' +
                 '<div class="so-group-head">' +
                     '<div>' +
-                        '<strong>' + _esc(group.series_name) + '</strong>' +
+                        '<strong>' + _esc(headingText) + '</strong>' +
                         warningsHtml + snappedHtml +
                     '</div>' +
-                    '<label class="so-rename-toggle">' +
-                        '<input type="checkbox" class="so-rename-all" data-group-index="' + groupIndex + '">' +
-                        '<span>' + _esc(t('seriesOrderRenameAll', 'Change the series spelling on all of them')) + '</span>' +
-                    '</label>' +
+                    renameToggleHtml +
                 '</div>' +
                 '<table class="so-table"><thead><tr>' +
                     '<th style="width:34px;"></th>' +
@@ -122,7 +140,8 @@
                 '</tr></thead><tbody>';
 
             group.rows.forEach(function (row, rowIndex) {
-                var dimClass = (row.status === 'unchanged' || row.status === 'not_in_series' || row.status === 'unknown') ? ' so-dim' : '';
+                var dimClass = (row.status === 'unchanged' || row.status === 'not_in_series' ||
+                    row.status === 'unknown' || row.status === 'standalone') ? ' so-dim' : '';
                 var checkboxHtml = _hasCheckbox(row.status)
                     ? '<input type="checkbox" class="so-row-check" data-group-index="' + groupIndex +
                       '" data-row-index="' + rowIndex + '"' + (_preTicked(row) ? ' checked' : '') + '>'
@@ -132,11 +151,14 @@
                 var currentText = row.current_series
                     ? _esc(row.current_series) + (row.current_index ? ' #' + _esc(row.current_index) : '')
                     : '<span class="so-none">&mdash;</span>';
-                var proposedText = (row.status === 'not_in_series' || row.status === 'unknown')
+                var proposedText = (row.status === 'not_in_series' || row.status === 'unknown' || row.status === 'standalone')
                     ? '<span class="so-none">&mdash;</span>'
                     : _esc(row.proposed_series) + (row.proposed_index ? ' #' + _esc(row.proposed_index) : '');
                 var formatsHtml = row.group_size > 1
                     ? ' <span class="so-formats">' + _esc(t('seriesOrderFormats', 'applies to N formats').replace('N', row.group_size)) + '</span>'
+                    : '';
+                var coauthoredHtml = row.co_authored
+                    ? ' <span class="so-coauthored">' + _esc(t('seriesOrderCoAuthored', 'co-written')) + '</span>'
                     : '';
                 var titleAttrBits = [];
                 if (row.reason) titleAttrBits.push(row.reason);
@@ -149,7 +171,7 @@
                     '<tr class="' + dimClass.trim() + '">' +
                       '<td>' + checkboxHtml + '</td>' +
                       '<td><div class="lang-title">' + _esc(row.title) + formatsHtml + '</div>' +
-                          '<div class="lang-author">' + _esc(row.author) + '</div></td>' +
+                          '<div class="lang-author">' + _esc(row.author) + coauthoredHtml + '</div></td>' +
                       '<td>' + currentText + '</td>' +
                       '<td class="lang-arrow">&rarr;</td>' +
                       '<td>' + proposedText + '</td>' +
@@ -218,7 +240,15 @@
      * Running the proposal
      * ---------------------------------------------------------------- */
 
-    function openSeriesOrder(itemIds, seriesName) {
+    function _setHeading(text) {
+        var el = _el('seriesOrderTitle');
+        if (el) el.textContent = text;
+    }
+
+    // Shared by both entry points: the single-series card and the
+    // author-wide button post different bodies to different URLs but the
+    // modal bootstrap, error handling and rendering are identical.
+    function _run(url, body, heading) {
         var modal = _el('seriesOrderModal');
         if (!modal) return;
         modal.style.display = 'flex';
@@ -226,13 +256,14 @@
         _groups = [];
         _el('seriesOrderResults').innerHTML = '';
         _el('seriesOrderNote').style.display = 'none';
+        _setHeading(heading);
         _setStatus(t('seriesOrderRunning', 'Reading the series...'));
         _refreshApply();
 
-        fetch('/metadata/series/propose', {
+        fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item_ids: itemIds })
+            body: JSON.stringify(body)
         })
         .then(function (r) { return r.json(); })
         .then(function (data) {
@@ -245,6 +276,7 @@
                 _setStatus(t(key, 'The proposal could not be made.'));
                 return;
             }
+            if (data.author_name) _setHeading(_authorHeading(data.author_name));
             _groups = data.groups || [];
             _setStatus(_groups.length === 0
                 ? t('seriesOrderEmpty', 'Nothing to change.')
@@ -255,7 +287,21 @@
             _setStatus(t('seriesOrderFailed', 'The proposal could not be made.'));
         });
     }
+
+    function _authorHeading(authorName) {
+        var base = t('seriesOrderAuthorTitle', 'Order the series');
+        return authorName ? base + ' — ' + authorName : base;
+    }
+
+    function openSeriesOrder(itemIds, seriesName) {
+        _run('/metadata/series/propose', { item_ids: itemIds }, t('seriesOrderTitle', 'Order the series'));
+    }
     window.openSeriesOrder = openSeriesOrder;
+
+    function openAuthorSeriesOrder(authorId, authorName) {
+        _run('/metadata/series/propose-author', { author_id: authorId }, _authorHeading(authorName));
+    }
+    window.openAuthorSeriesOrder = openAuthorSeriesOrder;
 
     function closeSeriesOrder() {
         var modal = _el('seriesOrderModal');
@@ -311,4 +357,16 @@
         });
     }
     window.applySeriesOrder = applySeriesOrder;
+
+    // The /authors "Order series" button lands here as a plain link
+    // (?order_series=1&author=<id>); open the modal for it once the DOM
+    // exists, using the query value captured at load time above.
+    function _openFromBootParam() {
+        if (_bootAuthor) openAuthorSeriesOrder(parseInt(_bootAuthor, 10));
+    }
+    if (document.readyState === 'interactive' || document.readyState === 'complete') {
+        _openFromBootParam();
+    } else {
+        document.addEventListener('DOMContentLoaded', _openFromBootParam);
+    }
 })(window, document);

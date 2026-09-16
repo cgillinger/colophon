@@ -2523,6 +2523,29 @@ def series_propose():
     return jsonify(build_series_proposal(group_items))
 
 
+@metadata_bp.route("/metadata/series/propose-author", methods=["POST"])
+def series_propose_author():
+    """Read-only: group one author's books into series and order each.
+
+    Same review component and the same /apply route as the single-series
+    flow — only the selection is wider.
+    """
+    from app.services.series_batch import build_author_proposal
+
+    payload = request.get_json(silent=True) or {}
+    try:
+        author_id = int(payload.get("author_id") or 0)
+    except (TypeError, ValueError):
+        author_id = 0
+    if not author_id:
+        return jsonify({"ok": False, "error": "no_author"}), 400
+
+    result = build_author_proposal(author_id)
+    if result.get("error") == "no_author":
+        return jsonify(result), 400
+    return jsonify(result)
+
+
 @metadata_bp.route("/metadata/series/apply", methods=["POST"])
 def series_apply():
     """Write the series/series_index the user confirmed. Files only when asked."""

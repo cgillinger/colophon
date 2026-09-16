@@ -28,7 +28,7 @@ kod. Varje steg är en egen session; avsluta sessionen när steget är klart.
 - **Kända röda tester:** samma 10 genom hela planen
   (`test_quality.py` 6, `test_scoring.py` 3, `test_scanner.py` 1, se
   `CLAUDE.md`). "Samma 10" är grönt. Försök inte laga dem. Antalet gröna
-  växer per steg: 639 när planen skrevs, 716 efter steg 4.
+  växer per steg: 639 när planen skrevs, 716 efter steg 4, 730 efter steg 5.
 
 ### 1.2 Vad du är bra på och vad du ska akta dig för
 
@@ -456,7 +456,7 @@ Uppdatera raden när ett steg är klart, med version och commit.
 | 3 Språkkontroll | klar | 1.52.0 | e16e9fc |
 | 4 Ordna serien | klar | 1.53.0 | v1.53.0 |
 | — AI-felhantering (utanför planen) | klar | 1.53.1–1.53.2 | v1.53.2 |
-| 5 Författarens serier | ej påbörjat | | |
+| 5 Författarens serier | klar | 1.54.0 | v1.54.0 |
 | 6 Omslag för filtret | ej påbörjat | | |
 
 ### Vad steg 4 lämnade efter sig
@@ -487,6 +487,36 @@ Steg 5 ärver detta och behöver veta:
   i steg 5, eller acceptera att fler rader blir `ai_only`.
 - **Apply återanvänds oförändrad** (`/metadata/series/apply`), inklusive
   fan-out till formatsyskon.
+
+### Vad steg 5 lämnade efter sig
+
+Byggt: `ai_metadata.propose_author_series`, `series_batch.build_author_proposal`
+(+ `_build_group`, `_author_representatives`, `_co_authored_ids`,
+`_make_wikidata_ordinal`), routen `POST /metadata/series/propose-author`,
+`openAuthorSeriesOrder()` i `series-order.js`, knapp i författarbannern och
+på `/authors`-raden, 14 nya tester i `tests/test_series_batch.py` (33 totalt).
+Arkitekturstycke i `CLAUDE.md`, handboksavsnitt 9e i sv + en.
+
+Steg 6 ärver detta och behöver veta:
+
+- **Statuslogiken ligger nu i `_build_group`** och delas av båda flödena.
+  Prioritetsordningen är oförändrad och bindande. Nedgraderingen av ett
+  ensamt obekräftat förslag sker **per grupp**.
+- **Fristående böcker får ingen kryssruta**, varken i UI eller genom en
+  regel i apply-vägen. Det är JS-sidan (`_hasCheckbox`) som bär
+  invarianten — rör den inte utan att lägga tillbaka skyddet någon
+  annanstans.
+- **Wikidata-budgeten delas av hela förslaget** och nollställs inte per
+  grupp. En författare med många serier får fler `ai_only`-rader; det är
+  avsiktligt och står i handboken.
+- **Djuplänken `?order_series=1&author=<id>`** läses i `series-order.js`
+  vid skriptutvärdering, inte i `DOMContentLoaded`, eftersom `url-state.js`
+  laddas senare och skriver om query-strängen till sina egna kända nycklar.
+  Samma fälla väntar varje framtida djuplänk in i bulkvyn.
+- **`/authors` är en egen sida** med eget i18n-block och egen skriptuppsättning.
+  Knappen där är en vanlig länk in i bulkvyn; duplicera inte modalen dit.
+- **Kvar i TODO:** en `standalone`-flagga på boken saknas fortfarande, så
+  AI:n får frågan om fristående böcker på nytt vid varje körning.
 
 ### AI-provider: en fälla som kostade tid i steg 4
 

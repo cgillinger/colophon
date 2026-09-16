@@ -21,7 +21,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 
-from app.models import db, LibraryItem
+from app.models import db, LibraryItem, Author, BookAuthor
 from app.services import ai_metadata
 from app.services.ai_metadata import MAX_SERIES_BOOKS, propose_series_order
 from app.services.series_batch import apply_series_changes, build_series_proposal
@@ -577,3 +577,464 @@ def test_apply_series_changes_handles_blank_index(app):
     assert result["ok"] is True
     kwargs = writer.call_args.kwargs
     assert kwargs["result"]["series_index"] == ""
+
+
+# --------------------------------------------------------------------------
+# propose_author_series — one author's whole shelf, several series at once.
+# `ai_metadata.propose_author_series(books, known_series=None)` mirrors
+# `propose_series_order`'s sanitizing, but over several proposed series
+# instead of one. These tests do not exist yet in production code and are
+# expected to be red until the function is written.
+# --------------------------------------------------------------------------
+
+# --- 16. Too many books → too_many, no HTTP call ---------------------------
+
+def test_author_series_too_many_books_is_rejected_without_a_request():
+    from app.services.ai_metadata import propose_author_series
+
+    books = _books_payload(MAX_SERIES_BOOKS + 1)
+    with patch.object(ai_metadata, "ai_is_configured", return_value=True), \
+         patch.object(ai_metadata.requests, "post") as post:
+        result = propose_author_series(books)
+
+    assert result == {"ok": False, "error": "too_many"}
+    post.assert_not_called()
+
+
+# --- 17. Hallucinated id dropped; duplicate across series kept in the
+#         first; an id in both a series and standalone lands only in
+#         standalone ---------------------------------------------------------
+
+def test_author_series_sanitizes_hallucinated_duplicate_and_overlapping_ids():
+    from app.services.ai_metadata import propose_author_series
+
+    books = _books_payload(3)
+    answer = {
+        "series": [
+            {"name": "Series A", "books": [
+                {"id": 1, "index": "1", "confidence": "high", "reason": "r"},
+                {"id": 2, "index": "2", "confidence": "high", "reason": "r"},
+                {"id": 3, "index": "3", "confidence": "high", "reason": "r"},
+            ]},
+            {"name": "Series B", "books": [
+                {"id": 2, "index": "1", "confidence": "high", "reason": "r"},
+                {"id": 999, "index": "9", "confidence": "high", "reason": "hallucinated"},
+            ]},
+        ],
+        "standalone": [3],
+    }
+    with patch.object(ai_metadata, "ai_is_configured", return_value=True), \
+         patch.object(ai_metadata.requests, "post", return_value=_ai_response(answer)):
+        result = propose_author_series(books)
+
+    assert result["ok"] is True
+    assert len(result["series"]) == 1
+    series_a = result["series"][0]
+    assert series_a["name"] == "Series A"
+    assert [b["id"] for b in series_a["books"]] == [1, 2]
+    assert result["standalone"] == [3]
+    assert result["unranked"] == []
+
+
+# --- 18. Empty-named series dropped; a series emptied by sanitizing is
+#         dropped too — their books fall through to unranked --------------
+
+def test_author_series_drops_empty_and_emptied_series():
+    from app.services.ai_metadata import propose_author_series
+
+    books = _books_payload(4)
+    answer = {
+        "series": [
+            {"name": "", "books": [
+                {"id": 1, "index": "1", "confidence": "high", "reason": "r"},
+            ]},
+            {"name": "Ghost Series", "books": [
+                {"id": 999, "index": "1", "confidence": "high", "reason": "r"},
+            ]},
+        ],
+        "standalone": [],
+    }
+    with patch.object(ai_metadata, "ai_is_configured", return_value=True), \
+         patch.object(ai_metadata.requests, "post", return_value=_ai_response(answer)):
+        result = propose_author_series(books)
+
+    assert result["ok"] is True
+    assert result["series"] == []
+    assert result["unranked"] == [1, 2, 3, 4]
+
+
+# --- 19. Two series names that normalize to the same key merge ------------
+
+def test_author_series_merges_series_with_the_same_normalized_name():
+    from app.services.ai_metadata import propose_author_series
+
+    books = _books_payload(2)
+    answer = {
+        "series": [
+            {"name": "Harry Potter", "books": [
+                {"id": 1, "index": "1", "confidence": "high", "reason": "r"},
+            ]},
+            {"name": "harry potter", "books": [
+                {"id": 1, "index": "99", "confidence": "high", "reason": "dup"},
+                {"id": 2, "index": "2", "confidence": "high", "reason": "r"},
+            ]},
+        ],
+        "standalone": [],
+    }
+    with patch.object(ai_metadata, "ai_is_configured", return_value=True), \
+         patch.object(ai_metadata.requests, "post", return_value=_ai_response(answer)):
+        result = propose_author_series(books)
+
+    assert result["ok"] is True
+    assert len(result["series"]) == 1
+    merged = result["series"][0]
+    assert merged["name"] == "Harry Potter"
+    assert [b["id"] for b in merged["books"]] == [1, 2]
+    assert [b["index"] for b in merged["books"]] == ["1", "2"]  # first wins
+
+
+# --- 20. Snapping to known_series; unmatched names pass through -----------
+
+def test_author_series_snaps_known_names_and_leaves_others_alone():
+    from app.services.ai_metadata import propose_author_series
+
+    books = _books_payload(2)
+    answer = {
+        "series": [
+            {"name": "HARRY POTTER", "books": [
+                {"id": 1, "index": "1", "confidence": "high", "reason": "r"},
+            ]},
+            {"name": "Unknown Saga", "books": [
+                {"id": 2, "index": "1", "confidence": "high", "reason": "r"},
+            ]},
+        ],
+        "standalone": [],
+    }
+    known_series = {"harry potter": "Harry Potter (svensk utgåva)"}
+    with patch.object(ai_metadata, "ai_is_configured", return_value=True), \
+         patch.object(ai_metadata.requests, "post", return_value=_ai_response(answer)):
+        result = propose_author_series(books, known_series=known_series)
+
+    assert result["ok"] is True
+    by_name = {s["name"]: s for s in result["series"]}
+    assert "Harry Potter (svensk utgåva)" in by_name
+    assert by_name["Harry Potter (svensk utgåva)"]["name_snapped"] is True
+    assert "Unknown Saga" in by_name
+    assert by_name["Unknown Saga"]["name_snapped"] is False
+
+
+# --- 21. A book entry with no index is dropped from the series and its id
+#         shows up in unranked ---------------------------------------------
+
+def test_author_series_drops_entries_with_no_index():
+    from app.services.ai_metadata import propose_author_series
+
+    books = _books_payload(2)
+    answer = {
+        "series": [{"name": "S", "books": [
+            {"id": 1, "index": "", "confidence": "high", "reason": "r"},
+            {"id": 2, "index": "2", "confidence": "high", "reason": "r"},
+        ]}],
+        "standalone": [],
+    }
+    with patch.object(ai_metadata, "ai_is_configured", return_value=True), \
+         patch.object(ai_metadata.requests, "post", return_value=_ai_response(answer)):
+        result = propose_author_series(books)
+
+    assert result["ok"] is True
+    assert len(result["series"]) == 1
+    assert [b["id"] for b in result["series"][0]["books"]] == [2]
+    assert result["unranked"] == [1]
+
+
+# --------------------------------------------------------------------------
+# build_author_proposal — one author's whole shelf, several series in one
+# pass. DB fixture (`app`) + injected `ai_propose_author` / `wikidata_lookup`,
+# same style as build_series_proposal's tests above.
+# --------------------------------------------------------------------------
+
+def _add_author(name="An Author", source="user_confirmed"):
+    author = Author(canonical_name=name, source=source)
+    db.session.add(author)
+    db.session.commit()
+    return author
+
+
+def _link(item, author, position=0):
+    link = BookAuthor(item_id=item.id, author_id=author.id, position=position)
+    db.session.add(link)
+    db.session.commit()
+    return link
+
+
+# --- 22. Two series + one standalone book → three groups, standalone last -
+
+def test_author_proposal_builds_one_group_per_series_plus_a_standalone_tail(app):
+    from app.services.series_batch import build_author_proposal
+
+    author = _add_author("An Author")
+    b1, b2, b3, b4, b5 = (_add(title=f"Book {n}") for n in range(1, 6))
+    for b in (b1, b2, b3, b4, b5):
+        _link(b, author)
+
+    def ai_stub(books, known_series=None):
+        return {
+            "ok": True,
+            "series": [
+                {"name": "S1", "name_snapped": False, "books": [
+                    {"id": b1.id, "index": "1", "confidence": "high", "reason": "r"},
+                    {"id": b2.id, "index": "2", "confidence": "high", "reason": "r"},
+                ]},
+                {"name": "S2", "name_snapped": False, "books": [
+                    {"id": b3.id, "index": "1", "confidence": "high", "reason": "r"},
+                    {"id": b4.id, "index": "2", "confidence": "high", "reason": "r"},
+                ]},
+            ],
+            "standalone": [b5.id],
+            "unranked": [],
+        }
+
+    proposal = build_author_proposal(
+        author.id, ai_propose_author=ai_stub, wikidata_lookup=_no_wikidata, known_series={},
+    )
+
+    assert proposal["ok"] is True
+    assert proposal["author_name"] == "An Author"
+    groups = proposal["groups"]
+    assert len(groups) == 3
+    assert groups[0]["standalone"] is False
+    assert groups[1]["standalone"] is False
+    tail = groups[2]
+    assert tail["standalone"] is True
+    assert tail["series_name"] is None
+    row = next(r for r in tail["rows"] if r["item_id"] == b5.id)
+    assert row["status"] == "standalone"
+    assert row["proposed_series"] is None
+    assert row["proposed_index"] is None
+
+
+# --- 23. No standalone and no unranked books → no standalone group --------
+
+def test_author_proposal_omits_standalone_group_when_everything_is_ranked(app):
+    from app.services.series_batch import build_author_proposal
+
+    author = _add_author("An Author")
+    b1, b2 = _add(title="Book A"), _add(title="Book B")
+    for b in (b1, b2):
+        _link(b, author)
+
+    def ai_stub(books, known_series=None):
+        return {
+            "ok": True,
+            "series": [{"name": "S1", "name_snapped": False, "books": [
+                {"id": b1.id, "index": "1", "confidence": "high", "reason": "r"},
+                {"id": b2.id, "index": "2", "confidence": "high", "reason": "r"},
+            ]}],
+            "standalone": [],
+            "unranked": [],
+        }
+
+    proposal = build_author_proposal(
+        author.id, ai_propose_author=ai_stub, wikidata_lookup=_no_wikidata, known_series={},
+    )
+
+    assert proposal["ok"] is True
+    assert len(proposal["groups"]) == 1
+    assert all(not g["standalone"] for g in proposal["groups"])
+
+
+# --- 24. co_authored reflects the number of book_authors rows -------------
+
+def test_author_proposal_flags_co_authored_books(app):
+    from app.services.series_batch import build_author_proposal
+
+    author_a = _add_author("Author A")
+    author_b = _add_author("Author B")
+    co_book = _add(title="Co-written")
+    solo_book = _add(title="Solo")
+    _link(co_book, author_a, position=0)
+    _link(co_book, author_b, position=1)
+    _link(solo_book, author_a, position=0)
+
+    def ai_stub(books, known_series=None):
+        return {
+            "ok": True, "series": [],
+            "standalone": [co_book.id, solo_book.id], "unranked": [],
+        }
+
+    proposal = build_author_proposal(
+        author_a.id, ai_propose_author=ai_stub, wikidata_lookup=_no_wikidata, known_series={},
+    )
+
+    tail = proposal["groups"][-1]
+    co_row = next(r for r in tail["rows"] if r["item_id"] == co_book.id)
+    solo_row = next(r for r in tail["rows"] if r["item_id"] == solo_book.id)
+    assert co_row["co_authored"] is True
+    assert solo_row["co_authored"] is False
+
+
+# --- 25. Only one representative per group_key reaches the AI -------------
+
+def test_author_proposal_sends_one_representative_per_format_group(app):
+    from app.services.series_batch import build_author_proposal
+
+    author = _add_author("An Author")
+    gk_low = _add(title="Format A", group_key="gk1")
+    gk_high = _add(title="Format B", group_key="gk1")
+    standalone_item = _add(title="Standalone")
+    for b in (gk_low, gk_high, standalone_item):
+        _link(b, author)
+
+    captured = []
+
+    def ai_spy(books, known_series=None):
+        captured.extend(books)
+        ids = [b["id"] for b in books]
+        return {"ok": True, "series": [], "standalone": ids, "unranked": []}
+
+    build_author_proposal(
+        author.id, ai_propose_author=ai_spy, wikidata_lookup=_no_wikidata, known_series={},
+    )
+
+    lowest_gk_id = min(gk_low.id, gk_high.id)
+    sent_ids = {b["id"] for b in captured}
+    assert sent_ids == {lowest_gk_id, standalone_item.id}
+    assert len(captured) == 2
+
+
+# --- 26. Per-group single-unconfirmed downgrade applies group by group ----
+
+def test_author_proposal_downgrades_only_the_lone_unconfirmed_group(app):
+    from app.services.series_batch import build_author_proposal
+
+    author = _add_author("An Author")
+    solo = _add(title="Lonely Book")
+    t1, t2, t3 = (_add(title=f"Trio {n}") for n in range(1, 4))
+    for b in (solo, t1, t2, t3):
+        _link(b, author)
+
+    def ai_stub(books, known_series=None):
+        return {
+            "ok": True,
+            "series": [
+                {"name": "Solo Series", "name_snapped": False, "books": [
+                    {"id": solo.id, "index": "1", "confidence": "high", "reason": "r"},
+                ]},
+                {"name": "Trio Series", "name_snapped": False, "books": [
+                    {"id": t1.id, "index": "1", "confidence": "medium", "reason": "r"},
+                    {"id": t2.id, "index": "2", "confidence": "medium", "reason": "r"},
+                    {"id": t3.id, "index": "3", "confidence": "medium", "reason": "r"},
+                ]},
+            ],
+            "standalone": [], "unranked": [],
+        }
+
+    proposal = build_author_proposal(
+        author.id, ai_propose_author=ai_stub, wikidata_lookup=_no_wikidata, known_series={},
+    )
+
+    solo_group = next(g for g in proposal["groups"] if g["series_name"] == "Solo Series")
+    trio_group = next(g for g in proposal["groups"] if g["series_name"] == "Trio Series")
+
+    solo_row = solo_group["rows"][0]
+    assert solo_row["status"] == "ai_only"
+    assert solo_row["confidence"] == "low"
+
+    for row in trio_group["rows"]:
+        assert row["status"] == "ai_only"
+        assert row["confidence"] == "medium"
+
+
+# --- 27. An author with no books → no_books, and the AI is never asked ----
+
+def test_author_proposal_no_books_is_an_error(app):
+    from app.services.series_batch import build_author_proposal
+
+    author = _add_author("Friendless Author")
+
+    def _boom_ai(books, known_series=None):
+        raise AssertionError("ai should not be called when there are no books")
+
+    proposal = build_author_proposal(
+        author.id, ai_propose_author=_boom_ai, wikidata_lookup=_no_wikidata, known_series={},
+    )
+
+    assert proposal == {"ok": False, "error": "no_books"}
+
+
+# --- 28. conflict still outranks confirmed inside an author group ---------
+
+def test_author_proposal_conflict_outranks_confirmed(app):
+    from app.services.series_batch import build_author_proposal
+
+    author = _add_author("An Author")
+    book = _add(title="Kråkflickan", series="Kråkflickan", series_index="5")
+    _link(book, author)
+
+    def ai_stub(books, known_series=None):
+        return {
+            "ok": True,
+            "series": [{"name": "Kråkflickan", "name_snapped": False, "books": [
+                {"id": book.id, "index": "3", "confidence": "high", "reason": "r"},
+            ]}],
+            "standalone": [], "unranked": [],
+        }
+
+    proposal = build_author_proposal(
+        author.id, ai_propose_author=ai_stub,
+        wikidata_lookup=_wikidata_ordinal("Kråkflickan", "3"),  # agrees with the proposal
+        known_series={},
+    )
+
+    group = proposal["groups"][0]
+    row = group["rows"][0]
+    assert row["status"] == "conflict"
+    assert row["current_index"] == "5"
+    assert row["proposed_index"] == "3"
+
+
+# --- 29. /metadata/series/propose-author never writes; bad author_id → 400
+
+def test_propose_author_route_never_writes_and_validates_author_id(route_app):
+    with route_app.app_context():
+        author = _add_author("Kråkflickans skapare")
+        book = _add(title="Kråkflickan", series="Kråkflickan", series_index="1")
+        _link(book, author)
+        author_id = author.id
+        item_id = book.id
+        before = book.series_index
+
+    ai_result = {
+        "ok": True,
+        "series": [{"name": "Kråkflickan", "name_snapped": False, "books": [
+            {"id": item_id, "index": "2", "confidence": "high", "reason": "r"},
+        ]}],
+        "standalone": [], "unranked": [],
+    }
+
+    with patch("app.services.series_batch.propose_author_series",
+               lambda books, known_series=None: ai_result), \
+         patch("app.services.series_batch._default_wikidata_lookup", _no_wikidata), \
+         patch("app.services.metadata_writer.apply_metadata_to_item") as writer:
+        resp = route_app.test_client().post(
+            "/metadata/series/propose-author", json={"author_id": author_id}
+        )
+
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["ok"] is True
+    row = next(r for r in body["groups"][0]["rows"] if r["item_id"] == item_id)
+    assert row["proposed_index"] == "2"
+    writer.assert_not_called()
+    with route_app.app_context():
+        assert db.session.get(LibraryItem, item_id).series_index == before
+
+    resp_missing = route_app.test_client().post("/metadata/series/propose-author", json={})
+    assert resp_missing.status_code == 400
+    assert resp_missing.get_json() == {"ok": False, "error": "no_author"}
+
+    resp_unknown = route_app.test_client().post(
+        "/metadata/series/propose-author", json={"author_id": 999999}
+    )
+    assert resp_unknown.status_code == 400
+    assert resp_unknown.get_json() == {"ok": False, "error": "no_author"}

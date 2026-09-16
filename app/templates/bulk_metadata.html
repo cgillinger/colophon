@@ -42,6 +42,8 @@
     <div class="author-filter-banner">
         <i class="ti ti-user"></i>
         <span>{{ _('Showing books by “%(name)s”', name=author_filter.canonical_name) }}</span>
+        <button type="button" class="btn" onclick="openAuthorSeriesOrder({{ author_filter.id }}, {{ author_filter.canonical_name|tojson }})">
+            <i class="ti ti-list-numbers"></i> {{ _('Order series') }}</button>
         <a href="{{ url_for('metadata.bulk_metadata') }}" class="author-filter-clear">
             <i class="ti ti-x"></i> {{ _('Show all books') }}</a>
     </div>
@@ -854,7 +856,7 @@
             <div class="spacer"></div>
             <button type="button" class="modal-close-x" onclick="closeSeriesOrder()" title="{{ _('Close') }}">&times;</button>
         </div>
-        <h2 style="margin-top:0;">{{ _('Order the series') }}</h2>
+        <h2 id="seriesOrderTitle" style="margin-top:0;">{{ _('Order the series') }}</h2>
         <div id="seriesOrderStatus" style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;"></div>
         <div id="seriesOrderResults"></div>
         <div id="seriesOrderNote" style="display:none; font-size:12px; color:var(--text-secondary); margin-top:12px;"></div>
@@ -1264,11 +1266,15 @@
         languageWriteFiles: {{ _('Write to the files too')|tojson }},
         languageReloadOnKobo: {{ _('reload on Kobo')|tojson }},
         seriesOrderButton: {{ _('Order the series')|tojson }},
+        seriesOrderTitle: {{ _('Order the series')|tojson }},
+        seriesOrderAuthorTitle: {{ _("Order the author's series")|tojson }},
+        seriesOrderAuthorButton: {{ _('Order series')|tojson }},
         seriesOrderRunning: {{ _('Reading the series...')|tojson }},
         seriesOrderFailed: {{ _('The proposal could not be made.')|tojson }},
         seriesOrderNotConfigured: {{ _('No AI is configured in Settings.')|tojson }},
         seriesOrderTooMany: {{ _('Too many books for one proposal (max 60).')|tojson }},
         seriesOrderNoBooks: {{ _('No books to order.')|tojson }},
+        seriesOrderNoAuthor: {{ _('That author could not be found.')|tojson }},
         aiQuotaSpent: {{ _('The AI quota is used up. Topping up the account is what helps, not waiting.')|tojson }},
         aiNoAllowance: {{ _('The provider allows no requests for this model on your plan. Pick another model in Settings → AI.')|tojson }},
         aiBusyRetry: {{ _('The AI is busy. Try again in N min.')|tojson }},
@@ -1280,6 +1286,9 @@
         seriesOrderStatusUnchanged: {{ _('Unchanged')|tojson }},
         seriesOrderStatusNotInSeries: {{ _('Not in the series')|tojson }},
         seriesOrderStatusUnknown: {{ _('No answer')|tojson }},
+        seriesOrderStatusStandalone: {{ _('Not in a series')|tojson }},
+        seriesOrderStandaloneGroup: {{ _('Not in a series')|tojson }},
+        seriesOrderCoAuthored: {{ _('co-written')|tojson }},
         seriesOrderCurrent: {{ _('Recorded')|tojson }},
         seriesOrderProposed: {{ _('Proposed')|tojson }},
         seriesOrderDuplicates: {{ _('duplicate numbers')|tojson }},

@@ -252,6 +252,7 @@
                     <button type="button" class="btn" data-act="confirm" title="{{ _('Mark this spelling as correct') }}"><i class="ti ti-check"></i> {{ _('Confirm') }}</button>
                     {% endif %}
                     <button type="button" class="btn" data-act="verify" title="{{ _('Look the author up in Wikidata and store authority ids') }}"><i class="ti ti-world-search"></i> {{ _('Verify') }}</button>
+                    <a class="btn" href="{{ url_for('metadata.bulk_metadata', author=a.id, order_series=1) }}" title="{{ _('Group this author’s books into series and order them') }}"><i class="ti ti-list-numbers"></i> {{ _('Order series') }}</a>
                     <button type="button" class="btn" data-act="rename"><i class="ti ti-pencil"></i> {{ _('Rename') }}</button>
                     <button type="button" class="btn" data-act="merge"><i class="ti ti-git-merge"></i> {{ _('Merge…') }}</button>
                     <button type="button" class="btn" data-act="split" title="{{ _('Split this entry into several authors') }}"

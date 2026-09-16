@@ -284,6 +284,33 @@ synced device reloads the books even if you leave **Write to the files too**
 unticked. That box is unticked by default here — the files only need changing if
 you want a reader other than Colophon to see the series.
 
+## 9e. Ordering an author's series
+
+The same review, but across a whole body of work. Two ways in:
+
+- On the **Authors** page, the **Order series** button on the author's row.
+- In the book view when you have filtered on an author, the button in the
+  blue bar at the top.
+
+The difference from **Order the series** is that here the AI also decides
+*which* series exist. You get one block per proposed series, and last a
+block **Not in a series** holding the books the AI places outside every
+series — and the ones it did not answer about. Those rows have no checkbox
+at all, so a standalone book cannot be given a number by accident.
+
+The status colours, the duplicate and gap warnings, and the write-to-files
+checkbox all work exactly as in **Order the series**. Each block is judged
+on its own: a series with a single book and no Wikidata confirmation never
+arrives pre-ticked, however sure the AI says it is.
+
+Books written with someone else are marked **co-written**. Colophon does
+not stop you, but the series is not this author's alone.
+
+The Wikidata cross-check has a 90-second budget for the whole proposal. An
+author with many series will not get everything confirmed within it — those
+rows show as **Suggested** rather than **Confirmed**. Nothing has gone
+wrong; you simply have less backing on the last rows.
+
 ## 10. Managing authors
 
 Colophon keeps **one canonical entry per author**, so every book by the same
