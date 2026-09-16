@@ -239,9 +239,9 @@ AI's say-so.
 The reason this is usable rather than alarming is that the AI never has the
 last word, and never the first write:
 
-- **Nothing is written while the model is thinking.** Every scenario runs as a
-  dry run: you get a proposal, you tick rows, and only then does anything
-  change.
+- **Nothing is written while the model is thinking.** Every scenario looks
+  first and saves afterwards: you get a proposal, you tick the rows you want,
+  and only then does anything change.
 - **Your own values are protected.** A row that contradicts something already
   recorded is flagged red and left unticked; you have to choose to overwrite it.
 - **Changing the library and changing your files are separate choices.**

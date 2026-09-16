@@ -7,15 +7,16 @@ see the [tags](https://github.com/cgillinger/colophon/tags) for the full history
 
 ## What's new since 1.50
 
-Fourteen releases that replaced one generic batch job with **scenarios**: jobs
-where the books share a fact, each one showing you a proposal to tick through
-before anything is written.
+Fourteen releases that replaced one all-purpose batch job with **scenarios** —
+jobs where the books actually belong together: one series, one author's shelf,
+everything that is missing a cover. Each one shows you what it intends to do,
+and you tick your way through it before a single thing is saved.
 
-**Upgrading.** `docker compose pull && docker compose up -d`, or a pinned tag
-if you prefer one (`ghcr.io/cgillinger/colophon:1.61.1`). The schema migrates
-itself on first start and no setting changes meaning, so there is nothing to
-do beyond the two notes below. Your files are not touched by the upgrade
-itself.
+**Upgrading.** `docker compose pull && docker compose up -d`, or a pinned
+version if you prefer one (`ghcr.io/cgillinger/colophon:1.61.1`). Colophon
+brings its own database up to date the first time it starts, and no setting
+has changed meaning, so there is nothing to do beyond the two notes below.
+Your book files are not touched by the upgrade itself.
 
 - **Remove `COLOPHON_SHOW_LEGACY_BATCH` from your compose file** if you set it.
   1.61.0 deleted what it revealed, and the line is now ignored.
@@ -42,15 +43,17 @@ Most useful first. The handbook explains each in full — also
 
 ### Fixes worth knowing about
 
-- **Nothing writes before you have seen it.** The bulk stream was applying
-  confident matches — to your files — before the review list appeared (1.51.1).
+- **Nothing is saved before you have seen it.** Fetching metadata for many
+  books at once used to save the ones it felt sure about — into your e-book
+  files — before showing you the list you were meant to approve (1.51.1).
 - **An author could be anchored to the wrong person** in Wikidata, with no way
   to undo it. Your own shelf now decides, and the link can be removed
   (1.58.0, 1.59.0).
-- **A Swedish interface was quietly showing English** in the new flows, and in
-  places raw status codes (1.55.0).
-- **A fresh installation could fail to start** when two workers set up the
-  database at the same moment (1.61.1).
+- **A Swedish interface was quietly showing English** in the newer screens,
+  and here and there an untranslated word where a status should have been
+  (1.55.0).
+- **A brand-new installation could fail to start** the very first time
+  (1.61.1).
 
 ### Still on the list
 
@@ -73,30 +76,31 @@ Per-release detail follows.
 ## [1.61.1] — 2026-09-16
 
 ### Fixed
-- **A brand-new installation could fail to start.** Colophon boots two workers
-  at once, and both of them set up the database schema on the way up. On an
-  empty data directory they could reach the same missing table at the same
-  moment: one created it, the other fell over with "table library_items
-  already exists" and the server gave up with *Worker failed to boot* —
-  nothing but a traceback to go on, on a first run, before anything existed to
-  lose. Schema setup now happens one process at a time. Existing installations
-  were never affected: the tables are already there, so there was nothing to
-  race over.
+- **A brand-new installation could fail to start.** The very first start
+  against an empty data folder is where Colophon builds its database, and it
+  went about that from two directions at once. Now and then the two collided,
+  the start was abandoned, and all you got was a wall of error text on a
+  program that had not yet done anything — the worst possible first
+  impression, and nothing you could have done differently. It now builds the
+  database once, in order. An installation that was already running was never
+  affected: its database had been built long ago, so there was nothing left to
+  collide over.
 
 ## [1.61.0] — 2026-09-16
 
 ### Removed
-- **The generic batch wizard is gone for good.** Pick N mixed books, pick
-  fields, run — it has been hidden since 1.51.0, because N books with nothing
-  in common are N separate reviews wearing one progress bar. Every job it did
-  now has a scenario of its own (see 1.52.0 through 1.60.0), so the wizard
-  itself has been deleted: the modal, 2 194 lines of JavaScript, the 58
-  translated strings only it used, and 560 lines of stylesheet.
+- **The generic batch wizard is gone for good.** Select a pile of unrelated
+  books, choose some fields, press go — it had been hidden since 1.51.0,
+  because twenty books with nothing in common are twenty separate judgements
+  hiding behind one progress bar. Every job it used to do now has a scenario of
+  its own (see 1.52.0 through 1.60.0), so the wizard itself is now deleted:
+  the window, the few thousand lines behind it, and the wording and styling
+  nothing else was using.
 - **`COLOPHON_SHOW_LEGACY_BATCH` no longer does anything.** It was the escape
   hatch that brought the old button back while the scenarios were being built.
   If you set it in your compose file, remove the line — it is now ignored.
-  Nothing else changes: the button it revealed has not been in the default UI
-  since 1.51.0.
+  Nothing else changes: the button it brought back has not been part of the
+  ordinary interface since 1.51.0.
 
 ## [1.60.0] — 2026-09-16
 
@@ -110,11 +114,13 @@ Per-release detail follows.
   if the filter holds more it says how many are left.
 
 ### Fixed
-- **A preview could move a cover on its own.** When several formats of the
-  same book share an entry, the group sync ran — and committed — before the
-  search did, so a sibling's cover could travel across during what was only
-  meant to be a preview, and the book quietly left the filter without anyone
-  pressing Apply. Group sync is now skipped while a run is only looking.
+- **A preview could move a cover on its own.** Where you keep several formats
+  of the same book — EPUB and MOBI, say — Colophon keeps their covers in step
+  with each other. That copying happened, and was saved, before the search had
+  even run, so a cover could travel from one format to the other during what
+  was only meant to be a look at the options; the book then quietly vanished
+  from the list without anyone pressing Apply. Formats are now left alone
+  while a run is only looking.
 - **A round of covers left every traffic light one step too red.** Applying a
   cover didn't recalculate the completeness score.
 
@@ -161,9 +167,10 @@ Per-release detail follows.
   ([handbook §10](docs/handbook-en.md#10-managing-authors)). Verification
   existed only one row at a time, so in a real library the Authority column
   read "—" everywhere while most entries were confirmed — two unrelated things
-  the page never explained. The loop runs in the browser, one author at a
-  time, because a few hundred SPARQL round trips in one request would pass
-  Gunicorn's five-minute limit with nothing to show.
+  the page never explained. Authors are still looked up one after another
+  rather than all at once, with the page counting up as it goes: a few hundred
+  of them take minutes, and a version that went quiet until every last one was
+  done would look like it had frozen.
 
 ### Changed
 - **The Authority column says who, not which code.** A bare Wikidata id — the
@@ -172,8 +179,8 @@ Per-release detail follows.
   and threw them away. The cell now reads "British science fiction writer",
   with the identifiers moved into the tooltips of named links. Entries verified
   before this release keep their identifiers and stay without a description
-  until you verify them again — the text was never stored, so there is nothing
-  to backfill.
+  until you verify them again — the wording was never kept, so there is
+  nothing to fill in after the fact.
 
 ## [1.56.0] — 2026-09-16
 
@@ -182,10 +189,11 @@ Per-release detail follows.
   became well over a hundred on a single page of authors, wrapped unevenly
   and were unusable on a phone. The row now shows only the action it actually needs —
   Confirm, when the entry is tentative — and the rest live in the menu.
-- **The sidebar's VIEWS section stays put.** It was filled only by the library
-  page, where Table/Shelf/Series are JavaScript toggles, so on every other page
-  the heading vanished and the way back to your books looked like a reading
-  filter. It now falls back to three ordinary links.
+- **The sidebar's VIEWS section stays put.** It only ever appeared on the
+  library page, where Table, Shelf and Series switch the view in place. On
+  every other page the heading vanished, and the way back to your books looked
+  like a reading filter. The three views are now always there as ordinary
+  links.
 
 ## [1.55.1] — 2026-09-16
 
@@ -194,9 +202,9 @@ Per-release detail follows.
   beside a cover read as bolted-on hardware in a view that is otherwise airy.
   They are now text with an icon, dimmed until you point at them — but never
   hidden, since there is no hover on an iPad.
-- **The "New" badge ran into the title.** The series card read its titles
-  straight out of the list markup, badge and all, so a recently added book
-  turned up with the word New welded to the front of its name.
+- **The "New" badge ran into the title.** A series card took its titles from
+  the list on screen, badge and all, so a recently added book turned up with
+  the word New welded to the front of its name.
 
 ## [1.55.0] — 2026-09-16
 
@@ -208,14 +216,16 @@ Per-release detail follows.
   number.
 
 ### Fixed
-- **A Swedish interface was showing English.** The i18n map in the main
-  template closed one line too early, so 55 keys — the whole language check and
-  the whole series flow — ended up outside it. Nothing failed; the interface
-  simply fell back to the English strings in the code and, in a few places, to
-  raw status codes like `confirmed`. Present since 1.52.0.
+- **A Swedish interface was showing English.** A slip in how the translations
+  were bundled left 55 of them out of reach — the whole language check and the
+  whole series flow. Nothing broke and nothing complained; those screens
+  simply came out in English, and in a few places showed an internal word like
+  "confirmed" where a status should have been. It had been that way since
+  1.52.0.
 - **"Unchanged" was not always unchanged.** Rows whose text did change
   ("Children of time #03" → "Children of Time #3") were labelled unchanged.
-  Byte-identical rows are now unchanged and lose their checkbox entirely;
+  A row is now called unchanged only when the text really is identical, and
+  then it loses its checkbox entirely;
   everything else is **Spelling only**, with a checkbox that is never
   pre-ticked — you decide whether a tidier spelling is worth a reload on the
   Kobo. The columns are now **Now** and **Becomes**.
@@ -253,15 +263,18 @@ Per-release detail follows.
 ## [1.53.1] — 2026-09-16
 
 ### Fixed
-- **"It failed" is not an explanation.** Three of the five AI surfaces — series
-  ordering, the author adjudicator and the reader's word lookup — said nothing
-  at all when the provider answered 429, and the two that did say something
-  advised waiting, which is the wrong advice half the time. A 429 is at least
-  four different situations, and Colophon now reads what the provider actually
-  reveals: a `Retry-After` means wait that long, a named quota in the body
-  means you have spent it, and a ceiling of zero requests per minute means the
-  account may not call at all — no amount of waiting helps there. When none of
-  it is visible, it says the limit was reached rather than guessing why.
+- **"It failed" is not an explanation.** When an AI provider turns a request
+  away, it does so with the same brush-off whatever the reason: you have asked
+  too fast, you have used up the month, or your plan may not use that model at
+  all. Three of the five places Colophon asks the AI — series ordering, the
+  author check and the reader's word lookup — said nothing whatsoever about
+  it, and the two that did say something told you to try again later, which is
+  useless advice in half the cases. Colophon now passes on whatever the
+  provider is willing to say: how long to wait, if it says; that the month's
+  allowance is spent, if that is what happened; or that this account may not
+  make the call at all, in which case waiting will never help. When the
+  provider gives no reason, it says the limit was reached rather than
+  inventing one.
 
 ## [1.53.0] — 2026-09-16
 
@@ -275,8 +288,8 @@ Per-release detail follows.
   (never pre-ticked — a number you typed is not overwritten unless you tick it
   yourself), *Spelling only*, and dimmed rows with no checkbox for books the AI
   puts outside the series or didn't answer about. The header warns about
-  duplicate numbers and gaps. A lone unconfirmed proposal is downgraded, so it
-  can never arrive pre-ticked.
+  duplicate numbers and gaps. A proposal standing on its own with nothing to
+  confirm it is treated as less certain, so it can never arrive pre-ticked.
 
   Series and series number are fields the Kobo reads, so a synced device
   reloads those books even with **Write to the files too** unticked. The modal
@@ -290,10 +303,11 @@ Per-release detail follows.
   metadata is essentially complete, amber that something is missing, red that
   most of it is — hover for the list. Above the list, three counters say how
   many sit in each state and filter down to them when clicked, and the sort
-  menu gains **Least complete first**. The score was an internal prefetch
-  heuristic before this, only recalculated in one place and therefore stale on
-  hand-edited and freshly scanned rows; it is now recalculated on every write
-  path, with a backfill for older rows.
+  menu gains **Least complete first**. Something like this score existed
+  before, but only behind the scenes, and it was only ever recalculated in one
+  situation — so on books you had edited yourself, or had just scanned in, it
+  was usually out of date. It now follows every change to a book, and the
+  books that predate it were brought up to date once.
 - **Check language** ([handbook §9c](docs/handbook-en.md#9c-checking-language)).
   **Tools → Check language** reads the text inside every EPUB and reports only
   what deserves a human: no language recorded, or a recorded language the text
@@ -309,34 +323,35 @@ Per-release detail follows.
 ## [1.51.1] — 2026-09-16
 
 ### Changed
-- **The generic batch entry point is hidden** behind `COLOPHON_SHOW_LEGACY_BATCH`
-  (off by default) while the scenario flows that replace it are built.
+- **The generic batch button is hidden** while the scenarios meant to replace
+  it are being built. Setting `COLOPHON_SHOW_LEGACY_BATCH=1` brings it back
+  for now.
 
 ### Fixed
-- **The batch wrote before you saw anything.** The bulk run classified a match
-  as confident and then wrote it — to the database and into your e-book files —
-  *before* the book appeared in the review list. A separate "Ask AI" branch
-  wrote every high-confidence field straight to file with no review at all,
-  title and author included. The stream now runs as a dry run: same
-  classification, nothing applied, and the write path stays only where a
-  scenario asks for it explicitly. The handbook claimed batch operations always
-  confirmed before writing; that section has been rewritten to say what is
-  actually true.
+- **The batch wrote before you saw anything.** Fetching metadata for a pile of
+  books, Colophon decided a match was good enough and saved it — to your
+  library and into the e-book files themselves — *before* that book ever
+  appeared in the list you were supposed to approve. "Ask AI" was worse:
+  anything it felt sure about went straight into the files with no review at
+  all, titles and authors included. Both now look without touching anything,
+  and saving happens only where you ask for it. The handbook claimed batch
+  operations always confirmed before writing; that section has been rewritten
+  to say what is actually true.
 
 ## [1.51.0] — 2026-09-16
 
 ### Changed
 - **AI suggestions now see the rest of your library**
   ([handbook §7](docs/handbook-en.md#7-ai-features), requested in
-  [#173](https://github.com/cgillinger/colophon/issues/173)). The prompt carried one
-  book in isolation, so a run over many books produced a new spelling of the
-  same series each time and a fresh synonym for every subject. It now also
-  carries the author's other books, the series names already in use and your
-  subject vocabulary. A suggested series that matches one you already have is
-  snapped to your spelling and promoted to high confidence, so a bulk run
-  converges on one name instead of drifting into variants. Subjects are nudged
-  the same way but never promoted. If the context can't be built, the
-  suggestion still happens.
+  [#173](https://github.com/cgillinger/colophon/issues/173)). The AI used to
+  be shown one book and nothing else, so asking it about book after book gave
+  a new spelling of the same series every time, and a fresh synonym for every
+  subject. It is now also shown the author's other books, the series names
+  already in use, and the subjects you already apply. A suggested series that
+  matches one you have is corrected to your spelling and treated as certain,
+  so working through many books settles on one name instead of drifting into
+  variants. Subjects are steered the same way, but never treated as certain.
+  If none of that can be gathered, you still get your suggestion.
 
   This helps new suggestions only. Spellings that have already diverged need
   the cleanup view that is still on the list.
@@ -395,8 +410,9 @@ after an e-reader there never finished downloading covers on a large library.
 ### Fixed
 - **Colophon was writing broken values onto your reader.** Two entries in the
   configuration Colophon hands the device were malformed — copied long ago out
-  of a rendered document, bringing its link markup with them. The reader
-  stores that configuration itself, so the damage persisted on the hardware.
+  of a formatted document, and had brought its formatting codes along with
+  them. The reader keeps that configuration itself, so the damage stayed on
+  the hardware.
   Confirmed on a real device. Fixed values are written on the next sync.
 - **Books could be skipped during a sync and never arrive.** Pages were sliced
   by position over a list ordered by last-changed time — but the reader reports
@@ -404,10 +420,11 @@ after an e-reader there never finished downloading covers on a large library.
   sat on a page boundary was passed over, permanently. The walk now keys on
   something that cannot move.
 - **A reader that lost its place re-downloaded the whole library.** What to say
-  about a book was derived from the sync token rather than from what had
-  actually been delivered, so a device without a token was told every book had
-  changed. Colophon now keeps a per-device record of what it shipped and in
-  what state.
+  about a book was worked out from the note the reader hands back at the start
+  of each sync, rather than from what Colophon had actually sent it. A reader
+  that turned up without that note was therefore told every single book had
+  changed. Colophon now keeps its own record, per device, of what it sent and
+  in what shape.
 - **Covers were sent at full size.** The reader asks for a thumbnail and got
   the original — several megabytes each, one per book, on every sync. Measured
   on a real library: 187 MB down to 20 MB.
@@ -628,9 +645,9 @@ after an e-reader there never finished downloading covers on a large library.
   the stale bookmark when you read in the browser, and cross-checks any stored
   bookmark against the percentage before sending it. Existing books repair
   themselves on the next sync — no migration needed.
-- Kobo reading-state updates for a book UUID Colophon never issued are still
-  ignored (they can't be matched to anything), but now log a warning instead of
-  vanishing silently. Without it the failure is invisible from both ends: a
+- Reading progress arriving for a book Colophon has no record of ever sending
+  is still ignored — there is nothing to match it to — but it is now noted in
+  the log instead of vanishing silently. Without it the failure is invisible from both ends: a
   withdrawn entitlement disappears from the Kobo's library while still recording
   everything you read on it, so the device looks normal and Colophon simply never
   hears about the reading.
