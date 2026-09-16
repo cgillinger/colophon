@@ -238,6 +238,33 @@ device is the whole point. The label tells you how many books will reload.
 
 PDF and MOBI files can't be read and are counted in a footnote.
 
+## 9d. Ordering a series
+
+In the **Series** view every series card has an **Order the series** button. It
+asks the AI about the whole series at once — not book by book — and checks the
+answer against Wikidata before showing you anything.
+
+Each row shows what is recorded today, what is proposed, and how sure it is:
+
+- **Confirmed** (green) — the AI and Wikidata agree. Pre-ticked.
+- **Suggested** (yellow) — the AI alone. Pre-ticked only when it is confident.
+- **Differs from what is recorded** (red) — another number is already there.
+  Never pre-ticked; a value you set yourself is not overwritten unless you tick
+  the row.
+- **Unchanged**, **Not in the series**, **No answer** — dimmed. A book the AI
+  places outside the series never gets a number.
+
+The header warns about duplicates and gaps ("2 duplicate numbers", "gap at 5"),
+so you can see whether the proposal hangs together before applying it.
+
+The spelling of the series name is left alone by default. To give every book the
+same spelling, tick **Change the series spelling on all of them** in the header.
+
+One thing to know: series and series number are fields the Kobo reads, so a
+synced device reloads the books even if you leave **Write to the files too**
+unticked. That box is unticked by default here — the files only need changing if
+you want a reader other than Colophon to see the series.
+
 ## 10. Managing authors
 
 Colophon keeps **one canonical entry per author**, so every book by the same

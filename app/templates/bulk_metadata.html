@@ -844,6 +844,32 @@
     </div>
 </div>
 
+{# ---- Order the series ---------------------------------------------------
+   Proposes reading-order indexes (and, where drifted, the series name)
+   for one or more series. Pure read until Apply; nothing is written
+   before that. #}
+<div id="seriesOrderModal" style="display:none; position:fixed; inset:0; z-index:1000; background:var(--modal-overlay); align-items:center; justify-content:center;">
+    <div class="modal-box" style="max-width:960px;">
+        <div class="modal-header-row">
+            <div class="spacer"></div>
+            <button type="button" class="modal-close-x" onclick="closeSeriesOrder()" title="{{ _('Close') }}">&times;</button>
+        </div>
+        <h2 style="margin-top:0;">{{ _('Order the series') }}</h2>
+        <div id="seriesOrderStatus" style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;"></div>
+        <div id="seriesOrderResults"></div>
+        <div id="seriesOrderNote" style="display:none; font-size:12px; color:var(--text-secondary); margin-top:12px;"></div>
+        <div class="modal-actions">
+            <label id="seriesOrderWriteWrap" class="lang-write-toggle" style="display:none;">
+                <input type="checkbox" id="seriesOrderWriteFiles">
+                <span id="seriesOrderWriteLabel"></span>
+            </label>
+            <div class="spacer"></div>
+            <button type="button" class="btn ghost" onclick="closeSeriesOrder()">{{ _('Close') }}</button>
+            <button type="button" class="btn primary" id="seriesOrderApply" onclick="applySeriesOrder()" disabled>{{ _('Apply') }}</button>
+        </div>
+    </div>
+</div>
+
 <div id="duplicatesModal" style="display:none; position:fixed; inset:0; z-index:1000; background:var(--modal-overlay); align-items:center; justify-content:center;">
     <div class="modal-box" style="max-width:1000px;">
         <div class="modal-header-row">
@@ -1237,6 +1263,32 @@
         languageConfidence: {{ _('Confidence')|tojson }},
         languageWriteFiles: {{ _('Write to the files too')|tojson }},
         languageReloadOnKobo: {{ _('reload on Kobo')|tojson }},
+        seriesOrderButton: {{ _('Order the series')|tojson }},
+        seriesOrderRunning: {{ _('Reading the series...')|tojson }},
+        seriesOrderFailed: {{ _('The proposal could not be made.')|tojson }},
+        seriesOrderNotConfigured: {{ _('No AI is configured in Settings.')|tojson }},
+        seriesOrderTooMany: {{ _('Too many books for one proposal (max 60).')|tojson }},
+        seriesOrderNoBooks: {{ _('No books to order.')|tojson }},
+        seriesOrderEmpty: {{ _('Nothing to change.')|tojson }},
+        seriesOrderStatusConfirmed: {{ _('Confirmed')|tojson }},
+        seriesOrderStatusAiOnly: {{ _('Suggested')|tojson }},
+        seriesOrderStatusConflict: {{ _('Differs from what is recorded')|tojson }},
+        seriesOrderStatusUnchanged: {{ _('Unchanged')|tojson }},
+        seriesOrderStatusNotInSeries: {{ _('Not in the series')|tojson }},
+        seriesOrderStatusUnknown: {{ _('No answer')|tojson }},
+        seriesOrderCurrent: {{ _('Recorded')|tojson }},
+        seriesOrderProposed: {{ _('Proposed')|tojson }},
+        seriesOrderDuplicates: {{ _('duplicate numbers')|tojson }},
+        seriesOrderGaps: {{ _('gap at')|tojson }},
+        seriesOrderSnapped: {{ _('Spelling follows the library.')|tojson }},
+        seriesOrderRenameAll: {{ _('Change the series spelling on all of them')|tojson }},
+        seriesOrderWikidata: {{ _('Wikidata')|tojson }},
+        seriesOrderFormats: {{ _('applies to N formats')|tojson }},
+        seriesOrderWriteFiles: {{ _('Write to the files too')|tojson }},
+        seriesOrderReloadOnKobo: {{ _('reload on Kobo')|tojson }},
+        seriesOrderKoboNote: {{ _('A series change reloads the book on a synced Kobo.')|tojson }},
+        seriesOrderUpdated: {{ _('books updated')|tojson }},
+        seriesOrderErrors: {{ _('could not be written')|tojson }},
         book: {{ _('Book')|tojson }},
         cancel: {{ _('Cancel')|tojson }},
         apply: {{ _('Apply')|tojson }},
@@ -1246,6 +1298,7 @@
 </script>
 <script src="{{ url_for('static', filename='js/core.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/series-view.js') }}?v={{ app_version }}"></script>
+<script src="{{ url_for('static', filename='js/series-order.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/selection.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/filters-sort-paging.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/batch.js') }}?v={{ app_version }}"></script>

@@ -244,6 +244,32 @@ laddas om.
 
 PDF- och MOBI-filer kan inte läsas och räknas i en fotnot.
 
+## 9d. Ordna serien
+
+I **Seriervyn** har varje seriekort knappen **Ordna serien**. Den frågar AI:n om
+hela serien på en gång — inte bok för bok — och stämmer av svaret mot Wikidata
+innan något visas.
+
+Varje rad visar vad som står idag, vad förslaget är, och hur säkert det är:
+
+- **Bekräftad** (grön) — AI och Wikidata säger samma sak. Förkryssad.
+- **Förslag** (gul) — bara AI:n. Förkryssad bara när den är säker.
+- **Avviker** (röd) — det står redan ett annat nummer. Aldrig förkryssad;
+  ett värde du själv satt skrivs inte över utan att du kryssar i raden.
+- **Oförändrad**, **Ingår inte i serien**, **Inget svar** — nedtonade. Böcker
+  som AI:n placerar utanför serien får aldrig ett nummer.
+
+Rubriken varnar för dubbletter och luckor ("2 dubblettindex", "lucka vid 5") så
+du ser om förslaget hänger ihop innan du tillämpar det.
+
+Serienamnets stavning rörs inte som standard. Vill du att alla böcker ska få
+samma stavning kryssar du **Byt seriestavning på alla** i rubriken.
+
+En sak att veta: serie och serienummer är fält som Kobon läser, så en synkad
+läsplatta laddar om böckerna även om du inte kryssar **Skriv även till filerna**.
+Rutan är avkryssad som standard här — filerna behöver bara ändras om du också
+vill att en annan läsare än Colophon ska se serien.
+
 ## 10. Hantera författare
 
 Colophon håller **en kanonisk post per författare**, så varje bok av samma person

@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.52.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.53.0.
 
 ## Författarmappar (v1.38.0 — byggt)
 
@@ -80,6 +80,7 @@ app/
     author_authority.py         # Author matching layers 1-3 as pure functions (no DB)
     author_resolver.py          # DB layer: links items, grows registry, cascade merge/rename
     author_authority_lookup.py  # Wikidata person lookup → QID/VIAF/LIBRIS anchoring
+    series_batch.py             # Series-order scenario: AI + Wikidata proposal, then apply
     duplicate_detector.py       # Fuzzy duplicate detection for the cleanup UI
     app_settings.py             # DB+env hybrid settings (DB wins, env fallback)
     upstream_sync.py            # rsync-based pull/push to upstream library (e.g. Komga NFS)
@@ -126,7 +127,7 @@ tests/                          # 30 pytest files: metadata_pipeline, calibre_me
                                 # metadata_merge, metadata_escalation, upload,
                                 # author_authority, author_resolver,
                                 # author_routes, author_lookup, reader_dict,
-                                # multi_author, author_folders
+                                # multi_author, author_folders, series_batch
 tools/
   install_calibre_plugins.sh    # Dockerfile build step: Goodreads, FF, FictionDB plugins
   install_kepubify.sh           # Dockerfile build step: kepubify binary for Kobo conversion
@@ -148,7 +149,8 @@ core.js                  # Bootstrap, shared state, i18n lookup (reads window.__
 filters-sort-paging.js   # Search, filters, sort, pagination
 selection.js             # Row selection + multi-select helpers
 shelf-view.js            # Gallery/shelf layout
-series-view.js           # Series grouping layout
+series-view.js           # Series grouping layout (+ the "Order the series" button)
+series-order.js          # Series-order review: one block per group, ticked rows only
 book-modal.js            # Single-book edit modal (large)
 batch.js                 # Batch wizard (large — bulk enrichment, AI, covers)
 bulk-result-modal.js     # Post-batch summary modal
@@ -219,6 +221,40 @@ label says how many books will reload. `test_language_only_db_change_still_
 stamps_content` pins it; if it ever goes red, someone removed `language`
 from that set and quietly stopped language fixes from reaching a reader.
 Series is in that set too, so steps 4–5 will meet the same thing.
+
+### Ordering a series (v1.53.0)
+
+The third scenario flow, and the first that asks the AI about a *set* of
+books rather than one. `ai_metadata.propose_series_order()` sends the whole
+group in one call — ids, titles, what the library already records — and gets
+back an index per book plus a `not_in_series` list. Sanitizing that answer is
+the load-bearing part, not the HTTP call: invented ids are dropped, repeated
+ids kept once, and an id the model put in **both** lists lands only in
+`not_in_series`, because the safest reading of "unsure" is to write no number
+at all. Ids it never mentioned come back as `unranked` and show as "No answer"
+rather than being silently treated as excluded.
+
+`services/series_batch.py` turns that into a reviewable proposal. Status per
+row, first match wins: `not_in_series` → `unknown` → `unchanged` → `conflict`
+→ `confirmed` → `ai_only`. **`conflict` deliberately outranks `confirmed`**:
+a number someone already entered is never pre-ticked away, even when Wikidata
+backs the new one — the row carries `wikidata_index` so the tooltip can say
+so, and the user decides. Only rows that reach the `confirmed`/`ai_only`
+branch cost a Wikidata round trip, and the lookups share a
+`_WIKIDATA_BUDGET_SECONDS` deadline (90 s) so a long series degrades to
+unconfirmed rows instead of hitting Gunicorn's 300 s timeout.
+
+Pre-ticking is the whole safety story and lives in `series-order.js`:
+`confirmed` ticked, `ai_only` ticked only at `high` confidence, everything
+else unticked, and `not_in_series`/`unknown` get no checkbox at all. A lone
+unconfirmed proposal is downgraded to `low` so it can never arrive pre-ticked.
+
+This flow meets invariant 3 head-on, like the language check: `series` and
+`series_index` are in `models._DEVICE_CONTENT_COLUMNS`, so a synced Kobo
+re-downloads the book even with "Write to the files too" unticked. The modal
+says so in a line under the table rather than pretending otherwise. The review
+component takes a **list** of groups (`groups: [...]`) even though step 4 only
+ever sends one — step 5 sends several, and the renderer already loops.
 
 ### Completeness traffic light (v1.52.0)
 

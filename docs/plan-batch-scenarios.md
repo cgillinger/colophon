@@ -453,6 +453,6 @@ Uppdatera raden när ett steg är klart, med version och commit.
 | 1 Stäng hålet | klar | 1.51.1 | 5325b35 |
 | 2 Inventering | klar | 1.52.0 | e16e9fc |
 | 3 Språkkontroll | klar | 1.52.0 | e16e9fc |
-| 4 Ordna serien | ej påbörjat | | |
+| 4 Ordna serien | klar | 1.53.0 | v1.53.0 |
 | 5 Författarens serier | ej påbörjat | | |
 | 6 Omslag för filtret | ej påbörjat | | |

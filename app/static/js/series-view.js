@@ -173,6 +173,7 @@
                 : '';
 
             var nameAttr = _seriesEsc(name);
+            var keyAttr = _seriesEsc(key);
             html += '<div class="series-card" data-series-name="' + nameAttr + '">'
                 + '<div class="series-card-cover">' + coverHtml + '</div>'
                 + '<div class="series-card-body">'
@@ -181,6 +182,8 @@
                 + _seriesEsc(books.length === 1 ? _i18n.bookSingular : _i18n.bookPlural)
                 + readBadge + '</div>'
                 + '<ul class="series-card-list">' + listHtml + '</ul>'
+                + '<button type="button" class="btn small so-card-btn" data-series-key="' + keyAttr + '">'
+                + _seriesEsc(_i18n.seriesOrderButton) + '</button>'
                 + '</div></div>';
         });
 
@@ -202,6 +205,31 @@
         container.innerHTML = html;
     }
     window.renderSeriesView = renderSeriesView;
+
+    /* "Order the series" button on a card: gather the item ids for that
+       series (matched via seriesKey, same normalisation as the grouping
+       above) and hand them to the series-order modal. Stops propagation
+       so the card's own click listener (below) doesn't also open the
+       series detail modal underneath it. */
+    document.addEventListener('click', function (ev) {
+        var btn = ev.target.closest && ev.target.closest('#seriesView .so-card-btn');
+        if (!btn) return;
+        ev.stopImmediatePropagation();
+        var key = btn.getAttribute('data-series-key') || '';
+        var card = btn.closest('.series-card');
+        var titleEl = card ? card.querySelector('.series-card-title') : null;
+        var displayName = titleEl ? titleEl.textContent.trim() : key;
+        // Same row set the card was built from: a book the active filter
+        // hides isn't on the card, so it shouldn't be in the proposal either.
+        var ids = Array.from(document.querySelectorAll('#bookTableBody tr'))
+            .filter(function (row) { return row.dataset.filterHiddenSansSeries !== '1'; })
+            .filter(function (row) { return window.seriesKey(row.dataset.series || '') === key; })
+            .map(function (row) { return row.dataset.itemId; })
+            .filter(Boolean);
+        if (typeof window.openSeriesOrder === 'function') {
+            window.openSeriesOrder(ids, displayName);
+        }
+    });
 
     /* Delegated click on a series card opens the series modal, OR opens
        the book modal directly for a standalone card. */

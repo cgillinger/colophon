@@ -2475,3 +2475,52 @@ def language_check_apply():
         cover_dir=current_app.config["COVER_DIR"],
     )
     return jsonify(result)
+
+
+# ---------------------------------------------------------------------------
+# Series order
+#
+# The third scenario: a group of books believed to share a series, put into
+# reading order. /propose only reads; /apply is the only thing that writes,
+# and only to the fields the user confirmed. See docs/plan-batch-scenarios.md.
+# ---------------------------------------------------------------------------
+
+
+@metadata_bp.route("/metadata/series/propose", methods=["POST"])
+def series_propose():
+    """Read-only: propose a series reading order for the selected books."""
+    from app.services.series_batch import build_series_proposal
+
+    payload = request.get_json(silent=True) or {}
+    item_ids = payload.get("item_ids") or []
+    items = LibraryItem.query.filter(LibraryItem.id.in_(item_ids)).all() if item_ids else []
+
+    representatives = {}
+    for item in items:
+        key = item.group_key or f"item:{item.id}"
+        if key not in representatives or item.id < representatives[key].id:
+            representatives[key] = item
+    group_items = list(representatives.values())
+
+    if not group_items:
+        return jsonify({"ok": False, "error": "no_books"}), 400
+
+    return jsonify(build_series_proposal(group_items))
+
+
+@metadata_bp.route("/metadata/series/apply", methods=["POST"])
+def series_apply():
+    """Write the series/series_index the user confirmed. Files only when asked."""
+    from app.services.series_batch import apply_series_changes
+
+    payload = request.get_json(silent=True) or {}
+    changes = payload.get("changes") or []
+    if not changes:
+        return jsonify({"ok": False, "error": "no_changes"}), 400
+
+    result = apply_series_changes(
+        changes,
+        write_files=bool(payload.get("write_files")),
+        cover_dir=current_app.config["COVER_DIR"],
+    )
+    return jsonify(result)

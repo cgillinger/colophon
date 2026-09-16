@@ -4719,3 +4719,62 @@
             font-size: 13px;
             color: var(--text-secondary);
         }
+
+        /* ---- Order the series ------------------------------------------
+           Same review-table language as the language check above, one
+           block per series group. Status colors reuse the theme's
+           --accent-green/--accent-yellow/--accent-red — no new variables. */
+        .so-group { margin-bottom: 22px; }
+        .so-group-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 8px;
+        }
+        .so-warnings { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+        .so-rename-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .so-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .so-table th {
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-secondary);
+            padding: 6px 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .so-table td {
+            padding: 8px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+        .so-table tr.so-dim { opacity: .55; }
+        .so-none { color: var(--text-secondary); }
+        .so-formats { font-size: 12px; color: var(--text-secondary); }
+        .so-status { font-size: 12px; font-weight: 600; white-space: nowrap; }
+        .so-status::before {
+            content: '';
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .so-confirmed::before    { background: var(--accent-green); }
+        .so-confirmed            { color: var(--accent-green); }
+        .so-ai-only::before      { background: var(--accent-yellow); }
+        .so-ai-only              { color: var(--accent-yellow); }
+        .so-conflict::before     { background: var(--accent-red); }
+        .so-conflict             { color: var(--accent-red); }
+        .so-unchanged::before,
+        .so-not-in-series::before,
+        .so-unknown::before      { background: var(--text-secondary); }
+        .so-unchanged,
+        .so-not-in-series,
+        .so-unknown              { color: var(--text-secondary); }

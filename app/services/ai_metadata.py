@@ -609,3 +609,175 @@ def adjudicate_author_names(name_a: str, name_b: str) -> dict:
         _log_usage(provider=_detect_provider(api_url), model=model, usage=usage)
 
     return {"ok": True, "verdict": verdict, "reason": reason}
+
+
+_SERIES_ORDER_PROMPT = """These books come from one e-book library and appear to belong to the same series. Put them in reading order.
+{hint}
+Books — id, title, and what the library currently records:
+{book_lines}
+{library_series}
+Rules:
+- Use the series' own volume numbering (the publisher's), not publication date, when the two disagree.
+- A book that does not belong to this series goes in "not_in_series" and gets no number. Omnibus editions, companion volumes outside the sequence, and other series' books belong there.
+- "confidence": "high" only when you recognise this specific book and its place in the sequence; "medium" when the order follows from the titles or from numbering already recorded; "low" when you are guessing.
+- "reason": one short sentence in English saying what the number rests on.
+- Do not invent books. Every id you return must be one of the ids above, and each id must appear exactly once — either in "books" or in "not_in_series".
+
+Respond with JSON only:
+{{"series_name": "<the series' name>", "books": [{{"id": <id>, "index": "<number as a string, e.g. 1 or 2.5>", "confidence": "high"|"medium"|"low", "reason": "<one sentence>"}}], "not_in_series": [<id>, ...]}}"""
+
+MAX_SERIES_BOOKS = 60
+
+
+def _series_order_book_line(book) -> str:
+    parts = [f"id={book.get('id')}"]
+    title = _ctx_clean(book.get("title"))
+    if title:
+        parts.append(f'"{title}"')
+    author = _ctx_clean(book.get("author"))
+    if author:
+        parts.append(author)
+    series = _ctx_clean(book.get("series"))
+    series_index = _ctx_clean(book.get("series_index"))
+    if series:
+        if series_index:
+            parts.append(f"recorded: {series} #{series_index}")
+        else:
+            parts.append(f"recorded: {series}")
+    published_date = _ctx_clean(book.get("published_date"))
+    if published_date:
+        parts.append(f"published: {published_date}")
+    file_name = _ctx_clean(book.get("file_name"))
+    if file_name:
+        parts.append(f"file: {file_name}")
+    return "- " + " | ".join(parts)
+
+
+def propose_series_order(books, series_hint=None, known_series=None) -> dict:
+    """Ask the AI to order a set of books believed to be the same series.
+
+    `books` is [{"id", "title", "author", "series", "series_index",
+    "published_date", "file_name"}, ...]. `known_series` is a dict of
+    normalized name -> library spelling, used to snap the model's series
+    name back to what the library already calls it.
+
+    Returns {"ok": True, "series_name": str, "series_name_snapped": bool,
+    "books": [{"id", "index", "confidence", "reason"}], "not_in_series":
+    [id], "unranked": [id]} or {"ok": False, "error": "..."}.
+
+    Sanitizing the model's answer matters more than the HTTP call: ids the
+    model invented are dropped, ids it repeated are kept once, and an id
+    the model placed in both lists lands only in "not_in_series" — the
+    safest reading, since it never puts a number on a book the model
+    itself was unsure belonged to the series.
+    """
+    if not books:
+        return {"ok": False, "error": "no_books"}
+    if len(books) > MAX_SERIES_BOOKS:
+        return {"ok": False, "error": "too_many"}
+    if not ai_is_configured():
+        return {"ok": False, "error": "not_configured"}
+
+    known_series = known_series or {}
+
+    hint = f'\nThe library calls this series "{series_hint}".\n' if series_hint else ""
+    book_lines = "\n".join(_series_order_book_line(b) for b in books)
+    if known_series:
+        names = "\n".join(f"- {name}" for name in list(known_series.values())[:60])
+        library_series = f"\nSeries names already used in this library:\n{names}\n"
+    else:
+        library_series = ""
+
+    api_url = (get_setting("AI_API_URL") or _DEFAULT_API_URL).strip()
+    api_key = (get_setting("AI_API_KEY") or "").strip()
+    model = (get_setting("AI_MODEL") or _DEFAULT_MODEL).strip()
+
+    payload = {
+        "model": model,
+        "messages": [{
+            "role": "user",
+            "content": _SERIES_ORDER_PROMPT.format(
+                hint=hint, book_lines=book_lines, library_series=library_series,
+            ),
+        }],
+        "response_format": {"type": "json_object"},
+    }
+
+    try:
+        resp = requests.post(api_url, json=payload,
+                             headers=_build_headers(api_key), timeout=60)
+    except requests.Timeout:
+        return {"ok": False, "error": "timeout"}
+    except requests.RequestException as exc:
+        logger.warning("AI series-order request error: %s", exc)
+        return {"ok": False, "error": "request_failed"}
+
+    if resp.status_code in (401, 403):
+        return {"ok": False, "error": "auth"}
+    if resp.status_code == 429:
+        return {"ok": False, "error": "rate_limit"}
+    if not resp.ok:
+        return {"ok": False, "error": "api_error"}
+
+    try:
+        body = resp.json()
+        parsed = json.loads(body["choices"][0]["message"]["content"])
+    except (KeyError, IndexError, json.JSONDecodeError, ValueError):
+        return {"ok": False, "error": "invalid_json"}
+
+    usage = body.get("usage", {})
+    if usage:
+        _log_usage(provider=_detect_provider(api_url), model=model, usage=usage)
+
+    input_ids = [b.get("id") for b in books]
+    input_id_set = set(input_ids)
+
+    series_name = str(parsed.get("series_name") or "").strip()
+    snapped = False
+    key = _norm_key(series_name)
+    if key in known_series:
+        series_name = known_series[key]
+        snapped = True
+
+    seen = set()
+    out_books = []
+    for entry in parsed.get("books") or []:
+        if not isinstance(entry, dict):
+            continue
+        book_id = entry.get("id")
+        if book_id not in input_id_set or book_id in seen:
+            continue
+        index = str(entry.get("index") if entry.get("index") is not None else "").strip()
+        if not index:
+            continue
+        confidence = entry.get("confidence")
+        if confidence not in ("high", "medium", "low"):
+            confidence = "low"
+        reason = str(entry.get("reason") or "")[:200]
+        seen.add(book_id)
+        out_books.append({
+            "id": book_id, "index": index,
+            "confidence": confidence, "reason": reason,
+        })
+
+    not_in_series = []
+    nis_seen = set()
+    for book_id in parsed.get("not_in_series") or []:
+        if book_id in input_id_set and book_id not in nis_seen:
+            not_in_series.append(book_id)
+            nis_seen.add(book_id)
+
+    nis_set = set(not_in_series)
+    out_books = [b for b in out_books if b["id"] not in nis_set]
+
+    ranked_ids = {b["id"] for b in out_books} | nis_set
+    unranked = [book_id for book_id in input_ids if book_id not in ranked_ids]
+
+    return {
+        "ok": True,
+        "series_name": series_name,
+        "series_name_snapped": snapped,
+        "books": out_books,
+        "not_in_series": not_in_series,
+        "unranked": unranked,
+    }
