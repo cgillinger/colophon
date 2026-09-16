@@ -439,7 +439,7 @@ Uppdatera raden när ett steg är klart, med version och commit.
 
 | Steg | Status | Version | Commit |
 |---|---|---|---|
-| 1 Stäng hålet | ej påbörjat | | |
+| 1 Stäng hålet | klar | 1.51.1 | 5325b35 |
 | 2 Inventering | ej påbörjat | | |
 | 3 Språkkontroll | ej påbörjat | | |
 | 4 Ordna serien | ej påbörjat | | |
