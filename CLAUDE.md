@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.50.1.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.51.0.
 
 ## Författarmappar (v1.38.0 — byggt)
 
@@ -195,6 +195,20 @@ Multiple formats of the same book (EPUB + MOBI + AZW3) share a `group_key` = SHA
 ### SSE streaming
 
 Both scan and bulk metadata use Server-Sent Events with background threads + `queue.SimpleQueue`. Single shared `_abort_event` for cancellation.
+
+### AI library context (v1.51.0)
+
+`fetch_ai_suggestions()` no longer sees one book in isolation. `build_library_context()`
+in `services/ai_metadata.py` adds three capped extracts to the prompt: the same
+author's other books (one per format group, most complete sibling), the series
+vocabulary in use (own author's first, then by frequency, with author so
+same-named series don't collide) and the subject vocabulary (by frequency). A
+suggested series that matches an existing one (casefold + whitespace) is
+**snapped to the library spelling and promoted to `high`**, so a batch AI run
+converges on one spelling instead of minting a new one per book. Subjects are
+only nudged via the prompt, never promoted. There is no series registry — the
+value still lives as free text on each row; merging already-divergent spellings
+is the deferred series-cleanup view in `docs/TODO.md`.
 
 ### Kobo delta sync (v1.48.0)
 

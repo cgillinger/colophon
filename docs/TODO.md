@@ -205,6 +205,27 @@ landed 588.
 **Scope:** small. Polish → PATCH. Not blocking — the reported "stale data after
 edit" bug is already fixed (v1.6.0); this is just exact scroll position.
 
+## Series + subject cleanup view (align spellings already in the library)
+
+**What:** v1.51.0 gave the AI library context so *new* suggestions converge
+on existing spellings. It does nothing for divergence that is already there
+("The Expanse" on four books, "Expanse" on three, "sci-fi" / "science fiction"
+/ "SF" across the library). Requested by a user who wants to "run this on all
+books at once to cleanup and align the whole library".
+
+**How:** same shape as `/authors`: a page that clusters near-duplicate
+`series` values (and subject terms) deterministically first — casefold,
+leading article, punctuation, "Series"/"#" suffixes, then fuzzy — shows the
+clusters with book counts, and lets the user pick the canonical spelling and
+apply it to every row in the cluster (one commit, `content_updated_at` not
+bumped unless the file is rewritten). AI as adjudicator only for the fuzzy
+tail, like `adjudicate_author_names()`. A real series registry (own table,
+FK, resolver) is the step after that, if series ever matter as much as
+authors do — not before.
+
+**Not in scope:** file/folder management driven by AI. Author folders exist
+(v1.38.0) and bulk moves/renames were deliberately deferred.
+
 ## Author authority control (canonical author registry)
 
 **What:** Reconcile author spellings to one canonical form per author, so the

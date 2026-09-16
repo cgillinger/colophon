@@ -39,7 +39,7 @@ File name: {file_name}
 
 The file name may contain series information (e.g. "SeriesName03 - Author - Title").
 Use this to infer series name and index if not available from other fields.
-
+{library_context}
 For publication_date, return the original release year (or "YYYY-MM" / "YYYY-MM-DD" if you are confident).
 Do not guess — return null if you don't know.
 
@@ -55,6 +55,158 @@ Return this JSON shape:
   "publisher": {{ "value": string|null, "confidence": "high"|"medium"|"low", "reason": string }},
   "publication_date": {{ "value": string|null, "confidence": "high"|"medium"|"low", "reason": string }}
 }}"""
+
+# --- Library context (v1.51.0) -------------------------------------------
+# The AI used to see one book at a time, so a bulk run produced N independent
+# spellings of the same series and three synonyms for every subject. These
+# three small extracts let it align with what the library already says.
+# They are capped so the block stays a few KB even on a large library, which
+# keeps short-context local models workable.
+_CTX_MAX_AUTHOR_BOOKS = 20
+_CTX_MAX_SERIES = 200
+_CTX_MAX_SUBJECTS = 200
+_CTX_MAX_STR = 120
+
+
+def _ctx_clean(value) -> str:
+    return " ".join(str(value or "").split())[:_CTX_MAX_STR]
+
+
+def _norm_key(value) -> str:
+    return " ".join(str(value or "").split()).casefold()
+
+
+def build_library_context(item, author_name=None) -> dict:
+    """Collect what the library already knows that is relevant to `item`.
+
+    Returns {"author_books": [...], "series": [...], "subjects": [...]}:
+      author_books — other books by the same author (one per format group),
+                     excluding the item itself and its own format siblings.
+      series       — distinct series names in use, each with one author;
+                     the item's own author's series are listed first.
+      subjects     — distinct subject/genre terms, most frequent first.
+
+    Pure read; never raises on an item without an author.
+    """
+    from app.models import db
+
+    author_name = author_name or getattr(item, "author", None) or ""
+    author_id = getattr(item, "author_id", None)
+    item_id = getattr(item, "id", None)
+    group_key = getattr(item, "group_key", None)
+
+    # -- same author's other books ----------------------------------------
+    author_books = []
+    if author_id is not None or author_name.strip():
+        q = LibraryItem.query
+        if author_id is not None:
+            q = q.filter(LibraryItem.author_id == author_id)
+        else:
+            q = q.filter(db.func.lower(LibraryItem.author) == author_name.strip().lower())
+        if item_id is not None:
+            q = q.filter(LibraryItem.id != item_id)
+        if group_key:
+            q = q.filter(db.or_(LibraryItem.group_key != group_key,
+                                LibraryItem.group_key.is_(None)))
+        # One row per format group; formats of the same book can carry
+        # different metadata, so keep the sibling that says the most.
+        best = {}
+        for other in q.all():
+            gk = other.group_key or f"id:{other.id}"
+            score = (bool(other.series), bool(other.genres), bool(other.series_index))
+            if gk not in best or score > best[gk][0]:
+                best[gk] = (score, other)
+
+        def _index_key(v):
+            try:
+                return (0, float(str(v or "").replace(",", ".")))
+            except ValueError:
+                return (1, str(v or ""))
+
+        ordered = sorted(
+            (o for _, o in best.values()),
+            key=lambda o: (_norm_key(o.series), _index_key(o.series_index),
+                           _norm_key(o.title)),
+        )
+        for other in ordered[:_CTX_MAX_AUTHOR_BOOKS]:
+            author_books.append({
+                "title": _ctx_clean(other.title),
+                "series": _ctx_clean(other.series),
+                "series_index": _ctx_clean(other.series_index),
+                "subjects": _ctx_clean(other.genres),
+            })
+
+    # -- series vocabulary --------------------------------------------------
+    rows = (
+        db.session.query(LibraryItem.series, LibraryItem.author)
+        .filter(LibraryItem.series.isnot(None), LibraryItem.series != "")
+        .all()
+    )
+    own_key = _norm_key(author_name)
+    by_series = {}
+    for series, author in rows:
+        key = _norm_key(series)
+        if not key:
+            continue
+        entry = by_series.setdefault(key, {"name": _ctx_clean(series),
+                                            "author": _ctx_clean(author),
+                                            "count": 0, "own": False})
+        entry["count"] += 1
+        if own_key and _norm_key(author) == own_key:
+            entry["own"] = True
+    series_list = sorted(by_series.values(),
+                         key=lambda e: (not e["own"], -e["count"], e["name"].casefold()))
+    series_list = [{"name": e["name"], "author": e["author"]}
+                   for e in series_list[:_CTX_MAX_SERIES]]
+
+    # -- subject vocabulary -------------------------------------------------
+    counts = {}
+    display = {}
+    for (genres,) in (db.session.query(LibraryItem.genres)
+                      .filter(LibraryItem.genres.isnot(None), LibraryItem.genres != "")
+                      .all()):
+        for term in str(genres).split(","):
+            key = _norm_key(term)
+            if not key:
+                continue
+            counts[key] = counts.get(key, 0) + 1
+            display.setdefault(key, _ctx_clean(term))
+    subjects = [display[k] for k, _ in
+                sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:_CTX_MAX_SUBJECTS]]
+
+    return {"author_books": author_books, "series": series_list, "subjects": subjects}
+
+
+def format_library_context(ctx: dict) -> str:
+    """Render build_library_context() output as a prompt block ('' if empty)."""
+    parts = []
+    if ctx.get("author_books"):
+        lines = []
+        for b in ctx["author_books"]:
+            line = f"- {b['title']}"
+            if b.get("series"):
+                idx = f", #{b['series_index']}" if b.get("series_index") else ""
+                line += f"  (series: {b['series']}{idx})"
+            if b.get("subjects"):
+                line += f"  [subjects: {b['subjects']}]"
+            lines.append(line)
+        parts.append("Other books by this author already in the library:\n" + "\n".join(lines))
+    if ctx.get("series"):
+        lines = [f"- {s['name']} — {s['author']}" if s.get("author") else f"- {s['name']}"
+                 for s in ctx["series"]]
+        parts.append("Series names already used in this library (with author):\n" + "\n".join(lines))
+    if ctx.get("subjects"):
+        parts.append("Subjects already used in this library:\n" + ", ".join(ctx["subjects"]))
+    if not parts:
+        return ""
+    rules = (
+        "Library alignment rules: if this book belongs to a series that already "
+        "exists in the library, use that exact spelling. Prefer existing subject "
+        "terms over new synonyms. A suggestion that matches an existing library "
+        "value is \"high\" confidence."
+    )
+    return "\n" + "\n\n".join(parts) + "\n\n" + rules + "\n"
+
 
 _KNOWN_FIELDS = {
     "series", "series_index", "language", "subjects",
@@ -184,14 +336,23 @@ def fetch_ai_suggestions(item: LibraryItem, fields=None, override_values=None) -
         ai_fields = None
         fields_instruction = ""
 
+    author_name = ov.get("author") or item.author or ""
+    try:
+        library_ctx = build_library_context(item, author_name=author_name)
+    except Exception as exc:  # context is an aid, never a blocker
+        logger.warning("Library context unavailable: %s", exc)
+        library_ctx = {}
+    known_series = {_norm_key(s["name"]): s["name"] for s in library_ctx.get("series", [])}
+
     prompt = _PROMPT.format(
         title=ov.get("title") or item.title or "",
-        authors=ov.get("author") or item.author or "",
+        authors=author_name,
         isbn=ov.get("isbn") or item.isbn or "",
         publisher=ov.get("publisher") or item.publisher or "",
         language=ov.get("language") or item.language or "",
         description=description,
         file_name=getattr(item, "file_name", "") or "",
+        library_context=format_library_context(library_ctx),
     )
     if fields_instruction:
         prompt = prompt.replace(
@@ -287,6 +448,10 @@ def fetch_ai_suggestions(item: LibraryItem, fields=None, override_values=None) -
                 "reason": reason,
             }
         else:
+            if field == "series" and _norm_key(value) in known_series:
+                # Snap to the library's spelling and make it apply in bulk.
+                value = known_series[_norm_key(value)]
+                confidence = "high"
             suggestions[field] = {
                 "value": str(value),
                 "confidence": confidence,
