@@ -205,6 +205,17 @@ landed 588.
 **Scope:** small. Polish → PATCH. Not blocking — the reported "stale data after
 edit" bug is already fixed (v1.6.0); this is just exact scroll position.
 
+## Delete the batch.js leftovers after step 6
+
+**What:** `app/static/js/batch.js` still carries the generic wizard (field
+picker, synopsis review, wizard steps) and `SHOW_LEGACY_BATCH` still gates
+its hidden entry point. Step 6 of
+[`docs/plan-batch-scenarios.md`](plan-batch-scenarios.md) is the last
+scenario that uses the old engine; once it ships, delete the rest of the
+wizard and the flag with it.
+
+**Scope:** small. Pure removal → PATCH.
+
 ## Series + subject cleanup view (align spellings already in the library)
 
 **What:** v1.51.0 gave the AI library context so *new* suggestions converge

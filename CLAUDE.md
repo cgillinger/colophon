@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.51.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.51.1.
 
 ## Författarmappar (v1.38.0 — byggt)
 
@@ -195,6 +195,26 @@ Multiple formats of the same book (EPUB + MOBI + AZW3) share a `group_key` = SHA
 ### SSE streaming
 
 Both scan and bulk metadata use Server-Sent Events with background threads + `queue.SimpleQueue`. Single shared `_abort_event` for cancellation.
+
+### Batch: preview before write (v1.51.1)
+
+The generic batch wizard used to write before the user saw anything:
+`bulk_stream` classified `auto_apply` and then ran
+`apply_metadata_to_item(write_to_file=True)` on every group member *before*
+emitting `book_done`, and a separate `action == "ai"` branch in
+`bulk_metadata` wrote every `high`-confidence AI field straight to file with
+no review at all. Both are gone. `bulk_stream` now takes **`dry_run=1`**:
+same classification, no `_apply`, `apply_details` is `None` — and the wizard
+always passes it. The writing path stays for the cover scenario, which is
+the one flow that still drives this engine directly.
+
+The wizard's own entry point is hidden behind `SHOW_LEGACY_BATCH`
+(`COLOPHON_SHOW_LEGACY_BATCH=1` brings it back), because a batch over N
+books with no shared fact is N independent reviews. It is being replaced by
+scenario flows — a series, an author's work, one deterministic field — per
+[`docs/plan-batch-scenarios.md`](docs/plan-batch-scenarios.md). Regression
+test: `tests/test_batch_dry_run.py`, whose control case must stay green, or
+a false-green dry-run test would hide a harness that never reaches `_apply`.
 
 ### AI library context (v1.51.0)
 

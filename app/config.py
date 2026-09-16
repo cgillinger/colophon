@@ -31,6 +31,13 @@ class Config:
     # e.g. COLOPHON_LIBRARY_OWNER="Christians bibliotek".
     LIBRARY_OWNER = os.environ.get("COLOPHON_LIBRARY_OWNER", "").strip()
 
+    # The generic batch wizard (pick N mixed books, pick fields, run) is being
+    # replaced by scenario flows that share one fact — see
+    # docs/plan-batch-scenarios.md. Its engine is still needed by the cover
+    # scenario, so the entry point is hidden rather than deleted. Default off;
+    # set COLOPHON_SHOW_LEGACY_BATCH=1 to get the old button back.
+    SHOW_LEGACY_BATCH = os.environ.get("COLOPHON_SHOW_LEGACY_BATCH", "0") == "1"
+
     SESSION_TYPE = "filesystem"
     SESSION_FILE_DIR = str(_VAR_DIR / "sessions")
     SESSION_PERMANENT = False

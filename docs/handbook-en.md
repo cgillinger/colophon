@@ -190,20 +190,19 @@ settings** first (Mistral, OpenAI, DeepSeek, or a local Ollama — see §17).
 
 ## 9. Doing many books at once: batch operations
 
-Select several books (tick them in Table, or multi-select) and open **Batch
-operations** to enrich them all in one run.
+**Being rebuilt.** The generic batch wizard — select N books, pick fields, run
+— is hidden for now. It wrote to your files before you had a chance to review
+the result, and reviewing N unrelated books in a row was never a sensible way
+to work anyway.
 
-1. **Choose what to fill** — e.g. *Basic info*, *Description*, and other field
-   groups. Tick only what you want touched.
-2. **Choose search depth** and whether to **overwrite** existing values, and a
-   **maximum** number of books for this run.
-3. **Run** — progress streams as it works; if it hits your maximum it stops and
-   tells you to run again for the next batch.
-4. **Review the summary** — a tidy report of what was saved and any files it
-   couldn't write back to.
+What replaces it is scenarios where the books share a fact: a series, an
+author's work, a field that can be settled for the whole selection at once.
+Each scenario shows you a proposal to review and tick before anything is
+saved, and writing to the e-book files themselves is a separate, visible
+choice.
 
-The same wizard can run cover lookups and AI across a selection. Batch
-operations change many books at once, so they always confirm before writing.
+In the meantime, enrich books one at a time from the book's own panel
+(section 6).
 
 ## 10. Managing authors
 

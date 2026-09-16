@@ -724,7 +724,6 @@ def bulk_metadata():
         overwrite = request.form.get("overwrite") == "1"
         only_missing = request.form.get("only_missing") == "1"
         max_items = get_int_form_value("max_items", 25, 1, 100)
-        action = request.form.get("action", "search")
 
         selected_items = []
 
@@ -750,183 +749,112 @@ def bulk_metadata():
             "processed": 0,
         }
 
-        if action == "ai":
-            if not ai_is_configured():
-                flash(
-                    _("AI is not configured. Open API settings and add an API key."),
-                    "error",
-                )
-            else:
-                processed_count = 0
+        from collections import OrderedDict
+        sync_groups = OrderedDict()
+        for item in selected_items:
+            key = item.group_key or f"_solo_{item.id}"
+            sync_groups.setdefault(key, []).append(item)
 
-                for item in selected_items:
-                    if processed_count >= max_items:
-                        summary["limited"] = True
-                        break
+        processed_count = 0
 
-                    if only_missing and item_has_good_metadata(item):
-                        summary["skipped"].append(
-                            {
-                                "title": item.title,
-                                "reason": _("Already has author, synopsis and cover."),
-                            }
-                        )
-                        continue
+        for group_key, group_items in sync_groups.items():
+            if processed_count >= max_items:
+                summary["limited"] = True
+                break
 
-                    processed_count += 1
-                    summary["processed"] = processed_count
+            processed_count += 1
+            summary["processed"] = processed_count
 
-                    result = fetch_ai_suggestions(item)
-                    if not result["ok"]:
-                        summary["no_match"].append({"title": item.title, "score": 0})
-                        continue
+            representative = _pick_search_representative(group_items)
+            formats = [_format_label(it) for it in group_items]
+            title_label = representative.title
+            if len(group_items) > 1:
+                title_label = f"{representative.title} ({', '.join(formats)})"
 
-                    high_fields = {
-                        k: v["value"]
-                        for k, v in result["suggestions"].items()
-                        if v.get("confidence") == "high"
-                        and v.get("value")
-                        and k not in _AI_DISPLAY_ONLY
+            # Use the priority-based search input (Phase 4)
+            search_inp = build_search_input(representative)
+
+            search_outcome = search_all_sources_with_status(
+                title=search_inp["title"],
+                author=search_inp["author"],
+                isbn=search_inp["isbn"],
+                query_text=search_inp["query_text"],
+                include_calibre=True,
+            )
+            candidates = search_outcome["candidates"]
+            source_results = search_outcome["source_results"]
+
+            # If all sources errored (not just "no result"), count separately
+            all_errored = all(
+                not sr.get("ok") and sr.get("status") not in ("no_result",)
+                for sr in source_results
+            )
+            if not candidates and all_errored:
+                summary["source_errors"] += 1
+                continue
+
+            scoring = choose_best_metadata_explained(representative, candidates)
+            best = scoring["best"]
+            classification = scoring["classification"]
+
+            if not best or classification == "no_match":
+                summary["no_match"].append(
+                    {
+                        "title": title_label,
+                        "score": scoring["score"],
                     }
-                    if not high_fields:
-                        summary["no_match"].append({"title": item.title, "score": 0})
-                        continue
-
-                    ai_apply = apply_metadata_to_item(
-                        item=item,
-                        result=high_fields,
-                        cover_dir=current_app.config["COVER_DIR"],
-                        overwrite=overwrite,
-                        write_to_file=True,
-                        selected_fields=set(high_fields.keys()),
-                    )
-                    if not ai_apply["file_updated"] and ai_apply.get("file_write_error"):
-                        summary["file_write_failed"] += 1
-                    summary["updated"].append(
-                        {
-                            "title": item.title,
-                            "source": "AI",
-                            "score": len(high_fields),
-                            "file_write_error": ai_apply.get("file_write_error"),
-                        }
-                    )
-
-                db.session.commit()
-                ai_parts = [_("Updated: %(count)d", count=len(summary["updated"]))]
-                if summary["file_write_failed"]:
-                    ai_parts.append(_("file write failed: %(count)d", count=summary["file_write_failed"]))
-                ai_parts += [
-                    _("no high-confidence suggestions: %(count)d", count=len(summary["no_match"])),
-                    _("skipped: %(count)d", count=len(summary["skipped"])),
-                ]
-                flash(_("AI run complete.") + " " + ", ".join(ai_parts) + ".", "success")
-        else:
-            from collections import OrderedDict
-            sync_groups = OrderedDict()
-            for item in selected_items:
-                key = item.group_key or f"_solo_{item.id}"
-                sync_groups.setdefault(key, []).append(item)
-
-            processed_count = 0
-
-            for group_key, group_items in sync_groups.items():
-                if processed_count >= max_items:
-                    summary["limited"] = True
-                    break
-
-                processed_count += 1
-                summary["processed"] = processed_count
-
-                representative = _pick_search_representative(group_items)
-                formats = [_format_label(it) for it in group_items]
-                title_label = representative.title
-                if len(group_items) > 1:
-                    title_label = f"{representative.title} ({', '.join(formats)})"
-
-                # Use the priority-based search input (Phase 4)
-                search_inp = build_search_input(representative)
-
-                search_outcome = search_all_sources_with_status(
-                    title=search_inp["title"],
-                    author=search_inp["author"],
-                    isbn=search_inp["isbn"],
-                    query_text=search_inp["query_text"],
-                    include_calibre=True,
                 )
-                candidates = search_outcome["candidates"]
-                source_results = search_outcome["source_results"]
+                continue
 
-                # If all sources errored (not just "no result"), count separately
-                all_errored = all(
-                    not sr.get("ok") and sr.get("status") not in ("no_result",)
-                    for sr in source_results
-                )
-                if not candidates and all_errored:
-                    summary["source_errors"] += 1
-                    continue
-
-                scoring = choose_best_metadata_explained(representative, candidates)
-                best = scoring["best"]
-                classification = scoring["classification"]
-
-                if not best or classification == "no_match":
-                    summary["no_match"].append(
-                        {
-                            "title": title_label,
-                            "score": scoring["score"],
-                        }
-                    )
-                    continue
-
-                if classification in ("review_needed", "manual_only"):
-                    # Medium-confidence match — flag for manual review, do not apply
-                    summary["review_needed"].append(
-                        {
-                            "title": title_label,
-                            "source": best.get("source", _("Unknown source")),
-                            "score": scoring["score"],
-                        }
-                    )
-                    continue
-
-                # classification == "auto_apply" — high confidence, apply to all
-                # group members so every format gets the same metadata.
-                file_write_error = None
-                for member in group_items:
-                    apply_result = apply_metadata_to_item(
-                        item=member,
-                        result=best,
-                        cover_dir=current_app.config["COVER_DIR"],
-                        overwrite=overwrite,
-                        write_to_file=True,
-                    )
-                    if not apply_result["file_updated"] and apply_result.get("file_write_error"):
-                        summary["file_write_failed"] += 1
-                        if member.id == representative.id:
-                            file_write_error = apply_result.get("file_write_error")
-
-                summary["updated"].append(
+            if classification in ("review_needed", "manual_only"):
+                # Medium-confidence match — flag for manual review, do not apply
+                summary["review_needed"].append(
                     {
                         "title": title_label,
                         "source": best.get("source", _("Unknown source")),
                         "score": scoring["score"],
-                        "file_write_error": file_write_error,
                     }
                 )
+                continue
 
-            db.session.commit()
-            parts = [_("Saved: %(count)d", count=len(summary["updated"]))]
-            if summary["review_needed"]:
-                parts.append(_("review recommended: %(count)d", count=len(summary["review_needed"])))
-            if summary["no_match"]:
-                parts.append(_("no secure match: %(count)d", count=len(summary["no_match"])))
-            if summary["source_errors"]:
-                parts.append(_("source errors: %(count)d", count=summary["source_errors"]))
-            if summary["file_write_failed"]:
-                parts.append(_("file write failed: %(count)d", count=summary["file_write_failed"]))
-            if summary["skipped"]:
-                parts.append(_("skipped: %(count)d", count=len(summary["skipped"])))
-            flash(_("Bulk update complete.") + " " + ", ".join(parts) + ".", "success")
+            # classification == "auto_apply" — high confidence, apply to all
+            # group members so every format gets the same metadata.
+            file_write_error = None
+            for member in group_items:
+                apply_result = apply_metadata_to_item(
+                    item=member,
+                    result=best,
+                    cover_dir=current_app.config["COVER_DIR"],
+                    overwrite=overwrite,
+                    write_to_file=True,
+                )
+                if not apply_result["file_updated"] and apply_result.get("file_write_error"):
+                    summary["file_write_failed"] += 1
+                    if member.id == representative.id:
+                        file_write_error = apply_result.get("file_write_error")
+
+            summary["updated"].append(
+                {
+                    "title": title_label,
+                    "source": best.get("source", _("Unknown source")),
+                    "score": scoring["score"],
+                    "file_write_error": file_write_error,
+                }
+            )
+
+        db.session.commit()
+        parts = [_("Saved: %(count)d", count=len(summary["updated"]))]
+        if summary["review_needed"]:
+            parts.append(_("review recommended: %(count)d", count=len(summary["review_needed"])))
+        if summary["no_match"]:
+            parts.append(_("no secure match: %(count)d", count=len(summary["no_match"])))
+        if summary["source_errors"]:
+            parts.append(_("source errors: %(count)d", count=summary["source_errors"]))
+        if summary["file_write_failed"]:
+            parts.append(_("file write failed: %(count)d", count=summary["file_write_failed"]))
+        if summary["skipped"]:
+            parts.append(_("skipped: %(count)d", count=len(summary["skipped"])))
+        flash(_("Bulk update complete.") + " " + ", ".join(parts) + ".", "success")
 
         items = items_q.order_by(LibraryItem.title.asc()).all()
 
@@ -1078,6 +1006,12 @@ def bulk_stream():
 
     raw_ids = request.args.get("item_ids", "")
     overwrite = request.args.get("overwrite", "0") == "1"
+
+    # Preview mode. Classify exactly as a real run would, but write nothing —
+    # not to the DB, not to the files. The review step is what applies. The
+    # writing path is kept for the cover scenario, which is the one flow that
+    # still drives this engine directly (docs/plan-batch-scenarios.md).
+    dry_run = request.args.get("dry_run", "0") == "1"
     max_items = _parse_int(request.args.get("max_items"), 25, 1, 100)
 
     # Optional fetch-mode override (fast|more|deep). When absent the pipeline
@@ -1298,21 +1232,22 @@ def bulk_stream():
                     # auto_apply: apply same metadata to every group member
                     classification = "auto_apply"
                     merged_payload = result.get("fetched_payload") or best
-                    for member in group_items:
-                        apply_result = _apply(
-                            item=member,
-                            result=merged_payload,
-                            cover_dir=cover_dir,
-                            overwrite=overwrite,
-                            write_to_file=True,
-                            smart_replace_fields=smart_replace_fields,
-                        )
-                        if member.id == representative.id:
-                            rep_apply_result = apply_result
-                        if not apply_result.get("file_updated") and apply_result.get("file_write_error"):
+                    if not dry_run:
+                        for member in group_items:
+                            apply_result = _apply(
+                                item=member,
+                                result=merged_payload,
+                                cover_dir=cover_dir,
+                                overwrite=overwrite,
+                                write_to_file=True,
+                                smart_replace_fields=smart_replace_fields,
+                            )
                             if member.id == representative.id:
-                                file_write_error = apply_result.get("file_write_error")
-                            summary["file_write_failed"] += 1
+                                rep_apply_result = apply_result
+                            if not apply_result.get("file_updated") and apply_result.get("file_write_error"):
+                                if member.id == representative.id:
+                                    file_write_error = apply_result.get("file_write_error")
+                                summary["file_write_failed"] += 1
                     summary["updated"] += 1
 
                 fetched_payload = result.get("fetched_payload") or {}

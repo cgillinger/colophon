@@ -826,9 +826,13 @@
 <!-- Sticky batch bar -->
 <div id="batchBar" class="batch-bar" style="display:none;">
     <span id="batchBarCount">{{ _('%(count)d books selected', count=0) }}</span>
+    {# Generic batch wizard: hidden while the scenario flows replace it.
+       Set COLOPHON_SHOW_LEGACY_BATCH=1 to bring the entry point back. #}
+    {% if config.SHOW_LEGACY_BATCH %}
     <button class="btn primary" type="button" onclick="openBatchModal()">
         <i class="ti ti-settings-2"></i> {{ _('Batch operations') }}
     </button>
+    {% endif %}
     <button class="btn ghost" type="button" onclick="deselectAll()">{{ _('Deselect') }}</button>
 </div>
 
@@ -983,8 +987,6 @@
         searchDone: {{ _('Metadata search done')|tojson }},
         sNoMatch: {{ _('{count} no match')|tojson }},
         sSourceError: {{ _('{count} source error')|tojson }},
-        runningAi: {{ _('Running AI search...')|tojson }},
-        runningAiSub: {{ _('Please wait, this may take a moment.')|tojson }},
         removeFromLibrary: {{ _('Remove from library')|tojson }},
         deleteEnterRADERA: {{ _('Type DELETE to confirm permanent deletion of files.\n\nLeave empty or Cancel for library-only removal.')|tojson }},
         errorWithMsg: {{ _('Error: {msg}')|tojson }},

@@ -1791,8 +1791,11 @@
         var maxItemsEl = document.getElementById('batchMaxItems');
         var maxItems = (maxItemsEl && maxItemsEl.value) || '25';
 
+        // dry_run: the stream previews only. Nothing is written until the
+        // user applies from the review step below.
         var url = '/metadata/bulk/stream?item_ids=' + itemIds.join(',')
             + '&max_items=' + maxItems
+            + '&dry_run=1'
             + '&mode=' + encodeURIComponent(_batchFetchModeSel);
 
         var body = document.getElementById('batchProgressBody');
@@ -2050,38 +2053,6 @@
         };
     }
 
-    function startBatchAI() {
-        var itemIds = _getBatchItemIds();
-        if (itemIds.length === 0) { alert(_i18n.chooseAtLeastOneBook); return; }
-
-        var overwrite = document.getElementById('batchOverwrite').checked ? '1' : '0';
-        var maxItems = document.getElementById('batchMaxItems').value || '25';
-
-        document.getElementById('batchActions').style.display = 'none';
-        document.getElementById('batchProgressTitle').textContent = _i18n.runningAi;
-        document.getElementById('batchProgressSub').textContent = _i18n.runningAiSub;
-        document.getElementById('batchProgress').style.display = 'block';
-        document.getElementById('batchProgressBody').innerHTML = '';
-        document.getElementById('batchResult').style.display = 'none';
-
-        var form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/metadata/bulk';
-        function _addHidden(name, value) {
-            var inp = document.createElement('input');
-            inp.type = 'hidden';
-            inp.name = name;
-            inp.value = value;
-            form.appendChild(inp);
-        }
-        _addHidden('action', 'ai');
-        _addHidden('overwrite', overwrite);
-        _addHidden('max_items', maxItems);
-        itemIds.forEach(function(id) { _addHidden('item_ids', id); });
-        document.body.appendChild(form);
-        form.submit();
-    }
-
     function confirmBatchDelete() {
         var itemIds = _getBatchItemIds();
         if (itemIds.length === 0) { alert(_i18n.chooseAtLeastOneBook); return; }
@@ -2218,7 +2189,6 @@
     window._hideBatchAbortBtn = _hideBatchAbortBtn;
     window._showBatchTerminalButtons = _showBatchTerminalButtons;
     window.startBatchSearch = startBatchSearch;
-    window.startBatchAI = startBatchAI;
     window.confirmBatchDelete = confirmBatchDelete;
     window._executeBatchDelete = _executeBatchDelete;
 })(window, document);

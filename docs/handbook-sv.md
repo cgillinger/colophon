@@ -198,20 +198,17 @@ AI är valfritt och körs bara när du ber om det. Konfigurera en leverantör i
 
 ## 9. Många böcker på en gång: batchåtgärder
 
-Markera flera böcker (kryssa dem i Tabell, eller flervalsmarkera) och öppna
-**Batchåtgärder** för att berika dem alla i en körning.
+**Under ombyggnad.** Den generiska batchguiden — markera N böcker, välj fält,
+kör — är tills vidare dold. Den skrev till filerna innan du hann granska
+resultatet, och att granska N obesläktade böcker i en följd var ändå inget
+vettigt arbetssätt.
 
-1. **Välj vad som ska fyllas** — t.ex. *Grundinfo*, *Beskrivning* och andra
-   fältgrupper. Kryssa bara det du vill röra.
-2. **Välj sökdjup** och om befintliga värden ska **skrivas över**, samt ett
-   **maxantal** böcker för körningen.
-3. **Kör** — förloppet strömmar medan det jobbar; når det ditt max stannar det
-   och säger åt dig att köra igen för nästa omgång.
-4. **Granska sammanfattningen** — en prydlig rapport över vad som sparades och
-   eventuella filer det inte kunde skriva tillbaka till.
+Det som ersätter den är scenarier där böckerna delar ett faktum: en serie, ett
+författarskap, ett fält som kan avgöras för hela urvalet på en gång. Varje
+scenario visar ett förslag som du får granska och kryssa i innan något sparas,
+och skrivning till själva e-boksfilerna är ett eget, synligt val.
 
-Samma guide kan köra omslagssökning och AI över ett urval. Batchåtgärder ändrar
-många böcker samtidigt, så de bekräftar alltid innan de skriver.
+Under tiden berikar du böcker en i taget från bokens egen ruta (avsnitt 6).
 
 ## 10. Hantera författare
 
