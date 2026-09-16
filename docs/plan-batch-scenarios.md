@@ -97,6 +97,17 @@ i samma commit (`app/version.py`, `README.md`, `CLAUDE.md`, se
 3. **`content_updated_at` stämplas av filskrivning, inte av DB-ändring.** Se
    `models.py:355–416`. Om ett steg ändrar DB utan fil ska Kobo *inte* ladda
    om. Verifiera med test, inte med resonemang.
+
+   **Rättelse (steg 3, v1.52.0):** detta gäller inte fält i
+   `models._DEVICE_CONTENT_COLUMNS`. De stämplar på DB-ändringen ensam,
+   utan filskrivning. `language` ligger där — och ska göra det, Kobon
+   väljer ordbok och avstavning därifrån. **`series` och `series_index`
+   ligger där också, så steg 4 och 5 möter samma sak:** att ordna en serie
+   får synkade läsplattor att ladda om böckerna även om ingen fil rörs.
+   Räkna med det i UI-texten i stället för att försöka undvika det, och
+   skriv inte om `_DEVICE_CONTENT_COLUMNS` — den är bärande för
+   Kobo-synken. Se `tests/test_language_check.py`
+   ::test_language_only_db_change_still_stamps_content.
 4. **Smal diff.** Ett scenario rör högst två fält. Aldrig titel, författare,
    ISBN, synopsis i batch.
 5. **JS-strängar går via `window.__colophonConfig.i18n`** i
@@ -440,8 +451,8 @@ Uppdatera raden när ett steg är klart, med version och commit.
 | Steg | Status | Version | Commit |
 |---|---|---|---|
 | 1 Stäng hålet | klar | 1.51.1 | 5325b35 |
-| 2 Inventering | ej påbörjat | | |
-| 3 Språkkontroll | ej påbörjat | | |
+| 2 Inventering | klar | 1.52.0 | e16e9fc |
+| 3 Språkkontroll | klar | 1.52.0 | e16e9fc |
 | 4 Ordna serien | ej påbörjat | | |
 | 5 Författarens serier | ej påbörjat | | |
 | 6 Omslag för filtret | ej påbörjat | | |
