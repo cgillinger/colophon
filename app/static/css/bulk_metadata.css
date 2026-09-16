@@ -4279,6 +4279,35 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
+        /* Card actions are text, not chips: a filled button reads as
+           furniture next to a cover and a thin card border. Muted until
+           you point at them — but never hidden, since a hover-reveal
+           does not exist on the iPad. */
+        .series-card-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-top: 12px;
+        }
+        .series-card-act {
+            background: none;
+            border: 0;
+            padding: 0;
+            font: inherit;
+            font-size: 12px;
+            line-height: 1.4;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: color .12s ease;
+        }
+        .series-card-act i { font-size: 14px; }
+        .series-card-act:hover,
+        .series-card-act:focus-visible { color: var(--accent-primary); }
+        .series-card-act:focus-visible { outline: none; text-decoration: underline; }
+
         #seriesView .series-standalone-header {
             grid-column: 1 / -1;
             font-size: 14px;

@@ -96,8 +96,20 @@
 
         rows.forEach(function (row) {
             var seriesRaw = (row.dataset.series || '').trim();
+            // .book-title may carry a "New" badge span; textContent would
+            // glue it to the title ("NewChildren of Memory"), so strip it
+            // off a clone rather than reading the cell raw. data-title is
+            // lowercased for searching and no good for display.
             var titleEl = row.querySelector('.book-title');
-            var title = titleEl ? titleEl.textContent.trim() : (row.dataset.title || '');
+            var title = '';
+            if (titleEl) {
+                var titleClone = titleEl.cloneNode(true);
+                Array.prototype.forEach.call(
+                    titleClone.querySelectorAll('.new-badge'),
+                    function (badge) { badge.remove(); }
+                );
+                title = titleClone.textContent.trim();
+            }
             var coverImg = row.querySelector('.cover img');
             var coverSrc = coverImg ? coverImg.getAttribute('src') : '';
             var itemId = row.dataset.itemId || '';
@@ -182,10 +194,12 @@
                 + _seriesEsc(books.length === 1 ? _i18n.bookSingular : _i18n.bookPlural)
                 + readBadge + '</div>'
                 + '<ul class="series-card-list">' + listHtml + '</ul>'
-                + '<button type="button" class="btn small so-card-btn" data-series-key="' + keyAttr + '">'
-                + _seriesEsc(_i18n.seriesOrderButton) + '</button>'
-                + '<button type="button" class="btn small sr-card-btn" data-series-key="' + keyAttr + '">'
-                + _seriesEsc(_i18n.seriesRenameButton) + '</button>'
+                + '<div class="series-card-actions">'
+                + '<button type="button" class="series-card-act so-card-btn" data-series-key="' + keyAttr + '">'
+                + '<i class="ti ti-list-numbers"></i>' + _seriesEsc(_i18n.seriesOrderButton) + '</button>'
+                + '<button type="button" class="series-card-act sr-card-btn" data-series-key="' + keyAttr + '">'
+                + '<i class="ti ti-pencil"></i>' + _seriesEsc(_i18n.seriesRenameButton) + '</button>'
+                + '</div>'
                 + '</div></div>';
         });
 
