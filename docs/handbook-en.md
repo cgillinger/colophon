@@ -223,149 +223,124 @@ provider's answer makes it visible.
 
 ## 9. Doing many books at once: batch operations
 
-The generic batch wizard — select N books, pick fields, run — is gone. It
-wrote to your files before you had a chance to review the result, and
-reviewing N unrelated books in a row was never a sensible way to work
-anyway.
+Colophon has no general batch function where you select a pile of books and
+let it write. Instead there are five **scenarios**, one for each kind of job
+where the books belong together: a series, an author, every book without a
+cover, and so on.
 
-What replaces it is scenarios where the books share a fact: a series, an
-author's work, a field that can be settled for the whole selection at once.
-Each scenario shows you a proposal to review and tick before anything is
-saved, and writing to the e-book files themselves is a separate, visible
-choice.
+All scenarios work the same way:
 
-The scenarios are 9c–9g. In the meantime, enrich books one at a time from
-the book's own panel (section 6).
+1. Colophon shows a proposal, row by row.
+2. You tick the rows you want. Nothing is saved until you press **Apply**.
+3. The **Write to the files too** checkbox decides whether the change also
+   goes into the e-book files themselves. The panel says how many books a
+   synced Kobo will reload.
+
+To enrich one book at a time, use the book's own panel, see section 6.
 
 ## 9b. Seeing what's missing
 
-Every book in the table view has a small dot beside its checkbox: **green**
-means the metadata is essentially complete, **amber** that something is
-missing, **red** that most of it is. Hover the dot to see which fields.
+Every book in the table view has a small dot beside its checkbox:
 
-Above the list you'll find how many books sit in each state. Click a number
-to filter down to them. The sort menu has **Least complete first** for when
-you want to work through them from the top.
+- **Green**: the metadata is essentially complete.
+- **Amber**: something is missing.
+- **Red**: most of it is missing.
 
-The dot weighs cover and synopsis heaviest, then genre, publication date,
-publisher and series. A one-sentence synopsis counts as missing — that's
-deliberate; a single line doesn't help you when you're browsing.
+Hover the dot to see which fields. Above the list are three counters, one
+per colour. Click one to filter the list to those books. The sort menu has
+**Least complete first**.
+
+Cover and synopsis weigh most, then genre, publication date, publisher and
+series. A one-sentence synopsis counts as missing.
 
 ## 9c. Checking language
 
 **Tools → Check language** reads the text inside every EPUB and compares it
-with the language recorded in the metadata. Only the books that disagree show
-up; the rest don't bother you.
+with the language recorded in the metadata. Only books where the language is
+missing or wrong are listed.
 
-Colophon samples two passages from inside the book, not from the start.
-Forewords and copyright pages are often in a different language than the
-book, and asking them gives the wrong answer. If the two passages disagree
-the book is flagged and left unticked — that one you want to look at
-yourself.
+Colophon reads two passages from inside the book, not from the start.
+Forewords and copyright pages are often in another language. If the two
+passages disagree, the book is marked amber and left unticked.
 
-Books with no language at all are pre-ticked; books where an existing value
-is contradicted are not, since someone may have set it deliberately. The
-**Write to the files too** checkbox is pre-ticked here, unlike elsewhere: the
-Kobo picks its dictionary and hyphenation from the language, so reaching the
-device is the whole point. The label tells you how many books will reload.
+- Books with no language are pre-ticked.
+- Books where an existing value is contradicted are unticked. Someone may
+  have set it on purpose.
+- **Write to the files too** is pre-ticked here, unlike the other scenarios.
+  The Kobo picks its dictionary and hyphenation from the language, so
+  reaching the device is the point.
 
-PDF and MOBI files can't be read and are counted in a footnote.
+PDF and MOBI cannot be read and are counted in a footnote.
 
 ## 9d. Ordering a series
 
-In the **Series** view every series card has an **Order the series** button. It
-asks the AI about the whole series at once — not book by book — and checks the
-answer against Wikidata before showing you anything.
+In the **Series** view every card has an **Order the series** button.
+Colophon asks the AI about the whole series in one go and checks the answer
+against Wikidata before you see anything.
 
-Each row shows what is recorded today, what is proposed, and how sure it is:
+The columns are **Now** and **Becomes**. Every row has a status:
 
-- **Confirmed** (green) — the AI and Wikidata agree. Pre-ticked.
-- **Suggested** (yellow) — the AI alone. Pre-ticked only when it is confident.
-- **Differs from what is recorded** (red) — another number is already there.
-  Never pre-ticked; a value you set yourself is not overwritten unless you tick
-  the row.
-- **Spelling only** (blue) — same series and same number, written differently
-  ("Children of time #03" → "Children of Time #3"). It has a checkbox but is
-  never pre-ticked: you decide whether a tidier spelling is worth a reload on
-  the Kobo.
-- **Unchanged**, **Not in the series**, **No answer** — dimmed, and with no
-  checkbox. Nothing would change, so there is nothing to tick. A book the AI
-  places outside the series never gets a number.
+- **Confirmed** (green): the AI and Wikidata agree. Pre-ticked.
+- **Suggested** (amber): the AI alone. Pre-ticked only when it is confident.
+- **Differs from what is recorded** (red): another number is already there.
+  Never pre-ticked. A value you set yourself is not overwritten unless you
+  tick the row.
+- **Spelling only** (blue): same series and number, written differently
+  ("#03" vs "#3"). Never pre-ticked.
+- **Unchanged**, **Not in the series**, **No answer**: dimmed, no checkbox. A
+  book the AI places outside the series never gets a number.
 
-The columns are **Now** and **Becomes**: the left is what the library records
-today, the right is what the row would become if you tick it.
+The header warns about duplicates and gaps ("2 duplicate numbers", "gap at
+5"). The spelling of the series name is left alone unless you tick **Change
+the series spelling on all of them** in the header.
 
-The header warns about duplicates and gaps ("2 duplicate numbers", "gap at 5"),
-so you can see whether the proposal hangs together before applying it.
-
-The spelling of the series name is left alone by default. To give every book the
-same spelling, tick **Change the series spelling on all of them** in the header.
-
-One thing to know: series and series number are fields the Kobo reads, so a
-synced device reloads the books even if you leave **Write to the files too**
-unticked. That box is unticked by default here — the files only need changing if
-you want a reader other than Colophon to see the series.
+Good to know: series and series number are fields the Kobo reads. A synced
+device reloads the books even if you leave **Write to the files too**
+unticked, which it is by default here.
 
 ## 9e. Ordering an author's series
 
-The same review, but across a whole body of work. Two ways in:
+The same review, for everything one author wrote. Reach it from the
+**Authors** page (the row's ⋯ menu → **Order series**) or from the blue bar at
+the top of the book view when you have filtered on an author.
 
-- On the **Authors** page, the **Order series** button on the author's row.
-- In the book view when you have filtered on an author, the button in the
-  blue bar at the top.
+The difference is that here the AI also decides *which* series exist. You
+get one block per series and a last block **Not in a series**. Those rows
+have no checkbox, so a standalone book cannot get a number by accident.
 
-The difference from **Order the series** is that here the AI also decides
-*which* series exist. You get one block per proposed series, and last a
-block **Not in a series** holding the books the AI places outside every
-series — and the ones it did not answer about. Those rows have no checkbox
-at all, so a standalone book cannot be given a number by accident.
+Each block is judged on its own. A series with a single book and no Wikidata
+confirmation never arrives pre-ticked. Books written with someone else are
+marked **co-written**.
 
-The status colours, the duplicate and gap warnings, and the write-to-files
-checkbox all work exactly as in **Order the series**. Each block is judged
-on its own: a series with a single book and no Wikidata confirmation never
-arrives pre-ticked, however sure the AI says it is.
-
-Books written with someone else are marked **co-written**. Colophon does
-not stop you, but the series is not this author's alone.
-
-The Wikidata cross-check has a 90-second budget for the whole proposal. An
-author with many series will not get everything confirmed within it — those
-rows show as **Suggested** rather than **Confirmed**. Nothing has gone
-wrong; you simply have less backing on the last rows.
+The Wikidata check may take at most 90 seconds for the whole proposal. For an
+author with many series, not everything gets confirmed in time. Those rows
+show as **Suggested** instead of **Confirmed**. Nothing is wrong; you just
+have less backing on the last rows.
 
 ## 9f. Renaming a series
 
-If a whole series turns out to be named wrong, the series card in the
-**Series** view has a **Rename** button. No AI involved — you type the name,
-every book on the card gets it, and each book keeps its own number.
+The **Rename** button on the series card in the **Series** view. No AI. You
+type the name, every book on the card gets it, and each book keeps its
+number. A card already gathers books whose series names differ only in
+spelling, so renaming fixes those variants at the same time.
 
-A series card already gathers books whose series names differ only in
-spelling, so renaming tidies those variants at the same time.
-
-**Write to the files too** is unticked by default. Note that the series name is
-a field the Kobo reads: the books reload on a synced device even if you leave
-the files alone.
+The series name is a field the Kobo reads, so the books reload on a synced
+device even if you leave the files alone.
 
 ## 9g. Fetching covers for a whole filter
 
-Click the **"N missing cover"** count below the list. The filter narrows to
-those books, and a row appears above the list: **Fetch covers for these**.
+Click the **N missing cover** count below the list. The filter narrows to
+those books, and a row appears above: **Fetch covers for these**.
 
-Colophon searches the whole filter — not just the page you can see — and
-shows the covers it found beside the empty slot each one would fill. Every
-proposal starts ticked, because nothing is being overwritten: these books
-have no cover. Untick what you don't want and press **Apply**.
+Colophon searches the whole filter, not just the page you can see, and shows
+each cover it found beside the empty slot. All are ticked to start with,
+since these books have no cover to lose. Untick what you don't want and press
+**Apply**.
 
-Nothing is saved while it searches. The covers are written one book at a
-time once you apply, and each takes a moment — the cover goes into the
-e-book file as well. Books no cover was found for are counted below the
-grid rather than shown as empty cards.
-
-One run takes at most 100 books. If the filter holds more, it says how many
-are left; run it again for the next round.
-
-A new cover makes the book reload on a synced Kobo — the panel says how
-many that is.
+Covers are written one at a time, into the e-book file as well, so each
+takes a moment. One run takes at most 100 books. If the filter holds more,
+it says how many are left. A new cover makes the book reload on a synced
+Kobo.
 
 ## 10. Managing authors
 
@@ -383,19 +358,14 @@ person is labelled identically — even when the files spell the name differentl
     them in one go. This is the fastest way to tidy up after a scan.
   - **Rename** or **Merge** — both cascade, relabelling every linked book in one
     sweep.
-  - **Verify** against Wikidata to anchor an author in public registers
-    (Wikidata, VIAF, LIBRIS). The **Authority** column stays empty until you do
-    — *confirming* a name does not fill it, that only says the spelling is
-    right. Tick several authors and use **Verify selected** to work through
-    them in one go; they are looked up one at a time, so it takes a moment.
-    The cell shows what Wikidata says the person is ("British science fiction
-    author"), so you can see whether the right person was found; the id itself
-    sits in the links' tooltips. Your own books are used to pick the right
-    person: when several share the name, the one credited with a title you
-    already hold wins, and when the name search finds nobody, Colophon
-    searches one of your titles instead and reads off who wrote it.
-    If it still picks the wrong one, **Remove authority link** is in the ⋯
-    menu.
+  - **Verify** against Wikidata. The **Authority** column then shows what
+    Wikidata says the person is ("British science fiction writer"), so you can
+    see whether the right person was found. *Confirming* a name does not fill
+    the column; it only says the spelling is right. Tick several and use
+    **Verify selected** to do them in one go. They are looked up one at a
+    time, so it takes a moment. When several people share the name, the one
+    credited with a book you already have wins. If it still picks the wrong
+    one, **Remove authority link** is in the ⋯ menu.
   - For likely-duplicate pairs, merge with one click, or **Ask AI** whether
     they're the same person.
 
@@ -483,10 +453,11 @@ progress percentage.
   ever moves **forward** — a quick "peek" on one device can't wipe how far you
   actually read on another. Status only moves forward too (a finished book stays
   finished); to re-read, use *Reset reading state*.
-- **Note:** exact-page sync works between Kobo readings of the same book; the
-  browser reader resumes by **percentage**, because a browser and a Kobo describe
-  positions in different ways. The technical details (and troubleshooting) live
-  in [`kobo-reading-state-sync.md`](kobo-reading-state-sync.md).
+- **Position syncs exactly** both ways: read a chapter in the browser, sync
+  the Kobo, and it opens on the same sentence. For PDFs, and for books never
+  sent to a Kobo, you land on the nearest chapter. Page numbers still differ
+  between devices, because each device paginates for its own screen.
+  Troubleshooting lives in [`kobo-reading-state-sync.md`](kobo-reading-state-sync.md).
 
 ## 14. Sharing a book (giving it away)
 
@@ -598,8 +569,8 @@ available → Reload** prompt appears — it never interrupts you mid-edit.
 
 ## 19. Language and theme
 
-- **Language** — switch **EN / SV** in the top bar at any time. (Adding a third
-  language is just a translation file — see the README.)
+- **Language** — switch **EN / SV** in the top bar at any time. Adding a
+  third language is described in the README.
 - **Theme** — the sun/moon button toggles **light / dark**. Your choice is
   remembered on the device.
 

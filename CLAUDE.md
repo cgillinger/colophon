@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.61.2.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.61.3.
 
 ## Författarmappar (v1.38.0 — byggt)
 
@@ -489,9 +489,9 @@ What survived the file: `_esc`, `_cleanDate`, `_applyFieldLabel`,
 modal and the bulk result modal still render fetch results. Regression
 test: `tests/test_batch_dry_run.py`, whose control case must stay green, or
 a false-green dry-run test would hide a harness that never reaches `_apply`.
-The wizard's CSS is still in `bulk_metadata.css`; some of it (`bp-*`,
-`cover-review-*`) is shared with the single-book modal and the cover
-scenario, so it was left rather than untangled.
+The wizard's CSS was removed in v1.61.0; the `bp-*` and `cover-review-*`
+rules that remain in `bulk_metadata.css` are shared with the single-book modal
+and the cover scenario.
 
 ### AI library context (v1.51.0)
 
@@ -715,7 +715,7 @@ Note: `Pillow` is in `requirements.txt` but was missing from an older local
 `.venv`, which silently *skipped* the cover tests instead of failing. If
 `tests/test_kobo_covers.py` reports skips, `pip install Pillow`.
 
-**Known pre-existing failures (as of v1.61.2):** a clean run is *790 passed, 10
+**Known pre-existing failures (as of v1.61.3):** a clean run is *790 passed, 10
 failed, 1 skipped*. The 10 are not regressions — `test_quality.py` (6) and
 `test_scoring.py` (3) assert Swedish reason/warning substrings the code now
 emits in English, and `test_scanner.py::...test_does_not_overwrite_manual_metadata`

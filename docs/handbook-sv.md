@@ -195,7 +195,7 @@ AI är valfritt och körs bara när du ber om det. Konfigurera en leverantör i
 - **AI-författarkoll** (på Författare-sidan) — för två namn som ser ut att vara
   samma person kan AI råda om de verkligen är det. Endast rådgivande — du
   bestämmer.
-- **Ordna serien** (på ett seriekort i Seriervyn) — frågar om hela serien på
+- **Ordna serien** (på ett seriekort i Serievyn) — frågar om hela serien på
   en gång och stämmer av mot Wikidata. Se §9d.
 - **Ordförklaring** (i läsaren) — markera ett ord och få veta vad det betyder
   just i den meningen. Se §12.
@@ -231,148 +231,125 @@ felmeddelandet när det går att se på leverantörens svar.
 
 ## 9. Många böcker på en gång: batchåtgärder
 
-Den generiska batchguiden — markera N böcker, välj fält, kör — finns inte
-längre. Den skrev till filerna innan du hann granska resultatet, och att
-granska N obesläktade böcker i en följd var ändå inget vettigt arbetssätt.
+Colophon har ingen allmän batchfunktion där du markerar en hög böcker och
+låter den skriva. I stället finns fem **scenarier**, ett för varje sorts
+jobb där böckerna hör ihop: en serie, en författare, alla böcker som saknar
+omslag, och så vidare.
 
-Det som ersätter den är scenarier där böckerna delar ett faktum: en serie, ett
-författarskap, ett fält som kan avgöras för hela urvalet på en gång. Varje
-scenario visar ett förslag som du får granska och kryssa i innan något sparas,
-och skrivning till själva e-boksfilerna är ett eget, synligt val.
+Alla scenarier fungerar likadant:
 
-Scenarierna finns i 9c–9g. Under tiden berikar du böcker en i taget från
-bokens egen ruta (avsnitt 6).
+1. Colophon visar ett förslag, rad för rad.
+2. Du kryssar i de rader du vill ha. Inget sparas förrän du trycker
+   **Tillämpa**.
+3. Kryssrutan **Skriv även till filerna** avgör om ändringen också går in i
+   själva e-boksfilerna. Rutan säger hur många böcker en synkad Kobo då
+   laddar om.
+
+Vill du bara berika en bok i taget gör du det från bokens egen ruta, se
+avsnitt 6.
 
 ## 9b. Se vad som saknas
 
-Varje bok i tabellvyn har en liten prick vid kryssrutan: **grön** betyder att
-metadatan är i stort sett komplett, **gul** att något fattas, **röd** att det
-mesta fattas. Håll muspekaren över pricken så står det vilka fält det gäller.
+Varje bok i tabellvyn har en liten prick vid kryssrutan:
 
-Ovanför listan står hur många böcker som ligger i varje läge. Klicka på en
-siffra för att filtrera fram just dem. I sorteringsmenyn finns
-**Mest ofullständig först** när du vill beta av dem uppifrån.
+- **Grön**: metadatan är i stort sett komplett.
+- **Gul**: något fattas.
+- **Röd**: det mesta fattas.
 
-Pricken väger omslag och synopsis tyngst, sedan genre, utgivningsdatum,
-förlag och serie. En synopsis på en enda mening räknas som saknad — det är
-avsiktligt, en rad text hjälper dig inte när du letar.
+Håll muspekaren över pricken så står det vilka fält som saknas. Ovanför
+listan finns tre räknare, en per färg. Klicka på en så filtreras listan till
+de böckerna. I sorteringsmenyn finns **Mest ofullständig först**.
+
+Omslag och synopsis väger tyngst, sedan genre, utgivningsdatum, förlag och
+serie. En synopsis på en enda mening räknas som saknad.
 
 ## 9c. Kontrollera språk
 
 **Verktyg → Kontrollera språk** läser texten i varje EPUB och jämför med det
-språk som står i metadatan. Bara böckerna som avviker visas — resten stör dig
-inte.
+språk som står i metadatan. Bara böcker där språket saknas eller är fel
+visas.
 
 Colophon läser två stycken en bit in i boken, inte från början. Förord och
-copyrightsidor är ofta på ett annat språk än boken, och att fråga dem ger fel
-svar. Om de två styckena inte är överens markeras boken och lämnas okryssad —
-den vill du titta på själv.
+copyrightsidor är ofta på ett annat språk än boken. Om de två styckena inte
+är överens markeras boken gul och lämnas okryssad.
 
-Böcker utan språk alls är förkryssade; böcker där ett befintligt värde
-motsägs är det inte, eftersom någon kan ha satt det med flit. Kryssrutan
-**Skriv även till filerna** är förkryssad här, till skillnad från andra
-ställen: Kobon väljer ordbok och avstavning utifrån språket, så det är själva
-poängen att ändringen når läsplattan. Texten säger hur många böcker som då
-laddas om.
+- Böcker utan språk är förkryssade.
+- Böcker där ett befintligt värde motsägs är okryssade. Någon kan ha satt
+  det med flit.
+- **Skriv även till filerna** är förkryssad här, till skillnad från andra
+  scenarier. Kobon väljer ordbok och avstavning utifrån språket, så det är
+  poängen att ändringen når läsplattan.
 
-PDF- och MOBI-filer kan inte läsas och räknas i en fotnot.
+PDF och MOBI kan inte läsas och räknas i en fotnot.
 
 ## 9d. Ordna serien
 
-I **Seriervyn** har varje seriekort knappen **Ordna serien**. Den frågar AI:n om
-hela serien på en gång — inte bok för bok — och stämmer av svaret mot Wikidata
-innan något visas.
+I **Serievyn** har varje seriekort knappen **Ordna serien**. Colophon frågar
+AI:n om hela serien på en gång och stämmer av svaret mot Wikidata innan du
+ser något.
 
-Varje rad visar vad som står idag, vad förslaget är, och hur säkert det är:
+Kolumnerna heter **Nu** och **Blir**. Varje rad har en status:
 
-- **Bekräftad** (grön) — AI och Wikidata säger samma sak. Förkryssad.
-- **Förslag** (gul) — bara AI:n. Förkryssad bara när den är säker.
-- **Avviker** (röd) — det står redan ett annat nummer. Aldrig förkryssad;
-  ett värde du själv satt skrivs inte över utan att du kryssar i raden.
-- **Endast stavning** (blå) — samma serie och samma nummer, men skrivet
-  annorlunda ("Children of time #03" → "Children of Time #3"). Kryssrutan
-  finns, men är aldrig förkryssad: det är du som avgör om en putsad
-  stavning är värd en omladdning på Kobon.
-- **Oförändrad**, **Ingår inte i serien**, **Inget svar** — nedtonade och
-  utan kryssruta. Ingenting skulle ändras, så det finns inget att kryssa i.
-  Böcker som AI:n placerar utanför serien får aldrig ett nummer.
+- **Bekräftad** (grön): AI och Wikidata säger samma sak. Förkryssad.
+- **Förslag** (gul): bara AI:n. Förkryssad bara när den är säker.
+- **Avviker** (röd): det står redan ett annat nummer. Aldrig förkryssad. Ett
+  värde du själv satt skrivs inte över utan att du kryssar i raden.
+- **Endast stavning** (blå): samma serie och nummer, men skrivet annorlunda
+  ("#03" mot "#3"). Aldrig förkryssad.
+- **Oförändrad**, **Ingår inte i serien**, **Inget svar**: nedtonade, utan
+  kryssruta. En bok som AI:n placerar utanför serien får aldrig ett nummer.
 
-Kolumnerna heter **Nu** och **Blir**: vänster är vad som står i biblioteket
-idag, höger är vad raden skulle få om du kryssar i den.
+Rubriken varnar för dubbletter och luckor ("2 dubblettindex", "lucka vid 5").
+Serienamnets stavning rörs inte om du inte kryssar **Byt seriestavning på
+alla** i rubriken.
 
-Rubriken varnar för dubbletter och luckor ("2 dubblettindex", "lucka vid 5") så
-du ser om förslaget hänger ihop innan du tillämpar det.
-
-Serienamnets stavning rörs inte som standard. Vill du att alla böcker ska få
-samma stavning kryssar du **Byt seriestavning på alla** i rubriken.
-
-En sak att veta: serie och serienummer är fält som Kobon läser, så en synkad
-läsplatta laddar om böckerna även om du inte kryssar **Skriv även till filerna**.
-Rutan är avkryssad som standard här — filerna behöver bara ändras om du också
-vill att en annan läsare än Colophon ska se serien.
+Bra att veta: serie och serienummer är fält som Kobon läser. En synkad
+läsplatta laddar om böckerna även om du låter **Skriv även till filerna**
+vara avkryssad, vilket den är som standard här.
 
 ## 9e. Ordna en författares serier
 
-Samma granskning som ovan, fast över ett helt författarskap. Du når den på
-två ställen:
+Samma granskning som ovan, men för allt en författare skrivit. Du når den
+från **Författare**-sidan (⋯-menyn på raden → **Ordna serier**) eller från
+den blå raden högst upp i bokvyn när du filtrerat på en författare.
 
-- På **Författare**-sidan, knappen **Ordna serier** på författarens rad.
-- I bokvyn när du filtrerat på en författare, knappen i den blå raden högst
-  upp.
+Skillnaden är att AI:n här också avgör *vilka* serier som finns. Du får ett
+block per serie och sist ett block **Ingår inte i någon serie**. Raderna där
+har ingen kryssruta, så en fristående bok kan inte få ett nummer av misstag.
 
-Skillnaden mot **Ordna serien** är att AI:n här också avgör *vilka* serier
-som finns. Du får ett block per föreslagen serie, och sist ett block
-**Ingår inte i någon serie** med de böcker som AI:n placerar utanför alla
-serier — och de böcker den inte svarade om. Raderna där har ingen kryssruta
-alls, så en fristående bok kan inte få ett nummer av misstag.
+Varje block bedöms för sig. En serie med bara en bok och ingen bekräftelse
+från Wikidata kommer aldrig förkryssad. Böcker skrivna tillsammans med någon
+annan märks **samförfattad**.
 
-Statusfärgerna, varningarna om dubbletter och luckor, och kryssrutan för
-filskrivning fungerar precis som i **Ordna serien**. Varje block bedöms för
-sig: en serie med bara en bok och ingen Wikidata-bekräftelse kommer aldrig
-förkryssad, även om AI:n säger sig vara säker.
-
-Böcker skrivna tillsammans med någon annan märks **samförfattad**. Colophon
-hindrar dig inte, men serien är inte den här författarens ensak.
-
-Wikidata-avstämningen har en tidsgräns på 90 sekunder för hela förslaget. En
-författare med många serier hinner inte få allt bekräftat — de raderna visas
-som **Förslag** i stället för **Bekräftad**. Inget går fel, du får bara
-mindre ryggstöd på de sista raderna.
+Wikidata-avstämningen får ta högst 90 sekunder för hela förslaget. Hos en
+författare med många serier hinner inte allt bekräftas. De raderna visas som
+**Förslag** i stället för **Bekräftad**. Inget är fel, du får bara mindre
+ryggstöd på de sista raderna.
 
 ## 9f. Byta namn på en serie
 
-Upptäcker du att en hel serie heter fel finns knappen **Byt namn** på
-seriekortet i **Seriervyn**. Ingen AI inblandad — du skriver namnet, alla
-böcker på kortet får det, och varje bok behåller sitt eget nummer.
+Knappen **Byt namn** på seriekortet i **Serievyn**. Ingen AI. Du skriver
+namnet, alla böcker på kortet får det, och varje bok behåller sitt nummer.
+Ett seriekort samlar redan böcker vars serienamn bara skiljer sig i stavning,
+så omdöpningen rättar de varianterna på köpet.
 
-Ett seriekort samlar redan böcker vars serienamn bara skiljer sig i
-stavning, så omdöpningen rättar sådana varianter på köpet.
-
-Kryssrutan **Skriv även till filerna** är avkryssad som standard. Tänk på
-att serienamnet är ett fält Kobon läser: böckerna laddas om på en synkad
+Serienamnet är ett fält Kobon läser, så böckerna laddas om på en synkad
 läsplatta även om du låter filerna vara.
 
 ## 9g. Hämta omslag för en hel filtrering
 
-Klicka på siffran **"N saknar omslag"** under listan. Filtret visar då bara
-de böckerna, och ovanför listan dyker en rad upp: **Hämta omslag för dessa**.
+Klicka på siffran **N saknar omslag** under listan. Filtret visar då bara de
+böckerna, och en rad dyker upp ovanför: **Hämta omslag för dessa**.
 
-Colophon söker igenom hela filtreringen — inte bara sidan du ser — och visar
-de omslag den hittade sida vid sida med den tomma platsen de skulle fylla.
-Alla förslag är ikryssade från början, eftersom ingenting skrivs över: de här
-böckerna har inget omslag. Kryssa ur det du inte vill ha och tryck
-**Tillämpa**.
+Colophon söker igenom hela filtreringen, inte bara sidan du ser, och visar
+varje hittat omslag bredvid den tomma platsen. Alla är ikryssade från början,
+eftersom de här böckerna inte har något omslag att förlora. Kryssa ur det du
+inte vill ha och tryck **Tillämpa**.
 
-Ingenting sparas under sökningen. Omslagen skrivs in ett i taget när du
-tillämpat, och det tar en stund per bok — omslaget läggs in i själva
-e-boksfilen också. Böcker som inget omslag hittades för räknas upp under
-rutan i stället för att visas som tomma kort.
-
-En körning tar högst 100 böcker. Har filtreringen fler står det hur många
-som återstår; kör igen så tar den nästa omgång.
-
-Ett nytt omslag får böckerna att laddas om på en synkad Kobo — det står i
-rutan hur många det gäller.
+Omslagen skrivs in ett i taget, in i e-boksfilen också, så det tar en stund
+per bok. En körning tar högst 100 böcker. Har filtreringen fler står det hur
+många som återstår. Ett nytt omslag får boken att laddas om på en synkad
+Kobo.
 
 ## 10. Hantera författare
 
@@ -390,18 +367,14 @@ märks likadant — även när filerna stavar namnet olika ("J.R.R. Tolkien" /
     bekräfta dem i ett svep. Snabbaste sättet att städa efter en skanning.
   - **Byt namn** eller **Slå ihop** — båda kaskaderar och märker om varje länkad
     bok i ett svep.
-  - **Verifiera** mot Wikidata för att förankra en författare i offentliga
-    register (Wikidata, VIAF, LIBRIS). Kolumnen **Auktoritet** är tom tills du
-    gör det — att *bekräfta* ett namn fyller den inte, det säger bara att
-    stavningen stämmer. Kryssa i flera författare och använd **Verifiera valda**
-    för att gå igenom dem i ett svep; de slås upp en i taget, så det tar en
-    stund. Cellen visar vad Wikidata säger att personen är ("brittisk
-    science fiction-författare"), så du ser om rätt person hittades; själva
-    id:t ligger i länkarnas verktygstips. Dina egna böcker används för att
-    peka ut rätt person: delar flera namnet vinner den som skrivit en titel
-    du redan har, och hittar namnsökningen ingen alls söker Colophon i
-    stället på en av dina titlar och läser av vem som skrev den. Blev det ändå fel finns **Ta bort auktoritetslänk**
-    i ⋯-menyn.
+  - **Verifiera** mot Wikidata. Kolumnen **Auktoritet** fylls då med vad
+    Wikidata säger att personen är ("brittisk science fiction-författare"),
+    så du ser om rätt person hittades. Att *bekräfta* ett namn fyller inte
+    kolumnen; det säger bara att stavningen stämmer. Kryssa i flera och
+    använd **Verifiera valda** för att ta dem i ett svep. De slås upp en i
+    taget, så det tar en stund. Delar flera personer namnet vinner den som
+    skrivit en bok du redan har. Blev det ändå fel finns **Ta bort
+    auktoritetslänk** i ⋯-menyn.
   - För troliga dubblettpar, slå ihop med ett klick, eller **Fråga AI** om de är
     samma person.
 
@@ -486,10 +459,12 @@ procentuell progress.
   bara **framåt** — en snabb "titt" på en enhet kan inte radera hur långt du
   faktiskt läst på en annan. Status rör sig bara framåt också (en läst bok förblir
   läst); för att läsa om, använd *Återställ läsläge*.
-- **Obs:** exakt sidsynk fungerar mellan Kobo-läsningar av samma bok;
-  webbläsarläsaren återupptar på **procent**, eftersom en webbläsare och en Kobo
-  beskriver positioner på olika sätt. De tekniska detaljerna (och felsökning)
-  finns i [`kobo-reading-state-sync.md`](kobo-reading-state-sync.md).
+- **Positionen synkar exakt** åt båda håll: läs ett kapitel i webbläsaren,
+  synka Kobon, och den öppnar på samma mening. För PDF, och för böcker som
+  aldrig skickats till en Kobo, hamnar du på närmaste kapitel. Sidnumret
+  skiljer sig ändå mellan enheter, eftersom varje enhet delar upp texten i
+  sidor för sin egen skärm. Felsökning finns i
+  [`kobo-reading-state-sync.md`](kobo-reading-state-sync.md).
 
 ## 14. Dela en bok (ge bort den)
 
@@ -604,8 +579,8 @@ tillgänglig → Ladda om**-prompt — den avbryter dig aldrig mitt i en rediger
 
 ## 19. Språk och tema
 
-- **Språk** — växla **EN / SV** i topbaren när du vill. (Att lägga till ett tredje
-  språk är bara en översättningsfil — se README.)
+- **Språk** — växla **EN / SV** i topbaren när du vill. Hur man lägger till
+  ett tredje språk står i README.
 - **Tema** — sol/måne-knappen växlar **ljus / mörk**. Ditt val sparas på enheten.
 
 ## 20. Ordlista
