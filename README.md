@@ -4,7 +4,7 @@
 
 **Colophon** is a self-hosted web app that turns a folder of e-book files into a clean, browsable library and syncs it to a Kobo e-reader over WiFi.
 
-It scans your books (EPUB, MOBI, AZW3, KEPUB, PDF, CBZ, CBR), fills in metadata from seven sources, finds covers, keeps series and authors tidy with an AI that only ever proposes, reads books in the browser, and syncs the lot to a Kobo.
+It scans your books (EPUB, MOBI, AZW3, KEPUB, PDF, CBZ, CBR), fills in metadata from seven sources, finds covers, reads books in the browser, and syncs the lot to a Kobo. What sets it apart is an AI that works as a cataloguing assistant, ordering series and tidying authors, and that only ever proposes. You approve every change.
 
 One Docker container, MIT licence, no telemetry. It is a personal project built for my own library and shared in case it helps someone else. Think of it as a lighter alternative to Calibre and Calibre-Web. Because it writes metadata back into the files, it also works well alongside Komga, Kavita and other servers that read embedded metadata.
 
@@ -72,7 +72,7 @@ If you've searched for any of these, Colophon is aimed at you:
 - **Wireless Kobo sync for a self-hosted library** — point a Kobo at your own catalogue instead of the Kobo store, and get covers, downloads and reading-progress sync over WiFi. No cable after setup.
 - **A metadata front-end for Komga or Kavita** — Colophon writes metadata *back into the files*, so the server you already run picks up the same titles, authors, series and covers.
 - **An in-browser reader** (EPUB, MOBI, AZW3, PDF) with reading progress that syncs to and from your Kobo, and word lookup backed by open-source dictionaries.
-- **AI-assisted cataloguing.** Order a whole series, or everything one author wrote, in one reviewed pass checked against Wikidata. Get metadata suggestions that use the spellings already in your library. Ask whether two author spellings are the same person. The AI only proposes; nothing is written until you tick the rows. See [AI as a librarian's assistant](#ai-as-a-librarians-assistant).
+- **AI-assisted cataloguing.** This is the part I have not found in any other self-hosted book server. Order a whole series, or everything one author wrote, in one reviewed pass checked against Wikidata. Get metadata suggestions that use the spellings already in your library. Ask whether two author spellings are the same person. The AI only proposes; nothing is written until you tick the rows. See [AI as a librarian's assistant](#ai-as-a-librarians-assistant).
 - **An AI that helps you read.** Select a difficult word and get a definition, a translation, and an explanation of what the word means in that sentence. Useful in a second language and for older books.
 - **Your choice of engine.** Any OpenAI-compatible provider, or a local Ollama so no book data leaves your machine. Everything works without a key; the AI features simply stay off.
 
@@ -203,9 +203,10 @@ Colophon queries these in a progressive flow and merges the results **field by f
 
 ## AI as a librarian's assistant
 
-Colophon can use an AI model as a cataloguing assistant for the things the
-metadata databases are worst at, series above all. It is optional, and it
-follows one rule: **the AI proposes, you decide.** Every suggestion lands in a
+As far as I know, no other self-hosted book server does this. Colophon uses an
+AI model as a cataloguing assistant for the things the metadata databases are
+worst at, series above all. It is optional, and it follows one rule: **the AI
+proposes, you decide.** Every suggestion lands in a
 review screen where you tick rows and fields. Nothing is written to your
 library or your files on the AI's say-so.
 
