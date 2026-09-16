@@ -183,8 +183,27 @@ AI är valfritt och körs bara när du ber om det. Konfigurera en leverantör i
 - **AI-författarkoll** (på Författare-sidan) — för två namn som ser ut att vara
   samma person kan AI råda om de verkligen är det. Endast rådgivande — du
   bestämmer.
+- **Ordna serien** (på ett seriekort i Seriervyn) — frågar om hela serien på
+  en gång och stämmer av mot Wikidata. Se §9d.
+- **Ordförklaring** (i läsaren) — markera ett ord och få veta vad det betyder
+  just i den meningen. Se §12.
 - **Användningsstatistik** — *AI-inställningar* visar hur många tokens du
   förbrukat, så inga överraskningar på en mätt plan.
+
+### Om modellen slutar svara
+
+Alla modeller ingår inte i en leverantörs gratisplan, och en modell som inte
+gör det svarar med samma felkod som när man har skickat för många frågor. Det
+ser alltså ut som att din kvot är slut när den i själva verket är orörd.
+
+Hos Mistral gällde i september 2026 att `ministral`-modellerna svarar på
+gratisplanen medan `mistral-small`, `mistral-medium` och `magistral-small`
+inte gör det. Colophon använder `ministral-14b-latest` som standard, den
+största som svarar. Leverantörer ändrar det här då och då.
+
+Slutar AI-funktionerna fungera: prova en annan modell under
+**AI-inställningar** innan du letar efter förbrukning. Colophon säger det i
+felmeddelandet när det går att se på leverantörens svar.
 
 ## 8. Omslag
 

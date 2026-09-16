@@ -175,8 +175,27 @@ settings** first (Mistral, OpenAI, DeepSeek, or a local Ollama — see §17).
   approve.
 - **AI author check** (on the Authors page) — for two names that look like the
   same person, AI can advise whether they really are. Advisory only — you decide.
+- **Order the series** (on a series card in the Series view) — asks about the
+  whole series at once and checks it against Wikidata. See §9d.
+- **Word lookup** (in the reader) — select a word and see what it means in that
+  exact sentence. See §12.
 - **Usage stats** — *AI settings* shows how many tokens you've spent, so there
   are no surprises on a metered plan.
+
+### When the model stops answering
+
+Not every model is included in a provider's free plan, and one that isn't
+answers with the same error code as sending too many requests. So it looks as
+if your quota is gone when it has not been touched at all.
+
+With Mistral, as of September 2026, the `ministral` models answer on the free
+plan while `mistral-small`, `mistral-medium` and `magistral-small` do not.
+Colophon defaults to `ministral-14b-latest`, the largest that answers.
+Providers change this from time to time.
+
+If the AI features stop working, try another model under **AI settings**
+before looking for usage. Colophon says so in the error message whenever the
+provider's answer makes it visible.
 
 ## 8. Covers
 
