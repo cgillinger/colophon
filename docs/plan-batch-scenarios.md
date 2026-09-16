@@ -25,9 +25,10 @@ kod. Varje steg är en egen session; avsluta sessionen när steget är klart.
   göra innan du gör det. Rapportera resultat, inte process.
 - **Kör inte hela testsviten efter varje ändring.** Kör den fil som täcker
   steget. Hela sviten en gång per steg, innan commit.
-- **Kända röda tester:** en ren körning är *639 passed, 10 failed*
+- **Kända röda tester:** samma 10 genom hela planen
   (`test_quality.py` 6, `test_scoring.py` 3, `test_scanner.py` 1, se
-  `CLAUDE.md`). "Samma 10" är grönt. Försök inte laga dem.
+  `CLAUDE.md`). "Samma 10" är grönt. Försök inte laga dem. Antalet gröna
+  växer per steg: 639 när planen skrevs, 716 efter steg 4.
 
 ### 1.2 Vad du är bra på och vad du ska akta dig för
 
@@ -454,5 +455,55 @@ Uppdatera raden när ett steg är klart, med version och commit.
 | 2 Inventering | klar | 1.52.0 | e16e9fc |
 | 3 Språkkontroll | klar | 1.52.0 | e16e9fc |
 | 4 Ordna serien | klar | 1.53.0 | v1.53.0 |
+| — AI-felhantering (utanför planen) | klar | 1.53.1–1.53.2 | v1.53.2 |
 | 5 Författarens serier | ej påbörjat | | |
 | 6 Omslag för filtret | ej påbörjat | | |
+
+### Vad steg 4 lämnade efter sig
+
+Byggt: `services/series_batch.py` (`build_series_proposal`,
+`apply_series_changes`), `ai_metadata.propose_series_order`, routerna
+`POST /metadata/series/propose` och `/apply`, `static/js/series-order.js`,
+knappen på seriekortet, `tests/test_series_batch.py` (19 tester).
+Arkitekturstycke i `CLAUDE.md`, handboksavsnitt 9d i sv + en.
+
+Steg 5 ärver detta och behöver veta:
+
+- **Granskningskomponenten tar redan en lista av grupper.** `series-order.js`
+  loopar över `groups: [...]` och antar ingenstans att det bara finns en.
+  Steg 5 behöver alltså inte röra renderingen, bara skicka fler grupper.
+  `window.openSeriesOrder(itemIds, seriesName)` är ingången; för steg 5
+  behövs en variant som postar till `propose-author` i stället.
+- **Statuslogiken ligger i `build_series_proposal` och är gemensam.** Bryt ut
+  den per-grupp-delen i stället för att kopiera den till
+  `build_author_proposal`. Prioritetsordningen är bindande:
+  `not_in_series` → `unknown` → `unchanged` → `conflict` → `confirmed` →
+  `ai_only`, där `conflict` medvetet går före `confirmed`.
+- **`co_authored` finns redan som fält i radkontraktet** och sätts hårt till
+  `False` i steg 4. Steg 5 fyller det på riktigt.
+- **Wikidata-uppslagen delar en tidsbudget** (`_WIKIDATA_BUDGET_SECONDS`,
+  90 s) eftersom propose är en blockerande POST. En författare med många
+  serier träffar det taket långt före en enskild serie gör det — överväg SSE
+  i steg 5, eller acceptera att fler rader blir `ai_only`.
+- **Apply återanvänds oförändrad** (`/metadata/series/apply`), inklusive
+  fan-out till formatsyskon.
+
+### AI-provider: en fälla som kostade tid i steg 4
+
+Mistrals gratisplan innehåller inte längre `mistral-*`-chattmodellerna. De
+svarar **429 med taket noll**, alltså samma statuskod som verklig strypning,
+medan `ministral-*` svarar normalt. Det ser ut som slut kvot fast kontot är
+orört, och skickar felsökningen åt fel håll.
+
+Åtgärdat i v1.53.1–1.53.2: `_rate_limit_error` läser `Retry-After` och
+`x-ratelimit-limit-req-minute`, felkoden bär `retry_after`, `quota` och
+`allowance_zero`, samma fyra texter visas på alla fem AI-ytor, och
+standardmodellen är `ministral-14b-latest`. `tests/test_ai_rate_limit.py`
+pinnar tolkningen.
+
+**Före steg 5:** kontrollera att AI faktiskt svarar innan du felsöker en
+prompt. `.venv/bin/python -m pytest tests/test_ai_rate_limit.py -q` säger
+inget om kontot — kör i stället ett riktigt anrop mot devinstansen. De två
+produktionsinstanserna på server2 stod kvar på `mistral-small-latest` när
+steg 4 avslutades; det byts i Inställningar → AI och är användarens beslut,
+inte planens.
