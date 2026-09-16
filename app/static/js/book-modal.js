@@ -7,7 +7,7 @@
  * cover search/apply, save, delete-from-modal, and the modal feedback
  * helpers.
  *
- * Reads from window.* helpers exposed by batch.js:
+ * Reads from window.* helpers owned by core.js:
  *   _esc, _cleanDate, _applyFieldLabel, _resultLabel, _resultTooltip
  *
  * Window-mirrored state (bulk-result-modal.js reads these):

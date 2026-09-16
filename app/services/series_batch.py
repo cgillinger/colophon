@@ -538,6 +538,12 @@ def apply_series_changes(changes, write_files=False, cover_dir=None):
     selected_fields={"series", "series_index"} — nothing else may ride
     along. A missing/None series_index is sent as an empty string rather
     than crashing the writer.
+
+    A number with no series to number is refused here, not merely withheld
+    in the UI: the review screen gives a standalone book no checkbox at all,
+    but that is the browser's promise, and this is the only place that can
+    keep it. Such a change is reported as "index_without_series" and its row
+    is left untouched; the rest of the call is applied as normal.
     """
     from app.models import LibraryItem, db
     from app.services.metadata_writer import apply_metadata_to_item
@@ -554,6 +560,12 @@ def apply_series_changes(changes, write_files=False, cover_dir=None):
 
         series = change.get("series") or ""
         series_index = change.get("series_index") or ""
+
+        # str() because JSON hands us 3 as readily as "3", and a bare
+        # .strip() on an int is a 500 on a guard that exists to prevent one.
+        if not str(series).strip() and str(series_index).strip():
+            errors.append({"item_id": item.id, "error": "index_without_series"})
+            continue
 
         siblings = [item]
         if item.group_key:

@@ -20,7 +20,7 @@
  *   toggleTheme, setViewMode, setDensity, _syncDensityRadios,
  *   setSkriptorium, isSkriptoriumOn, applyViewMode, setLanguage,
  *   _pluralize, and the shared display helpers _esc / _cleanDate /
- *   _applyFieldLabel / _resultLabel / _resultTooltip (from batch.js)
+ *   _applyFieldLabel / _resultLabel / _resultTooltip, which this file owns
  * ------------------------------------------------------------------ */
 (function (window, document) {
     'use strict';
@@ -262,9 +262,10 @@
     window._pluralize = _pluralize;
 
     /* ---- Shared metadata display helpers -------------------------- *
-     * These lived in batch.js, which the scenario flows replaced. The
-     * book modal and the bulk result modal still render fetch results,
-     * so the label and escaping helpers outlived the wizard.
+     * Owned here, and here only. They came over when the batch wizard was
+     * deleted in v1.61.0: the book modal and the result modal still render
+     * fetch results, so the label and escaping helpers outlived it.
+     * Anything that needs them reads window._esc and friends.
      * ---------------------------------------------------------------- */
 
     function _esc(str) {

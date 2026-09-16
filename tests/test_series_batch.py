@@ -579,6 +579,39 @@ def test_apply_series_changes_handles_blank_index(app):
     assert kwargs["result"]["series_index"] == ""
 
 
+def test_apply_refuses_an_index_without_a_series(app):
+    """A number with no series to number is nonsense, and the server says so.
+
+    The review UI never offers a checkbox for a book the AI places outside
+    every series, so this can only arrive from a hand-made request or a
+    future caller that forgets the rule. Trusting the browser to enforce it
+    is the kind of guard that holds until the day it doesn't.
+    """
+    standalone = _add(title="Ensam bok", series=None, series_index=None)
+    normal = _add(title="Kråkflickan")
+
+    with patch("app.services.metadata_writer.apply_metadata_to_item") as writer:
+        writer.return_value = {"file_updated": False, "file_write_error": None}
+        result = apply_series_changes(
+            [
+                {"item_id": standalone.id, "series": "", "series_index": "4"},
+                {"item_id": normal.id, "series": "Kråkflickan", "series_index": "3"},
+            ],
+            write_files=False,
+        )
+
+    assert {"item_id": standalone.id, "error": "index_without_series"} in result["errors"]
+    assert result["updated"] == 1, "the other change in the same call must still apply"
+
+    written = [c.kwargs["item"].id for c in writer.call_args_list]
+    assert standalone.id not in written, "the refused row must not be touched at all"
+    assert normal.id in written
+
+    db.session.refresh(standalone)
+    assert standalone.series_index is None
+    assert not standalone.series
+
+
 # --------------------------------------------------------------------------
 # propose_author_series — one author's whole shelf, several series at once.
 # `ai_metadata.propose_author_series(books, known_series=None)` mirrors
@@ -1307,3 +1340,76 @@ def test_rename_route_blank_series_is_bad_request(route_app):
     assert resp.get_json() == {"ok": False, "error": "no_name"}
     with route_app.app_context():
         assert db.session.get(LibraryItem, item_id).series == "Old Name"
+
+
+def test_index_without_series_guard_survives_a_numeric_index(app):
+    """JSON says 3 as happily as "3"; the guard must not 500 on either."""
+    item = _add(title="Ensam bok", series=None, series_index=None)
+
+    with patch("app.services.metadata_writer.apply_metadata_to_item") as writer:
+        writer.return_value = {"file_updated": False, "file_write_error": None}
+        result = apply_series_changes(
+            [{"item_id": item.id, "series": "", "series_index": 3}],
+            write_files=False,
+        )
+
+    assert {"item_id": item.id, "error": "index_without_series"} in result["errors"]
+    writer.assert_not_called()
+
+
+# --------------------------------------------------------------------------
+# A model that answers with the wrong shape must not take the request down.
+# `id` is used as a set member, so a list or a dict there raises TypeError
+# (unhashable) before anything has a chance to validate it — a 500 on a
+# proposal, from a source we do not control.
+# --------------------------------------------------------------------------
+
+def test_series_order_skips_a_book_whose_id_is_not_a_number():
+    books = _books_payload(2)
+    ids = [b["id"] for b in books]
+    answer = {
+        "series_name": "A Series",
+        "books": [
+            {"id": [ids[0]], "index": "1", "confidence": "high"},
+            {"id": ids[1], "index": "2", "confidence": "high"},
+        ],
+        "not_in_series": [],
+    }
+    with patch.object(ai_metadata, "ai_is_configured", return_value=True), \
+         patch.object(ai_metadata.requests, "post", return_value=_ai_response(answer)):
+        result = propose_series_order(books)
+
+    assert result["ok"] is True
+    assert [b["id"] for b in result["books"]] == [ids[1]]
+
+
+def test_series_order_skips_an_unhashable_id_in_not_in_series():
+    books = _books_payload(1)
+    ids = [b["id"] for b in books]
+    answer = {
+        "series_name": "A Series",
+        "books": [{"id": ids[0], "index": "1", "confidence": "high"}],
+        "not_in_series": [{"id": ids[0]}],
+    }
+    with patch.object(ai_metadata, "ai_is_configured", return_value=True), \
+         patch.object(ai_metadata.requests, "post", return_value=_ai_response(answer)):
+        result = propose_series_order(books)
+
+    assert result["ok"] is True
+    assert result["not_in_series"] == []
+
+
+def test_author_series_skips_a_book_whose_id_is_not_a_number():
+    books = _books_payload(2)
+    ids = [b["id"] for b in books]
+    answer = {"series": [{"name": "A Series", "books": [
+        {"id": {"nested": ids[0]}, "index": "1", "confidence": "high"},
+        {"id": ids[1], "index": "2", "confidence": "high"},
+    ]}]}
+    with patch.object(ai_metadata, "ai_is_configured", return_value=True), \
+         patch.object(ai_metadata.requests, "post", return_value=_ai_response(answer)):
+        result = ai_metadata.propose_author_series(books)
+
+    assert result["ok"] is True
+    got = [b["id"] for s in result["series"] for b in s["books"]]
+    assert got == [ids[1]]

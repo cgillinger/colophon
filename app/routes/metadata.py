@@ -2467,11 +2467,14 @@ def language_check_stream():
     threading.Thread(target=_run, daemon=True).start()
 
     def generate():
-        while True:
-            event = ev_queue.get()
-            if event is None:
-                break
-            yield f"data: {json.dumps(event)}\n\n"
+        try:
+            while True:
+                event = ev_queue.get()
+                if event is None:
+                    break
+                yield f"data: {json.dumps(event)}\n\n"
+        except (GeneratorExit, BrokenPipeError):
+            _abort_event.set()
 
     return Response(
         generate(),

@@ -339,3 +339,37 @@ def test_apply_route_passes_write_files_through(route_app):
     assert resp.get_json()["updated"] == 1
     assert writer.call_args.kwargs["write_to_file"] is True
     assert writer.call_args.kwargs["selected_fields"] == {"language"}
+
+
+def test_closing_the_stream_aborts_the_scan(route_app, tmp_path):
+    """A browser that walks away must stop the scan behind it.
+
+    The three other SSE routes in routes/metadata.py set the abort flag when
+    their generator is closed; this one did not, so closing the tab left the
+    worker thread reading every remaining EPUB for nobody. Here the generator
+    is closed by hand after the first event, which is what Flask does to it
+    when the client disconnects.
+    """
+    from app.routes import metadata as metadata_routes
+
+    book = tmp_path / "a.epub"
+    book.write_bytes(b"x")
+    with route_app.app_context():
+        _add(language="sv", path=str(book))
+
+    metadata_routes._abort_event.clear()
+
+    with _patch(
+        "app.services.language_check.detect_language_confident",
+        return_value={"code": "en", "prob": 0.98, "agree": True},
+    ):
+        with route_app.test_request_context("/metadata/language-check/stream"):
+            response = metadata_routes.language_check_stream()
+            stream = response.response
+            next(iter(stream))          # first event out, client still there
+            stream.close()              # …and now the client is gone
+
+    assert metadata_routes._abort_event.is_set(), (
+        "closing the stream left the language scan running: the worker thread "
+        "keeps opening EPUBs for a client that is no longer listening"
+    )

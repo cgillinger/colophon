@@ -157,10 +157,15 @@ def test_only_the_single_book_modal_streams_without_dry_run():
             continue
         with open(os.path.join(_JS_DIR, name), encoding="utf-8") as fh:
             source = fh.read()
-        for match in re.finditer(r"'/metadata/bulk/stream\?(.*?)'", source, re.S):
-            # The URL is built by concatenation; look at the whole statement.
-            start = source.rfind("var ", 0, match.start())
-            statement = source[start:source.find(";", match.end())]
-            if "dry_run=1" not in statement:
-                offenders.append(name)
+        # Every mention of the endpoint counts, however the URL is quoted or
+        # assembled: the earlier version anchored on `var ` and a
+        # single-quoted literal, so a `const`, a template literal or a
+        # double-quoted string would have slipped past the guard entirely.
+        # The window is generous enough to cover a URL built over several
+        # concatenated lines, and tight enough not to borrow a `dry_run=1`
+        # from an unrelated call further down the file.
+        for match in re.finditer(r"metadata/bulk/stream", source):
+            window = source[match.end():match.end() + 400]
+            if "dry_run=1" not in window:
+                offenders.append(f"{name}:{source.count(chr(10), 0, match.start()) + 1}")
     assert offenders == [], f"stream called without dry_run in: {offenders}"

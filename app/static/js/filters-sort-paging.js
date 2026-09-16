@@ -33,7 +33,7 @@
  *     body picks it up.
  *
  * Window-mirrored state (other modules read these):
- *   _grouped  — selection.js + batch.js  read window._grouped
+ *   _grouped  — selection.js reads window._grouped
  *
  * IIFE-local state (no external readers):
  *   _currentSort, _missingFieldAttr, _activeBadgeFilter, _pageSize,

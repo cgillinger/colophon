@@ -138,10 +138,18 @@ def apply_language_changes(changes, write_files=False, cover_dir=None):
     `changes` is [{"item_id": int, "code": str}].
 
     The file write goes through apply_metadata_to_item with
-    selected_fields={"language"} — nothing else may ride along. When
-    write_files is False this touches the DB only, which deliberately does
-    NOT stamp content_updated_at, so a Kobo does not re-download the book
-    over a metadata correction it cannot see.
+    selected_fields={"language"} — nothing else may ride along.
+
+    Writing the DB alone still stamps content_updated_at, so a synced Kobo
+    re-downloads the book even with write_files=False. That is deliberate and
+    correct here, and it is why `language` sits in
+    models._DEVICE_CONTENT_COLUMNS: the device picks its dictionary and
+    hyphenation from this field, so a correction that never reaches it is a
+    correction that does nothing. The UI says how many books will reload, and
+    pre-ticks "write to the files too" here and nowhere else.
+    tests/test_language_check.py::test_language_only_db_change_still_stamps_content
+    pins it. (This is the deliberate exception to invariant 3 in
+    docs/plan-batch-scenarios.md, which the plan's own correction foresaw.)
     """
     from app.services.metadata_writer import apply_metadata_to_item
 

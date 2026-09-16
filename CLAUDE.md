@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.61.1.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.61.2.
 
 ## Författarmappar (v1.38.0 — byggt)
 
@@ -87,6 +87,7 @@ app/
     grouping.py                 # Format grouping: SHA256 of normalized title
     text_utils.py               # Title cleaning, series extraction from title strings
     language_detect.py          # langdetect-based language identification for EPUBs
+    language_check.py           # Language scenario: read the text, report only the books that disagree
     database.py                 # DB migrations (ensure_*_table, backfill_*)
     kobo_auth.py                # Per-device token generation, lookup, revoke (+ its bookkeeping)
     kobo_sync.py                # Kobo sync protocol: catalogue, state, deltas
@@ -118,17 +119,19 @@ app/
     icons/                      # Favicons, app/PWA icons, header logo SVGs (light+dark)
     vendor/tabler-icons/        # Icon font
     vendor/foliate-js/          # Vendored EPUB renderer (MIT) for the reader
-tests/                          # 44 pytest files: metadata_pipeline, calibre_metadata,
-                                # bookf, grouping, kobo_conf, kobo_sync, kobo_covers,
-                                # kobo_location, reader_position, kobo_usb,
-                                # device_transfers, scan_delete_guard, language,
-                                # quality, reading_state, scanner, scoring,
-                                # source_status, title_clean, wikipedia,
-                                # metadata_merge, metadata_escalation, upload,
-                                # author_authority, author_resolver,
-                                # author_routes, author_lookup, reader_dict,
-                                # multi_author, author_folders, series_batch,
-                                # cover_batch
+tests/                          # 44 pytest files: ai_library_context, ai_rate_limit,
+                                # author_authority, author_folders, author_lookup,
+                                # author_resolver, author_routes, batch_dry_run, bookf,
+                                # calibre_metadata, completeness, cover_batch,
+                                # device_transfers, drm, grouping, kobo_conf, kobo_covers,
+                                # kobo_location, kobo_sync, kobo_usb, language,
+                                # language_check, metadata_escalation, metadata_hardcover,
+                                # metadata_libris, metadata_merge, metadata_openlibrary,
+                                # metadata_pipeline, metadata_wikidata, modal_author_save,
+                                # multi_author, quality, reader_dict, reader_position,
+                                # reading_state, scan_delete_guard, scanner, schema_lock,
+                                # scoring, series_batch, source_status, title_clean, upload,
+                                # wikipedia
 tools/
   install_calibre_plugins.sh    # Dockerfile build step: Goodreads, FF, FictionDB plugins
   install_kepubify.sh           # Dockerfile build step: kepubify binary for Kobo conversion
@@ -167,6 +170,7 @@ author-combobox.js       # Registry-backed multi-author fields in the book modal
 authors-manage.js        # /authors page: confirm/rename/merge/verify + AI adjudicator (own page, not the bulk view)
 reader.js                # In-browser reader controller (standalone /reader page, not the bulk view; ES module, loads foliate-js)
 covers-batch.js          # "Fetch covers for these": the missing-cover filter as a batch — dry-run stream, review grid, per-book apply
+language-check.js        # Language scenario: Tools → Check language, findings table, per-book apply
 reader-dict.js           # Selection sheet for the reader. One word → definition + translation + AI; more than one → passage mode with Copy / Copy with source (v1.46.0). WORD_RE decides which.
 ```
 
@@ -711,8 +715,8 @@ Note: `Pillow` is in `requirements.txt` but was missing from an older local
 `.venv`, which silently *skipped* the cover tests instead of failing. If
 `tests/test_kobo_covers.py` reports skips, `pip install Pillow`.
 
-**Known pre-existing failures (as of v1.50.1):** a clean run is *639 passed, 10
-failed*. The 10 are not regressions — `test_quality.py` (6) and
+**Known pre-existing failures (as of v1.61.2):** a clean run is *790 passed, 10
+failed, 1 skipped*. The 10 are not regressions — `test_quality.py` (6) and
 `test_scoring.py` (3) assert Swedish reason/warning substrings the code now
 emits in English, and `test_scanner.py::...test_does_not_overwrite_manual_metadata`
 expects a `manual_metadata` guard the scanner no longer applies. Treat "the same

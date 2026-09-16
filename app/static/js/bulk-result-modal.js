@@ -6,7 +6,7 @@
  * source). Plus the small expandable per-source detail rows that show
  * inline below the search-result table during/after batch search.
  *
- * Reads from window.* helpers exposed by batch.js:
+ * Reads from window.* helpers owned by core.js:
  *   _esc, _cleanDate, _applyFieldLabel
  *
  * Reads from window.* state owned by book-modal.js:

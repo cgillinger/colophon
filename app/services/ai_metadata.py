@@ -792,6 +792,10 @@ def propose_series_order(books, series_hint=None, known_series=None) -> dict:
         if not isinstance(entry, dict):
             continue
         book_id = entry.get("id")
+        # A list or dict here is unhashable and blows up the set test below
+        # with a TypeError — a 500 handed to us by an answer we don't control.
+        if not isinstance(book_id, int):
+            continue
         if book_id not in input_id_set or book_id in seen:
             continue
         index = str(entry.get("index") if entry.get("index") is not None else "").strip()
@@ -810,6 +814,8 @@ def propose_series_order(books, series_hint=None, known_series=None) -> dict:
     not_in_series = []
     nis_seen = set()
     for book_id in parsed.get("not_in_series") or []:
+        if not isinstance(book_id, int):
+            continue
         if book_id in input_id_set and book_id not in nis_seen:
             not_in_series.append(book_id)
             nis_seen.add(book_id)
@@ -956,6 +962,8 @@ def propose_author_series(books, known_series=None) -> dict:
             if not isinstance(book_entry, dict):
                 continue
             book_id = book_entry.get("id")
+            if not isinstance(book_id, int):
+                continue
             if book_id not in input_id_set or book_id in claimed:
                 continue
             index = str(book_entry.get("index") if book_entry.get("index") is not None else "").strip()

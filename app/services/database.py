@@ -424,6 +424,9 @@ def ensure_author_tables():
             libris_id VARCHAR(64),
             viaf_id VARCHAR(64),
             source VARCHAR(20) NOT NULL DEFAULT 'tentative',
+            authority_label VARCHAR(500),
+            authority_description VARCHAR(500),
+            split_dismissed BOOLEAN NOT NULL DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )

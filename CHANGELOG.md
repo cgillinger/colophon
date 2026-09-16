@@ -73,6 +73,24 @@ Per-release detail follows.
 
 ---
 
+## [1.61.2] — 2026-09-16
+
+### Fixed
+- **Closing the tab now stops the language check.** Walking away from a scan
+  left it running to the end, reading every remaining book for a browser that
+  was no longer there. It stops when you close the tab, like every other scan
+  in Colophon.
+- **A series number can no longer be saved without a series.** The review
+  screen never offers one — a book placed outside every series gets no
+  checkbox at all — but nothing behind the screen enforced it. Now the saving
+  itself refuses, reports which book it refused, and carries on with the rest
+  of what you ticked.
+- **An odd answer from the AI could bring down the whole proposal.** If the
+  model returned something unexpected where a book's identity should be, the
+  request failed outright instead of setting that one entry aside. Series
+  ordering, for one book's series or an author's entire shelf, now skips what
+  it cannot read and gives you the rest.
+
 ## [1.61.1] — 2026-09-16
 
 ### Fixed
