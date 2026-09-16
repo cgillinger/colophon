@@ -103,14 +103,83 @@
         });
     }
 
+    // Mirrors the two-line cell authors.html renders on load: a description
+    // (or, failing that, the label) above the register links. Built with
+    // createElement/textContent rather than innerHTML — the description is
+    // Wikidata's text, not ours, and doesn't belong spliced into markup.
+    function _renderAuthorityCell(td, author) {
+        while (td.firstChild) td.removeChild(td.firstChild);
+        var text = author.authority_description || author.authority_label;
+        if (text) {
+            var desc = document.createElement('div');
+            desc.className = 'authority-desc';
+            desc.textContent = text;
+            td.appendChild(desc);
+        }
+        var links = [
+            ['wikidata_qid', 'Wikidata', 'https://www.wikidata.org/wiki/', 'authorityWikidataTitle'],
+            ['viaf_id', 'VIAF', 'https://viaf.org/viaf/', 'authorityViafTitle'],
+            ['libris_id', 'LIBRIS', 'https://libris.kb.se/', 'authorityLibrisTitle']
+        ];
+        var row = document.createElement('div');
+        row.className = 'authority-links';
+        var any = false;
+        links.forEach(function (spec) {
+            var id = author[spec[0]];
+            if (!id) return;
+            any = true;
+            var a = document.createElement('a');
+            a.href = spec[2] + id;
+            a.target = '_blank';
+            a.rel = 'noopener';
+            a.title = _fmt(spec[3], { id: id }, spec[1] + ': {id}');
+            a.textContent = spec[1];
+            row.appendChild(a);
+        });
+        if (any) {
+            td.appendChild(row);
+        } else if (!text) {
+            var dash = document.createElement('span');
+            dash.className = 'dup-count';
+            dash.textContent = '—';
+            td.appendChild(dash);
+        }
+    }
+
+    /* A successful verify moves the entry to 'authority_linked' server
+       side. The row used to catch up via location.reload(); now that the
+       authority cell is patched in place, the rest of the row has to be
+       patched too — otherwise the badge keeps saying "Tentative", the
+       "show only unconfirmed" filter still matches it, and an inline
+       Confirm button sits there offering something already done. */
+    function _markAuthorityLinked(tr) {
+        tr.dataset.source = 'authority_linked';
+
+        var badge = tr.querySelector('td .badge');
+        if (badge) {
+            badge.className = 'badge info';
+            badge.textContent = _i18n.statusAuthorityLinked || 'Authority-linked';
+        }
+
+        var confirmBtn = tr.querySelector('[data-act="confirm"]');
+        if (confirmBtn) confirmBtn.remove();
+
+        if (typeof _refreshBulkBar === 'function') _refreshBulkBar();
+    }
+
     function _verify(tr, id, btn) {
         var original = btn.innerHTML;
         btn.disabled = true;
         btn.innerHTML = '<i class="ti ti-loader-2 upload-spin"></i> ' + (_i18n.verifying || 'Looking up…');
         _post('/authors/' + id + '/verify').then(function (b) {
-            if (b.ok && b.matched) { location.reload(); return; }
             btn.disabled = false;
             btn.innerHTML = original;
+            if (b.ok && b.matched) {
+                var td = tr.querySelector('.author-ids');
+                if (td) _renderAuthorityCell(td, b.author || {});
+                _markAuthorityLinked(tr);
+                return;
+            }
             alert(b.ok ? (_i18n.verifyNoMatch || 'No confident match found in Wikidata.')
                        : (_i18n.actionFailed || 'The action failed.'));
         }).catch(function () {
@@ -353,6 +422,71 @@
                 bulkConfirm.disabled = false;
                 alert(_i18n.actionFailed || 'The action failed.');
             });
+        });
+    }
+
+    /* Bulk verify: the Authority column stays empty until someone fills
+       it, and until now the only way was Verify in one row's menu at a
+       time — so on a real library it simply never got filled. Confirm
+       does not fill it either; that only records that the spelling is
+       right.
+
+       The loop runs in the browser, one author at a time, rather than as
+       a bulk route: each verify is a SPARQL round trip to Wikidata, and
+       a few hundred of them serially on the server would run past
+       Gunicorn's 300 s with nothing to show. Here the user sees progress
+       and the work survives being slow. One at a time is also the polite
+       rate for a public endpoint. */
+    var bulkVerify = document.getElementById('authorsBulkVerify');
+    if (bulkVerify) {
+        bulkVerify.addEventListener('click', function () {
+            // Skip only what is fully looked up. The description line is
+            // the right test, not the links: an entry verified before
+            // v1.57.0 has ids but no description, and re-verifying is
+            // exactly how it gets one.
+            var rows = _checkedRows().filter(function (tr) {
+                return !tr.querySelector('.author-ids .authority-desc');
+            });
+            if (!rows.length) {
+                window.alert(_i18n.bulkVerifyAllDone
+                    || 'The selected authors already have authority ids.');
+                return;
+            }
+
+            var msg = _fmt('bulkVerifyPrompt', { count: rows.length },
+                'Look up {count} selected authors in Wikidata?');
+            if (!window.confirm(msg)) return;
+
+            var countEl = document.getElementById('authorsBulkCount');
+            var bulkConfirmBtn = document.getElementById('authorsBulkConfirm');
+            bulkVerify.disabled = true;
+            if (bulkConfirmBtn) bulkConfirmBtn.disabled = true;
+
+            var matched = 0;
+            var failed = 0;
+
+            function step(i) {
+                if (i >= rows.length) {
+                    window.alert(_fmt('bulkVerifyDone', {
+                        matched: matched, count: rows.length, failed: failed
+                    }, '{matched} of {count} were found. {failed} lookups failed.'));
+                    location.reload();
+                    return;
+                }
+                if (countEl) {
+                    countEl.textContent = _fmt('bulkVerifyProgress',
+                        { done: i + 1, count: rows.length }, 'Looking up {done} of {count}…');
+                }
+                var id = parseInt(rows[i].dataset.authorId, 10);
+                _post('/authors/' + id + '/verify', {})
+                    .then(function (body) {
+                        if (body && body.ok && body.matched) matched++;
+                        else if (!body || !body.ok) failed++;
+                    })
+                    .catch(function () { failed++; })
+                    .then(function () { step(i + 1); });
+            }
+            step(0);
         });
     }
 

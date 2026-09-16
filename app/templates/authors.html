@@ -99,6 +99,7 @@
         .authors-bulk-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding: 9px 12px; background: var(--bg-secondary); border: 1px solid var(--border-medium); border-radius: 6px; }
         .authors-bulk-bar[hidden] { display: none; }
         .authors-bulk-bar #authorsBulkCount { font-weight: 600; margin-right: auto; }
+        .lead-secondary { font-size: 13px; color: var(--text-secondary); }
         table.authors th.col-select, table.authors td.col-select { width: 1%; padding-right: 0; text-align: center; }
         table.authors .col-select input { accent-color: var(--accent-primary); cursor: pointer; }
 
@@ -124,7 +125,8 @@
         .split-add { background: transparent; border: 1px dashed var(--border-medium); border-radius: 6px; color: var(--text-secondary); padding: 4px 10px; font-size: 12.5px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
         .split-add:hover { color: var(--accent-primary); border-color: var(--accent-primary); }
         .split-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
-        td.author-ids a { color: var(--accent-primary); font-size: 12.5px; margin-right: 8px; }
+        td.author-ids a { color: var(--accent-primary); font-size: 12px; margin-right: 8px; }
+        td.author-ids .authority-desc { color: var(--text-secondary); font-size: 12.5px; margin-bottom: 2px; }
         td.actions { white-space: nowrap; text-align: right; }
         .btn.icon { padding: 6px 8px; justify-content: center; }
         .row-menu { display: inline-block; margin-left: 6px; }
@@ -171,6 +173,9 @@
 <h1><i class="ti ti-users"></i> {{ _('Authors') }}</h1>
 <p class="lead">
     {{ _('Every author in the library, one canonical entry per person. Rename or merge an entry and all of its books are relabelled in one sweep. Tentative entries were created automatically from file metadata and are not written into files until confirmed.') }}
+</p>
+<p class="lead lead-secondary">
+    {{ _('“Authority” holds public identifiers — Wikidata, VIAF, LIBRIS — that tie an entry to one specific real person, so two authors with the same name stay apart. It stays empty until you fill it: tick the authors you want and press “Verify selected”, or use Verify in a single row’s ⋯ menu. Confirming a name does not fill it; that only says the spelling is right.') }}
 </p>
 
 {% if review_count %}
@@ -234,6 +239,7 @@
     <div class="authors-bulk-bar" id="authorsBulkBar" hidden>
         <span id="authorsBulkCount"></span>
         <button type="button" class="btn primary" id="authorsBulkConfirm"><i class="ti ti-checks"></i> {{ _('Confirm selected') }}</button>
+        <button type="button" class="btn" id="authorsBulkVerify" title="{{ _('Look each selected author up in Wikidata and store the ids found') }}"><i class="ti ti-world-search"></i> {{ _('Verify selected') }}</button>
         <button type="button" class="btn" id="authorsBulkClear">{{ _('Clear selection') }}</button>
     </div>
     {% if rows %}
@@ -243,7 +249,7 @@
                 <th class="col-select"><input type="checkbox" id="authorsSelectAll" title="{{ _('Select all') }}"></th>
                 <th>{{ _('Author') }}</th>
                 <th>{{ _('Status') }}</th>
-                <th>{{ _('Authority') }}</th>
+                <th title="{{ _('Wikidata, VIAF and LIBRIS ids. Fill them with Verify.') }}">{{ _('Authority') }}</th>
                 <th>{{ _('Books') }}</th>
                 <th></th>
             </tr>
@@ -264,10 +270,20 @@
                     {% endif %}
                 </td>
                 <td class="author-ids">
-                    {% if a.wikidata_qid %}<a href="https://www.wikidata.org/wiki/{{ a.wikidata_qid }}" target="_blank" rel="noopener">{{ a.wikidata_qid }}</a>{% endif %}
-                    {% if a.viaf_id %}<a href="https://viaf.org/viaf/{{ a.viaf_id }}" target="_blank" rel="noopener">VIAF</a>{% endif %}
-                    {% if a.libris_id %}<a href="https://libris.kb.se/{{ a.libris_id }}" target="_blank" rel="noopener">LIBRIS</a>{% endif %}
-                    {% if not a.wikidata_qid and not a.viaf_id and not a.libris_id %}<span class="dup-count">—</span>{% endif %}
+                    {% if a.authority_description %}
+                    <div class="authority-desc">{{ a.authority_description }}</div>
+                    {% elif a.authority_label %}
+                    <div class="authority-desc">{{ a.authority_label }}</div>
+                    {% endif %}
+                    {% if a.wikidata_qid or a.viaf_id or a.libris_id %}
+                    <div class="authority-links">
+                        {% if a.wikidata_qid %}<a href="https://www.wikidata.org/wiki/{{ a.wikidata_qid }}" target="_blank" rel="noopener" title="{{ _('Wikidata: %(id)s', id=a.wikidata_qid) }}">Wikidata</a>{% endif %}
+                        {% if a.viaf_id %}<a href="https://viaf.org/viaf/{{ a.viaf_id }}" target="_blank" rel="noopener" title="{{ _('VIAF: %(id)s', id=a.viaf_id) }}">VIAF</a>{% endif %}
+                        {% if a.libris_id %}<a href="https://libris.kb.se/{{ a.libris_id }}" target="_blank" rel="noopener" title="{{ _('LIBRIS: %(id)s', id=a.libris_id) }}">LIBRIS</a>{% endif %}
+                    </div>
+                    {% else %}
+                    <span class="dup-count">—</span>
+                    {% endif %}
                 </td>
                 <td class="count">
                     {% if row.book_count %}
@@ -334,7 +350,12 @@
             deleteConfirm: {{ _('Remove the unused entry “{name}”?')|tojson }},
             actionFailed: {{ _('The action failed.')|tojson }},
             verifying: {{ _('Looking up…')|tojson }},
+            statusAuthorityLinked: {{ _('Authority-linked')|tojson }},
             verifyNoMatch: {{ _('No confident match found in Wikidata.')|tojson }},
+            bulkVerifyAllDone: {{ _('The selected authors have already been looked up.')|tojson }},
+            bulkVerifyPrompt: {{ _('Look up {count} selected authors in Wikidata? They are looked up one at a time, so this takes a moment.')|tojson }},
+            bulkVerifyProgress: {{ _('Looking up {done} of {count}…')|tojson }},
+            bulkVerifyDone: {{ _('{matched} of {count} were found. {failed} lookups failed.')|tojson }},
             aiThinking: {{ _('Asking…')|tojson }},
             aiSame: {{ _('AI: probably the same person — {reason}')|tojson }},
             aiDifferent: {{ _('AI: probably different people — {reason}')|tojson }},
@@ -349,7 +370,10 @@
             bulkNoTentative: {{ _('None of the selected entries are unconfirmed.')|tojson }},
             splitNeedTwo: {{ _('Enter at least two author names.')|tojson }},
             dismissSplitConfirm: {{ _('“{name}” is one person — hide the split badge?')|tojson }},
-            splitConfirm: {{ _('Split “{name}” into {parts}? All linked books get the new authors.')|tojson }}
+            splitConfirm: {{ _('Split “{name}” into {parts}? All linked books get the new authors.')|tojson }},
+            authorityWikidataTitle: {{ _('Wikidata: {id}')|tojson }},
+            authorityViafTitle: {{ _('VIAF: {id}')|tojson }},
+            authorityLibrisTitle: {{ _('LIBRIS: {id}')|tojson }}
         }
     };
 </script>

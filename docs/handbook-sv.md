@@ -354,8 +354,14 @@ märks likadant — även när filerna stavar namnet olika ("J.R.R. Tolkien" /
     bekräfta dem i ett svep. Snabbaste sättet att städa efter en skanning.
   - **Byt namn** eller **Slå ihop** — båda kaskaderar och märker om varje länkad
     bok i ett svep.
-  - **Verifiera** mot Wikidata för att förankra en författare med auktoritets-id
-    (QID, VIAF, LIBRIS).
+  - **Verifiera** mot Wikidata för att förankra en författare i offentliga
+    register (Wikidata, VIAF, LIBRIS). Kolumnen **Auktoritet** är tom tills du
+    gör det — att *bekräfta* ett namn fyller den inte, det säger bara att
+    stavningen stämmer. Kryssa i flera författare och använd **Verifiera valda**
+    för att gå igenom dem i ett svep; de slås upp en i taget, så det tar en
+    stund. Cellen visar vad Wikidata säger att personen är ("brittisk
+    science fiction-författare"), så du ser om rätt person hittades; själva
+    id:t ligger i länkarnas verktygstips.
   - För troliga dubblettpar, slå ihop med ett klick, eller **Fråga AI** om de är
     samma person.
 
@@ -365,7 +371,7 @@ Varje författare har en **status** som styr om namnet skrivs in i dina filer:
 |---|---|---|
 | Preliminär | Auto-skapad från filmetadata vid skanning/uppladdning | Nej — bara databas |
 | Bekräftad | Du bekräftade stavningen | Ja |
-| Auktoritetslänkad | Verifierad mot Wikidata | Ja |
+| Auktoriserad | Verifierad mot Wikidata | Ja |
 
 Preliminära poster skrivs aldrig in i filer förrän du bekräftar dem, så en
 auto-gissad stavning kan inte tyst skriva om ditt bibliotek.
@@ -571,7 +577,7 @@ tillgänglig → Ladda om**-prompt — den avbryter dig aldrig mitt i en rediger
 - **Berikning** — att fylla i eller förbättra metadata från onlinekällor.
 - **Manuell metadata / låst omslag** — en bok du redigerat för hand, eller ett
   omslag du låst, så att automatisk berikning lämnar den ifred.
-- **Preliminär / Bekräftad / Auktoritetslänkad författare** — en författares status
+- **Preliminär / Bekräftad / Auktoriserad författare** — en författares status
   (se §10); bara bekräftade och auktoritetslänkade namn skrivs in i filer.
 - **Lässtatus / läsläge** — *Oläst / Läser / Läst* plus en procentuell progress,
   delad mellan webbläsarläsaren och Kobon.

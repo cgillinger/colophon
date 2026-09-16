@@ -40,6 +40,8 @@ def _author_dict(author, book_count=None):
         "wikidata_qid": author.wikidata_qid,
         "libris_id": author.libris_id,
         "viaf_id": author.viaf_id,
+        "authority_label": author.authority_label,
+        "authority_description": author.authority_description,
     }
     if book_count is not None:
         d["book_count"] = book_count
@@ -337,6 +339,12 @@ def verify(author_id):
     author.wikidata_qid = result["qid"] or author.wikidata_qid
     author.viaf_id = result["viaf_id"] or author.viaf_id
     author.libris_id = result["libris_id"] or author.libris_id
+    # Keep what the match *was*, not just its ids — the ids alone cannot
+    # tell the user whether the right person was found.
+    author.authority_label = result.get("label") or author.authority_label
+    author.authority_description = (
+        result.get("description") or author.authority_description
+    )
     author.source = "authority_linked"
     _clear_new_flag(author)
     db.session.commit()

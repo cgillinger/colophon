@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.56.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.57.0.
 
 ## Författarmappar (v1.38.0 — byggt)
 
@@ -322,6 +322,39 @@ Both meet invariant 3 the same way the rest of the series flow does:
 `series` is in `_DEVICE_CONTENT_COLUMNS`, so even a DB-only rename stamps
 `content_updated_at` and a synced Kobo re-downloads. The modal says so
 instead of hiding it.
+
+### The Authors page: one action, one menu, one readable column (v1.56.0–1.57.0)
+
+Three things this page got wrong, all found by using it rather than reading it.
+
+**Six actions per row is not a row, it is a toolbar.** Confirm · Verify ·
+Rename · Merge · Split · Order series meant over a hundred buttons on a
+17-author page and nothing usable on a phone. Now the row shows only what
+its state needs — **Confirm**, and only while `source == 'tentative'` —
+and the rest live in a `⋯` popover. Every menu item is still a
+`<button data-act="…">` **inside the same `<tr>`**, which is the whole
+trick: `authors-manage.js` delegates from the `<table>`, so the action
+handlers did not change at all. The popover is `position: fixed` and
+placed from the toggle's rect, because a menu on the last row must not be
+clipped by an ancestor's overflow.
+
+**`Q31191175` is not an answer.** The question after Verify is always
+"did it find the right person?", and an opaque id cannot answer it.
+`Author.authority_label` / `authority_description` store what Wikidata
+said the match *is*; the cell shows the description and puts the raw ids
+in named links' tooltips. The lookup already returned both and threw them
+away, so **there is no backfill** — entries verified before v1.57.0 keep
+their ids and show no description until verified again. The UI degrades
+to links-only for exactly that case; don't "fix" it by inventing a value.
+
+**A column nobody can fill stays empty.** Verify was per-row only, so on
+a real library Authority was `—` everywhere while most entries read
+*Confirmed* — the two are unrelated, and the page never said so. There is
+now a bulk **Verify selected**, and the page explains the column in prose
+rather than a `title` tooltip, because this is read on an iPad where hover
+does not exist. The bulk loop runs **in the browser**, one author at a
+time: each verify is a SPARQL round trip, and a few hundred serially on
+the server would run past Gunicorn's 300 s with nothing to show.
 
 ### Completeness traffic light (v1.52.0)
 

@@ -184,6 +184,15 @@ class Author(db.Model):
     libris_id = db.Column(db.String(64), nullable=True)
     viaf_id = db.Column(db.String(64), nullable=True)
 
+    # What Wikidata says the matched entity *is* (v1.57.0). A QID answers
+    # nothing a person can read; the question after Verify is always "did
+    # it find the right one?", and a label plus a one-line description is
+    # what answers it. Stored at verify time — the lookup already returns
+    # both and used to throw them away, so entries verified before this
+    # column existed stay blank until they are verified again.
+    authority_label = db.Column(db.String(500), nullable=True)
+    authority_description = db.Column(db.String(500), nullable=True)
+
     # 'tentative' (free-text first occurrence — never written to files),
     # 'user_confirmed', 'authority_linked'. Gates file writes.
     source = db.Column(db.String(20), nullable=False, default="tentative")

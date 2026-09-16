@@ -493,6 +493,20 @@ def ensure_multi_author_tables():
         if "duplicate column name" not in str(exc).lower():
             raise
 
+    # v1.57.0: what Wikidata said the match *is*. No backfill is possible
+    # — the lookup result was never stored — so rows verified before this
+    # show only their register links until someone verifies them again.
+    for column in ("authority_label", "authority_description"):
+        try:
+            db.session.execute(text(
+                f"ALTER TABLE authors ADD COLUMN {column} VARCHAR(500)"
+            ))
+            db.session.commit()
+        except Exception as exc:
+            db.session.rollback()
+            if "duplicate column name" not in str(exc).lower():
+                raise
+
     # Backfill: mirror every existing single link as a position-0 row.
     # Idempotent — the NOT IN filter matches nothing on later boots. Books
     # whose fused string should split stay single-linked until their next

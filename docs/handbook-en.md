@@ -348,8 +348,14 @@ person is labelled identically — even when the files spell the name differentl
     them in one go. This is the fastest way to tidy up after a scan.
   - **Rename** or **Merge** — both cascade, relabelling every linked book in one
     sweep.
-  - **Verify** against Wikidata to anchor an author with authority ids (QID,
-    VIAF, LIBRIS).
+  - **Verify** against Wikidata to anchor an author in public registers
+    (Wikidata, VIAF, LIBRIS). The **Authority** column stays empty until you do
+    — *confirming* a name does not fill it, that only says the spelling is
+    right. Tick several authors and use **Verify selected** to work through
+    them in one go; they are looked up one at a time, so it takes a moment.
+    The cell shows what Wikidata says the person is ("British science fiction
+    author"), so you can see whether the right person was found; the id itself
+    sits in the links' tooltips.
   - For likely-duplicate pairs, merge with one click, or **Ask AI** whether
     they're the same person.
 
