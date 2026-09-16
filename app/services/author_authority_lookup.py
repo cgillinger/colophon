@@ -11,9 +11,19 @@ One Wikidata lookup yields all three ids we store:
   - P5587 → LIBRIS-URI (KB), with P906 (SELIBR) as the legacy fallback
 
 Conservative by design: a candidate is accepted only if it is a human
-(P31=Q5) AND its label/alias is a confident match for the name (same
-fuzzy threshold as the matcher). No match → matched=False, nothing is
-guessed. User-triggered from the manage view — never run during scans.
+(P31=Q5), its label/alias is a confident match for the name (same fuzzy
+threshold as the matcher), AND it writes for a living (P106 occupation).
+No match → matched=False, nothing is guessed. User-triggered from the
+manage view — never run during scans.
+
+The occupation test is not decoration. "Dennis Taylor" returns a British
+snooker player first, and human + matching name accepted him — so a
+Canadian science fiction author was anchored to a snooker player, and
+because `authority_linked` gates file writes, a wrong anchor is worse
+than none. In a library of books, a name-matching person who is not
+recorded as writing anything is the wrong person; the honest answer is
+no match. The cost is a false negative for an author Wikidata has not
+given an occupation, which leaves the entry exactly as it was.
 """
 import logging
 
@@ -32,6 +42,38 @@ _UA = "Colophon/1.0 (self-hosted ebook manager)"
 _TIMEOUT = 10
 
 _HUMAN_QID = "Q5"
+
+# P106 (occupation) values that mean "this person writes things other
+# people read". Deliberately broad — a library holds novels, history,
+# philosophy and journalism alike — and deliberately a flat list: Wikidata
+# subclass resolution would cost another round trip per candidate.
+_WRITING_OCCUPATIONS = {
+    "Q36180",     # writer
+    "Q482980",    # author
+    "Q6625963",   # novelist
+    "Q18844224",  # science fiction writer
+    "Q49757",     # poet
+    "Q214917",    # playwright
+    "Q28389",     # screenwriter
+    "Q1930187",   # journalist
+    "Q4853732",   # children's writer
+    "Q11774202",  # essayist
+    "Q15980158",  # non-fiction writer
+    "Q12144794",  # writer of fiction
+    "Q201788",    # historian
+    "Q4964182",   # philosopher
+    "Q333634",    # translator
+    "Q1622272",   # university teacher — academics publish
+}
+
+
+def _writes(claims):
+    """True when any P106 occupation is one we treat as writing."""
+    for claim in claims.get("P106", []):
+        value = (claim.get("mainsnak", {}).get("datavalue", {}) or {}).get("value")
+        if isinstance(value, dict) and value.get("id") in _WRITING_OCCUPATIONS:
+            return True
+    return False
 
 
 def _claim_value(claims, prop):
@@ -123,14 +165,18 @@ def lookup_author_authority(name):
         logger.warning("Wikidata author lookup failed for %r: %s", name, exc)
         return {**result, "ok": False}
 
-    # Keep the search ranking: take the first candidate that is a human
-    # with a confidently matching name.
+    # Keep the search ranking, but walk past the candidates that only look
+    # right: the first human whose name matches AND who writes. Wikidata
+    # ranks by general notability, so the snooker player comes before the
+    # novelist and the ranking alone cannot be trusted here.
     for qid in qids:
         entity = entities.get(qid) or {}
         claims = entity.get("claims", {})
         if not _is_human(claims):
             continue
         if not _name_matches(name, entity):
+            continue
+        if not _writes(claims):
             continue
         label = (entity.get("labels", {}).get("en")
                  or entity.get("labels", {}).get("sv") or {}).get("value", "")

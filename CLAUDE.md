@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.57.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.58.0.
 
 ## Författarmappar (v1.38.0 — byggt)
 
@@ -346,6 +346,21 @@ in named links' tooltips. The lookup already returned both and threw them
 away, so **there is no backfill** — entries verified before v1.57.0 keep
 their ids and show no description until verified again. The UI degrades
 to links-only for exactly that case; don't "fix" it by inventing a value.
+
+**A name is not a person.** The lookup is a free-text Wikidata search on
+the canonical name plus filters; nothing from the library — titles, years,
+the other authors — takes part. Wikidata ranks by notability, so "Dennis
+Taylor" returned a British snooker player and the old human + name-match
+rule accepted him, anchoring a science fiction author to a snooker player
+*and* promoting the entry to `authority_linked`, which gates file writes.
+A candidate must now also have a writing occupation (`P106` in
+`_WRITING_OCCUPATIONS`), and the walk continues past candidates that fail
+it rather than stopping at the first name match. That is a mitigation, not
+a fix — a name-sharing writer would still win. The real fix is to
+cross-check the candidate's works against the titles the library already
+holds for that author; see `docs/TODO.md`. Either way `POST
+/authors/<id>/unlink` now exists, because a wrong anchor the user cannot
+remove is the worst state of all.
 
 **A column nobody can fill stays empty.** Verify was per-row only, so on
 a real library Authority was `—` everywhere while most entries read

@@ -164,6 +164,10 @@
         var confirmBtn = tr.querySelector('[data-act="confirm"]');
         if (confirmBtn) confirmBtn.remove();
 
+        // There is something to undo now, so offer the undo.
+        var unlinkBtn = tr.querySelector('[data-act="unlink"]');
+        if (unlinkBtn) unlinkBtn.hidden = false;
+
         if (typeof _refreshBulkBar === 'function') _refreshBulkBar();
     }
 
@@ -225,6 +229,33 @@
             if (!b.ok) { alert(_i18n.actionFailed || 'The action failed.'); return; }
             var flag = tr.querySelector('.multi-flag');
             if (flag) flag.remove();
+        });
+    }
+
+    /* Verify can anchor the wrong person — Wikidata ranks by notability,
+       not by which "Dennis Taylor" is the one on the shelf. Since
+       source === 'authority_linked' gates writing the name into ebook
+       files, a wrong anchor is worse than no anchor: this is the only
+       way to take one back off without touching the canonical name. */
+    function _unlink(tr, id) {
+        var name = _rowName(tr);
+        if (!window.confirm(_fmt('unlinkConfirm', { name: name },
+                'Remove the authority link from “{name}”?'))) return;
+        _post('/authors/' + id + '/unlink', {}).then(function (b) {
+            if (!b.ok) { alert(_i18n.actionFailed || 'The action failed.'); return; }
+            var td = tr.querySelector('.author-ids');
+            if (td) _renderAuthorityCell(td, b.author || {});
+            tr.dataset.source = 'user_confirmed';
+            var badge = tr.querySelector('td .badge');
+            if (badge) {
+                badge.className = 'badge ok';
+                badge.textContent = _i18n.statusConfirmed || 'Confirmed';
+            }
+            var unlinkBtn = tr.querySelector('[data-act="unlink"]');
+            if (unlinkBtn) unlinkBtn.hidden = true;
+            if (typeof _refreshBulkBar === 'function') _refreshBulkBar();
+        }).catch(function () {
+            alert(_i18n.actionFailed || 'The action failed.');
         });
     }
 
@@ -310,6 +341,7 @@
             else if (act === 'split') _split(tr, id, btn);
             else if (act === 'dismiss-split') _dismissSplit(tr, id);
             else if (act === 'verify') _verify(tr, id, btn);
+            else if (act === 'unlink') _unlink(tr, id);
             else if (act === 'delete') _delete(tr, id);
         });
     }

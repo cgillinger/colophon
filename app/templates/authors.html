@@ -156,6 +156,8 @@
             text-decoration: none;
             cursor: pointer;
         }
+        /* display:flex above beats the hidden attribute's UA default. */
+        .row-menu-item[hidden] { display: none; }
         .row-menu-item:hover, .row-menu-item:focus { background: var(--bg-tertiary); outline: none; }
         .row-menu-item.danger { color: var(--accent-red); }
         .row-menu-sep { border-top: 1px solid var(--border-light); margin-top: 4px; padding-top: 4px; }
@@ -303,6 +305,13 @@
                                 title="{{ _('More actions') }}" aria-label="{{ _('More actions') }}"><i class="ti ti-dots"></i></button>
                         <div class="row-menu-list" role="menu" hidden>
                             <button type="button" class="row-menu-item" role="menuitem" data-act="verify" title="{{ _('Look the author up in Wikidata and store authority ids') }}"><i class="ti ti-world-search"></i> {{ _('Verify') }}</button>
+                            {# Always rendered, hidden when there is nothing to
+                               unlink: a row verified in this session gains an
+                               anchor without a page load, and a server-side
+                               {% if %} would leave it with no way to undo. #}
+                            <button type="button" class="row-menu-item" role="menuitem" data-act="unlink"
+                                    {% if not (a.wikidata_qid or a.viaf_id or a.libris_id) %}hidden{% endif %}
+                                    title="{{ _('The lookup matched the wrong person — remove the ids and the description') }}"><i class="ti ti-unlink"></i> {{ _('Remove authority link') }}</button>
                             <button type="button" class="row-menu-item" role="menuitem" data-act="rename"><i class="ti ti-pencil"></i> {{ _('Rename') }}</button>
                             <button type="button" class="row-menu-item" role="menuitem" data-act="merge"><i class="ti ti-git-merge"></i> {{ _('Merge…') }}</button>
                             <button type="button" class="row-menu-item" role="menuitem" data-act="split" title="{{ _('Split this entry into several authors') }}"
@@ -351,6 +360,8 @@
             actionFailed: {{ _('The action failed.')|tojson }},
             verifying: {{ _('Looking up…')|tojson }},
             statusAuthorityLinked: {{ _('Authority-linked')|tojson }},
+            statusConfirmed: {{ _('Confirmed')|tojson }},
+            unlinkConfirm: {{ _('Remove the authority link from “{name}”? The ids and the description are deleted; the name is kept.')|tojson }},
             verifyNoMatch: {{ _('No confident match found in Wikidata.')|tojson }},
             bulkVerifyAllDone: {{ _('The selected authors have already been looked up.')|tojson }},
             bulkVerifyPrompt: {{ _('Look up {count} selected authors in Wikidata? They are looked up one at a time, so this takes a moment.')|tojson }},

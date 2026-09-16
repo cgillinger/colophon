@@ -254,6 +254,29 @@ not trigger a re-download.
 
 **Scope:** small, but it is a schema change → MINOR.
 
+## Cross-check an authority match against the library's own titles
+
+**What:** `lookup_author_authority` resolves an author name with a free-text
+Wikidata search plus filters (human, name match, writing occupation). Nothing
+from the library takes part, so disambiguation rests entirely on Wikidata's
+notability ranking. That is how "Dennis Taylor" was anchored to a British
+snooker player; the occupation filter added in v1.58.0 stops that particular
+case, but a name-sharing *writer* would still win.
+
+**How:** for each surviving candidate, fetch `P800` (notable work) labels, and
+optionally the works that list the candidate as `P50` (author). Compare them
+against the titles the library already holds for that author (the same
+normalization `grouping.py` uses). A candidate sharing at least one title wins
+outright; a candidate sharing none, when another candidate does, loses. When no
+candidate matches any title, fall back to today's behaviour rather than
+refusing — plenty of authors have no works modelled in Wikidata.
+
+**Cost:** one more round trip per candidate, on a user-triggered action that is
+already slow. Worth it — a wrong anchor gates file writes.
+
+**Scope:** small-medium, service-only (`author_authority_lookup.py` + tests).
+PATCH or MINOR depending on whether the behaviour change is user-visible.
+
 ## Author authority control (canonical author registry)
 
 **What:** Reconcile author spellings to one canonical form per author, so the

@@ -29,6 +29,7 @@ _ENTITIES = {"entities": {"Q892": {
         "P31": [{"mainsnak": {"datavalue": {"value": {"id": "Q5"}}}}],
         "P214": [{"mainsnak": {"datavalue": {"value": "95218067"}}}],
         "P5587": [{"mainsnak": {"datavalue": {"value": "97mqwzhd43lwn0c"}}}],
+        "P106": [{"mainsnak": {"datavalue": {"value": {"id": "Q36180"}}}}],
     },
 }}}
 
@@ -89,6 +90,66 @@ def test_lookup_no_search_hits_is_clean_miss():
     assert result["matched"] is False
 
 
+def test_lookup_rejects_human_with_no_occupation_claim():
+    # Name matches, human — but no P106 at all. No guessing.
+    entities = {"entities": {"Q892": {
+        **_ENTITIES["entities"]["Q892"],
+        "claims": {k: v for k, v in _ENTITIES["entities"]["Q892"]["claims"].items()
+                   if k != "P106"},
+    }}}
+    with patch("app.services.author_authority_lookup.requests.get",
+               side_effect=[_resp(_SEARCH), _resp(entities)]):
+        result = lookup_author_authority("J.R.R. Tolkien")
+    assert result["matched"] is False
+
+
+def test_lookup_rejects_snooker_player_with_matching_name():
+    # The real case this guard exists for: "Dennis Taylor" the snooker
+    # player (Q13382566) is human and can share a name, but does not write.
+    entities = {"entities": {"Q892": {
+        **_ENTITIES["entities"]["Q892"],
+        "claims": {**_ENTITIES["entities"]["Q892"]["claims"],
+                   "P106": [{"mainsnak": {"datavalue": {"value": {"id": "Q13382566"}}}}]},
+    }}}
+    with patch("app.services.author_authority_lookup.requests.get",
+               side_effect=[_resp(_SEARCH), _resp(entities)]):
+        result = lookup_author_authority("J.R.R. Tolkien")
+    assert result["matched"] is False
+
+
+def test_lookup_skips_non_writer_and_returns_the_writer():
+    # Search ranks a name-matching non-writer first (notability), a
+    # name-matching writer second. The lookup must walk past the first.
+    search = {"search": [{"id": "Q1"}, {"id": "Q2"}]}
+    entities = {"entities": {
+        "Q1": {
+            **_ENTITIES["entities"]["Q892"],
+            "claims": {**_ENTITIES["entities"]["Q892"]["claims"],
+                       "P106": [{"mainsnak": {"datavalue": {"value": {"id": "Q13382566"}}}}]},
+        },
+        "Q2": _ENTITIES["entities"]["Q892"],
+    }}
+    with patch("app.services.author_authority_lookup.requests.get",
+               side_effect=[_resp(search), _resp(entities)]):
+        result = lookup_author_authority("J.R.R. Tolkien")
+    assert result["matched"] is True
+    assert result["qid"] == "Q2"
+
+
+@pytest.mark.parametrize("occupation_qid", ["Q6625963", "Q201788"])  # novelist, historian
+def test_lookup_accepts_other_writing_occupations(occupation_qid):
+    entities = {"entities": {"Q892": {
+        **_ENTITIES["entities"]["Q892"],
+        "claims": {**_ENTITIES["entities"]["Q892"]["claims"],
+                   "P106": [{"mainsnak": {"datavalue": {"value": {"id": occupation_qid}}}}]},
+    }}}
+    with patch("app.services.author_authority_lookup.requests.get",
+               side_effect=[_resp(_SEARCH), _resp(entities)]):
+        result = lookup_author_authority("J.R.R. Tolkien")
+    assert result["matched"] is True
+    assert result["qid"] == "Q892"
+
+
 # --------------------------------------------------------------------------
 # Routes: /verify + /adjudicate
 # --------------------------------------------------------------------------
@@ -136,6 +197,80 @@ def test_verify_miss_changes_nothing(client):
 
     assert body["ok"] is True and body["matched"] is False
     assert author.source == "tentative"
+    assert author.wikidata_qid is None
+
+
+# --------------------------------------------------------------------------
+# Routes: /unlink
+# --------------------------------------------------------------------------
+
+def test_unlink_clears_ids_and_demotes_to_user_confirmed(client):
+    author = Author(
+        canonical_name="J.R.R. Tolkien",
+        source="authority_linked",
+        wikidata_qid="Q892",
+        viaf_id="95218067",
+        libris_id="97mqwzhd43lwn0c",
+        authority_label="J. R. R. Tolkien",
+        authority_description="English author (1892–1973)",
+    )
+    db.session.add(author)
+    db.session.commit()
+
+    body = client.post(f"/authors/{author.id}/unlink").get_json()
+
+    assert body["ok"] is True
+    assert author.wikidata_qid is None
+    assert author.viaf_id is None
+    assert author.libris_id is None
+    assert author.authority_label is None
+    assert author.authority_description is None
+    assert author.source == "user_confirmed"
+    # The canonical NAME is untouched — unlinking drops ids only.
+    assert author.canonical_name == "J.R.R. Tolkien"
+
+
+def test_unlink_response_reflects_cleared_state(client):
+    author = Author(
+        canonical_name="Astrid Lindgren",
+        source="authority_linked",
+        wikidata_qid="Q160306",
+        viaf_id="12345",
+        libris_id="abc123",
+        authority_label="Astrid Lindgren",
+        authority_description="Swedish writer",
+    )
+    db.session.add(author)
+    db.session.commit()
+
+    body = client.post(f"/authors/{author.id}/unlink").get_json()
+
+    assert body == {"ok": True, "author": {
+        "id": author.id,
+        "name": "Astrid Lindgren",
+        "source": "user_confirmed",
+        "wikidata_qid": None,
+        "libris_id": None,
+        "viaf_id": None,
+        "authority_label": None,
+        "authority_description": None,
+    }}
+
+
+def test_unlink_unknown_id_is_404(client):
+    resp = client.post("/authors/999999/unlink")
+    assert resp.status_code == 404
+
+
+def test_unlink_author_with_no_ids_is_harmless(client):
+    author = Author(canonical_name="Ny Författare", source="tentative")
+    db.session.add(author)
+    db.session.commit()
+
+    resp = client.post(f"/authors/{author.id}/unlink")
+
+    assert resp.status_code == 200
+    assert author.source == "user_confirmed"
     assert author.wikidata_qid is None
 
 

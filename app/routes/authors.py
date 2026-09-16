@@ -357,6 +357,32 @@ def verify(author_id):
     })
 
 
+@authors_bp.route("/authors/<int:author_id>/unlink", methods=["POST"])
+def unlink(author_id):
+    """Drop a wrong authority anchor.
+
+    Verify can match the wrong person — Wikidata ranks by notability, and
+    a name can belong to a snooker player as well as a novelist. Since
+    `authority_linked` gates file writes, the user must be able to take a
+    bad anchor back off. The ids, the label and the description all go;
+    the canonical *name* is never touched here.
+
+    The entry drops to `user_confirmed`, not `tentative`: the click says
+    "this id is the wrong person", which is not the same judgement as
+    "this spelling is wrong", and demoting two steps would silently throw
+    away a confirmation the user may have given earlier.
+    """
+    author = _get_author_or_404(author_id)
+    author.wikidata_qid = None
+    author.viaf_id = None
+    author.libris_id = None
+    author.authority_label = None
+    author.authority_description = None
+    author.source = "user_confirmed"
+    db.session.commit()
+    return jsonify({"ok": True, "author": _author_dict(author)})
+
+
 @authors_bp.route("/authors/adjudicate", methods=["POST"])
 def adjudicate():
     """AI adjudicator for a likely-duplicate pair. Advisory only — the
