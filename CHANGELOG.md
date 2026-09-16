@@ -5,6 +5,252 @@ PATCH for fixes, MINOR for user-visible features and automatic migrations, MAJOR
 changes that need you to act. Releases before 1.41.0 are summarised from the git log —
 see the [tags](https://github.com/cgillinger/colophon/tags) for the full history.
 
+## [1.61.0] — 2026-09-16
+
+### Removed
+- **The generic batch wizard is gone for good.** Pick N mixed books, pick
+  fields, run — it has been hidden since 1.51.0, because N books with nothing
+  in common are N separate reviews wearing one progress bar. Every job it did
+  now has a scenario of its own (see 1.52.0 through 1.60.0), so the wizard
+  itself has been deleted: the modal, 2 194 lines of JavaScript, the 58
+  translated strings only it used, and 560 lines of stylesheet.
+- **`COLOPHON_SHOW_LEGACY_BATCH` no longer does anything.** It was the escape
+  hatch that brought the old button back while the scenarios were being built.
+  If you set it in your compose file, remove the line — it is now ignored.
+  Nothing else changes: the button it revealed has not been in the default UI
+  since 1.51.0.
+
+## [1.60.0] — 2026-09-16
+
+### Added
+- **Fetch covers for a whole filter.** Click the "N missing cover" count below
+  the list and a row appears above it: **Fetch covers for these**. Colophon
+  searches the entire filter — not just the page you can see — and shows what
+  it found beside the empty slot each cover would fill. Everything starts
+  ticked, because nothing is being overwritten; untick what you don't want and
+  apply. A hundred books per run; if the filter holds more it says how many
+  are left.
+
+### Fixed
+- **A preview could move a cover on its own.** When several formats of the
+  same book share an entry, the group sync ran — and committed — before the
+  search did, so a sibling's cover could travel across during what was only
+  meant to be a preview, and the book quietly left the filter without anyone
+  pressing Apply. Group sync is now skipped while a run is only looking.
+- **A round of covers left every traffic light one step too red.** Applying a
+  cover didn't recalculate the completeness score.
+
+## [1.59.0] — 2026-09-16
+
+### Fixed
+- **Your own bookshelf now decides who an author is.** The profession filter
+  added in 1.58.0 kept the wrong Dennis Taylor out but found no one to put in
+  his place, because the right person was never a candidate: Wikidata answers
+  that name with a snooker player, a racing driver and a footballer, while the
+  novelist is filed as "Dennis E. Taylor". Colophon now asks Wikidata which of
+  the candidates is credited as author of a title *you already have on the
+  shelf*, and that one wins — having written a book in your library is a fact,
+  a listed profession is a guess. When the name gets nowhere at all, it
+  searches on one of your titles instead and reads the author off the work.
+  Evidence, never a condition: if any of it fails, verification carries on as
+  before.
+
+## [1.58.0] — 2026-09-16
+
+### Fixed
+- **A name is not a person.** Author verification searched Wikidata for the
+  name and took the first human whose name matched. Wikidata ranks by fame, so
+  a Canadian science fiction novelist was anchored to a British snooker
+  player — and because an authority-linked entry is allowed to write to your
+  files, a wrong anchor is worse than none. A candidate must now also have a
+  writing profession, and the search walks past those who don't instead of
+  stopping at the first name match. It is a mitigation, not a cure: a namesake
+  who also writes would still win.
+
+### Added
+- **Remove authority link**, in the author row's menu. A wrong anchor you
+  cannot undo was the worst situation of the lot. The entry drops to
+  *confirmed* rather than *tentative* — the click says the id is the wrong
+  person, not that the spelling is wrong.
+
+## [1.57.0] — 2026-09-16
+
+### Changed
+- **The Authority column says who, not which code.** `Q31191175` doesn't answer
+  the only question you have after pressing Verify: did it find the right
+  person? The lookup already received a label and a description from Wikidata
+  and threw them away. The cell now reads "British science fiction writer",
+  with the identifiers moved into the tooltips of named links. Entries verified
+  before this release keep their identifiers and stay without a description
+  until you verify them again — the text was never stored, so there is nothing
+  to backfill.
+
+### Added
+- **Verify selected**, on the Authors page. Verification existed only one row
+  at a time, so in a real library the Authority column read "—" everywhere
+  while most entries were confirmed — two unrelated things the page never
+  explained. The loop runs in the browser, one author at a time, because a few
+  hundred SPARQL round trips in one request would pass Gunicorn's five-minute
+  limit with nothing to show.
+
+## [1.56.0] — 2026-09-16
+
+### Changed
+- **The author row's actions moved into a ⋯ menu.** Six filled buttons per row
+  became over a hundred on a page of 17 authors, wrapped unevenly and were
+  unusable on a phone. The row now shows only the action it actually needs —
+  Confirm, when the entry is tentative — and the rest live in the menu.
+- **The sidebar's VIEWS section stays put.** It was filled only by the library
+  page, where Table/Shelf/Series are JavaScript toggles, so on every other page
+  the heading vanished and the way back to your books looked like a reading
+  filter. It now falls back to three ordinary links.
+
+## [1.55.1] — 2026-09-16
+
+### Fixed
+- **The series card's actions are text, not furniture.** Two filled buttons
+  beside a cover read as bolted-on hardware in a view that is otherwise airy.
+  They are now text with an icon, dimmed until you point at them — but never
+  hidden, since there is no hover on an iPad.
+- **"NyChildren of Memory".** The series card read titles straight out of the
+  list, "New" badge and all.
+
+## [1.55.0] — 2026-09-16
+
+### Fixed
+- **A Swedish interface was showing English.** The i18n map in the main
+  template closed one line too early, so 55 keys — the whole language check and
+  the whole series flow — ended up outside it. Nothing failed; the interface
+  simply fell back to the English strings in the code and, in a few places, to
+  raw status codes like `confirmed`. Present since 1.52.0.
+- **"Unchanged" was not always unchanged.** Rows whose text did change
+  ("Children of time #03" → "Children of Time #3") were labelled unchanged.
+  Byte-identical rows are now unchanged and lose their checkbox entirely;
+  everything else is **Spelling only**, with a checkbox that is never
+  pre-ticked — you decide whether a tidier spelling is worth a reload on the
+  Kobo. The columns are now **Now** and **Becomes**.
+
+### Added
+- **Rename a series**, on the series card. Deterministic, no AI. A card already
+  gathers books whose series names differ only in spelling, so the rename fixes
+  those variants on the way past; every book keeps its own number.
+
+## [1.54.0] — 2026-09-16
+
+### Added
+- **Order an author's series** — the same review as *Order the series*, but
+  across a whole body of work, with the AI also deciding which series exist.
+  One block per proposed series, and a last block for the books it places
+  outside all of them; those rows have no checkbox at all, which is what stops
+  a standalone book from being given a number. Each block is judged on its own,
+  so a thin series can't arrive pre-ticked on the strength of a fat one beside
+  it. Two ways in: the button on the author's row, and the one in the blue bar
+  when you have filtered the library on an author.
+
+## [1.53.2] — 2026-09-16
+
+### Fixed
+- **It is the model that isn't in the free plan, not your quota.** A correction
+  to 1.53.1, which blamed the account. Asking Mistral's API directly shows the
+  key listing 46 models, with `ministral-3b/8b/14b` answering normally while
+  `mistral-small`, `mistral-medium` and `magistral-small` all return 429 with a
+  ceiling of zero and `mistral-large` returns 403. The account is healthy — the
+  `mistral-*` family is no longer included in the free plan. The message now
+  points at the model and tells you to pick another one under Settings → AI.
+
+### Changed
+- **The default model is now `ministral-14b-latest`**, the largest that answers
+  on a free key. It was `mistral-small-latest`, which a fresh install with a
+  free key would never get an answer from. Existing installations have their
+  own value in the database and need to change it themselves.
+
+## [1.53.1] — 2026-09-16
+
+### Fixed
+- **"It failed" is not an explanation.** Three of the five AI surfaces — series
+  ordering, the author adjudicator and the reader's word lookup — said nothing
+  at all when the provider answered 429, and the two that did say something
+  advised waiting, which is the wrong advice half the time. A 429 is at least
+  four different situations, and Colophon now reads what the provider actually
+  reveals: a `Retry-After` means wait that long, a named quota in the body
+  means you have spent it, and a ceiling of zero requests per minute means the
+  account may not call at all — no amount of waiting helps there. When none of
+  it is visible, it says the limit was reached rather than guessing why.
+
+## [1.53.0] — 2026-09-16
+
+### Added
+- **Order the series.** Every card in the Series view gets a button that asks
+  the AI about the whole series in one call — not book by book, which is what
+  makes numbering drift — and cross-checks the answer against Wikidata before
+  showing you anything. Each row says where it stands: *Confirmed* (both
+  agree), *Suggested* (the AI alone, pre-ticked only when it is confident),
+  *Differs from what is recorded* (never pre-ticked — a number you typed is not
+  overwritten unless you tick it yourself), *Spelling only*, and dimmed rows
+  with no checkbox for books the AI puts outside the series or didn't answer
+  about. The header warns about duplicate numbers and gaps. A lone unconfirmed
+  proposal is downgraded, so it can never arrive pre-ticked.
+
+  Series and series number are fields the Kobo reads, so a synced device
+  reloads those books even with **Write to the files too** unticked. The modal
+  says so under the table rather than pretending otherwise.
+
+## [1.52.0] — 2026-09-16
+
+### Added
+- **See what's missing.** Every book in the table view has a dot beside its
+  checkbox: green means the metadata is essentially complete, amber that
+  something is missing, red that most of it is — hover for the list. Above the
+  list, three counters say how many sit in each state and filter down to them
+  when clicked, and the sort menu gains **Least complete first**. The score was
+  an internal prefetch heuristic before this, only recalculated in one place
+  and therefore stale on hand-edited and freshly scanned rows; it is now
+  recalculated on every write path, with a backfill for older rows.
+- **Check language.** **Tools → Check language** reads the text inside every
+  EPUB and reports only what deserves a human: no language recorded, or a
+  recorded language the text contradicts. It samples two passages from 30 % and
+  60 % into the book rather than the start, because forewords and copyright
+  pages are routinely in another language and asking them gives the wrong
+  answer; when the two samples disagree the book is flagged and left unticked.
+  Books with no language at all arrive pre-ticked, books whose value is merely
+  contradicted do not. **Write to the files too** is pre-ticked here and
+  nowhere else — the Kobo picks its dictionary and hyphenation from the
+  language, so reaching the device is the entire point — and the label says how
+  many books will reload.
+
+## [1.51.1] — 2026-09-16
+
+### Fixed
+- **The batch wrote before you saw anything.** The bulk run classified a match
+  as confident and then wrote it — to the database and into your e-book files —
+  *before* the book appeared in the review list. A separate "Ask AI" branch
+  wrote every high-confidence field straight to file with no review at all,
+  title and author included. The stream now runs as a dry run: same
+  classification, nothing applied, and the write path stays only where a
+  scenario asks for it explicitly. The handbook claimed batch operations always
+  confirmed before writing; that section has been rewritten to say what is
+  actually true.
+
+### Changed
+- **The generic batch entry point is hidden** behind `COLOPHON_SHOW_LEGACY_BATCH`
+  (off by default) while the scenario flows that replace it are built.
+
+## [1.51.0] — 2026-09-16
+
+### Changed
+- **AI suggestions now see the rest of your library.** The prompt carried one
+  book in isolation, so a run over many books produced a new spelling of the
+  same series each time and a fresh synonym for every subject. It now also
+  carries the author's other books, the series names already in use and your
+  subject vocabulary. A suggested series that matches one you already have is
+  snapped to your spelling and promoted to high confidence, so a bulk run
+  converges on one name instead of drifting into variants. Subjects are nudged
+  the same way but never promoted. If the context can't be built, the
+  suggestion still happens.
+
+  This helps new suggestions only. Spellings that have already diverged need
+  the cleanup view that is still on the list.
+
 ## [1.50.1] — 2026-08-10
 
 ### Fixed

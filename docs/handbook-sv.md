@@ -23,6 +23,12 @@ en "preliminär" författare?*
 7. [AI-funktioner](#7-ai-funktioner)
 8. [Omslag](#8-omslag)
 9. [Många böcker på en gång: batchåtgärder](#9-många-böcker-på-en-gång-batchåtgärder)
+   - [9b. Se vad som saknas](#9b-se-vad-som-saknas)
+   - [9c. Kontrollera språk](#9c-kontrollera-språk)
+   - [9d. Ordna serien](#9d-ordna-serien)
+   - [9e. Ordna en författares serier](#9e-ordna-en-författares-serier)
+   - [9f. Byta namn på en serie](#9f-byta-namn-på-en-serie)
+   - [9g. Hämta omslag för en hel filtrering](#9g-hämta-omslag-för-en-hel-filtrering)
 10. [Hantera författare](#10-hantera-författare)
 11. [Hitta och rensa dubbletter](#11-hitta-och-rensa-dubbletter)
 12. [Läsa i webbläsaren](#12-läsa-i-webbläsaren)
@@ -167,9 +173,10 @@ smart.
   | LIBRIS (KB) | Sveriges nationalbibliografi — auktoritativ svensk data |
   | Calibre | "Djup"-nivå via Calibres egna plugins (Goodreads m.fl.) |
 
-- **Sökdjup.** När du hämtar (särskilt i batch) kan du välja hur hårt det ska
-  leta — en snabb svep över de snabba källorna, eller en djupare sökning som tar
-  med de långsammare.
+- **Sökdjup.** I bokens egen panel väljer du hur hårt det ska leta — ett snabbt
+  svep över de snabba källorna, eller en djupare sökning som tar med de
+  långsammare. Colophon trappar upp på egen hand när det snabba svepet lämnar
+  de viktiga fälten tomma.
 
 ## 7. AI-funktioner
 
@@ -180,6 +187,11 @@ AI är valfritt och körs bara när du ber om det. Konfigurera en leverantör i
 - **Fråga AI** (i en boks detaljer) — när de vanliga källorna inte kan fastställa
   en boks **serie** och position kan AI lista ut det. Den föreslår; du granskar
   och godkänner.
+- **Förslag som känner ditt bibliotek** — när AI föreslår en serie får den se
+  serienamnen och ämnesorden du redan använder, och författarens övriga böcker.
+  Ett förslag som motsvarar något du redan har snäpps till din stavning i
+  stället för att mynta en ny, så kör du det över flera böcker landar de i
+  samma namn i stället för att glida isär i varianter.
 - **AI-författarkoll** (på Författare-sidan) — för två namn som ser ut att vara
   samma person kan AI råda om de verkligen är det. Endast rådgivande — du
   bestämmer.

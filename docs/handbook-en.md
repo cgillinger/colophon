@@ -22,6 +22,12 @@ to look up one thing — *How do I share a book? Why won't my Kobo sync? What's 
 7. [AI features](#7-ai-features)
 8. [Covers](#8-covers)
 9. [Doing many books at once: batch operations](#9-doing-many-books-at-once-batch-operations)
+   - [9b. Seeing what's missing](#9b-seeing-whats-missing)
+   - [9c. Checking language](#9c-checking-language)
+   - [9d. Ordering a series](#9d-ordering-a-series)
+   - [9e. Ordering an author's series](#9e-ordering-an-authors-series)
+   - [9f. Renaming a series](#9f-renaming-a-series)
+   - [9g. Fetching covers for a whole filter](#9g-fetching-covers-for-a-whole-filter)
 10. [Managing authors](#10-managing-authors)
 11. [Finding and clearing duplicates](#11-finding-and-clearing-duplicates)
 12. [Reading in the browser](#12-reading-in-the-browser)
@@ -161,9 +167,10 @@ intelligently.
   | LIBRIS (KB) | Swedish national bibliography — authoritative Swedish data |
   | Calibre | "Deep" tier via Calibre's own plugins (Goodreads and others) |
 
-- **Search depth.** When fetching (especially in batch), you can choose how hard
-  to look — a quick pass over the fast sources, or a deeper search that brings in
-  the slower ones.
+- **Search depth.** The book's own panel lets you choose how hard to look — a
+  quick pass over the fast sources, or a deeper search that brings in the
+  slower ones. Colophon escalates on its own when the quick pass leaves the
+  important fields empty.
 
 ## 7. AI features
 
@@ -173,6 +180,11 @@ settings** first (Mistral, OpenAI, DeepSeek, or a local Ollama — see §17).
 - **Ask AI** (in a book's details) — when the ordinary sources can't pin down a
   book's **series** and position, AI can infer it. It proposes; you review and
   approve.
+- **Suggestions that know your library** — when AI proposes a series it is
+  shown the series names and subjects already in use, and the author's other
+  books. A suggestion that matches something you already have is snapped to
+  your spelling instead of minting a new one, so running it over several books
+  converges on one name rather than drifting into variants.
 - **AI author check** (on the Authors page) — for two names that look like the
   same person, AI can advise whether they really are. Advisory only — you decide.
 - **Order the series** (on a series card in the Series view) — asks about the

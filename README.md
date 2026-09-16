@@ -1,10 +1,10 @@
 # Colophon — self-hosted e-book library manager with Kobo wireless sync
 
-[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![GHCR](https://img.shields.io/badge/ghcr.io-prebuilt%20image-2496ED?logo=github&logoColor=white)](https://github.com/cgillinger/colophon/pkgs/container/colophon) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.60.0-brightgreen)](https://github.com/cgillinger/colophon/releases) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#setting-up-kobo-sync)
+[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![GHCR](https://img.shields.io/badge/ghcr.io-prebuilt%20image-2496ED?logo=github&logoColor=white)](https://github.com/cgillinger/colophon/pkgs/container/colophon) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.61.0-brightgreen)](https://github.com/cgillinger/colophon/releases) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#setting-up-kobo-sync)
 
 **Colophon — the e-book manager.** A self-hosted web app that turns a messy folder of e-book files into a clean, browsable library and syncs it to a Kobo e-reader over WiFi. (Not the printing/publishing term — this is the software.)
 
-Colophon scans a folder of e-book files (EPUB, MOBI, AZW3, KEPUB, PDF, CBZ, CBR), fetches and merges metadata from several sources (Google Books, Hardcover, Open Library, Wikidata, Wikipedia, LIBRIS, Calibre), uses AI to detect series, finds cover art, and lets a Kobo e-reader sync the whole library over WiFi.
+Colophon scans a folder of e-book files (EPUB, MOBI, AZW3, KEPUB, PDF, CBZ, CBR), fetches and merges metadata from several sources (Google Books, Hardcover, Open Library, Wikidata, Wikipedia, LIBRIS, Calibre), puts an AI to work on the parts the databases get wrong — series and their order above all — finds cover art, explains difficult words while you read, and lets a Kobo e-reader sync the whole library over WiFi.
 
 This is a personal project I built for my own library. I've published it in case someone else has the same problem and can use it as a head start. Runs in one Docker container, MIT-licensed, no telemetry. It started life as a metadata companion to other tools but has grown into a complete library manager in its own right — cataloguing, reading, organising and device sync, no other software required. Think of it as a lightweight alternative to Calibre and Calibre-Web; and because it writes metadata back into the files, it also plays nicely with Komga, Kavita and other servers that read embedded metadata, if you run one.
 
@@ -39,7 +39,8 @@ This is a personal project I built for my own library. I've published it in case
 - Scans a book folder and builds a catalogue
 - Adds books by drag-and-drop or a file picker — batch upload, no rescan needed; freshly added books wear a "New" badge for a while
 - Fetches metadata from seven sources (Google Books, Hardcover, Open Library, Wikidata, Wikipedia, LIBRIS, Calibre) and merges them field by field
-- Uses AI as an optional cataloguing assistant — series detection, metadata suggestions, author disambiguation and in-reader word explanations, always propose-only (Mistral, OpenAI, DeepSeek, or fully local Ollama)
+- Uses AI as an optional cataloguing assistant — orders a whole series, or an author's entire shelf, in one pass that is cross-checked against Wikidata and reviewed row by row; plus metadata suggestions, author disambiguation and in-reader word explanations, always propose-only (Mistral, OpenAI, DeepSeek, or fully local Ollama)
+- Handles many books at once as **scenarios** rather than a generic batch job — what's missing, a language check, the order of a series, covers for a whole filter — each one a proposal you tick through before anything is written
 - Finds covers from Open Library, Google Books, Hardcover, Wikidata, DuckDuckGo
 - Writes metadata back into the files so other tools see the same data
 - Keeps authors consistent — one canonical entry per author, spelling variants auto-linked, typos flagged for review, one-click merge/rename that relabels every book, with optional Wikidata verification
@@ -71,7 +72,9 @@ If you've searched for any of these, Colophon is aimed at you:
 - **Wireless Kobo sync for a self-hosted library** — point a Kobo at your own catalogue instead of the Kobo store, and get covers, downloads and reading-progress sync over WiFi. No cable after setup.
 - **A metadata front-end for Komga or Kavita** — Colophon writes metadata *back into the files*, so the server you already run picks up the same titles, authors, series and covers.
 - **An in-browser reader** (EPUB, MOBI, AZW3, PDF) with reading progress that syncs to and from your Kobo, and word lookup backed by open-source dictionaries.
-- **AI-assisted cataloguing** — series detection, metadata suggestions and author disambiguation with a propose-only guardrail. Bring any OpenAI-compatible provider, or keep it fully private with local Ollama. I haven't found another self-hosted book server that does this.
+- **AI-assisted cataloguing** — this is the part no other self-hosted book server I've found does. Order a whole series, or every series one author wrote, in a single reviewed pass that is cross-checked against Wikidata; get metadata suggestions that already know the spellings your library uses; get an advisory verdict on whether two author spellings are the same person. Propose-only throughout: you tick the rows, and nothing is written until you do. See [AI as a librarian's assistant](#ai-as-a-librarians-assistant).
+- **An AI that helps you read**, not just catalogue — select a difficult word and get a dictionary definition, a translation, and an explanation of what the word means *in that exact sentence*, which a dictionary alone can't tell you. Useful in a second language, and for the vocabulary of older books.
+- **Your choice of engine** — any OpenAI-compatible provider, or fully local and private with Ollama, where no book data leaves your machine. Everything works without a key; the AI features simply stay dark.
 
 It is *not* a comics page-reader, a multi-user server, or an internet-facing app — see [What it doesn't do](#what-it-doesnt-do).
 
@@ -188,22 +191,66 @@ As far as I know, no other self-hosted book server has this: Colophon uses an
 LLM as a **cataloguing assistant** — for exactly the problems where regular
 metadata sources fall short. It is entirely optional (everything works without
 a key), and deliberately constrained by one rule: **AI proposes, you decide.**
-Every AI suggestion lands in a review view where you approve field by field;
-nothing is ever written to your library or your files on an AI's say-so.
+Every suggestion lands in a review view where you approve it row by row and
+field by field; nothing is ever written to your library or your files on an
+AI's say-so.
 
-What it helps with:
+### What it helps with
 
-- **Series detection** — the field databases are worst at. The AI reads the
-  book's title, author and description and proposes the series name and the
-  book's position in it, which you accept or reject per field.
-- **Metadata suggestions** — "Ask AI" on a book (or a whole batch) proposes
-  values for missing fields, presented side by side with what you have.
+- **Series detection** — the thing the field databases are worst at. The AI
+  reads the book's title, author and description and proposes the series name
+  and the book's position in it, which you accept or reject per field.
+- **Ordering a whole series in one pass** — asking book by book is what makes
+  series numbering drift: seven questions about *Foundation* give you seven
+  answers that don't agree. Colophon asks about the series once, then
+  **cross-checks the answer against Wikidata** before showing you anything.
+  Every row says where it stands — *Confirmed* (AI and Wikidata agree),
+  *Suggested* (the AI alone), *Differs from what is recorded* (never
+  pre-ticked), *Spelling only* — and the group header warns about duplicate
+  numbers and gaps, so you can see whether the proposal hangs together before
+  you apply it.
+- **Ordering an author's entire shelf** — the same review across a whole body
+  of work, where the AI also decides *which* series exist. Books it places
+  outside every series get no checkbox at all, so a standalone can't be given a
+  number by accident, and a series of one book with no Wikidata confirmation
+  never arrives pre-ticked however sure the model sounds.
+- **Suggestions that know your library** — the model is shown the series names
+  and subjects you already use, plus the author's other books. A suggestion
+  that matches something you have is snapped to *your* spelling instead of
+  minting a near-duplicate, so a run across many books converges on one name
+  rather than leaving you with "The Expanse", "Expanse" and "Expanse Series".
+- **Metadata suggestions** — "Ask AI" on a book proposes values for the fields
+  that are still empty, side by side with what you have.
 - **Author disambiguation** — for likely-duplicate author entries, the AI
   gives an advisory verdict on whether two spellings are the same person, with
   its reasoning. Merging remains your click.
-- **A reading companion** — select a word in the in-browser reader and,
-  alongside the dictionary definition, the AI explains what the word means *in
-  that exact sentence*.
+- **A reading companion for difficult words** — select a word in the
+  in-browser reader and you get an English definition (GCIDE) and a Swedish
+  translation (FreeDict/WikDict) from open-source dictionaries that download
+  themselves on first use — and, next to them, the AI explaining what the word
+  means *in that exact sentence*. That last part is the bit a dictionary can't
+  do: archaic senses, technical jargon, a word whose four listed meanings leave
+  you no wiser about the one on the page. Reading in a second language is where
+  it earns its place.
+
+### The guardrails
+
+The reason this is usable rather than alarming is that the AI never has the
+last word, and never the first write:
+
+- **Nothing is written while the model is thinking.** Every scenario runs as a
+  dry run: you get a proposal, you tick rows, and only then does anything
+  change.
+- **Your own values are protected.** A row that contradicts something already
+  recorded is flagged red and left unticked; you have to choose to overwrite it.
+- **Changing the library and changing your files are separate choices.**
+  Writing metadata into the e-book files is its own checkbox, and the panel
+  tells you how many books a synced Kobo will re-download as a result.
+- **A second opinion where one exists.** Series proposals are checked against
+  Wikidata, which is what the *Confirmed* status means — the model agreeing
+  with itself doesn't count.
+- **It can stay on your machine.** With Ollama, no book data leaves the house.
+  Token usage for the hosted providers is tracked locally in the settings.
 
 Bring any OpenAI-compatible provider — or run it fully local and private with
 Ollama, where no book data ever leaves your machine. Token usage is tracked
