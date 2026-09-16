@@ -457,7 +457,10 @@ Uppdatera raden när ett steg är klart, med version och commit.
 | 4 Ordna serien | klar | 1.53.0 | v1.53.0 |
 | — AI-felhantering (utanför planen) | klar | 1.53.1–1.53.2 | v1.53.2 |
 | 5 Författarens serier | klar | 1.54.0 | f036d87 |
-| 6 Omslag för filtret | ej påbörjat | | |
+| — UX-svar på steg 5 (utanför planen) | klar | 1.55.0–1.55.1 | v1.55.1 |
+| — Författarsidan: meny, sidomeny (utanför planen) | klar | 1.56.0 | v1.56.0 |
+| — Auktoritetskolumnen (utanför planen) | klar | 1.57.0–1.59.0 | v1.59.0 |
+| 6 Omslag för filtret | ej påbörjat (valfritt) | | |
 
 ### Vad steg 4 lämnade efter sig
 
