@@ -456,7 +456,7 @@ Uppdatera raden när ett steg är klart, med version och commit.
 | 3 Språkkontroll | klar | 1.52.0 | e16e9fc |
 | 4 Ordna serien | klar | 1.53.0 | v1.53.0 |
 | — AI-felhantering (utanför planen) | klar | 1.53.1–1.53.2 | v1.53.2 |
-| 5 Författarens serier | klar | 1.54.0 | v1.54.0 |
+| 5 Författarens serier | klar | 1.54.0 | f036d87 |
 | 6 Omslag för filtret | ej påbörjat | | |
 
 ### Vad steg 4 lämnade efter sig
