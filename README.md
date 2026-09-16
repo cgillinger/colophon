@@ -173,26 +173,6 @@ Everything below has a sensible default. API keys can also be entered in the web
 | `COLOPHON_LIBRARY_DIR` | `/books` | Book folder inside the container. Leave as is |
 | `COLOPHON_DATA_DIR` | `/data` | Data folder inside the container. Leave as is |
 
----|---|---|---|
-| `COLOPHON_SECRET_KEY` | Yes | — | Flask session secret |
-| `COLOPHON_LIBRARY_DIR` | No | `/books` | Book folder inside the container |
-| `COLOPHON_DATA_DIR` | No | `/data` | Data folder (database, covers) inside the container |
-| `COLOPHON_LIBRARY_HOST` | No | `./bibliotek` | Host path mounted as the book folder |
-| `COLOPHON_DATA_HOST` | No | `./data` | Host path mounted as the data folder |
-| `COLOPHON_LOG_LEVEL` | No | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
-| `COLOPHON_PUBLIC_URL` | For Kobo sync | — | URL the Kobo uses to reach Colophon, e.g. `http://192.168.x.x:5000` — include the port |
-| `COLOPHON_GOOGLE_BOOKS_KEY` | No | — | Google Books API key |
-| `COLOPHON_AI_API_URL` | No | Mistral URL | AI chat completions endpoint |
-| `COLOPHON_AI_API_KEY` | No | — | AI provider API key |
-| `COLOPHON_AI_MODEL` | No | `ministral-14b-latest` | AI model name |
-| `COLOPHON_UPSTREAM_DIR` | No | — | Upstream library path inside the container (for sync) |
-| `COLOPHON_UPSTREAM_CLEANUP_ORPHANS` | No | off | Let a push remove the old upstream copy of a book you've moved to an author folder (also a checkbox in AI settings) |
-| `COLOPHON_MAX_UPLOAD_MB` | No | `1024` | Max size per uploaded file (in-app upload) |
-| `COLOPHON_NEW_BADGE_DAYS` | No | `14` | Days a newly added book shows the "New" badge |
-| `COLOPHON_LIBRARY_OWNER` | No | — | Label shown under the wordmark naming whose library this instance shows (e.g. `Christians bibliotek`) |
-| `COLOPHON_USB_MOUNT_ROOTS` | No | `/media:/run/media:/mnt:/Volumes` | Where to look for a Kobo plugged in by USB. Set to an empty string to switch USB detection off |
-
-All API keys can also be set in the web UI under **Settings → API settings**. UI values take priority over environment variables.
 
 ---
 
