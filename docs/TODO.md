@@ -205,18 +205,6 @@ landed 588.
 **Scope:** small. Polish → PATCH. Not blocking — the reported "stale data after
 edit" bug is already fixed (v1.6.0); this is just exact scroll position.
 
-## Wizard-only CSS in bulk_metadata.css
-
-**What:** `batch.js`, the wizard modal and `SHOW_LEGACY_BATCH` were deleted
-in v1.60.0, but their styles were not. Some of that block is still in use —
-`bp-*` by the single-book modal's progress table, `cover-review-*` by the
-cover scenario — so the dead rules (`batch-wizard-steps`, `batch-step`,
-`batch-field-*`, `brc-*`, `brt-*`, the batch summary) have to be picked out
-one at a time against the remaining markup rather than deleted as a block.
-
-**Scope:** small, and purely cosmetic weight → PATCH. No user-visible
-change, so it is worth doing only alongside other CSS work.
-
 ## Series + subject cleanup view (align spellings already in the library)
 
 **What:** v1.51.0 gave the AI library context so *new* suggestions converge

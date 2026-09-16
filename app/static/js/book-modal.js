@@ -620,11 +620,11 @@
     }
 
     // ============================================================
-    // SHARED FUNCTIONS — used by BOTH the single-book modal and batch
-    // Change with care — test both flows!
+    // SHARED FUNCTIONS — also called from the scenario flows and the
+    // result modal. Change with care — test both entry points!
     // Affected: _renderModalSourceDetail, _applyFetchedToModal,
     //          saveMetadata, fetchAiMetadata, _populateModal,
-    //          _cleanDate (lib/util, definierad i batch-sektionen)
+    //          _cleanDate (numera i core.js)
     // ============================================================
     // Field list + labels for the per-source coverage breakdown. Defined
     // locally here (bulk-result-modal.js keeps its own IIFE-scoped copies);
@@ -1372,7 +1372,7 @@
     }
 
     function _updateTableRow(itemId, data) {
-        // Scope to #bookTableBody so batch-review rows with the same data-item-id are never matched.
+        // Scope to #bookTableBody so review rows with the same data-item-id are never matched.
         var tbody = document.getElementById('bookTableBody');
         var row = (tbody || document).querySelector('tr[data-item-id="' + itemId + '"]');
         if (!row) return;

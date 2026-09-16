@@ -1,8 +1,8 @@
 # Genomförandeplan: scenario-batch i stället för generisk wizard
 
-Status: **planen är genomförd.** Steg 1–6 klara, och `batch.js` +
-`SHOW_LEGACY_BATCH` är raderade i commiten efter steg 6 — se avsnitt 6 för
-statustabell och vad varje steg lämnade efter sig.
+Status: **planen är genomförd.** Steg 1–6 klara; `batch.js` +
+`SHOW_LEGACY_BATCH` raderades i commiten efter steg 6 och wizardens CSS i
+v1.61.0 — se avsnitt 6 för statustabell och vad varje steg lämnade efter sig.
 Ursprungligen skriven 2026-09-16. Bakgrund i samtalet som ledde hit: den generiska
 batchwizarden (markera N blandade böcker, välj fält, kör) lönar sig inte,
 eftersom N böcker utan delat faktum är N oberoende granskningar. Scenarier
@@ -467,6 +467,7 @@ Uppdatera raden när ett steg är klart, med version och commit.
 | — Författarsidan: meny, sidomeny (utanför planen) | klar | 1.56.0 | v1.56.0 |
 | — Auktoritetskolumnen (utanför planen) | klar | 1.57.0–1.59.0 | v1.59.0 |
 | 6 Omslag för filtret | klar | 1.60.0 | v1.60.0 |
+| — Wizardens kod + CSS raderad (efterspel) | klar | 1.61.0 | v1.61.0 |
 
 ### Vad steg 4 lämnade efter sig
 
@@ -666,8 +667,9 @@ devinstansen, sedan `batch.js` (2 194 rader) + wizardmodalen +
 Fem hjälpfunktioner överlevde filen och ligger nu i `core.js` —
 `_esc`, `_cleanDate`, `_applyFieldLabel`, `_resultLabel`, `_resultTooltip`
 — eftersom bokmodalen och resultatmodalen fortfarande visar hämtresultat.
-Wizardens CSS ligger kvar; delar av den delas med kvarvarande UI, så den
-är en egen TODO.
+Wizardens CSS städades i v1.61.0: 562 rader bort, plockade regel för regel
+mot kvarvarande markup, eftersom `bp-*` (bokmodalens förloppstabell) och
+`cover-review-*` (omslagsscenariot) ligger i samma block och lever vidare.
 
 **Devinstansen har inga API-nycklar, och Google Books svarar 429 utan
 nyckel.** En riktig körning hittade därför noll omslag där. Den vägen
