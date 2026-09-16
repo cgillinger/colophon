@@ -355,7 +355,12 @@ person is labelled identically — even when the files spell the name differentl
     them in one go; they are looked up one at a time, so it takes a moment.
     The cell shows what Wikidata says the person is ("British science fiction
     author"), so you can see whether the right person was found; the id itself
-    sits in the links' tooltips.
+    sits in the links' tooltips. Your own books are used to pick the right
+    person: when several share the name, the one credited with a title you
+    already hold wins, and when the name search finds nobody, Colophon
+    searches one of your titles instead and reads off who wrote it.
+    If it still picks the wrong one, **Remove authority link** is in the ⋯
+    menu.
   - For likely-duplicate pairs, merge with one click, or **Ask AI** whether
     they're the same person.
 

@@ -321,6 +321,32 @@ def confirm_bulk():
     return jsonify({"ok": True, "confirmed": len(authors)})
 
 
+def _author_titles(author_id, limit=40):
+    """Titles this library already holds for an author.
+
+    Handed to the authority lookup so a name shared by several people can
+    be decided by the one hard fact available: which of them wrote a book
+    that is actually on the shelf.
+    """
+    from app.models import BookAuthor
+
+    rows = (
+        db.session.query(LibraryItem.title)
+        .filter(db.or_(
+            LibraryItem.id.in_(
+                db.session.query(BookAuthor.item_id)
+                .filter(BookAuthor.author_id == author_id)
+            ),
+            LibraryItem.author_id == author_id,
+        ))
+        .filter(LibraryItem.title.isnot(None), LibraryItem.title != "")
+        .distinct()
+        .limit(limit)
+        .all()
+    )
+    return [title for (title,) in rows]
+
+
 @authors_bp.route("/authors/<int:author_id>/verify", methods=["POST"])
 def verify(author_id):
     """Authority anchoring (design step 5): resolve the canonical name
@@ -330,7 +356,9 @@ def verify(author_id):
     from app.services.author_authority_lookup import lookup_author_authority
 
     author = _get_author_or_404(author_id)
-    result = lookup_author_authority(author.canonical_name)
+    result = lookup_author_authority(
+        author.canonical_name, known_titles=_author_titles(author.id)
+    )
     if not result["ok"]:
         return jsonify({"ok": False, "error": "lookup_failed"}), 502
     if not result["matched"]:

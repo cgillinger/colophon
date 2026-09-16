@@ -34,10 +34,12 @@ from app.services.author_authority import (
     author_signature,
     fuzzy_similarity,
 )
+from app.services.grouping import normalize_title_key
 
 logger = logging.getLogger(__name__)
 
 _API = "https://www.wikidata.org/w/api.php"
+_SPARQL = "https://query.wikidata.org/sparql"
 _UA = "Colophon/1.0 (self-hosted ebook manager)"
 _TIMEOUT = 10
 
@@ -113,15 +115,165 @@ def _name_matches(name, entity):
     return False
 
 
-def lookup_author_authority(name):
+def _works_by_candidate(qids):
+    """{qid: {normalized title, ...}} — the works each candidate is
+    credited as author of (P50), in one SPARQL query for all of them.
+
+    Any failure returns {}: Wikidata is evidence here, never a
+    precondition. A lookup that cannot reach the query service falls back
+    to the occupation test, exactly as if no work were recorded.
+    """
+    if not qids:
+        return {}
+    values = " ".join(f"wd:{q}" for q in qids)
+    query = f"""
+    SELECT ?person ?workLabel WHERE {{
+      VALUES ?person {{ {values} }}
+      ?work wdt:P50 ?person .
+      SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en,sv". }}
+    }}
+    LIMIT 400
+    """
+    try:
+        resp = requests.get(
+            _SPARQL,
+            params={"query": query, "format": "json"},
+            headers={"User-Agent": _UA},
+            timeout=_TIMEOUT,
+        )
+        resp.raise_for_status()
+        bindings = resp.json().get("results", {}).get("bindings", [])
+    except (requests.RequestException, ValueError) as exc:
+        logger.warning("Wikidata works lookup failed for %r: %s", qids, exc)
+        return {}
+
+    works = {}
+    for row in bindings:
+        person = (row.get("person", {}).get("value") or "").rsplit("/", 1)[-1]
+        title = normalize_title_key(row.get("workLabel", {}).get("value") or "")
+        if person and title:
+            works.setdefault(person, set()).add(title)
+    return works
+
+
+def _candidate_written_a_book_we_hold(qids, known_titles):
+    """The first candidate, in Wikidata's ranking order, credited with a
+    title this library already holds — or None.
+
+    This is the only hard evidence available: a name is shared, an
+    occupation is a guess, but "wrote a book that is on the shelf" picks
+    the right person out of a group of namesakes. It therefore outranks
+    the occupation test rather than refining it.
+    """
+    wanted = {normalize_title_key(t) for t in (known_titles or [])}
+    wanted.discard("")
+    if not wanted or len(qids) < 2:
+        return None
+    works = _works_by_candidate(qids)
+    for qid in qids:
+        if works.get(qid, set()) & wanted:
+            return qid
+    return None
+
+
+def _search_ids(query, limit=5):
+    """wbsearchentities → ids, empty on any failure."""
+    try:
+        resp = requests.get(
+            _API,
+            params={
+                "action": "wbsearchentities", "search": query,
+                "language": "en", "uselang": "en", "type": "item",
+                "limit": limit, "format": "json",
+            },
+            headers={"User-Agent": _UA},
+            timeout=_TIMEOUT,
+        )
+        resp.raise_for_status()
+        return [h["id"] for h in resp.json().get("search", []) if h.get("id")]
+    except (requests.RequestException, ValueError, KeyError):
+        return []
+
+
+def _get_entities(qids, props="claims|labels|aliases|descriptions"):
+    """wbgetentities → {qid: entity}, empty on any failure."""
+    if not qids:
+        return {}
+    try:
+        resp = requests.get(
+            _API,
+            params={
+                "action": "wbgetentities", "ids": "|".join(qids[:20]),
+                "props": props, "languages": "en|sv", "format": "json",
+            },
+            headers={"User-Agent": _UA},
+            timeout=_TIMEOUT,
+        )
+        resp.raise_for_status()
+        return resp.json().get("entities", {})
+    except (requests.RequestException, ValueError):
+        return {}
+
+
+def _author_of_a_book_we_hold(name, known_titles):
+    """Find the person by looking up the *book* instead of the name.
+
+    The name search is the weak link, not the filtering: "Dennis Taylor"
+    returns a snooker player, a racing driver and a footballer, while the
+    novelist is labelled "Dennis E. Taylor" and never appears at all. No
+    amount of filtering can pick a candidate that was never a candidate.
+
+    Searching a title we hold finds the book in one step, and the book
+    says who wrote it (P50). The name still has to match — this asks
+    Wikidata "who wrote this book?", then checks the answer is plausibly
+    the author we were asking about. Only runs when the name search found
+    nobody we trust, so the common path costs nothing.
+    """
+    work_ids = []
+    for title in (known_titles or [])[:3]:
+        work_ids.extend(_search_ids(title))
+        if work_ids:
+            break
+    if not work_ids:
+        return None, {}
+
+    person_ids = []
+    for entity in _get_entities(work_ids, props="claims").values():
+        for claim in entity.get("claims", {}).get("P50", []):
+            value = (claim.get("mainsnak", {}).get("datavalue", {}) or {}).get("value")
+            if isinstance(value, dict) and value.get("id"):
+                if value["id"] not in person_ids:
+                    person_ids.append(value["id"])
+    if not person_ids:
+        return None, {}
+
+    people = _get_entities(person_ids)
+    for qid in person_ids:
+        entity = people.get(qid) or {}
+        if not _is_human(entity.get("claims", {})):
+            continue
+        if not _name_matches(name, entity):
+            continue
+        return qid, entity
+    return None, {}
+
+
+def lookup_author_authority(name, known_titles=None):
     """Resolve one author name against Wikidata.
 
+    `known_titles` are titles this library already holds for the author.
+    They are only consulted when the name is ambiguous, and they decide
+    it: a candidate credited with a book on the shelf is the right person
+    in a way no name or occupation test can establish.
+
     Returns {"ok": bool, "matched": bool, "qid", "viaf_id", "libris_id",
-    "label", "description"}. ok=False only on network/API failure;
-    a clean miss is ok=True, matched=False.
+    "label", "description", "matched_on"}. `matched_on` is "title" or
+    "occupation" — which evidence chose the candidate. ok=False only on
+    network/API failure; a clean miss is ok=True, matched=False.
     """
     result = {"ok": True, "matched": False, "qid": "", "viaf_id": "",
-              "libris_id": "", "label": "", "description": ""}
+              "libris_id": "", "label": "", "description": "",
+              "matched_on": ""}
     if not (name or "").strip():
         return result
 
@@ -146,49 +298,65 @@ def lookup_author_authority(name):
                     qids.append(qid)
             if qids:
                 break
-        if not qids:
-            return result
-
-        resp = requests.get(
-            _API,
-            params={
-                "action": "wbgetentities", "ids": "|".join(qids[:5]),
-                "props": "claims|labels|aliases|descriptions",
-                "languages": "en|sv", "format": "json",
-            },
-            headers={"User-Agent": _UA},
-            timeout=_TIMEOUT,
-        )
-        resp.raise_for_status()
-        entities = resp.json().get("entities", {})
+        # No hits is not the end: the book-title fallback below can still
+        # find someone the name search never offered. Same for a search
+        # that returns only wrong people.
+        entities = {}
+        if qids:
+            resp = requests.get(
+                _API,
+                params={
+                    "action": "wbgetentities", "ids": "|".join(qids[:5]),
+                    "props": "claims|labels|aliases|descriptions",
+                    "languages": "en|sv", "format": "json",
+                },
+                headers={"User-Agent": _UA},
+                timeout=_TIMEOUT,
+            )
+            resp.raise_for_status()
+            entities = resp.json().get("entities", {})
     except (requests.RequestException, ValueError) as exc:
         logger.warning("Wikidata author lookup failed for %r: %s", name, exc)
         return {**result, "ok": False}
 
-    # Keep the search ranking, but walk past the candidates that only look
-    # right: the first human whose name matches AND who writes. Wikidata
+    # Everyone the name could plausibly be, in Wikidata's ranking order.
+    people = [qid for qid in qids
+              if _is_human((entities.get(qid) or {}).get("claims", {}))
+              and _name_matches(name, entities.get(qid) or {})]
+
+    # Hard evidence first: did one of them write a book we hold? Only asked
+    # when there is genuinely a choice to make.
+    chosen = _candidate_written_a_book_we_hold(people, known_titles)
+    matched_on = "title" if chosen else ""
+
+    # Otherwise fall back to "this person writes for a living". Wikidata
     # ranks by general notability, so the snooker player comes before the
     # novelist and the ranking alone cannot be trusted here.
-    for qid in qids:
-        entity = entities.get(qid) or {}
-        claims = entity.get("claims", {})
-        if not _is_human(claims):
-            continue
-        if not _name_matches(name, entity):
-            continue
-        if not _writes(claims):
-            continue
-        label = (entity.get("labels", {}).get("en")
-                 or entity.get("labels", {}).get("sv") or {}).get("value", "")
-        description = (entity.get("descriptions", {}).get("en")
-                       or entity.get("descriptions", {}).get("sv") or {}).get("value", "")
-        return {
-            "ok": True,
-            "matched": True,
-            "qid": qid,
-            "viaf_id": _claim_value(claims, "P214"),
-            "libris_id": _claim_value(claims, "P5587") or _claim_value(claims, "P906"),
-            "label": label,
-            "description": description,
-        }
-    return result
+    if not chosen:
+        for qid in people:
+            if _writes((entities.get(qid) or {}).get("claims", {})):
+                chosen = qid
+                matched_on = "occupation"
+                break
+    # Last resort: the name search may simply never have offered the right
+    # person. Ask the books instead.
+    entity = entities.get(chosen) or {} if chosen else {}
+    if not chosen:
+        chosen, entity = _author_of_a_book_we_hold(name, known_titles)
+        matched_on = "title" if chosen else ""
+    if not chosen:
+        return result
+
+    claims = entity.get("claims", {})
+    return {
+        "ok": True,
+        "matched": True,
+        "qid": chosen,
+        "viaf_id": _claim_value(claims, "P214"),
+        "libris_id": _claim_value(claims, "P5587") or _claim_value(claims, "P906"),
+        "label": (entity.get("labels", {}).get("en")
+                  or entity.get("labels", {}).get("sv") or {}).get("value", ""),
+        "description": (entity.get("descriptions", {}).get("en")
+                        or entity.get("descriptions", {}).get("sv") or {}).get("value", ""),
+        "matched_on": matched_on,
+    }

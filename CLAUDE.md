@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.58.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.59.0.
 
 ## Författarmappar (v1.38.0 — byggt)
 
@@ -355,11 +355,35 @@ rule accepted him, anchoring a science fiction author to a snooker player
 *and* promoting the entry to `authority_linked`, which gates file writes.
 A candidate must now also have a writing occupation (`P106` in
 `_WRITING_OCCUPATIONS`), and the walk continues past candidates that fail
-it rather than stopping at the first name match. That is a mitigation, not
-a fix — a name-sharing writer would still win. The real fix is to
-cross-check the candidate's works against the titles the library already
-holds for that author; see `docs/TODO.md`. Either way `POST
-/authors/<id>/unlink` now exists, because a wrong anchor the user cannot
+it rather than stopping at the first name match. That is only a guess about a
+person, though, so v1.59.0 puts a fact above it: `_works_by_candidate`
+asks Wikidata, in one SPARQL query for all candidates at once, which
+works list each of them as author (`P50`), and a candidate credited with
+a title the library already holds wins outright — **even if it failed the
+occupation test**, which also rescues authors Wikidata gave no occupation.
+The query is skipped unless there is a real choice to make (two or more
+candidates and some known titles), and any failure returns `{}` so the
+lookup falls back to occupation: Wikidata is evidence here, never a
+precondition. `result["matched_on"]` records which evidence decided.
+Titles are compared through `grouping.normalize_title_key`, lifted out of
+`compute_group_key` so both places mean the same thing by "same title".
+
+**The weak link was the search, not the filter.** "Dennis Taylor" returns
+a snooker player, a racing driver, a footballer and a disambiguation page;
+the novelist is labelled "Dennis E. Taylor" and is never a candidate at
+all, so no filter can reach him. `_author_of_a_book_we_hold` therefore
+searches a *title* the library holds, reads the work's `P50`, and checks
+that person's name against ours. It runs only when the name path chose
+nobody, and it deliberately skips the occupation test: being credited
+with a book on the shelf outranks a `P106` claim, and this is how an
+author Wikidata gave no occupation gets anchored.
+
+`_search_ids` / `_get_entities` swallow their errors and return empty,
+because on that path a failure means "no evidence". The main search does
+**not** use them: there, a network failure must surface as `ok=False`
+rather than a silent miss. Don't unify them.
+
+`POST /authors/<id>/unlink` exists because a wrong anchor the user cannot
 remove is the worst state of all.
 
 **A column nobody can fill stays empty.** Verify was per-row only, so on

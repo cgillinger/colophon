@@ -361,7 +361,11 @@ märks likadant — även när filerna stavar namnet olika ("J.R.R. Tolkien" /
     för att gå igenom dem i ett svep; de slås upp en i taget, så det tar en
     stund. Cellen visar vad Wikidata säger att personen är ("brittisk
     science fiction-författare"), så du ser om rätt person hittades; själva
-    id:t ligger i länkarnas verktygstips.
+    id:t ligger i länkarnas verktygstips. Dina egna böcker används för att
+    peka ut rätt person: delar flera namnet vinner den som skrivit en titel
+    du redan har, och hittar namnsökningen ingen alls söker Colophon i
+    stället på en av dina titlar och läser av vem som skrev den. Blev det ändå fel finns **Ta bort auktoritetslänk**
+    i ⋯-menyn.
   - För troliga dubblettpar, slå ihop med ett klick, eller **Fråga AI** om de är
     samma person.
 
