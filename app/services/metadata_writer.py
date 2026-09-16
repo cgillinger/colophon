@@ -214,11 +214,8 @@ def apply_metadata_to_item(
         )
 
     # Refresh the completeness score so the DB reflects the post-write state.
-    try:
-        from app.services.metadata_pipeline import completeness_score
-        item.completeness_score = completeness_score(item)
-    except Exception:
-        logger.debug("completeness_score update failed", exc_info=True)
+    from app.services.metadata_pipeline import refresh_completeness
+    refresh_completeness(item)
 
     return {
         "db_updated": db_updated,

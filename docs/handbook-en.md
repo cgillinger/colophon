@@ -204,6 +204,40 @@ choice.
 In the meantime, enrich books one at a time from the book's own panel
 (section 6).
 
+## 9b. Seeing what's missing
+
+Every book in the table view has a small dot beside its checkbox: **green**
+means the metadata is essentially complete, **amber** that something is
+missing, **red** that most of it is. Hover the dot to see which fields.
+
+Above the list you'll find how many books sit in each state. Click a number
+to filter down to them. The sort menu has **Least complete first** for when
+you want to work through them from the top.
+
+The dot weighs cover and synopsis heaviest, then genre, publication date,
+publisher and series. A one-sentence synopsis counts as missing — that's
+deliberate; a single line doesn't help you when you're browsing.
+
+## 9c. Checking language
+
+**Tools → Check language** reads the text inside every EPUB and compares it
+with the language recorded in the metadata. Only the books that disagree show
+up; the rest don't bother you.
+
+Colophon samples two passages from inside the book, not from the start.
+Forewords and copyright pages are often in a different language than the
+book, and asking them gives the wrong answer. If the two passages disagree
+the book is flagged and left unticked — that one you want to look at
+yourself.
+
+Books with no language at all are pre-ticked; books where an existing value
+is contradicted are not, since someone may have set it deliberately. The
+**Write to the files too** checkbox is pre-ticked here, unlike elsewhere: the
+Kobo picks its dictionary and hyphenation from the language, so reaching the
+device is the whole point. The label tells you how many books will reload.
+
+PDF and MOBI files can't be read and are counted in a footnote.
+
 ## 10. Managing authors
 
 Colophon keeps **one canonical entry per author**, so every book by the same

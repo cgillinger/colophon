@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.51.1.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.52.0.
 
 ## Författarmappar (v1.38.0 — byggt)
 
@@ -195,6 +195,53 @@ Multiple formats of the same book (EPUB + MOBI + AZW3) share a `group_key` = SHA
 ### SSE streaming
 
 Both scan and bulk metadata use Server-Sent Events with background threads + `queue.SimpleQueue`. Single shared `_abort_event` for cancellation.
+
+### Language check (v1.52.0)
+
+The second scenario flow. `services/language_check.py` reads the text out of
+every EPUB and reports only what deserves a human: no stored language, or a
+stored language the text contradicts. The stream is read-only — proven at the
+HTTP boundary by `test_stream_never_writes`, not just in the service — and
+`/metadata/language-check/apply` writes only what the user ticked, with
+`selected_fields={"language"}` so nothing else can ride along.
+
+`detect_language_confident` samples at **30 % and 60 % through the spine**,
+not from the start: front matter is routinely copyright boilerplate in
+another language, and sampling it answers the wrong question. Two samples
+that disagree set `agree=False`, which the UI flags and leaves unticked.
+
+**This flow contradicts the plan's invariant 3, deliberately.** `language`
+is in `models._DEVICE_CONTENT_COLUMNS`, so even a DB-only correction stamps
+`content_updated_at` and the Kobo re-downloads. That is correct — the device
+picks its dictionary and hyphenation from this field — which is also why the
+"write to the files too" checkbox is pre-ticked here and nowhere else. The
+label says how many books will reload. `test_language_only_db_change_still_
+stamps_content` pins it; if it ever goes red, someone removed `language`
+from that set and quietly stopped language fixes from reaching a reader.
+Series is in that set too, so steps 4–5 will meet the same thing.
+
+### Completeness traffic light (v1.52.0)
+
+`completeness_score` (0..10 since `series` joined `FIELD_WEIGHTS`) stopped
+being an internal prefetch heuristic and became something the user reads: a
+dot in the table row, three clickable counters, a filter and a sort. That
+promotion has a cost — the score has to be true on **every** write path, not
+just the enrichment pipeline's. `refresh_completeness(item)` is called from
+`scanner.upsert_library_item`, `save_metadata_json`, `enrichment_apply`,
+`ai_apply`, `cover_apply_json` and `apply_metadata_to_item`, and
+`backfill_completeness_scores()` fills rows that predate the column.
+
+`missing_fields(item)` is the single source of truth: `completeness_score`
+sums its weights, and the dot's tooltip lists it via the
+`completeness_missing_fields` context processor. Do not re-derive "what is
+missing" in the template with `if not item.x` — a 20-character synopsis
+counts as missing to the scorer (`QUALITY_THRESHOLDS`) but not to a naive
+truth test, and the dot would then contradict its own explanation.
+
+Bands are green ≤1, yellow 2–5, red ≥6, and they are written down in three
+places that must agree: `_completeness_bucket` in `routes/metadata.py`, the
+`completeness_level` set in `bulk_metadata.html`, and the `completeness`
+branch of `applyFilters` in `filters-sort-paging.js`.
 
 ### Batch: preview before write (v1.51.1)
 

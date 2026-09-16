@@ -1666,6 +1666,23 @@
         }
         .book-title { font-weight: 600; }
 
+        /* Completeness traffic light dot (checkbox cell). Diagonally small
+           and discrete on purpose — hover the title for what's missing.
+           Colors come from the theme-aware --accent-red/yellow/green
+           tokens defined above, so no separate dark-mode override needed. */
+        .completeness-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-left: 6px;
+            vertical-align: middle;
+            flex-shrink: 0;
+        }
+        .completeness-dot.level-green  { background: var(--accent-green); }
+        .completeness-dot.level-yellow { background: var(--accent-yellow); }
+        .completeness-dot.level-red    { background: var(--accent-red); }
+
         .badge {
             display: inline-block;
             padding: 3px 8px;
@@ -4133,6 +4150,17 @@
             border-color: var(--accent-green) !important;
         }
 
+        /* Completeness traffic light — chips mirror the row dot's colors.
+           Thresholds (green<=1, yellow 2-5, red>=6) live in the template
+           (completeness_level) and in filters-sort-paging.js (applyFilters'
+           'completeness' branch) — keep all three in sync. */
+        .stats-badge-red    { color: var(--accent-red); }
+        .stats-badge-yellow { color: var(--accent-yellow); }
+        .stats-badge-green  { color: var(--accent-green); }
+        .stats-badge-red.badge-active    { background: var(--accent-red) !important; border-color: var(--accent-red) !important; }
+        .stats-badge-yellow.badge-active { background: var(--accent-yellow) !important; border-color: var(--accent-yellow) !important; }
+        .stats-badge-green.badge-active  { background: var(--accent-green) !important; border-color: var(--accent-green) !important; }
+
         /* Danger / delete buttons */
         .btn-danger {
             background: var(--accent-red);
@@ -4647,3 +4675,47 @@
     color: var(--accent-primary, #4a6fa5);
     border-color: var(--accent-primary, #4a6fa5);
 }
+
+        /* ---- Language check -------------------------------------------
+           The review table for the language scenario. Mirrors the dup-*
+           table's density; the uncertain row is the one where the two
+           text samples disagreed, so it is tinted rather than hidden. */
+        .lang-bar-track {
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 14px;
+        }
+        .lang-bar-fill {
+            height: 100%;
+            width: 0;
+            background: var(--accent-primary);
+            transition: width .2s ease;
+        }
+        .lang-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .lang-table th {
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-secondary);
+            padding: 6px 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .lang-table td {
+            padding: 8px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+        .lang-table tr.lang-uncertain td { background: var(--accent-yellow-soft, rgba(180, 83, 9, .07)); }
+        .lang-title { font-weight: 600; }
+        .lang-author { color: var(--text-secondary); font-size: 12px; }
+        .lang-none { color: var(--text-secondary); }
+        .lang-arrow { color: var(--text-secondary); }
+        .lang-warn { color: var(--accent-yellow); }
+        .lang-write-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }

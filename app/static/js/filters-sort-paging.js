@@ -153,6 +153,14 @@
                 var bOrd = order[bVal] !== undefined ? order[bVal] : 2;
                 return (aOrd - bOrd) * _currentSort.dir;
             }
+            if (key === 'completeness') {
+                // Numeric, not lexicographic — "10" must sort after "2".
+                var aNum = parseInt(aVal, 10);
+                var bNum = parseInt(bVal, 10);
+                if (isNaN(aNum)) aNum = 0;
+                if (isNaN(bNum)) bNum = 0;
+                return (aNum - bNum) * _currentSort.dir;
+            }
             if (aVal < bVal) return -1 * _currentSort.dir;
             if (aVal > bVal) return 1 * _currentSort.dir;
             return 0;
@@ -314,6 +322,18 @@
                     if (astat !== 'review' && astat !== 'new' && astat !== 'missing') show = false;
                 } else if (filterType === 'new') {
                     if ((row.dataset.isNew || '') !== '1') show = false;
+                } else if (filterType === 'completeness') {
+                    // Bands mirror the template (bulk_metadata.html's
+                    // completeness_level): green<=1, yellow 2-5, red>=6.
+                    var compVal = parseInt(row.dataset.completeness, 10);
+                    if (isNaN(compVal)) compVal = 0;
+                    if (filterValue === 'red') {
+                        if (compVal < 6) show = false;
+                    } else if (filterValue === 'yellow') {
+                        if (compVal < 2 || compVal > 5) show = false;
+                    } else if (filterValue === 'green') {
+                        if (compVal > 1) show = false;
+                    }
                 }
             }
 

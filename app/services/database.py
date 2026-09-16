@@ -157,6 +157,7 @@ def ensure_database_columns():
     backfill_author_status_confirmed()
     backfill_relink_limbo_books()
     backfill_gc_orphan_tentative_authors()
+    backfill_completeness_scores()
 
 
 def backfill_relink_limbo_books():
@@ -373,6 +374,25 @@ def backfill_language_detection():
     if updated:
         db.session.commit()
         logger.info("Backfilled language for %d items", updated)
+
+
+def backfill_completeness_scores():
+    """Set completeness_score for existing rows that predate the column.
+
+    Idempotent — only touches rows where the score is NULL.
+    """
+    from app.models import LibraryItem
+    from app.services.metadata_pipeline import completeness_score
+
+    items = LibraryItem.query.filter(LibraryItem.completeness_score.is_(None)).all()
+    if not items:
+        return
+
+    for item in items:
+        item.completeness_score = completeness_score(item)
+
+    db.session.commit()
+    logger.info("Backfilled completeness_score for %d rows", len(items))
 
 
 def normalize_series_index_values():

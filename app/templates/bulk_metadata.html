@@ -209,6 +209,7 @@
                 <option value="published:asc">{{ _('Publication date (oldest)') }}</option>
                 <option value="created:desc">{{ _('Date added (newest first)') }}</option>
                 <option value="created:asc">{{ _('Date added (oldest first)') }}</option>
+                <option value="completeness:desc">{{ _('Least complete first') }}</option>
             </select>
 
             <div class="filter-sep"></div>
@@ -260,6 +261,24 @@
                 </thead>
                 <tbody id="bookTableBody">
                     {% for item in items %}
+                        {% set completeness_score = item.completeness_score if item.completeness_score is not none else 0 %}
+                        {% set completeness_level = 'red' if completeness_score >= 6 else ('yellow' if completeness_score >= 2 else 'green') %}
+                        {# Ask the scorer what it counted, so the dot and its
+                           tooltip can never disagree (a 20-character synopsis
+                           counts as missing in both, or in neither). #}
+                        {% set completeness_labels = {
+                            'cover': _('cover'),
+                            'description': _('synopsis'),
+                            'genres': _('genre'),
+                            'published_date': _('publication date'),
+                            'publisher': _('publisher'),
+                            'series': _('series')
+                        } %}
+                        {% set completeness_missing = [] %}
+                        {% for field in completeness_missing_fields(item) %}
+                            {% set _add = completeness_missing.append(completeness_labels.get(field, field)) %}
+                        {% endfor %}
+                        {% set completeness_title = completeness_missing|join(', ') if completeness_missing else _('Complete') %}
                         <tr data-title="{{ item.title|lower }}"
                             data-author="{{ (item.author or '')|lower }}"
                             data-isbn="{{ (item.isbn or '')|lower }}"
@@ -288,9 +307,11 @@
                             data-read-status="{{ item.read_status or 'ReadyToRead' }}"
                             data-read-progress="{{ item.read_progress if item.read_progress is not none else '' }}"
                             data-is-new="{{ '1' if item.created_at and new_badge_cutoff and item.created_at > new_badge_cutoff else '0' }}"
-                            data-author-status="{{ item.author_status or '' }}">
+                            data-author-status="{{ item.author_status or '' }}"
+                            data-completeness="{{ completeness_score }}">
                             <td>
                                 <input type="checkbox" name="item_ids" value="{{ item.id }}" class="book-checkbox">
+                                <span class="completeness-dot level-{{ completeness_level }}" title="{{ completeness_title }}"></span>
                             </td>
                             <td onclick="openBookModal({{ item.id }})" style="cursor:pointer;">
                                 <div class="cover">
@@ -391,6 +412,17 @@
                 {% endif %}
                 {% if new_count %}
                     · <span class="stats-badge" id="libraryChipNew" data-badge="new:1" onclick="toggleBadgeFilter('new', '1', event)">{{ _('%(count)d newly added', count=new_count) }}</span>
+                {% endif %}
+                {% if completeness_counts %}
+                    {% if completeness_counts.red %}
+                        · <span class="stats-badge stats-badge-red" id="libraryChipCompletenessRed" data-badge="completeness:red" onclick="toggleBadgeFilter('completeness', 'red', event)">{{ _('%(count)d incomplete', count=completeness_counts.red) }}</span>
+                    {% endif %}
+                    {% if completeness_counts.yellow %}
+                        · <span class="stats-badge stats-badge-yellow" id="libraryChipCompletenessYellow" data-badge="completeness:yellow" onclick="toggleBadgeFilter('completeness', 'yellow', event)">{{ _('%(count)d partial', count=completeness_counts.yellow) }}</span>
+                    {% endif %}
+                    {% if completeness_counts.green %}
+                        · <span class="stats-badge stats-badge-green" id="libraryChipCompletenessGreen" data-badge="completeness:green" onclick="toggleBadgeFilter('completeness', 'green', event)">{{ _('%(count)d complete', count=completeness_counts.green) }}</span>
+                    {% endif %}
                 {% endif %}
             </div>
             <span id="paginationInfo">{{ _('Showing %(count)d books', count=0) }}</span>
@@ -786,6 +818,32 @@
 </div>
 
 <!-- Duplicate detection modal -->
+{# ---- Language check ---------------------------------------------------
+   Reads the text out of each EPUB and compares it with the stored
+   language. The stream previews; nothing is written until Apply. #}
+<div id="languageCheckModal" style="display:none; position:fixed; inset:0; z-index:1000; background:var(--modal-overlay); align-items:center; justify-content:center;">
+    <div class="modal-box" style="max-width:900px;">
+        <div class="modal-header-row">
+            <div class="spacer"></div>
+            <button type="button" class="modal-close-x" onclick="closeLanguageCheck()" title="{{ _('Close') }}">&times;</button>
+        </div>
+        <h2 style="margin-top:0;">{{ _('Check language') }}</h2>
+        <div id="langCheckStatus" style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;"></div>
+        <div id="langCheckBarWrap" class="lang-bar-track" style="display:none;"><div id="langCheckBar" class="lang-bar-fill"></div></div>
+        <div id="langCheckResults"></div>
+        <div id="langCheckFootnote" style="font-size:12px; color:var(--text-secondary); margin-top:12px;"></div>
+        <div class="modal-actions">
+            <label id="langCheckWriteWrap" class="lang-write-toggle" style="display:none;">
+                <input type="checkbox" id="langCheckWriteFiles" checked>
+                <span id="langCheckWriteLabel"></span>
+            </label>
+            <div class="spacer"></div>
+            <button type="button" class="btn ghost" onclick="closeLanguageCheck()">{{ _('Close') }}</button>
+            <button type="button" class="btn primary" id="langCheckApply" onclick="applyLanguageCheck()" disabled>{{ _('Apply') }}</button>
+        </div>
+    </div>
+</div>
+
 <div id="duplicatesModal" style="display:none; position:fixed; inset:0; z-index:1000; background:var(--modal-overlay); align-items:center; justify-content:center;">
     <div class="modal-box" style="max-width:1000px;">
         <div class="modal-header-row">
@@ -1165,6 +1223,24 @@
         },
         /* Default fetch depth (fast|more|deep); the tier chooser initialises
            from this and each fetch can override it per-run. */
+        languageCheckTitle: {{ _('Check language')|tojson }},
+        languageCheckRunning: {{ _('Reading the books...')|tojson }},
+        languageCheckFound: {{ _('books to look at')|tojson }},
+        languageCheckAllGood: {{ _('Every book agrees with its recorded language.')|tojson }},
+        languageCheckUnreadable: {{ _('files could not be read (PDF, MOBI or no text).')|tojson }},
+        languageCheckFailed: {{ _('The check could not finish.')|tojson }},
+        languageCheckUpdated: {{ _('books updated')|tojson }},
+        languageCheckErrors: {{ _('could not be written')|tojson }},
+        languageSamplesDisagree: {{ _('The two samples disagreed')|tojson }},
+        languageStored: {{ _('Recorded')|tojson }},
+        languageDetected: {{ _('Detected')|tojson }},
+        languageConfidence: {{ _('Confidence')|tojson }},
+        languageWriteFiles: {{ _('Write to the files too')|tojson }},
+        languageReloadOnKobo: {{ _('reload on Kobo')|tojson }},
+        book: {{ _('Book')|tojson }},
+        cancel: {{ _('Cancel')|tojson }},
+        apply: {{ _('Apply')|tojson }},
+        saving: {{ _('Saving...')|tojson }},
         fetchMode: {{ fetch_mode|tojson }}
     };
 </script>
@@ -1181,6 +1257,7 @@
 <script src="{{ url_for('static', filename='js/upload.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/shelf-view.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/cleanup-misc.js') }}?v={{ app_version }}"></script>
+<script src="{{ url_for('static', filename='js/language-check.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/reading-now.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/url-state.js') }}?v={{ app_version }}"></script>
 {% endblock %}

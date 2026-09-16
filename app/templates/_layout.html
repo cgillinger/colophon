@@ -77,6 +77,9 @@
         <button type="button" class="sidebar-nav-item" onclick="openDuplicatesModal()">
             <i class="ti ti-copy"></i> <span>{{ _('Find duplicates') }}</span>
         </button>
+        <button type="button" class="sidebar-nav-item" onclick="openLanguageCheck()">
+            <i class="ti ti-language"></i> <span>{{ _('Check language') }}</span>
+        </button>
         {% else %}
         <a class="sidebar-nav-item" href="{{ url_for('metadata.bulk_metadata') }}#upload">
             <i class="ti ti-upload"></i> <span>{{ _('Upload books') }}</span>

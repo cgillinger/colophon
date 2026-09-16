@@ -210,6 +210,40 @@ och skrivning till själva e-boksfilerna är ett eget, synligt val.
 
 Under tiden berikar du böcker en i taget från bokens egen ruta (avsnitt 6).
 
+## 9b. Se vad som saknas
+
+Varje bok i tabellvyn har en liten prick vid kryssrutan: **grön** betyder att
+metadatan är i stort sett komplett, **gul** att något fattas, **röd** att det
+mesta fattas. Håll muspekaren över pricken så står det vilka fält det gäller.
+
+Ovanför listan står hur många böcker som ligger i varje läge. Klicka på en
+siffra för att filtrera fram just dem. I sorteringsmenyn finns
+**Mest ofullständig först** när du vill beta av dem uppifrån.
+
+Pricken väger omslag och synopsis tyngst, sedan genre, utgivningsdatum,
+förlag och serie. En synopsis på en enda mening räknas som saknad — det är
+avsiktligt, en rad text hjälper dig inte när du letar.
+
+## 9c. Kontrollera språk
+
+**Verktyg → Kontrollera språk** läser texten i varje EPUB och jämför med det
+språk som står i metadatan. Bara böckerna som avviker visas — resten stör dig
+inte.
+
+Colophon läser två stycken en bit in i boken, inte från början. Förord och
+copyrightsidor är ofta på ett annat språk än boken, och att fråga dem ger fel
+svar. Om de två styckena inte är överens markeras boken och lämnas okryssad —
+den vill du titta på själv.
+
+Böcker utan språk alls är förkryssade; böcker där ett befintligt värde
+motsägs är det inte, eftersom någon kan ha satt det med flit. Kryssrutan
+**Skriv även till filerna** är förkryssad här, till skillnad från andra
+ställen: Kobon väljer ordbok och avstavning utifrån språket, så det är själva
+poängen att ändringen når läsplattan. Texten säger hur många böcker som då
+laddas om.
+
+PDF- och MOBI-filer kan inte läsas och räknas i en fotnot.
+
 ## 10. Hantera författare
 
 Colophon håller **en kanonisk post per författare**, så varje bok av samma person

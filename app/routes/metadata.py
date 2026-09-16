@@ -50,6 +50,7 @@ from app.services.grouping import compute_group_key
 from app.services.metadata_pipeline import (
     apply_enrichment_result as _pipeline_apply,
     build_search_input,
+    refresh_completeness,
     run_metadata_enrichment,
 )
 from app.routes.helpers import get_item_or_404, save_uploaded_cover, get_int_form_value
@@ -644,6 +645,7 @@ def cover_apply_json(item_id):
     write_result = write_metadata_to_file(item, {}, cover_path)
     if write_result["ok"]:
         item.file_modified_by_colophon = datetime.utcnow()
+    refresh_completeness(item)
     db.session.commit()
 
     return jsonify({"ok": True, "source": source})
@@ -667,6 +669,17 @@ def search_covers_json(item_id):
         "sources": result["sources"],
         "count": len(result["candidates"]),
     })
+
+
+def _completeness_bucket(score):
+    """Map a completeness_score (None treated as 0) to its traffic-light
+    bucket: green (0-1), yellow (2-5), red (6-10)."""
+    value = score if score is not None else 0
+    if value <= 1:
+        return "green"
+    if value <= 5:
+        return "yellow"
+    return "red"
 
 
 @metadata_bp.route("/metadata/bulk", methods=["GET", "POST"])
@@ -890,6 +903,16 @@ def bulk_metadata():
         )
     ).count()
 
+    # Completeness traffic light: one grouped query (at most 11 rows — the
+    # score range), bucketed in Python. NULL (not yet backfilled) reads as 0.
+    completeness_counts = {"red": 0, "yellow": 0, "green": 0}
+    for score, count in (
+        db.session.query(LibraryItem.completeness_score, func.count())
+        .group_by(LibraryItem.completeness_score)
+        .all()
+    ):
+        completeness_counts[_completeness_bucket(score)] += count
+
     from app.services.upstream_sync import upstream_configured, get_unsynced_count
     upstream_enabled = upstream_configured()
     unsynced_count = get_unsynced_count() if upstream_enabled else 0
@@ -941,6 +964,7 @@ def bulk_metadata():
         summary=summary,
         total_count=total_count,
         format_counts=format_counts,
+        completeness_counts=completeness_counts,
         missing_cover_count=missing_cover_count,
         upstream_enabled=upstream_enabled,
         unsynced_count=unsynced_count,
@@ -1645,6 +1669,7 @@ def enrichment_apply(item_id):
         write_to_file=True,
     )
 
+    refresh_completeness(item)
     db.session.commit()
 
     cover_src = fetched.get("cover_path")
@@ -1831,6 +1856,7 @@ def ai_apply(item_id):
         selected_fields=selected,
     )
 
+    refresh_completeness(item)
     db.session.commit()
     session.pop(_ai_preview_key(item.id), None)
 
@@ -2045,6 +2071,7 @@ def save_metadata_json(item_id):
     write_result = write_metadata_to_file(item, written_text, None)
     if write_result["ok"]:
         item.file_modified_by_colophon = datetime.utcnow()
+    refresh_completeness(item)
     db.session.commit()
 
     if item.author_status is None or item.author_status == "stale":
@@ -2368,3 +2395,83 @@ def delete_item_safe(item_id):
         "file_removed": file_removed,
         "cover_removed": cover_removed,
     })
+
+
+# ---------------------------------------------------------------------------
+# Language check
+#
+# A scenario, not a batch: every book in it shares one fact that can be
+# settled by reading the file, so N books are one review rather than N.
+# The stream is read-only; /apply is the only thing that writes, and only
+# what the user ticked. See docs/plan-batch-scenarios.md, step 3.
+# ---------------------------------------------------------------------------
+
+
+@metadata_bp.route("/metadata/language-check/stream")
+def language_check_stream():
+    """SSE: report books whose stored language is missing or contradicted."""
+    raw_ids = request.args.get("item_ids", "")
+    item_ids = [int(p) for p in raw_ids.split(",") if p.strip().isdigit()]
+
+    app = current_app._get_current_object()
+    ev_queue = queue.SimpleQueue()
+    _abort_event.clear()
+
+    def _run():
+        with app.app_context():
+            from app.services.language_check import iter_language_findings
+            try:
+                for event in iter_language_findings(
+                    item_ids=item_ids or None,
+                    on_progress=lambda done, total: ev_queue.put({
+                        "type": "progress", "done": done, "total": total,
+                    }),
+                    should_abort=_abort_event.is_set,
+                ):
+                    if event.get("status") == "summary":
+                        ev_queue.put({
+                            "type": "done",
+                            "total": event["total"],
+                            "checked": event["checked"],
+                            "unreadable": event["unreadable"],
+                        })
+                    else:
+                        ev_queue.put(dict(event, type="finding"))
+            except Exception as exc:
+                app.logger.exception("language check stream failed")
+                ev_queue.put({"type": "error", "message": str(exc)})
+            finally:
+                ev_queue.put(None)
+
+    threading.Thread(target=_run, daemon=True).start()
+
+    def generate():
+        while True:
+            event = ev_queue.get()
+            if event is None:
+                break
+            yield f"data: {json.dumps(event)}\n\n"
+
+    return Response(
+        generate(),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@metadata_bp.route("/metadata/language-check/apply", methods=["POST"])
+def language_check_apply():
+    """Write the languages the user ticked. Files only when asked."""
+    from app.services.language_check import apply_language_changes
+
+    payload = request.get_json(silent=True) or {}
+    changes = payload.get("changes") or []
+    if not changes:
+        return jsonify({"ok": False, "error": "no_changes"}), 400
+
+    result = apply_language_changes(
+        changes,
+        write_files=bool(payload.get("write_files")),
+        cover_dir=current_app.config["COVER_DIR"],
+    )
+    return jsonify(result)

@@ -12,6 +12,7 @@ from flask_babel import gettext as _
 
 from app.models import LibraryItem, db
 from app.services.grouping import compute_group_key
+from app.services.metadata_pipeline import refresh_completeness
 from app.services.language_detect import (
     detect_language_from_text,
     extract_text_sample_from_epub,
@@ -584,6 +585,7 @@ def upsert_library_item(file_path, metadata: dict, existing=None, db_session=Non
         if existing.title != old_title or existing.author != old_author or not existing.group_key:
             existing.group_key = compute_group_key(existing.title or "", existing.author or "")
 
+        refresh_completeness(existing)
         return existing
 
     item_title = metadata.get("title") or _clean_title_from_filename(file_path.stem)["title"]
@@ -612,6 +614,7 @@ def upsert_library_item(file_path, metadata: dict, existing=None, db_session=Non
         group_key=compute_group_key(item_title or "", item_author or ""),
     )
     session.add(item)
+    refresh_completeness(item)
     return item
 
 

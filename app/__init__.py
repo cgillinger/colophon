@@ -105,6 +105,14 @@ def create_app():
         return {"app_version": __version__}
 
     @app.context_processor
+    def inject_completeness_helpers():
+        """The traffic light's tooltip must list exactly the fields the
+        score counted, so the template asks the scorer rather than
+        re-deriving it with its own `if not item.x` tests."""
+        from app.services.metadata_pipeline import missing_fields
+        return {"completeness_missing_fields": missing_fields}
+
+    @app.context_processor
     def inject_library_owner():
         """The per-instance library owner label shown under the wordmark
         (COLOPHON_LIBRARY_OWNER). Empty string = render nothing."""

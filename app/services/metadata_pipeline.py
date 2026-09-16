@@ -34,13 +34,14 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 # Weights are heuristic: cover and description dominate the visual experience,
-# the rest are "nice to have". Max score = 9.
+# the rest are "nice to have". Max score = 10.
 FIELD_WEIGHTS = {
     "cover":          3,
     "description":    3,
     "genres":         1,
     "published_date": 1,
     "publisher":      1,
+    "series":         1,
 }
 
 # A field with a value can still count as "missing" if the value looks like
@@ -70,24 +71,48 @@ def _cover_is_placeholder(item):
         return True
 
 
-def completeness_score(item):
-    """Return 0..9. 0 = complete, 9 = entirely missing.
+def missing_fields(item):
+    """Return the weighted fields that count as missing, in weight order.
 
-    Higher score means the item would benefit more from a fresh fetch. The
-    score is a rough heuristic — used for prioritising prefetch, not for
-    user-facing quality grading.
+    This is the single source of truth for "what is this book missing" —
+    `completeness_score` sums it, and the traffic light's tooltip lists it.
+    They must not drift apart: a book whose description is 20 characters
+    counts as missing a description here, so the dot and its explanation
+    agree instead of one saying "complete" while the other says amber.
     """
-    score = 0
-    for field, weight in FIELD_WEIGHTS.items():
+    missing = []
+    for field, weight in sorted(
+        FIELD_WEIGHTS.items(), key=lambda kv: (-kv[1], kv[0])
+    ):
         if field == "cover":
             if _cover_is_placeholder(item):
-                score += weight
+                missing.append(field)
             continue
         value = getattr(item, field, "") or ""
         threshold = QUALITY_THRESHOLDS.get(field)
         if not str(value).strip() or (threshold and threshold(value)):
-            score += weight
-    return score
+            missing.append(field)
+    return missing
+
+
+def completeness_score(item):
+    """Return 0..10. 0 = complete, 10 = entirely missing.
+
+    Higher score means the item would benefit more from a fresh fetch. The
+    score is also shown to the user directly — a traffic light in the
+    library view (see routes/metadata.py's completeness_counts) — so it is
+    no longer only an internal prefetch-priority heuristic and must stay
+    accurate on every write path, not just the enrichment pipeline's.
+    """
+    return sum(FIELD_WEIGHTS[field] for field in missing_fields(item))
+
+
+def refresh_completeness(item):
+    """Recompute and store item.completeness_score. Never raises."""
+    try:
+        item.completeness_score = completeness_score(item)
+    except Exception:
+        logger.debug("refresh_completeness failed", exc_info=True)
 
 
 def _missing_essentials(payload):
