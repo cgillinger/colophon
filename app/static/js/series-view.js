@@ -184,6 +184,8 @@
                 + '<ul class="series-card-list">' + listHtml + '</ul>'
                 + '<button type="button" class="btn small so-card-btn" data-series-key="' + keyAttr + '">'
                 + _seriesEsc(_i18n.seriesOrderButton) + '</button>'
+                + '<button type="button" class="btn small sr-card-btn" data-series-key="' + keyAttr + '">'
+                + _seriesEsc(_i18n.seriesRenameButton) + '</button>'
                 + '</div></div>';
         });
 
@@ -228,6 +230,26 @@
             .filter(Boolean);
         if (typeof window.openSeriesOrder === 'function') {
             window.openSeriesOrder(ids, displayName);
+        }
+    });
+
+    /* "Rename" button on a card: same id gathering as "Order the series"
+       above, handed to the rename modal instead. */
+    document.addEventListener('click', function (ev) {
+        var btn = ev.target.closest && ev.target.closest('#seriesView .sr-card-btn');
+        if (!btn) return;
+        ev.stopImmediatePropagation();
+        var key = btn.getAttribute('data-series-key') || '';
+        var card = btn.closest('.series-card');
+        var titleEl = card ? card.querySelector('.series-card-title') : null;
+        var displayName = titleEl ? titleEl.textContent.trim() : key;
+        var ids = Array.from(document.querySelectorAll('#bookTableBody tr'))
+            .filter(function (row) { return row.dataset.filterHiddenSansSeries !== '1'; })
+            .filter(function (row) { return window.seriesKey(row.dataset.series || '') === key; })
+            .map(function (row) { return row.dataset.itemId; })
+            .filter(Boolean);
+        if (typeof window.openSeriesRename === 'function') {
+            window.openSeriesRename(ids, displayName);
         }
     });
 

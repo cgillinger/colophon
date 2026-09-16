@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.54.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.55.0.
 
 ## Författarmappar (v1.38.0 — byggt)
 
@@ -150,6 +150,7 @@ filters-sort-paging.js   # Search, filters, sort, pagination
 selection.js             # Row selection + multi-select helpers
 shelf-view.js            # Gallery/shelf layout
 series-view.js           # Series grouping layout (+ the "Order the series" button)
+series-rename.js         # Rename one series card (deterministic, no AI)
 series-order.js          # Series-order review: one block per group, ticked rows only.
                          #   Two entry points — one series (series card) and a whole
                          #   author (/authors row, author-filter banner)
@@ -293,6 +294,34 @@ captures that parameter **at script-evaluation time** because
 `url-state.js` loads later and rewrites the query string to its own known
 keys. `/authors` is a separate page with its own i18n block — duplicating
 the modal there was not worth it.
+
+### Renaming a series, and "Spelling only" (v1.55.0)
+
+Two corrections to the series scenario, both driven by what the review
+table actually looked like in use.
+
+**`normalize` is a status of its own.** A row where the proposal means the
+same as what is recorded but the *text* differs — `"Children of time #03"`
+vs `"Children of Time #3"` — used to read `unchanged` while showing two
+different strings. That is the one thing a review table must not do. The
+`unchanged` branch in `_build_group` now splits: byte-identical text stays
+`unchanged` and loses its checkbox entirely (nothing to apply), everything
+else becomes `normalize`, keeps a checkbox, is never pre-ticked, and sorts
+with the primary rows rather than the trailing block. The columns are now
+labelled **Now** and **Becomes**, not "Recorded" and "Proposed".
+
+**`rename_series` renames one card, with no AI at all.** The series view
+groups cards by a normalized key, so one card can already hold two
+spellings; renaming from the card collapses them, which is the point. Each
+book keeps its own `series_index` — this renames, it does not reorder. It
+goes through `apply_series_changes`, so it fans out to format siblings and
+still cannot touch anything but `series`/`series_index`. Route:
+`POST /metadata/series/rename`.
+
+Both meet invariant 3 the same way the rest of the series flow does:
+`series` is in `_DEVICE_CONTENT_COLUMNS`, so even a DB-only rename stamps
+`content_updated_at` and a synced Kobo re-downloads. The modal says so
+instead of hiding it.
 
 ### Completeness traffic light (v1.52.0)
 

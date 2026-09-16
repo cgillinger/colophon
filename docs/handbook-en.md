@@ -270,8 +270,16 @@ Each row shows what is recorded today, what is proposed, and how sure it is:
 - **Differs from what is recorded** (red) — another number is already there.
   Never pre-ticked; a value you set yourself is not overwritten unless you tick
   the row.
-- **Unchanged**, **Not in the series**, **No answer** — dimmed. A book the AI
+- **Spelling only** (blue) — same series and same number, written differently
+  ("Children of time #03" → "Children of Time #3"). It has a checkbox but is
+  never pre-ticked: you decide whether a tidier spelling is worth a reload on
+  the Kobo.
+- **Unchanged**, **Not in the series**, **No answer** — dimmed, and with no
+  checkbox. Nothing would change, so there is nothing to tick. A book the AI
   places outside the series never gets a number.
+
+The columns are **Now** and **Becomes**: the left is what the library records
+today, the right is what the row would become if you tick it.
 
 The header warns about duplicates and gaps ("2 duplicate numbers", "gap at 5"),
 so you can see whether the proposal hangs together before applying it.
@@ -310,6 +318,19 @@ The Wikidata cross-check has a 90-second budget for the whole proposal. An
 author with many series will not get everything confirmed within it — those
 rows show as **Suggested** rather than **Confirmed**. Nothing has gone
 wrong; you simply have less backing on the last rows.
+
+## 9f. Renaming a series
+
+If a whole series turns out to be named wrong, the series card in the
+**Series** view has a **Rename** button. No AI involved — you type the name,
+every book on the card gets it, and each book keeps its own number.
+
+A series card already gathers books whose series names differ only in
+spelling, so renaming tidies those variants at the same time.
+
+**Write to the files too** is unticked by default. Note that the series name is
+a field the Kobo reads: the books reload on a synced device even if you leave
+the files alone.
 
 ## 10. Managing authors
 

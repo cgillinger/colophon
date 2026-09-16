@@ -125,7 +125,8 @@
         .split-add:hover { color: var(--accent-primary); border-color: var(--accent-primary); }
         .split-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
         td.author-ids a { color: var(--accent-primary); font-size: 12.5px; margin-right: 8px; }
-        td.actions { white-space: nowrap; text-align: right; }
+        td.actions { white-space: normal; text-align: right; display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+        td.actions .content-act { margin-left: 10px; }
         td.count { font-variant-numeric: tabular-nums; }
         td.count .count-link { color: var(--accent-primary); font-weight: 500; }
         td.count .count-link:hover { text-decoration: underline; }
@@ -252,11 +253,11 @@
                     <button type="button" class="btn" data-act="confirm" title="{{ _('Mark this spelling as correct') }}"><i class="ti ti-check"></i> {{ _('Confirm') }}</button>
                     {% endif %}
                     <button type="button" class="btn" data-act="verify" title="{{ _('Look the author up in Wikidata and store authority ids') }}"><i class="ti ti-world-search"></i> {{ _('Verify') }}</button>
-                    <a class="btn" href="{{ url_for('metadata.bulk_metadata', author=a.id, order_series=1) }}" title="{{ _('Group this author’s books into series and order them') }}"><i class="ti ti-list-numbers"></i> {{ _('Order series') }}</a>
                     <button type="button" class="btn" data-act="rename"><i class="ti ti-pencil"></i> {{ _('Rename') }}</button>
                     <button type="button" class="btn" data-act="merge"><i class="ti ti-git-merge"></i> {{ _('Merge…') }}</button>
                     <button type="button" class="btn" data-act="split" title="{{ _('Split this entry into several authors') }}"
                             {% if row.split_guess %}data-split-guess='{{ row.split_guess|tojson }}'{% endif %}><i class="ti ti-scissors"></i> {{ _('Split…') }}</button>
+                    <a class="btn content-act" href="{{ url_for('metadata.bulk_metadata', author=a.id, order_series=1) }}" title="{{ _('Group this author’s books into series and order them') }}"><i class="ti ti-list-numbers"></i> {{ _('Order series') }}</a>
                     {% if row.book_count == 0 %}
                     <button type="button" class="btn danger" data-act="delete" title="{{ _('Remove unused entry') }}"><i class="ti ti-trash"></i></button>
                     {% endif %}

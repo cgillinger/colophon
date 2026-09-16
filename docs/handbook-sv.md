@@ -275,8 +275,16 @@ Varje rad visar vad som står idag, vad förslaget är, och hur säkert det är:
 - **Förslag** (gul) — bara AI:n. Förkryssad bara när den är säker.
 - **Avviker** (röd) — det står redan ett annat nummer. Aldrig förkryssad;
   ett värde du själv satt skrivs inte över utan att du kryssar i raden.
-- **Oförändrad**, **Ingår inte i serien**, **Inget svar** — nedtonade. Böcker
-  som AI:n placerar utanför serien får aldrig ett nummer.
+- **Endast stavning** (blå) — samma serie och samma nummer, men skrivet
+  annorlunda ("Children of time #03" → "Children of Time #3"). Kryssrutan
+  finns, men är aldrig förkryssad: det är du som avgör om en putsad
+  stavning är värd en omladdning på Kobon.
+- **Oförändrad**, **Ingår inte i serien**, **Inget svar** — nedtonade och
+  utan kryssruta. Ingenting skulle ändras, så det finns inget att kryssa i.
+  Böcker som AI:n placerar utanför serien får aldrig ett nummer.
+
+Kolumnerna heter **Nu** och **Blir**: vänster är vad som står i biblioteket
+idag, höger är vad raden skulle få om du kryssar i den.
 
 Rubriken varnar för dubbletter och luckor ("2 dubblettindex", "lucka vid 5") så
 du ser om förslaget hänger ihop innan du tillämpar det.
@@ -316,6 +324,19 @@ Wikidata-avstämningen har en tidsgräns på 90 sekunder för hela förslaget. E
 författare med många serier hinner inte få allt bekräftat — de raderna visas
 som **Förslag** i stället för **Bekräftad**. Inget går fel, du får bara
 mindre ryggstöd på de sista raderna.
+
+## 9f. Byta namn på en serie
+
+Upptäcker du att en hel serie heter fel finns knappen **Byt namn** på
+seriekortet i **Seriervyn**. Ingen AI inblandad — du skriver namnet, alla
+böcker på kortet får det, och varje bok behåller sitt eget nummer.
+
+Ett seriekort samlar redan böcker vars serienamn bara skiljer sig i
+stavning, så omdöpningen rättar sådana varianter på köpet.
+
+Kryssrutan **Skriv även till filerna** är avkryssad som standard. Tänk på
+att serienamnet är ett fält Kobon läser: böckerna laddas om på en synkad
+läsplatta även om du låter filerna vara.
 
 ## 10. Hantera författare
 

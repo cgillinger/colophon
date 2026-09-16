@@ -518,6 +518,21 @@ Steg 6 ärver detta och behöver veta:
 - **Kvar i TODO:** en `standalone`-flagga på boken saknas fortfarande, så
   AI:n får frågan om fristående böcker på nytt vid varje körning.
 
+### En fälla i i18n-kartan (hittad efter steg 5)
+
+`i18n`-objektet i `bulk_metadata.html` stängdes för tidigt: allt från
+`languageCheckTitle` och framåt — 55 nycklar, hela språkkontrollen och
+hela serieflödet — låg på toppnivå i `__colophonConfig` i stället för
+inuti `i18n`. `t()` föll då tillbaka på den engelska strängen i koden, så
+UI:t såg *nästan* rätt ut: engelska rubriker i en svensk vy, och råa
+statuskoder ("confirmed") där fallbacken var `row.status`. Inget felade,
+inget loggades. Det hade gällt sedan v1.52.0.
+
+Rättat i v1.55.0. **Kontrollera alltid att en ny i18n-nyckel hamnar före
+raden som stänger `i18n`-objektet** — `grep -n` på nyckeln och på
+`urls: {` räcker. En snabb kontroll i webbläsaren:
+`Object.keys(window.__colophonConfig.i18n).length` (345 i v1.55.0).
+
 ### AI-provider: en fälla som kostade tid i steg 4
 
 Mistrals gratisplan innehåller inte längre `mistral-*`-chattmodellerna. De

@@ -872,6 +872,34 @@
     </div>
 </div>
 
+{# ---- Rename a series -----------------------------------------------------
+   Renames the series text across every book in the group; each book keeps
+   its own series_index. series is a device-content column, so a synced
+   Kobo re-downloads the books even when "Write to the files too" is off —
+   the note says so plainly. #}
+<div id="seriesRenameModal" style="display:none; position:fixed; inset:0; z-index:1000; background:var(--modal-overlay); align-items:center; justify-content:center;">
+    <div class="modal-box" style="max-width:520px;">
+        <div class="modal-header-row">
+            <div class="spacer"></div>
+            <button type="button" class="modal-close-x" onclick="closeSeriesRename()" title="{{ _('Close') }}">&times;</button>
+        </div>
+        <h2 id="seriesRenameTitle" style="margin-top:0;">{{ _('Rename the series') }}</h2>
+        <div id="seriesRenameCount"></div>
+        <input type="text" id="seriesRenameInput">
+        <div id="seriesRenameNote"></div>
+        <div id="seriesRenameStatus" style="font-size:13px; color:var(--text-secondary); margin-top:12px;"></div>
+        <div class="modal-actions">
+            <label class="lang-write-toggle">
+                <input type="checkbox" id="seriesRenameWriteFiles">
+                <span id="seriesRenameWriteLabel"></span>
+            </label>
+            <div class="spacer"></div>
+            <button type="button" class="btn ghost" onclick="closeSeriesRename()">{{ _('Close') }}</button>
+            <button type="button" class="btn primary" id="seriesRenameApply" onclick="applySeriesRename()">{{ _('Rename') }}</button>
+        </div>
+    </div>
+</div>
+
 <div id="duplicatesModal" style="display:none; position:fixed; inset:0; z-index:1000; background:var(--modal-overlay); align-items:center; justify-content:center;">
     <div class="modal-box" style="max-width:1000px;">
         <div class="modal-header-row">
@@ -1245,12 +1273,6 @@
         newlyAdded: {{ _('New')|tojson }},
         shelfNewBandTitle: {{ _('Newly added')|tojson }},
         shelfNewBandMore: {{ _('+{count} more')|tojson }},
-        },
-        urls: {
-            coverItemBase: '{{ url_for("metadata.cover_item", item_id=0) }}'.replace(/\/0$/, '')
-        },
-        /* Default fetch depth (fast|more|deep); the tier chooser initialises
-           from this and each fetch can override it per-run. */
         languageCheckTitle: {{ _('Check language')|tojson }},
         languageCheckRunning: {{ _('Reading the books...')|tojson }},
         languageCheckFound: {{ _('books to look at')|tojson }},
@@ -1284,13 +1306,14 @@
         seriesOrderStatusAiOnly: {{ _('Suggested')|tojson }},
         seriesOrderStatusConflict: {{ _('Differs from what is recorded')|tojson }},
         seriesOrderStatusUnchanged: {{ _('Unchanged')|tojson }},
+        seriesOrderStatusNormalize: {{ _('Spelling only')|tojson }},
         seriesOrderStatusNotInSeries: {{ _('Not in the series')|tojson }},
         seriesOrderStatusUnknown: {{ _('No answer')|tojson }},
         seriesOrderStatusStandalone: {{ _('Not in a series')|tojson }},
         seriesOrderStandaloneGroup: {{ _('Not in a series')|tojson }},
         seriesOrderCoAuthored: {{ _('co-written')|tojson }},
-        seriesOrderCurrent: {{ _('Recorded')|tojson }},
-        seriesOrderProposed: {{ _('Proposed')|tojson }},
+        seriesOrderCurrent: {{ _('Now')|tojson }},
+        seriesOrderProposed: {{ _('Becomes')|tojson }},
         seriesOrderDuplicates: {{ _('duplicate numbers')|tojson }},
         seriesOrderGaps: {{ _('gap at')|tojson }},
         seriesOrderSnapped: {{ _('Spelling follows the library.')|tojson }},
@@ -1302,16 +1325,27 @@
         seriesOrderKoboNote: {{ _('A series change reloads the book on a synced Kobo.')|tojson }},
         seriesOrderUpdated: {{ _('books updated')|tojson }},
         seriesOrderErrors: {{ _('could not be written')|tojson }},
+        seriesRenameButton: {{ _('Rename')|tojson }},
+        seriesRenameCount: {{ _('N books')|tojson }},
+        seriesRenameEmpty: {{ _('Give the series a name.')|tojson }},
+        seriesRenameFailed: {{ _('The rename failed.')|tojson }},
         book: {{ _('Book')|tojson }},
         cancel: {{ _('Cancel')|tojson }},
         apply: {{ _('Apply')|tojson }},
         saving: {{ _('Saving...')|tojson }},
+        },
+        urls: {
+            coverItemBase: '{{ url_for("metadata.cover_item", item_id=0) }}'.replace(/\/0$/, '')
+        },
+        /* Default fetch depth (fast|more|deep); the tier chooser initialises
+           from this and each fetch can override it per-run. */
         fetchMode: {{ fetch_mode|tojson }}
     };
 </script>
 <script src="{{ url_for('static', filename='js/core.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/series-view.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/series-order.js') }}?v={{ app_version }}"></script>
+<script src="{{ url_for('static', filename='js/series-rename.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/selection.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/filters-sort-paging.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/batch.js') }}?v={{ app_version }}"></script>

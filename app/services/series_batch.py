@@ -250,7 +250,19 @@ def _build_group(items, series_name, series_name_snapped, ranked_by_id,
             reason = ai_book.get("reason", "")
             if (_norm_key(proposed_series) == _norm_key(current_series)
                     and _index_equal(proposed_index, current_index)):
-                status = "unchanged"
+                # Same series and same number — but not necessarily the same
+                # *text*. "Children of time #03" and "Children of Time #3"
+                # mean one thing and read as two, and calling that row
+                # "unchanged" while showing two different strings is the one
+                # thing a review table must never do. `normalize` is the
+                # honest answer: nothing moves, the spelling is tidied, and
+                # the user decides whether that is worth a Kobo reload.
+                if (proposed_series == current_series
+                        and str(proposed_index or "").strip()
+                        == str(current_index or "").strip()):
+                    status = "unchanged"
+                else:
+                    status = "normalize"
             elif current_index and not _index_equal(proposed_index, current_index):
                 status = "conflict"
             else:
@@ -472,6 +484,48 @@ def build_author_proposal(author_id, ai_propose_author=None,
         ))
 
     return {"ok": True, "author_name": author.canonical_name, "groups": groups}
+
+
+def rename_series(item_ids, new_name, write_files=False, cover_dir=None):
+    """Give every book in one series card the same series name.
+
+    Deterministic — no AI, no Wikidata. The series view groups cards by a
+    normalized key, so a card can already hold two spellings of one name;
+    renaming from the card collapses them, which is the point.
+
+    Each book keeps its own `series_index`: this renames the series, it
+    does not reorder it. The write goes through `apply_series_changes`,
+    so it fans out to every format sibling and can touch nothing but
+    `series` and `series_index`.
+
+    Note that `series` is in `models._DEVICE_CONTENT_COLUMNS`, so even a
+    DB-only rename stamps `content_updated_at` and a synced Kobo
+    re-downloads the books. The UI says so; do not try to suppress it.
+    """
+    from app.models import LibraryItem, db
+
+    name = " ".join(str(new_name or "").split())
+    if not name:
+        return {"ok": False, "error": "no_name"}
+
+    ids = [i for i in (item_ids or []) if i is not None]
+    if not ids:
+        return {"ok": False, "error": "no_books"}
+
+    items = LibraryItem.query.filter(LibraryItem.id.in_(ids)).all()
+    if not items:
+        return {"ok": False, "error": "no_books"}
+
+    changes = [{
+        "item_id": item.id,
+        "series": name,
+        "series_index": getattr(item, "series_index", None) or "",
+    } for item in items]
+
+    result = apply_series_changes(changes, write_files=write_files,
+                                  cover_dir=cover_dir)
+    result["series_name"] = name
+    return result
 
 
 def apply_series_changes(changes, write_files=False, cover_dir=None):

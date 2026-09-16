@@ -46,6 +46,7 @@
         ai_only:       'seriesOrderStatusAiOnly',
         conflict:      'seriesOrderStatusConflict',
         unchanged:     'seriesOrderStatusUnchanged',
+        normalize:     'seriesOrderStatusNormalize',
         not_in_series: 'seriesOrderStatusNotInSeries',
         unknown:       'seriesOrderStatusUnknown',
         standalone:    'seriesOrderStatusStandalone'
@@ -76,7 +77,11 @@
     }
 
     function _hasCheckbox(status) {
-        return status !== 'not_in_series' && status !== 'unknown' && status !== 'standalone';
+        // unchanged now means byte-identical text — nothing would change,
+        // so it must not be tickable. normalize (same meaning, different
+        // spelling/formatting) is the actionable one and keeps its box.
+        return status !== 'not_in_series' && status !== 'unknown' &&
+            status !== 'standalone' && status !== 'unchanged';
     }
 
     function _preTicked(row) {
@@ -133,13 +138,15 @@
                 '<table class="so-table"><thead><tr>' +
                     '<th style="width:34px;"></th>' +
                     '<th>' + t('book', 'Book') + '</th>' +
-                    '<th>' + t('seriesOrderCurrent', 'Recorded') + '</th>' +
+                    '<th>' + t('seriesOrderCurrent', 'Now') + '</th>' +
                     '<th></th>' +
-                    '<th>' + t('seriesOrderProposed', 'Proposed') + '</th>' +
+                    '<th>' + t('seriesOrderProposed', 'Becomes') + '</th>' +
                     '<th></th>' +
                 '</tr></thead><tbody>';
 
             group.rows.forEach(function (row, rowIndex) {
+                // normalize is actionable (the text really changes) and is
+                // not dimmed; unchanged (byte-identical) stays dimmed.
                 var dimClass = (row.status === 'unchanged' || row.status === 'not_in_series' ||
                     row.status === 'unknown' || row.status === 'standalone') ? ' so-dim' : '';
                 var checkboxHtml = _hasCheckbox(row.status)

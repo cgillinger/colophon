@@ -1038,3 +1038,272 @@ def test_propose_author_route_never_writes_and_validates_author_id(route_app):
     )
     assert resp_unknown.status_code == 400
     assert resp_unknown.get_json() == {"ok": False, "error": "no_author"}
+
+
+# --------------------------------------------------------------------------
+# 30-35. The "normalize" status — same meaning, different text on the page.
+# --------------------------------------------------------------------------
+
+# --- 30. Byte-identical text and index → unchanged --------------------------
+
+def test_byte_identical_proposal_is_unchanged(app):
+    book = _add(title="Children of Time", series="Children of Time", series_index="3")
+    ai_result = {
+        "ok": True, "series_name": "Children of Time", "series_name_snapped": False,
+        "books": [{"id": book.id, "index": "3", "confidence": "high", "reason": "r"}],
+        "not_in_series": [], "unranked": [],
+    }
+
+    proposal = build_series_proposal(
+        [book], ai_propose=_fake_ai(ai_result),
+        wikidata_lookup=_no_wikidata, known_series={},
+    )
+
+    row = _row_for(proposal, book.id)
+    assert row["status"] == "unchanged"
+
+
+# --- 31. Same meaning, different case and zero-padding → normalize ---------
+
+def test_case_and_padding_difference_is_normalize(app):
+    book = _add(title="Children of Time", series="Children of time", series_index="03")
+    ai_result = {
+        "ok": True, "series_name": "Children of Time", "series_name_snapped": False,
+        "books": [{"id": book.id, "index": "3", "confidence": "high", "reason": "r"}],
+        "not_in_series": [], "unranked": [],
+    }
+
+    proposal = build_series_proposal(
+        [book], ai_propose=_fake_ai(ai_result),
+        wikidata_lookup=_no_wikidata, known_series={},
+    )
+
+    row = _row_for(proposal, book.id)
+    assert row["status"] == "normalize"
+
+
+# --- 32. Case-only difference in the series name (identical index) --------
+
+def test_series_case_only_difference_is_normalize(app):
+    book = _add(title="Children of Time", series="children of time", series_index="3")
+    ai_result = {
+        "ok": True, "series_name": "Children of Time", "series_name_snapped": False,
+        "books": [{"id": book.id, "index": "3", "confidence": "high", "reason": "r"}],
+        "not_in_series": [], "unranked": [],
+    }
+
+    proposal = build_series_proposal(
+        [book], ai_propose=_fake_ai(ai_result),
+        wikidata_lookup=_no_wikidata, known_series={},
+    )
+
+    row = _row_for(proposal, book.id)
+    assert row["status"] == "normalize"
+
+
+# --- 33. Zero-padding-only difference in the index (identical series text) -
+
+def test_index_padding_only_difference_is_normalize(app):
+    book = _add(title="Children of Time", series="Children of Time", series_index="03")
+    ai_result = {
+        "ok": True, "series_name": "Children of Time", "series_name_snapped": False,
+        "books": [{"id": book.id, "index": "3", "confidence": "high", "reason": "r"}],
+        "not_in_series": [], "unranked": [],
+    }
+
+    proposal = build_series_proposal(
+        [book], ai_propose=_fake_ai(ai_result),
+        wikidata_lookup=_no_wikidata, known_series={},
+    )
+
+    row = _row_for(proposal, book.id)
+    assert row["status"] == "normalize"
+
+
+# --- 34. A normalize row sorts among the primary rows, not the trailing block
+
+def test_normalize_row_sorts_with_primary_rows_by_index(app):
+    from app.services.series_batch import _build_group
+
+    ai_only_item = _add(title="AI Only Book")
+    normalize_item = _add(title="Normalize Book", series="the series", series_index="01")
+    unchanged_item = _add(title="Unchanged Book", series="The Series", series_index="9")
+
+    ranked_by_id = {
+        ai_only_item.id: {"id": ai_only_item.id, "index": "2", "confidence": "high", "reason": "r"},
+        normalize_item.id: {"id": normalize_item.id, "index": "1", "confidence": "high", "reason": "r"},
+        unchanged_item.id: {"id": unchanged_item.id, "index": "9", "confidence": "high", "reason": "r"},
+    }
+
+    group = _build_group(
+        items=[ai_only_item, normalize_item, unchanged_item],
+        series_name="The Series",
+        series_name_snapped=False,
+        ranked_by_id=ranked_by_id,
+        excluded_ids=set(),
+        unranked_ids=set(),
+        wikidata_ordinal=lambda item: ("", ""),
+    )
+
+    statuses_by_id = {r["item_id"]: r["status"] for r in group["rows"]}
+    assert statuses_by_id[normalize_item.id] == "normalize"
+    assert statuses_by_id[ai_only_item.id] == "ai_only"
+    assert statuses_by_id[unchanged_item.id] == "unchanged"
+
+    ordered_ids = [r["item_id"] for r in group["rows"]]
+    assert ordered_ids == [normalize_item.id, ai_only_item.id, unchanged_item.id]
+
+
+# --- 35. Whitespace-only difference in the series name ---------------------
+# `_norm_key` (app/services/ai_metadata.py) collapses internal whitespace via
+# `" ".join(str(value or "").split())`, so "The  Expanse" and "The Expanse"
+# share a norm key. With an identical index this is the same-meaning,
+# different-text case → normalize, not conflict/ai_only.
+
+def test_series_internal_whitespace_difference_is_normalize(app):
+    book = _add(title="Leviathan Wakes", series="The  Expanse", series_index="1")
+    ai_result = {
+        "ok": True, "series_name": "The Expanse", "series_name_snapped": False,
+        "books": [{"id": book.id, "index": "1", "confidence": "high", "reason": "r"}],
+        "not_in_series": [], "unranked": [],
+    }
+
+    proposal = build_series_proposal(
+        [book], ai_propose=_fake_ai(ai_result),
+        wikidata_lookup=_no_wikidata, known_series={},
+    )
+
+    row = _row_for(proposal, book.id)
+    assert row["status"] == "normalize"
+
+
+# --------------------------------------------------------------------------
+# 36-44. rename_series — deterministic series-name rewrite, index untouched.
+# --------------------------------------------------------------------------
+
+# --- 36. Renaming keeps each book's own series_index ------------------------
+
+def test_rename_series_keeps_each_books_own_index(app):
+    from app.services.series_batch import rename_series
+
+    b1 = _add(title="Book 1", series="the expanse", series_index="1")
+    b2 = _add(title="Book 2", series="The Expance", series_index="2")
+    b3 = _add(title="Book 3", series="The Expanse", series_index="3")
+
+    result = rename_series([b1.id, b2.id, b3.id], "The Expanse")
+
+    assert result["ok"] is True
+    for item, expected_index in ((b1, "1"), (b2, "2"), (b3, "3")):
+        refreshed = db.session.get(LibraryItem, item.id)
+        assert refreshed.series == "The Expanse"
+        assert refreshed.series_index == expected_index
+
+
+# --- 37. A blank name is rejected and nothing is written --------------------
+
+def test_rename_series_blank_name_writes_nothing(app):
+    from app.services.series_batch import rename_series
+
+    book = _add(title="Book 1", series="Old Name", series_index="1")
+
+    with patch("app.services.metadata_writer.apply_metadata_to_item") as writer:
+        result = rename_series([book.id], "   ")
+
+    assert result == {"ok": False, "error": "no_name"}
+    writer.assert_not_called()
+    refreshed = db.session.get(LibraryItem, book.id)
+    assert refreshed.series == "Old Name"
+    assert refreshed.series_index == "1"
+
+
+# --- 38. Empty item_ids is rejected -----------------------------------------
+
+def test_rename_series_no_books_is_an_error(app):
+    from app.services.series_batch import rename_series
+
+    result = rename_series([], "The Expanse")
+    assert result == {"ok": False, "error": "no_books"}
+
+
+# --- 39. The name is whitespace-normalized on the way in and out -----------
+
+def test_rename_series_normalizes_whitespace_in_the_name(app):
+    from app.services.series_batch import rename_series
+
+    book = _add(title="Book 1", series="Old Name", series_index="1")
+
+    result = rename_series([book.id], "  The   Expanse  ")
+
+    assert result["series_name"] == "The Expanse"
+    refreshed = db.session.get(LibraryItem, book.id)
+    assert refreshed.series == "The Expanse"
+
+
+# --- 40. write_files=False writes DB only, never the file -------------------
+
+def test_rename_series_write_files_false_is_db_only(app):
+    from app.services.series_batch import rename_series
+
+    book = _add(title="Book 1", series="Old Name", series_index="1")
+
+    with patch("app.services.metadata_writer.apply_metadata_to_item") as writer:
+        writer.return_value = {"file_updated": False, "file_write_error": None}
+        rename_series([book.id], "New Name", write_files=False)
+
+    assert writer.call_count == 1
+    kwargs = writer.call_args.kwargs
+    assert kwargs["write_to_file"] is False
+    assert kwargs["selected_fields"] == {"series", "series_index"}
+
+
+# --- 41. Format siblings sharing a group_key are both renamed --------------
+
+def test_rename_series_renames_all_format_siblings(app):
+    from app.services.series_batch import rename_series
+
+    item1 = _add(title="Book 1", series="Old Name", series_index="1", group_key="gk1")
+    item2 = _add(title="Book 1 (mobi)", series="Old Name", series_index="1", group_key="gk1")
+
+    result = rename_series([item1.id], "New Name")
+
+    assert result["updated"] == 2
+    for item in (item1, item2):
+        refreshed = db.session.get(LibraryItem, item.id)
+        assert refreshed.series == "New Name"
+
+
+# --- 42. Route: renaming via POST /metadata/series/rename -------------------
+
+def test_rename_route_renames_books(route_app):
+    with route_app.app_context():
+        item = _add(title="Book 1", series="Old Name", series_index="1")
+        item_id = item.id
+
+    resp = route_app.test_client().post(
+        "/metadata/series/rename",
+        json={"item_ids": [item_id], "series": "New Name"},
+    )
+
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["ok"] is True
+    with route_app.app_context():
+        assert db.session.get(LibraryItem, item_id).series == "New Name"
+
+
+# --- 43. Route: a blank series name is rejected with HTTP 400 --------------
+
+def test_rename_route_blank_series_is_bad_request(route_app):
+    with route_app.app_context():
+        item = _add(title="Book 1", series="Old Name", series_index="1")
+        item_id = item.id
+
+    resp = route_app.test_client().post(
+        "/metadata/series/rename",
+        json={"item_ids": [item_id], "series": "   "},
+    )
+
+    assert resp.status_code == 400
+    assert resp.get_json() == {"ok": False, "error": "no_name"}
+    with route_app.app_context():
+        assert db.session.get(LibraryItem, item_id).series == "Old Name"

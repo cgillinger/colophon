@@ -2546,6 +2546,23 @@ def series_propose_author():
     return jsonify(result)
 
 
+@metadata_bp.route("/metadata/series/rename", methods=["POST"])
+def series_rename():
+    """Rename one series across every book on its card. No AI involved."""
+    from app.services.series_batch import rename_series
+
+    payload = request.get_json(silent=True) or {}
+    result = rename_series(
+        payload.get("item_ids") or [],
+        payload.get("series"),
+        write_files=bool(payload.get("write_files")),
+        cover_dir=current_app.config["COVER_DIR"],
+    )
+    if not result.get("ok"):
+        return jsonify(result), 400
+    return jsonify(result)
+
+
 @metadata_bp.route("/metadata/series/apply", methods=["POST"])
 def series_apply():
     """Write the series/series_index the user confirmed. Files only when asked."""
