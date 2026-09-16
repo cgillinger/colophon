@@ -1,6 +1,6 @@
 # Colophon — self-hosted e-book library manager with Kobo wireless sync
 
-[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![GHCR](https://img.shields.io/badge/ghcr.io-prebuilt%20image-2496ED?logo=github&logoColor=white)](https://github.com/cgillinger/colophon/pkgs/container/colophon) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.53.1-brightgreen)](https://github.com/cgillinger/colophon/releases) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#setting-up-kobo-sync)
+[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![GHCR](https://img.shields.io/badge/ghcr.io-prebuilt%20image-2496ED?logo=github&logoColor=white)](https://github.com/cgillinger/colophon/pkgs/container/colophon) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.53.2-brightgreen)](https://github.com/cgillinger/colophon/releases) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#setting-up-kobo-sync)
 
 **Colophon — the e-book manager.** A self-hosted web app that turns a messy folder of e-book files into a clean, browsable library and syncs it to a Kobo e-reader over WiFi. (Not the printing/publishing term — this is the software.)
 
@@ -145,7 +145,7 @@ All variables are read from `.env` (loaded via `env_file` in `docker-compose.yml
 | `COLOPHON_GOOGLE_BOOKS_KEY` | No | — | Google Books API key |
 | `COLOPHON_AI_API_URL` | No | Mistral URL | AI chat completions endpoint |
 | `COLOPHON_AI_API_KEY` | No | — | AI provider API key |
-| `COLOPHON_AI_MODEL` | No | `mistral-small-latest` | AI model name |
+| `COLOPHON_AI_MODEL` | No | `ministral-14b-latest` | AI model name |
 | `COLOPHON_UPSTREAM_DIR` | No | — | Upstream library path inside the container (for sync) |
 | `COLOPHON_UPSTREAM_CLEANUP_ORPHANS` | No | off | Let a push remove the old upstream copy of a book you've moved to an author folder (also a checkbox in AI settings) |
 | `COLOPHON_MAX_UPLOAD_MB` | No | `1024` | Max size per uploaded file (in-app upload) |
@@ -211,19 +211,25 @@ locally in the settings so you can see what it costs you.
 
 | Provider | URL | Free tier |
 |---|---|---|
-| Mistral (recommended) | `https://api.mistral.ai/v1/chat/completions` | ~1B tokens/month, 1 req/s |
+| Mistral (recommended) | `https://api.mistral.ai/v1/chat/completions` | ~1B tokens/month, `ministral-*` models |
 | OpenAI | `https://api.openai.com/v1/chat/completions` | Pay-as-you-go |
 | DeepSeek | `https://api.deepseek.com/v1/chat/completions` | Very cheap |
 | Ollama (local) | `http://localhost:11434/v1/chat/completions` | Free, no key needed |
 
-Mistral's free *Experiment* plan needs no credit card, but it does have to be
-**activated with a phone verification** before any request is allowed, and the
-limits belong to the *workspace* the key was created in — not to the key. A key
-from a workspace without an activated plan returns `429` on every call, with a
-ceiling of zero requests per minute, no matter how little you have used. If AI
-features stop working, check Admin → Limits in Mistral's console before
-suspecting Colophon: the app now names this case explicitly instead of saying
-"try again later", which would be useless advice here.
+Mistral's free *Experiment* plan needs no credit card, but **not every model is
+included in it**, and the ones that are not return `429` — the same status as
+real throttling — with a ceiling of zero requests per minute. As of September
+2026 the `ministral-*` family answers on the free plan (`ministral-14b-latest`
+is the largest, at 30 req/min) while `mistral-small-latest`,
+`mistral-medium-latest` and `magistral-small-latest` do not, and
+`mistral-large-latest` returns `403`. Mistral changes this from time to time,
+so treat the list as a snapshot.
+
+The trap is that a `429` reads as "you have used too much", which sends you to
+your usage page — where everything looks fine, because the account is fine. If
+AI features stop working, try another model in **Settings → AI** first.
+Colophon says so in the error message rather than telling you to try again
+later, which would be useless advice here.
 
 ---
 

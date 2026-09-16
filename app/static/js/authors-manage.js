@@ -27,7 +27,7 @@
     // response can carry {error: 'rate_limit', retry_after, quota}.
     function _rateLimitText(data) {
         if (data.allowance_zero === true) {
-            return _i18n.aiNoAllowance || 'The AI provider allows this account no requests at all. Check the plan or the key — waiting will not help.';
+            return _i18n.aiNoAllowance || 'The provider allows no requests for this model on your plan. Pick another model in Settings → AI.';
         }
         if (data.quota === true) {
             return _i18n.aiQuotaSpent || 'The AI quota is used up. Topping up the account is what helps, not waiting.';

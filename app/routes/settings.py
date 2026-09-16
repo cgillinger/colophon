@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 settings_bp = Blueprint("settings", __name__)
 
 _DEFAULT_AI_API_URL = "https://api.mistral.ai/v1/chat/completions"
-_DEFAULT_MODEL = "mistral-small-latest"
+_DEFAULT_MODEL = "ministral-14b-latest"
 
 # Free-text settings managed by the API page. Empty submit deletes the row
 # (= falls back to env var or default).
@@ -206,9 +206,9 @@ def ai_test_connection():
             flash(_("The AI connection took too long. Check the network."), "error")
         elif error == "rate_limit":
             if result.get("allowance_zero"):
-                flash(_("The AI provider allows this account zero requests per "
-                        "minute. Check the plan or the key's workspace — waiting "
-                        "will not change it."), "error")
+                flash(_("The provider allows zero requests per minute for this "
+                        "model on your plan. Choose another model — waiting will "
+                        "not change it."), "error")
             elif result.get("quota"):
                 flash(_("The AI quota is used up. Waiting will not help — top up the account or wait for the next period."), "error")
             elif result.get("retry_after"):

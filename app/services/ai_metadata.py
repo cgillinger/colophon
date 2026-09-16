@@ -11,7 +11,9 @@ from app.services.app_settings import get_setting
 logger = logging.getLogger(__name__)
 
 _DEFAULT_API_URL = "https://api.mistral.ai/v1/chat/completions"
-_DEFAULT_MODEL = "mistral-small-latest"
+# The free plan does not include the mistral-* chat models any more
+# (they answer 429 with a ceiling of zero); the ministral-* family does.
+_DEFAULT_MODEL = "ministral-14b-latest"
 
 _PROMPT = """\
 You help improve book metadata for a personal library application.

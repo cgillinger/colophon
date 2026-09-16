@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Colophon 1.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-09-16 19:16+0200\n"
+"POT-Creation-Date: 2026-09-16 19:23+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: sv\n"
@@ -150,19 +150,17 @@ msgstr "AI-anropet tog för lång tid. Försök igen."
 
 #: app/routes/metadata.py:1784 app/routes/settings.py:209
 msgid ""
-"The AI provider allows this account zero requests per minute. Check the "
-"plan or the key's workspace — waiting will not change it."
-msgstr ""
-"AI-leverantören tillåter noll anrop per minut för det här kontot. "
-"Kontrollera planen eller nyckelns arbetsyta — att vänta ändrar inget."
+"The provider allows zero requests per minute for this model on your plan."
+" Choose another model — waiting will not change it."
+msgstr "Leverantören tillåter noll anrop per minut för den här modellen på din plan. Välj en annan modell — att vänta ändrar inget."
 
 #: app/routes/metadata.py:1788 app/routes/settings.py:213
 msgid ""
 "The AI quota is used up. Waiting will not help — top up the account or "
 "wait for the next period."
 msgstr ""
-"AI-kvoten är slut. Att vänta hjälper inte — fyll på kontot eller vänta till "
-"nästa period."
+"AI-kvoten är slut. Att vänta hjälper inte — fyll på kontot eller vänta "
+"till nästa period."
 
 #: app/routes/metadata.py:1790 app/routes/settings.py:215
 #, python-format
@@ -1044,17 +1042,14 @@ msgstr "AI är inte konfigurerat (Inställningar → AI)."
 msgid ""
 "The AI quota is used up. Topping up the account is what helps, not "
 "waiting."
-msgstr ""
-"AI-kvoten är slut. Det som hjälper är att fylla på kontot, inte att vänta."
+msgstr "AI-kvoten är slut. Det som hjälper är att fylla på kontot, inte att vänta."
 
 #: app/templates/authors.html:304 app/templates/bulk_metadata.html:1273
 #: app/templates/reader.html:636
 msgid ""
-"The AI provider allows this account no requests at all. Check the plan or"
-" the key — waiting will not help."
-msgstr ""
-"AI-leverantören tillåter inga anrop alls för det här kontot. Kontrollera "
-"planen eller nyckeln — att vänta hjälper inte."
+"The provider allows no requests for this model on your plan. Pick another"
+" model in Settings → AI."
+msgstr "Leverantören tillåter inga anrop för den här modellen på din plan. Välj en annan modell under Inställningar → AI."
 
 #: app/templates/authors.html:305 app/templates/bulk_metadata.html:1274
 #: app/templates/reader.html:637
@@ -5196,4 +5191,15 @@ msgstr "URL kopierad till urklipp."
 
 #~ msgid "Please wait, this may take a moment."
 #~ msgstr "Vänta, detta kan ta en stund."
+
+#~ msgid ""
+#~ "The AI provider allows this account "
+#~ "no requests at all. Check the plan"
+#~ " or the key — waiting will not"
+#~ " help."
+#~ msgstr ""
+#~ "AI-leverantören tillåter inga anrop alls"
+#~ " för det här kontot. Kontrollera "
+#~ "planen eller nyckeln — att vänta "
+#~ "hjälper inte."
 

@@ -1781,9 +1781,9 @@ def run_ai_for_item(item_id):
             flash(_("The AI request took too long. Try again."), "error")
         elif error == "rate_limit":
             if result.get("allowance_zero"):
-                flash(_("The AI provider allows this account zero requests per "
-                        "minute. Check the plan or the key's workspace — waiting "
-                        "will not change it."), "error")
+                flash(_("The provider allows zero requests per minute for this "
+                        "model on your plan. Choose another model — waiting will "
+                        "not change it."), "error")
             elif result.get("quota"):
                 flash(_("The AI quota is used up. Waiting will not help — top up the account or wait for the next period."), "error")
             elif result.get("retry_after"):

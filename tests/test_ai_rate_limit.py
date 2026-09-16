@@ -1,9 +1,10 @@
 # Colophon – tests for how a 429 from the AI provider is read
 """One status code, two very different situations.
 
-HTTP 429 covers both "you are sending requests faster than the tier
-allows" — wait and it works again — and "this account's quota is gone",
-where waiting achieves nothing. Telling the user to try again later is
+HTTP 429 covers "you are sending requests faster than the tier allows"
+(wait and it works again), "this account's quota is gone", and "this
+model is not included in your plan" — where waiting achieves nothing and
+the fix is to pick another model. Telling the user to try again later is
 actively wrong in the second case, so `_rate_limit_error` reads what the
 provider revealed: a Retry-After header means the first kind, and the
 response body names the second.
@@ -70,11 +71,13 @@ def test_unreadable_body_does_not_raise():
     assert result["quota"] is False
 
 
-def test_zero_requests_per_minute_is_an_account_problem():
-    """The real symptom on this library's own account: a valid key, no usage
-    to speak of, and a ceiling of zero requests per minute. That is a
-    workspace without an active plan, not a busy service — and only the
-    header says so, the body just reads "Rate limit exceeded"."""
+def test_zero_requests_per_minute_is_a_model_problem():
+    """The real symptom on this library's own key: a valid account, models
+    that answer fine, and a ceiling of zero on exactly the model that was
+    configured. The provider moved that model behind a paid tier; only the
+    header says so, the body just reads "Rate limit exceeded", and the
+    obvious reading — "the account is out" — sends the user to the wrong
+    place entirely."""
     result = _rate_limit_error(_resp(
         headers={"x-ratelimit-limit-req-minute": "0",
                  "x-ratelimit-remaining-req-minute": "0"},
@@ -85,7 +88,7 @@ def test_zero_requests_per_minute_is_an_account_problem():
     assert result["retry_after"] is None
 
 
-def test_a_normal_ceiling_is_not_an_account_problem():
+def test_a_normal_ceiling_is_not_flagged():
     result = _rate_limit_error(_resp(headers={"x-ratelimit-limit-req-minute": "60"}))
     assert result["allowance_zero"] is False
 

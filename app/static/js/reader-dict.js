@@ -391,7 +391,7 @@ export function initDictLookup(opts) {
     // response can carry {error: 'rate_limit', retry_after, quota}.
     function rateLimitText(res) {
         if (res.allowance_zero === true) {
-            return i18n.aiNoAllowance || 'The AI provider allows this account no requests at all. Check the plan or the key — waiting will not help.';
+            return i18n.aiNoAllowance || 'The provider allows no requests for this model on your plan. Pick another model in Settings → AI.';
         }
         if (res.quota === true) {
             return i18n.aiQuotaSpent || 'The AI quota is used up. Topping up the account is what helps, not waiting.';
