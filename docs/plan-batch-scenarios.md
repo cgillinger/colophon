@@ -1,6 +1,8 @@
 # Genomförandeplan: scenario-batch i stället för generisk wizard
 
-Status: plan, 2026-09-16. Bakgrund i samtalet som ledde hit: den generiska
+Status: steg 1–5 klara, steg 6 (valfritt) återstår — se avsnitt 6 för
+statustabell, överlämning och en färdigskriven spec för steg 6.
+Ursprungligen skriven 2026-09-16. Bakgrund i samtalet som ledde hit: den generiska
 batchwizarden (markera N blandade böcker, välj fält, kör) lönar sig inte,
 eftersom N böcker utan delat faktum är N oberoende granskningar. Scenarier
 med ett delat faktum (en serie, ett författarskap, ett fält som kan avgöras
@@ -28,7 +30,8 @@ kod. Varje steg är en egen session; avsluta sessionen när steget är klart.
 - **Kända röda tester:** samma 10 genom hela planen
   (`test_quality.py` 6, `test_scoring.py` 3, `test_scanner.py` 1, se
   `CLAUDE.md`). "Samma 10" är grönt. Försök inte laga dem. Antalet gröna
-  växer per steg: 639 när planen skrevs, 716 efter steg 4, 730 efter steg 5.
+  växer per steg: 639 när planen skrevs, 716 efter steg 4, 730 efter steg 5,
+  774 efter efterarbetet i v1.55.0–1.59.0.
 
 ### 1.2 Vad du är bra på och vad du ska akta dig för
 
@@ -415,9 +418,11 @@ Tillämpa via `cover/apply`.
 
 Det här är det enda scenariot som bär den gamla motorn vidare. Gör det
 sist, och radera sedan resten av `batch.js` (fältväljaren, synopsis-
-granskningen, wizard-stegen) och `SHOW_LEGACY_BATCH`. Skriv specen när
-steg 1–5 är klara; den beror på hur mycket av `batch.js` som fortfarande
-är levande då.
+granskningen, wizard-stegen) och `SHOW_LEGACY_BATCH`.
+
+**Specen är skriven** — se "Steg 6, spec" i avsnitt 6, med radnummer
+kontrollerade mot koden efter att steg 1–5 var klara. Läs den i stället
+för det här stycket.
 
 ---
 
@@ -535,6 +540,93 @@ Rättat i v1.55.0. **Kontrollera alltid att en ny i18n-nyckel hamnar före
 raden som stänger `i18n`-objektet** — `grep -n` på nyckeln och på
 `urls: {` räcker. En snabb kontroll i webbläsaren:
 `Object.keys(window.__colophonConfig.i18n).length` (345 i v1.55.0).
+
+### Vad arbetet efter steg 5 lämnade efter sig (v1.55.0–1.59.0)
+
+Allt nedan kom ur att Christian *använde* flödena, inte ur planen. Det
+är inte scope-glidning att känna till det — flera av sakerna ändrar
+förutsättningar för steg 6.
+
+**i18n-objektet var trasigt sedan v1.52.0.** Se avsnittet nedan; läs det
+innan du lägger till en enda ny JS-sträng.
+
+**Granskningstabellen fick en status till: `normalize`.** `unchanged`
+betyder nu bytesidentisk text och har **ingen kryssruta** (det finns
+inget att tillämpa). Allt som betyder samma sak men skrivs annorlunda
+("Children of time #03" → "Children of Time #3") är `normalize`, har
+kryssruta och är aldrig förkryssad. Kolumnerna heter **Nu** och **Blir**.
+Prioritetsordningen i `_build_group` är i övrigt oförändrad.
+
+**Seriekortet kan döpas om.** `series_batch.rename_series` +
+`POST /metadata/series/rename` + `static/js/series-rename.js`.
+Deterministiskt, ingen AI. Varje bok behåller sitt `series_index`.
+
+**Seriekortets åtgärder är text, inte knappar.** `.series-card-act` i
+`bulk_metadata.css`. Fyllda `.btn`-chip såg ut som trasig CSS bredvid
+omslaget. De är alltid synliga — Christian läser på iPad, där hover inte
+finns. Samma resonemang gäller varje ny kortåtgärd du lägger till.
+
+**Sidomenyn möblerar inte längre om sig.** `_layout.html` har nu ett
+standardinnehåll i `sidebar_views`: Tabell/Hyllvy/Serie som länkar till
+`?view=…` på alla sidor utom bibliotekvyn, som fortfarande överskuggar
+blocket med sina JS-växlar.
+
+**Författarsidans rader har en ⋯-meny.** Bara den åtgärd raden behöver
+ligger kvar synlig. Varje menypost är fortfarande en
+`<button data-act="…">` **inne i samma `<tr>`**, vilket är hela tricket:
+den delegerade hanteraren i `authors-manage.js` är orörd.
+
+**Auktoritetskolumnen gör något nu.** Två nya kolumner i `authors`
+(`authority_label`, `authority_description`, migrering i `database.py`,
+**ingen backfill möjlig**), `POST /authors/<id>/unlink`, bulkverifiering
+som kör i webbläsaren en författare i taget, och ett uppslag som använder
+bibliotekets egna titlar för att peka ut rätt person. Läs stycket i
+`CLAUDE.md` innan du rör `author_authority_lookup.py`.
+
+**Opushat.** Allt från v1.53.2 och framåt låg bara lokalt när den här
+sessionen avslutades. Prod kör äldre kod. `v1.57.0` lägger till två
+kolumner i `authors` — de migreras vid start, men det är seriens första
+schemaändring.
+
+### Steg 6, spec (skriven efter att 1–5 var klara)
+
+Planen sa att specen skulle skrivas nu. Fakta att utgå från, kontrollerade
+mot koden 2026-09-16:
+
+- `app/static/js/batch.js` är **2 194 rader** och i stort sett intakt.
+  Wizarden lever, men dess ingång är gömd bakom `SHOW_LEGACY_BATCH`
+  (`app/config.py:38–39`, använd i `bulk_metadata.html:945`).
+- `_batchRenderCoverReview` ligger på **rad 1318** och tillämpar per bok
+  via `POST /metadata/<id>/cover/apply` (rad ~1410). Den är oberoende av
+  textfältsgranskningen.
+- `startBatchSearch` skickar **alltid** `dry_run=1` (rad ~1794–1798).
+  Steg 6 är den enda anroparen som ska utelämna den.
+- Filtret "Saknar omslag" är ett chip:
+  `toggleBadgeFilter('missing_cover', '1')` i `bulk_metadata.html:407`,
+  hanterat i `filters-sort-paging.js:315`.
+
+**Mål.** När `missing_cover`-filtret är aktivt visas "Hämta omslag för
+dessa". Kör `bulk_stream` **utan** `dry_run` men med bara omslagsfält,
+granska i `_batchRenderCoverReview`, tillämpa via `cover/apply`.
+
+**Ordning.** Bygg knappen och flödet först, verifiera mot devinstansen,
+och radera **därefter** resten av `batch.js` + `SHOW_LEGACY_BATCH` i ett
+eget commit. Blanda inte ihop bygget och raderingen — en 2 000-raders
+radering i samma diff som ny logik går inte att granska.
+
+**Vakt.** `tests/test_batch_dry_run.py` bevisar att wizarden inte skriver
+före granskning. Steg 6 är det enda flödet som medvetet kör utan
+`dry_run`, så kontrollera att testet fortfarande är meningsfullt efteråt —
+dess kontrollfall måste vara kvar, annars döljer ett falskt grönt att
+selen aldrig når `_apply`.
+
+**Inte i det här steget.** Ingen ny granskningskomponent. Ingen AI. Ingen
+omskrivning av `cover_search.py`.
+
+**Klart när.** Knappen syns bara med filtret aktivt, en körning mot
+devinstansen hämtar och tillämpar omslag efter granskning, `batch.js`
+och `SHOW_LEGACY_BATCH` är borta, TODO-posten "Delete the batch.js
+leftovers after step 6" är struken, sviten är "samma 10".
 
 ### AI-provider: en fälla som kostade tid i steg 4
 
