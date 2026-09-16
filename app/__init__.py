@@ -1,4 +1,5 @@
 # Colophon – e-book metadata manager
+import contextlib
 import logging
 import os
 from logging.handlers import RotatingFileHandler
@@ -34,6 +35,55 @@ from app.services.database import (
 SUPPORTED_LANGUAGES = ("en", "sv")
 
 babel = Babel()
+
+
+@contextlib.contextmanager
+def _schema_lock(data_dir):
+    """Serialise schema setup across processes.
+
+    Gunicorn boots its workers simultaneously and every one of them runs the
+    migration block in create_app() against the same SQLite file. Each step in
+    that block is check-then-act — create_all()'s checkfirst, ensure_*'s
+    "does this column exist" — so on a database that is still empty two
+    workers can both decide a table is missing, and the loser dies with
+    "table library_items already exists". That is a failed boot, not a
+    warning: gunicorn gives up after enough of them.
+
+    An exclusive lock on a file beside the database makes the block
+    one-at-a-time, so whoever comes second finds the schema already there and
+    skips it. Only the first boot of a fresh database actually contends;
+    afterwards every worker takes the lock, finds nothing to do and releases
+    it. If the lock can't be taken at all (no fcntl, a filesystem that won't
+    flock), we proceed unlocked rather than refuse to start — that is the
+    behaviour this project had before, races included.
+    """
+    try:
+        import fcntl
+    except ImportError:  # not POSIX
+        yield
+        return
+
+    lock_path = os.path.join(data_dir, ".schema.lock")
+    try:
+        os.makedirs(data_dir, exist_ok=True)
+        handle = open(lock_path, "w")
+    except OSError:
+        yield
+        return
+
+    try:
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        except OSError:
+            yield
+            return
+        try:
+            yield
+        finally:
+            with contextlib.suppress(OSError):
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+    finally:
+        handle.close()
 
 
 def get_locale():
@@ -218,7 +268,7 @@ def create_app():
 
     db.init_app(app)
 
-    with app.app_context():
+    with app.app_context(), _schema_lock(app.config["DATA_DIR"]):
         # Order matters. ensure_author_tables() must precede ensure_database_columns()
         # because the author_id ALTER references authors(id). Both must precede
         # db.create_all(), because create_all() emits CREATE INDEX for the

@@ -5,6 +5,19 @@ PATCH for fixes, MINOR for user-visible features and automatic migrations, MAJOR
 changes that need you to act. Releases before 1.41.0 are summarised from the git log —
 see the [tags](https://github.com/cgillinger/colophon/tags) for the full history.
 
+## [1.61.1] — 2026-09-16
+
+### Fixed
+- **A brand-new installation could fail to start.** Colophon boots two workers
+  at once, and both of them set up the database schema on the way up. On an
+  empty data directory they could reach the same missing table at the same
+  moment: one created it, the other fell over with "table library_items
+  already exists" and the server gave up with *Worker failed to boot* —
+  nothing but a traceback to go on, on a first run, before anything existed to
+  lose. Schema setup now happens one process at a time. Existing installations
+  were never affected: the tables are already there, so there was nothing to
+  race over.
+
 ## [1.61.0] — 2026-09-16
 
 ### Removed
