@@ -211,10 +211,19 @@ locally in the settings so you can see what it costs you.
 
 | Provider | URL | Free tier |
 |---|---|---|
-| Mistral (recommended) | `https://api.mistral.ai/v1/chat/completions` | ~1M tokens/month |
+| Mistral (recommended) | `https://api.mistral.ai/v1/chat/completions` | ~1B tokens/month, 1 req/s |
 | OpenAI | `https://api.openai.com/v1/chat/completions` | Pay-as-you-go |
 | DeepSeek | `https://api.deepseek.com/v1/chat/completions` | Very cheap |
 | Ollama (local) | `http://localhost:11434/v1/chat/completions` | Free, no key needed |
+
+Mistral's free *Experiment* plan needs no credit card, but it does have to be
+**activated with a phone verification** before any request is allowed, and the
+limits belong to the *workspace* the key was created in — not to the key. A key
+from a workspace without an activated plan returns `429` on every call, with a
+ceiling of zero requests per minute, no matter how little you have used. If AI
+features stop working, check Admin → Limits in Mistral's console before
+suspecting Colophon: the app now names this case explicitly instead of saying
+"try again later", which would be useless advice here.
 
 ---
 
