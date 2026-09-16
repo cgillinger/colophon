@@ -366,7 +366,11 @@ def adjudicate():
 
     result = adjudicate_author_names(a.canonical_name, b.canonical_name)
     if not result["ok"]:
-        return jsonify({"ok": False, "error": result["error"]}), 502
+        # retry_after/quota ride along so the page can tell "wait a moment"
+        # apart from "the quota is gone" instead of saying "it failed".
+        return jsonify({"ok": False, "error": result["error"],
+                        "retry_after": result.get("retry_after"),
+                        "quota": result.get("quota")}), 502
     return jsonify({"ok": True, "verdict": result["verdict"],
                     "reason": result["reason"]})
 

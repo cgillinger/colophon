@@ -230,6 +230,51 @@ _FIELD_MAP = {
 }
 
 
+# A 429 does not say which kind of "too much" it means. The same status
+# covers "you are sending requests faster than the tier allows" (wait and
+# it works again) and "the account's quota is used up" (waiting does
+# nothing). Telling a user to try again later is wrong in the second case,
+# so read what the provider actually said: a Retry-After header means the
+# first kind, and the body names the second. When neither is present we say
+# so rather than guess.
+_QUOTA_HINTS = ("quota", "credit", "billing", "insufficient",
+                "subscription", "payment", "exceeded your current")
+
+
+def _rate_limit_error(resp) -> dict:
+    """Build the 429 result, carrying what the provider revealed about it.
+
+    Always {"ok": False, "error": "rate_limit", ...} so existing callers
+    that only branch on the code keep working; `retry_after` (seconds, or
+    None) and `quota` (True when the body points at an exhausted balance)
+    let a caller say something more useful than "try again later".
+    """
+    retry_after = None
+    raw = str(resp.headers.get("Retry-After") or "").strip()
+    if raw.isdigit():
+        retry_after = int(raw)
+
+    try:
+        body = (resp.text or "")[:1000].casefold()
+    except Exception:
+        body = ""
+    quota = any(hint in body for hint in _QUOTA_HINTS)
+
+    # A ceiling of zero is not throttling — the provider is saying this
+    # account may make no requests at all, which is what a workspace with
+    # no active plan looks like. Waiting is useless advice there, and the
+    # body says nothing about it: only the header does.
+    allowance_zero = False
+    for header in ("x-ratelimit-limit-req-minute", "x-ratelimit-limit-requests"):
+        raw_limit = str(resp.headers.get(header) or "").strip()
+        if raw_limit.isdigit() and int(raw_limit) == 0:
+            allowance_zero = True
+            break
+
+    return {"ok": False, "error": "rate_limit", "retry_after": retry_after,
+            "quota": quota, "allowance_zero": allowance_zero}
+
+
 def _detect_provider(url: str) -> str:
     url = (url or "").lower()
     if "mistral" in url:
@@ -304,7 +349,7 @@ def test_ai_connection() -> dict:
     if resp.status_code in (401, 403):
         return {"ok": False, "error": "auth"}
     if resp.status_code == 429:
-        return {"ok": False, "error": "rate_limit"}
+        return _rate_limit_error(resp)
     if not resp.ok:
         return {"ok": False, "error": f"http_{resp.status_code}"}
 
@@ -379,7 +424,7 @@ def fetch_ai_suggestions(item: LibraryItem, fields=None, override_values=None) -
         return {"ok": False, "error": "auth"}
 
     if resp.status_code == 429:
-        return {"ok": False, "error": "rate_limit"}
+        return _rate_limit_error(resp)
 
     if not resp.ok:
         logger.warning("AI HTTP %s: %s", resp.status_code, resp.text[:300])
@@ -521,7 +566,7 @@ def explain_word_in_context(word, sentence, item=None):
     if resp.status_code in (401, 403):
         return {"ok": False, "error": "auth"}
     if resp.status_code == 429:
-        return {"ok": False, "error": "rate_limit"}
+        return _rate_limit_error(resp)
     if not resp.ok:
         return {"ok": False, "error": "api_error"}
 
@@ -589,7 +634,7 @@ def adjudicate_author_names(name_a: str, name_b: str) -> dict:
     if resp.status_code in (401, 403):
         return {"ok": False, "error": "auth"}
     if resp.status_code == 429:
-        return {"ok": False, "error": "rate_limit"}
+        return _rate_limit_error(resp)
     if not resp.ok:
         return {"ok": False, "error": "api_error"}
 
@@ -715,7 +760,7 @@ def propose_series_order(books, series_hint=None, known_series=None) -> dict:
     if resp.status_code in (401, 403):
         return {"ok": False, "error": "auth"}
     if resp.status_code == 429:
-        return {"ok": False, "error": "rate_limit"}
+        return _rate_limit_error(resp)
     if not resp.ok:
         return {"ok": False, "error": "api_error"}
 

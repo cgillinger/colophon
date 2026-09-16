@@ -305,5 +305,7 @@ def dict_explain(item_id):
         return jsonify({"error": "bad_request"}), 400
     result = explain_word_in_context(word, sentence, item)
     if not result.get("ok"):
-        return jsonify({"error": result.get("error", "failed")}), 502
+        return jsonify({"error": result.get("error", "failed"),
+                        "retry_after": result.get("retry_after"),
+                        "quota": result.get("quota")}), 502
     return jsonify({"ok": True, "explanation": result["explanation"]})

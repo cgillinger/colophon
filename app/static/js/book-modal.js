@@ -41,6 +41,22 @@
      * Mirrors the standalone single-book page. The chosen mode is passed as
      * ?mode= on the bulk/stream fetch; the backend resolves the saved default
      * (METADATA_FETCH_MODE) when absent. */
+    /* A 429 is four different situations (see ai_metadata._rate_limit_error).
+       Same wording as series-order.js, authors-manage.js and reader-dict.js. */
+    function _aiRateLimitText(data) {
+        if (data.allowance_zero === true) {
+            return _i18n.aiNoAllowance || 'The AI provider allows this account no requests at all. Check the plan or the key — waiting will not help.';
+        }
+        if (data.quota === true) {
+            return _i18n.aiQuotaSpent || 'The AI quota is used up. Topping up the account is what helps, not waiting.';
+        }
+        if (data.retry_after) {
+            var minutes = Math.max(1, Math.ceil(data.retry_after / 60));
+            return (_i18n.aiBusyRetry || 'The AI is busy. Try again in N min.').replace('N', minutes);
+        }
+        return _i18n.aiRateLimit || 'The AI limit has been reached. Try again later.';
+    }
+
     function _modalDefaultMode() {
         return (window.__colophonConfig && window.__colophonConfig.fetchMode) || 'more';
     }
@@ -1124,7 +1140,7 @@
                         not_configured: _i18n.aiNotConfigured,
                         auth:           _i18n.aiAuth,
                         timeout:        _i18n.aiTimeout,
-                        rate_limit:     _i18n.aiRateLimit,
+                        rate_limit:     _aiRateLimitText(data),
                         invalid_json:   _i18n.aiInvalidJson,
                         no_valid_fields: _i18n.aiNoValidFields
                     };

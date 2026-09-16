@@ -22,6 +22,23 @@
         return s;
     }
 
+    // Shared "AI is rate-limited" message picker: quota exhaustion beats a
+    // retry hint, which beats the generic limit message. Used wherever a
+    // response can carry {error: 'rate_limit', retry_after, quota}.
+    function _rateLimitText(data) {
+        if (data.allowance_zero === true) {
+            return _i18n.aiNoAllowance || 'The AI provider allows this account no requests at all. Check the plan or the key — waiting will not help.';
+        }
+        if (data.quota === true) {
+            return _i18n.aiQuotaSpent || 'The AI quota is used up. Topping up the account is what helps, not waiting.';
+        }
+        if (data.retry_after) {
+            var minutes = Math.max(1, Math.ceil(data.retry_after / 60));
+            return (_i18n.aiBusyRetry || 'The AI is busy. Try again in N min.').replace('N', minutes);
+        }
+        return _i18n.aiRateLimited || 'The AI limit has been reached. Try again later.';
+    }
+
     function _post(url, body) {
         return fetch(url, {
             method: 'POST',
@@ -365,8 +382,8 @@
                     btn.innerHTML = original;
                     if (!b.ok) {
                         if (verdictEl) verdictEl.textContent =
-                            b.error === 'not_configured'
-                                ? (_i18n.aiUnavailable || 'AI is not configured.')
+                            b.error === 'not_configured' ? (_i18n.aiUnavailable || 'AI is not configured.')
+                                : b.error === 'rate_limit' ? _rateLimitText(b)
                                 : (_i18n.actionFailed || 'The action failed.');
                         return;
                     }

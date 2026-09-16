@@ -1780,7 +1780,17 @@ def run_ai_for_item(item_id):
         elif error == "timeout":
             flash(_("The AI request took too long. Try again."), "error")
         elif error == "rate_limit":
-            flash(_("The AI rate limit appears to have been reached. Try again later."), "error")
+            if result.get("allowance_zero"):
+                flash(_("The AI provider allows this account zero requests per "
+                        "minute. Check the plan or the key's workspace — waiting "
+                        "will not change it."), "error")
+            elif result.get("quota"):
+                flash(_("The AI quota is used up. Waiting will not help — top up the account or wait for the next period."), "error")
+            elif result.get("retry_after"):
+                flash(_("The AI is busy right now. Try again in %(minutes)s min.",
+                         minutes=max(1, round(result["retry_after"] / 60))), "error")
+            else:
+                flash(_("The AI rate limit appears to have been reached. Try again later."), "error")
         elif error == "invalid_json":
             flash(_("The AI service returned a response that could not be parsed."), "error")
         else:
@@ -2311,7 +2321,12 @@ def ai_metadata_json(item_id):
     result = fetch_ai_suggestions(item, fields=requested_fields or None, override_values=cv if cv else None)
 
     if not result["ok"]:
-        return jsonify({"ok": False, "error": result["error"]}), 500
+        # A 429 carries why it was a 429 (see ai_metadata._rate_limit_error);
+        # without these fields the modal can only say "it failed".
+        return jsonify({"ok": False, "error": result["error"],
+                        "retry_after": result.get("retry_after"),
+                        "quota": result.get("quota"),
+                        "allowance_zero": result.get("allowance_zero")}), 500
 
     filtered = {
         k: {"value": v["value"], "confidence": v.get("confidence", "medium"), "reason": v.get("reason", "")}

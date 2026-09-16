@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Colophon 1.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-09-16 18:59+0200\n"
+"POT-Creation-Date: 2026-09-16 19:16+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: sv\n"
@@ -32,7 +32,7 @@ msgid "Cover was not saved. Use JPG, PNG or WEBP."
 msgstr "Omslaget sparades inte. Använd JPG, PNG eller WEBP."
 
 #: app/routes/metadata.py:552 app/routes/metadata.py:1714
-#: app/routes/metadata.py:1875
+#: app/routes/metadata.py:1885
 msgid "Preview cancelled. Nothing was saved."
 msgstr "Förhandsgranskning avbruten. Inget sparades."
 
@@ -108,7 +108,7 @@ msgstr "Kunde inte hämta metadata: %(error)s"
 msgid "No fetched metadata to review. Run the fetch first."
 msgstr "Ingen hämtad metadata att granska. Kör hämtningen först."
 
-#: app/routes/metadata.py:1658 app/routes/metadata.py:1842
+#: app/routes/metadata.py:1658 app/routes/metadata.py:1852
 msgid "The preview has expired. Run the fetch again."
 msgstr "Förhandsgranskningen har gått ut. Kör hämtningen igen."
 
@@ -130,7 +130,7 @@ msgstr "filen uppdaterad"
 msgid "Metadata saved (%(parts)s)."
 msgstr "Metadata sparad (%(parts)s)."
 
-#: app/routes/metadata.py:1700 app/routes/metadata.py:1867
+#: app/routes/metadata.py:1700 app/routes/metadata.py:1877
 msgid "No fields selected — nothing was saved."
 msgstr "Inga fält valdes — inget sparades."
 
@@ -148,28 +148,49 @@ msgstr "AI-tjänsten nekade anropet. Kontrollera API-nyckeln."
 msgid "The AI request took too long. Try again."
 msgstr "AI-anropet tog för lång tid. Försök igen."
 
-#: app/routes/metadata.py:1783 app/routes/settings.py:208
+#: app/routes/metadata.py:1784 app/routes/settings.py:209
+msgid ""
+"The AI provider allows this account zero requests per minute. Check the "
+"plan or the key's workspace — waiting will not change it."
+msgstr ""
+"AI-leverantören tillåter noll anrop per minut för det här kontot. "
+"Kontrollera planen eller nyckelns arbetsyta — att vänta ändrar inget."
+
+#: app/routes/metadata.py:1788 app/routes/settings.py:213
+msgid ""
+"The AI quota is used up. Waiting will not help — top up the account or "
+"wait for the next period."
+msgstr ""
+"AI-kvoten är slut. Att vänta hjälper inte — fyll på kontot eller vänta till "
+"nästa period."
+
+#: app/routes/metadata.py:1790 app/routes/settings.py:215
+#, python-format
+msgid "The AI is busy right now. Try again in %(minutes)s min."
+msgstr "AI:n är upptagen just nu. Försök igen om %(minutes)s min."
+
+#: app/routes/metadata.py:1793 app/routes/settings.py:218
 msgid "The AI rate limit appears to have been reached. Try again later."
 msgstr "Gränsen för AI-anrop verkar vara nådd. Försök igen senare."
 
-#: app/routes/metadata.py:1785
+#: app/routes/metadata.py:1795
 msgid "The AI service returned a response that could not be parsed."
 msgstr "AI-tjänsten returnerade ett svar som inte kunde tolkas."
 
-#: app/routes/metadata.py:1793
+#: app/routes/metadata.py:1803
 msgid "The AI found no improvements to suggest."
 msgstr "AI:n hittade inga förbättringar att föreslå."
 
-#: app/routes/metadata.py:1805
+#: app/routes/metadata.py:1815
 msgid "No AI suggestions to review. Run the fetch first."
 msgstr "Inga AI-förslag att granska. Kör hämtningen först."
 
-#: app/routes/metadata.py:1865
+#: app/routes/metadata.py:1875
 #, python-format
 msgid "Metadata saved (%(count)d fields updated)."
 msgstr "Metadata sparad (%(count)d fält uppdaterade)."
 
-#: app/routes/metadata.py:2176
+#: app/routes/metadata.py:2186
 msgid "No books selected."
 msgstr "Inga böcker valda."
 
@@ -211,50 +232,50 @@ msgstr "Ogiltig API-nyckel. Kontrollera AI_API_KEY."
 msgid "The AI connection took too long. Check the network."
 msgstr "AI-anslutningen tog för lång tid. Kontrollera nätverket."
 
-#: app/routes/settings.py:210
+#: app/routes/settings.py:220
 #, python-format
 msgid "AI connection test failed (%(error)s)."
 msgstr "AI-anslutningstest misslyckades (%(error)s)."
 
-#: app/routes/settings.py:286
+#: app/routes/settings.py:296
 msgid "API settings saved."
 msgstr "API-inställningar sparade."
 
-#: app/routes/settings.py:422
+#: app/routes/settings.py:432
 msgid "That device is no longer connected."
 msgstr "Enheten är inte ansluten längre."
 
-#: app/routes/settings.py:429
+#: app/routes/settings.py:439
 msgid "Could not read the device. See the log for details."
 msgstr "Kunde inte läsa enheten. Se loggen för detaljer."
 
-#: app/routes/settings.py:433
+#: app/routes/settings.py:443
 #, python-format
 msgid ""
 "Imported reading state: %(applied)d updated, %(skipped)d already further "
 "along, %(unmatched)d not in the library."
 msgstr ""
 
-#: app/routes/settings.py:441
+#: app/routes/settings.py:451
 msgid ""
 "The device's database was damaged. What could be read was imported, but "
 "some books may be missing."
 msgstr ""
 
-#: app/routes/settings.py:452
+#: app/routes/settings.py:462
 #, python-format
 msgid "Cleared %(n)d cached KEPUB files."
 msgstr "Rensade %(n)d cachade KEPUB-filer."
 
-#: app/routes/settings.py:472
+#: app/routes/settings.py:482
 msgid "Device revoked."
 msgstr "Enheten återkallad."
 
-#: app/routes/settings.py:474 app/routes/settings.py:492
+#: app/routes/settings.py:484 app/routes/settings.py:502
 msgid "Device not found."
 msgstr "Enheten hittades inte."
 
-#: app/routes/settings.py:497
+#: app/routes/settings.py:507
 #, python-format
 msgid ""
 "Full resync queued for %(name)s — %(count)d book(s) will be sent again on"
@@ -263,7 +284,7 @@ msgstr ""
 "Full omsynk köad för %(name)s — %(count)d bok/böcker skickas om vid nästa"
 " synk."
 
-#: app/routes/settings.py:518
+#: app/routes/settings.py:528
 msgid ""
 "The next sync may send a large delete signal. This is a one-time unlock —"
 " it is spent by the sync that uses it."
@@ -271,27 +292,27 @@ msgstr ""
 "Nästa synk får skicka en stor raderingssignal. Upplåsningen är engångs — "
 "den förbrukas av den synk som utnyttjar den."
 
-#: app/routes/settings.py:549
+#: app/routes/settings.py:559
 msgid "Invalid or missing device token."
 msgstr "Ogiltig eller saknad enhetstoken."
 
-#: app/routes/settings.py:554
+#: app/routes/settings.py:564
 msgid "Device not found — was it revoked?"
 msgstr "Enheten hittades inte — har den återkallats?"
 
-#: app/routes/settings.py:559
+#: app/routes/settings.py:569
 msgid "No file uploaded."
 msgstr "Ingen fil uppladdad."
 
-#: app/routes/settings.py:564
+#: app/routes/settings.py:574
 msgid "Uploaded file was empty."
 msgstr "Den uppladdade filen var tom."
 
-#: app/routes/settings.py:567
+#: app/routes/settings.py:577
 msgid "Uploaded file is too large to be a Kobo conf (max 200 KB)."
 msgstr "Den uppladdade filen är för stor för att vara en Kobo-conf (max 200 KB)."
 
-#: app/routes/settings.py:575
+#: app/routes/settings.py:585
 #, python-format
 msgid "Could not patch the file: %(msg)s"
 msgstr "Kunde inte patcha filen: %(msg)s"
@@ -856,7 +877,7 @@ msgstr ""
 msgid "Authority-linked"
 msgstr "Auktoriserad"
 
-#: app/templates/authors.html:230 app/templates/bulk_metadata.html:1273
+#: app/templates/authors.html:230 app/templates/bulk_metadata.html:1277
 msgid "Confirmed"
 msgstr "Bekräftad"
 
@@ -944,7 +965,7 @@ msgstr "Lägg till författare"
 
 #: app/templates/authors.html:279 app/templates/bulk_metadata.html:744
 #: app/templates/bulk_metadata.html:902 app/templates/bulk_metadata.html:1057
-#: app/templates/bulk_metadata.html:1293 app/templates/metadata.html:387
+#: app/templates/bulk_metadata.html:1297 app/templates/metadata.html:387
 #: app/templates/metadata.html:506 app/templates/metadata_ai_preview.html:359
 #: app/templates/metadata_enrichment_preview.html:379
 msgid "Cancel"
@@ -1018,32 +1039,59 @@ msgstr "AI: osäkert — {reason}"
 msgid "AI is not configured (Settings → AI)."
 msgstr "AI är inte konfigurerat (Inställningar → AI)."
 
-#: app/templates/authors.html:303
+#: app/templates/authors.html:303 app/templates/bulk_metadata.html:1272
+#: app/templates/reader.html:635
+msgid ""
+"The AI quota is used up. Topping up the account is what helps, not "
+"waiting."
+msgstr ""
+"AI-kvoten är slut. Det som hjälper är att fylla på kontot, inte att vänta."
+
+#: app/templates/authors.html:304 app/templates/bulk_metadata.html:1273
+#: app/templates/reader.html:636
+msgid ""
+"The AI provider allows this account no requests at all. Check the plan or"
+" the key — waiting will not help."
+msgstr ""
+"AI-leverantören tillåter inga anrop alls för det här kontot. Kontrollera "
+"planen eller nyckeln — att vänta hjälper inte."
+
+#: app/templates/authors.html:305 app/templates/bulk_metadata.html:1274
+#: app/templates/reader.html:637
+msgid "The AI is busy. Try again in N min."
+msgstr "AI:n är upptagen. Försök igen om N min."
+
+#: app/templates/authors.html:306 app/templates/bulk_metadata.html:1275
+#: app/templates/reader.html:638
+msgid "The AI limit has been reached. Try again later."
+msgstr "AI-gränsen är nådd. Försök igen senare."
+
+#: app/templates/authors.html:307
 #, python-brace-format
 msgid "{count} selected"
 msgstr "{count} valda"
 
-#: app/templates/authors.html:304
+#: app/templates/authors.html:308
 #, python-brace-format
 msgid "Confirm {count} selected authors? They become eligible for file writes."
 msgstr ""
 "Bekräfta {count} markerade författare? De blir då behöriga för "
 "filskrivning."
 
-#: app/templates/authors.html:305
+#: app/templates/authors.html:309
 msgid "None of the selected entries are unconfirmed."
 msgstr "Inga av de markerade posterna är obekräftade."
 
-#: app/templates/authors.html:306
+#: app/templates/authors.html:310
 msgid "Enter at least two author names."
 msgstr "Ange minst två författarnamn."
 
-#: app/templates/authors.html:307
+#: app/templates/authors.html:311
 #, python-brace-format
 msgid "“{name}” is one person — hide the split badge?"
 msgstr "”{name}” är en person — dölj delningsflaggan?"
 
-#: app/templates/authors.html:308
+#: app/templates/authors.html:312
 #, python-brace-format
 msgid "Split “{name}” into {parts}? All linked books get the new authors."
 msgstr "Dela ”{name}” till {parts}? Alla länkade böcker får de nya författarna."
@@ -1320,7 +1368,7 @@ msgid "Cover"
 msgstr "Omslag"
 
 #: app/templates/bulk_metadata.html:251 app/templates/bulk_metadata.html:1005
-#: app/templates/bulk_metadata.html:1176 app/templates/bulk_metadata.html:1292
+#: app/templates/bulk_metadata.html:1176 app/templates/bulk_metadata.html:1296
 #: app/templates/settings_ai.html:435
 msgid "Book"
 msgstr "Bok"
@@ -1755,7 +1803,7 @@ msgid "Save selected"
 msgstr "Spara valda"
 
 #: app/templates/bulk_metadata.html:842 app/templates/bulk_metadata.html:868
-#: app/templates/bulk_metadata.html:1294
+#: app/templates/bulk_metadata.html:1298
 msgid "Apply"
 msgstr "Tillämpa"
 
@@ -2848,11 +2896,11 @@ msgstr "filer kunde inte läsas (PDF, MOBI eller ingen text)."
 msgid "The check could not finish."
 msgstr "Kontrollen kunde inte slutföras."
 
-#: app/templates/bulk_metadata.html:1258 app/templates/bulk_metadata.html:1290
+#: app/templates/bulk_metadata.html:1258 app/templates/bulk_metadata.html:1294
 msgid "books updated"
 msgstr "böcker uppdaterade"
 
-#: app/templates/bulk_metadata.html:1259 app/templates/bulk_metadata.html:1291
+#: app/templates/bulk_metadata.html:1259 app/templates/bulk_metadata.html:1295
 msgid "could not be written"
 msgstr "kunde inte skrivas"
 
@@ -2860,7 +2908,7 @@ msgstr "kunde inte skrivas"
 msgid "The two samples disagreed"
 msgstr "De två styckena var inte överens"
 
-#: app/templates/bulk_metadata.html:1261 app/templates/bulk_metadata.html:1279
+#: app/templates/bulk_metadata.html:1261 app/templates/bulk_metadata.html:1283
 msgid "Recorded"
 msgstr "Angivet"
 
@@ -2872,11 +2920,11 @@ msgstr "Hittat"
 msgid "Confidence"
 msgstr "Säkerhet"
 
-#: app/templates/bulk_metadata.html:1264 app/templates/bulk_metadata.html:1287
+#: app/templates/bulk_metadata.html:1264 app/templates/bulk_metadata.html:1291
 msgid "Write to the files too"
 msgstr "Skriv även till filerna"
 
-#: app/templates/bulk_metadata.html:1265 app/templates/bulk_metadata.html:1288
+#: app/templates/bulk_metadata.html:1265 app/templates/bulk_metadata.html:1292
 msgid "reload on Kobo"
 msgstr "laddas om på Kobo"
 
@@ -2900,63 +2948,63 @@ msgstr "För många böcker för ett förslag (max 60)."
 msgid "No books to order."
 msgstr "Inga böcker att ordna."
 
-#: app/templates/bulk_metadata.html:1272
+#: app/templates/bulk_metadata.html:1276
 msgid "Nothing to change."
 msgstr "Inget att ändra."
 
-#: app/templates/bulk_metadata.html:1274
+#: app/templates/bulk_metadata.html:1278
 msgid "Suggested"
 msgstr "Förslag"
 
-#: app/templates/bulk_metadata.html:1275
+#: app/templates/bulk_metadata.html:1279
 msgid "Differs from what is recorded"
 msgstr "Avviker från det angivna"
 
-#: app/templates/bulk_metadata.html:1276
+#: app/templates/bulk_metadata.html:1280
 msgid "Unchanged"
 msgstr "Oförändrad"
 
-#: app/templates/bulk_metadata.html:1277
+#: app/templates/bulk_metadata.html:1281
 msgid "Not in the series"
 msgstr "Ingår inte i serien"
 
-#: app/templates/bulk_metadata.html:1278
+#: app/templates/bulk_metadata.html:1282
 msgid "No answer"
 msgstr "Inget svar"
 
-#: app/templates/bulk_metadata.html:1280
+#: app/templates/bulk_metadata.html:1284
 msgid "Proposed"
 msgstr "Föreslaget"
 
-#: app/templates/bulk_metadata.html:1281
+#: app/templates/bulk_metadata.html:1285
 msgid "duplicate numbers"
 msgstr "dubbletter"
 
-#: app/templates/bulk_metadata.html:1282
+#: app/templates/bulk_metadata.html:1286
 msgid "gap at"
 msgstr "lucka vid"
 
-#: app/templates/bulk_metadata.html:1283
+#: app/templates/bulk_metadata.html:1287
 msgid "Spelling follows the library."
 msgstr "Stavningen följer biblioteket."
 
-#: app/templates/bulk_metadata.html:1284
+#: app/templates/bulk_metadata.html:1288
 msgid "Change the series spelling on all of them"
 msgstr "Byt seriestavning på alla"
 
-#: app/templates/bulk_metadata.html:1285
+#: app/templates/bulk_metadata.html:1289
 msgid "Wikidata"
 msgstr "Wikidata"
 
-#: app/templates/bulk_metadata.html:1286
+#: app/templates/bulk_metadata.html:1290
 msgid "applies to N formats"
 msgstr "gäller N format"
 
-#: app/templates/bulk_metadata.html:1289
+#: app/templates/bulk_metadata.html:1293
 msgid "A series change reloads the book on a synced Kobo."
 msgstr "En serieändring laddar om boken på en synkad Kobo."
 
-#: app/templates/bulk_metadata.html:1295
+#: app/templates/bulk_metadata.html:1299
 msgid "Saving..."
 msgstr "Sparar ..."
 
@@ -3395,15 +3443,15 @@ msgstr "Tänker…"
 msgid "AI explanation failed."
 msgstr "AI-förklaringen misslyckades."
 
-#: app/templates/reader.html:635
+#: app/templates/reader.html:639
 msgid "Show more"
 msgstr "Visa mer"
 
-#: app/templates/reader.html:636
+#: app/templates/reader.html:640
 msgid "Show less"
 msgstr "Visa mindre"
 
-#: app/templates/reader.html:637
+#: app/templates/reader.html:641
 msgid ""
 "Start this book over from the beginning? Reading progress is reset "
 "everywhere, including on the Kobo."
@@ -3411,7 +3459,7 @@ msgstr ""
 "Börja om boken från början? Läsförloppet nollställs överallt, även på "
 "Kobo-läsplattan."
 
-#: app/templates/reader.html:638
+#: app/templates/reader.html:642
 msgid "Could not reset reading progress — are you offline?"
 msgstr "Kunde inte nollställa läsförloppet — är du offline?"
 

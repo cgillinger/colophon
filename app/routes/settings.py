@@ -205,7 +205,17 @@ def ai_test_connection():
         elif error == "timeout":
             flash(_("The AI connection took too long. Check the network."), "error")
         elif error == "rate_limit":
-            flash(_("The AI rate limit appears to have been reached. Try again later."), "error")
+            if result.get("allowance_zero"):
+                flash(_("The AI provider allows this account zero requests per "
+                        "minute. Check the plan or the key's workspace — waiting "
+                        "will not change it."), "error")
+            elif result.get("quota"):
+                flash(_("The AI quota is used up. Waiting will not help — top up the account or wait for the next period."), "error")
+            elif result.get("retry_after"):
+                flash(_("The AI is busy right now. Try again in %(minutes)s min.",
+                         minutes=max(1, round(result["retry_after"] / 60))), "error")
+            else:
+                flash(_("The AI rate limit appears to have been reached. Try again later."), "error")
         else:
             flash(_("AI connection test failed (%(error)s).", error=error), "error")
 

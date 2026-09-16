@@ -49,6 +49,23 @@
         no_books:       'seriesOrderNoBooks'
     };
 
+    // Shared "AI is rate-limited" message picker: quota exhaustion beats a
+    // retry hint, which beats the generic limit message. Used wherever a
+    // response can carry {error: 'rate_limit', retry_after, quota}.
+    function _rateLimitText(data) {
+        if (data.allowance_zero === true) {
+            return t('aiNoAllowance', 'The AI provider allows this account no requests at all. Check the plan or the key — waiting will not help.');
+        }
+        if (data.quota === true) {
+            return t('aiQuotaSpent', 'The AI quota is used up. Topping up the account is what helps, not waiting.');
+        }
+        if (data.retry_after) {
+            var minutes = Math.max(1, Math.ceil(data.retry_after / 60));
+            return t('aiBusyRetry', 'The AI is busy. Try again in N min.').replace('N', minutes);
+        }
+        return t('aiRateLimited', 'The AI limit has been reached. Try again later.');
+    }
+
     function _hasCheckbox(status) {
         return status !== 'not_in_series' && status !== 'unknown';
     }
@@ -220,6 +237,10 @@
         .then(function (r) { return r.json(); })
         .then(function (data) {
             if (!data.ok) {
+                if (data.error === 'rate_limit') {
+                    _setStatus(_rateLimitText(data));
+                    return;
+                }
                 var key = _ERROR_KEYS[data.error] || 'seriesOrderFailed';
                 _setStatus(t(key, 'The proposal could not be made.'));
                 return;
