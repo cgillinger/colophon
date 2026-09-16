@@ -5,6 +5,69 @@ PATCH for fixes, MINOR for user-visible features and automatic migrations, MAJOR
 changes that need you to act. Releases before 1.41.0 are summarised from the git log —
 see the [tags](https://github.com/cgillinger/colophon/tags) for the full history.
 
+## What's new since 1.50
+
+Fourteen releases that replaced one generic batch job with **scenarios**: jobs
+where the books share a fact, each one showing you a proposal to tick through
+before anything is written.
+
+**Upgrading.** `docker compose pull && docker compose up -d`, or a pinned tag
+if you prefer one (`ghcr.io/cgillinger/colophon:1.61.1`). The schema migrates
+itself on first start and no setting changes meaning, so there is nothing to
+do beyond the two notes below. Your files are not touched by the upgrade
+itself.
+
+- **Remove `COLOPHON_SHOW_LEGACY_BATCH` from your compose file** if you set it.
+  1.61.0 deleted what it revealed, and the line is now ignored.
+- **If the AI features went quiet, suspect the model, not your quota.** Mistral's
+  free plan no longer includes the `mistral-*` chat models; they answer `429`,
+  which reads exactly like being throttled. Pick a `ministral-*` model under
+  **Settings → AI** (1.53.2). New installs already default to one.
+
+### The features
+
+Most useful first. The handbook explains each in full — also
+[på svenska](docs/handbook-sv.md).
+
+| Feature | Where you find it | Handbook | Since |
+|---|---|---|---|
+| **Order a series** — one AI call for the whole series instead of one per book, cross-checked against Wikidata, reviewed row by row. This is the answer to series numbering that drifts. | Series view → a card's **Order the series** | [§9d](docs/handbook-en.md#9d-ordering-a-series) | 1.53.0 |
+| **Order an author's whole shelf** — every series one author wrote, in a single review, with the AI also deciding which series exist | Authors page → the row's ⋯ menu → **Order series**, or the banner above the list when you have filtered on an author | [§9e](docs/handbook-en.md#9e-ordering-an-authors-series) | 1.54.0 |
+| **Fetch covers for a whole filter** — the missing-cover count turned into a batch, searched across the entire filter rather than the page you can see | Click the **N missing cover** count below the list → **Fetch covers for these** | [§9g](docs/handbook-en.md#9g-fetching-covers-for-a-whole-filter) | 1.60.0 |
+| **See what's missing** — a completeness dot on every book, three counters that filter, and *Least complete first* in the sort menu | Table view | [§9b](docs/handbook-en.md#9b-seeing-whats-missing) | 1.52.0 |
+| **Check language** — reads the text inside your EPUBs and reports only the books whose recorded language the text contradicts | **Tools → Check language** | [§9c](docs/handbook-en.md#9c-checking-language) | 1.52.0 |
+| **Rename a series** — deterministic, no AI; gathers the spelling variants onto one name and leaves every book's number alone | Series view → a card's **Rename** | [§9f](docs/handbook-en.md#9f-renaming-a-series) | 1.55.0 |
+| **AI suggestions that know your library** — the model is shown the series names and subjects you already use, and a proposed series that matches one of them is snapped to your spelling instead of becoming variant number four | Wherever the AI proposes metadata | [§7](docs/handbook-en.md#7-ai-features) | 1.51.0 |
+| **The Authority column says who** — "British science fiction writer" rather than `Q31191175`, plus **Verify selected** so the column can actually be filled | Authors page | [§10](docs/handbook-en.md#10-managing-authors) | 1.57.0 |
+
+### Fixes worth knowing about
+
+- **Nothing writes before you have seen it.** The bulk stream was applying
+  confident matches — to your files — before the review list appeared (1.51.1).
+- **An author could be anchored to the wrong person** in Wikidata, with no way
+  to undo it. Your own shelf now decides, and the link can be removed
+  (1.58.0, 1.59.0).
+- **A Swedish interface was quietly showing English** in the new flows, and in
+  places raw status codes (1.55.0).
+- **A fresh installation could fail to start** when two workers set up the
+  database at the same moment (1.61.1).
+
+### Still on the list
+
+- **Aligning spellings that have already diverged.** 1.51.0 makes *new*
+  suggestions converge on what your library already says, but it does nothing
+  for the four spellings of "The Expanse" that are in there today. A cleanup
+  view that clusters near-duplicate series and subject values, the way
+  `/authors` does for names, is the plan — asked for in
+  [#173](https://github.com/cgillinger/colophon/issues/173).
+- **Bulk file and folder moves.** Deliberately out: they interact badly with
+  Kobo sync and upstream syncing. There is a per-book *Move to author folder*
+  action instead.
+
+Per-release detail follows.
+
+---
+
 ## [1.61.1] — 2026-09-16
 
 ### Fixed
@@ -36,13 +99,13 @@ see the [tags](https://github.com/cgillinger/colophon/tags) for the full history
 ## [1.60.0] — 2026-09-16
 
 ### Added
-- **Fetch covers for a whole filter.** Click the "N missing cover" count below
-  the list and a row appears above it: **Fetch covers for these**. Colophon
-  searches the entire filter — not just the page you can see — and shows what
-  it found beside the empty slot each cover would fill. Everything starts
-  ticked, because nothing is being overwritten; untick what you don't want and
-  apply. A hundred books per run; if the filter holds more it says how many
-  are left.
+- **Fetch covers for a whole filter** ([handbook §9g](docs/handbook-en.md#9g-fetching-covers-for-a-whole-filter)).
+  Click the "N missing cover" count below the list and a row appears above it:
+  **Fetch covers for these**. Colophon searches the entire filter — not just
+  the page you can see — and shows what it found beside the empty slot each
+  cover would fill. Everything starts ticked, because nothing is being
+  overwritten; untick what you don't want and apply. A hundred books per run;
+  if the filter holds more it says how many are left.
 
 ### Fixed
 - **A preview could move a cover on its own.** When several formats of the
@@ -70,6 +133,13 @@ see the [tags](https://github.com/cgillinger/colophon/tags) for the full history
 
 ## [1.58.0] — 2026-09-16
 
+### Added
+- **Remove authority link**, in the author row's menu
+  ([handbook §10](docs/handbook-en.md#10-managing-authors)). A wrong anchor you
+  cannot undo was the worst situation of the lot. The entry drops to
+  *confirmed* rather than *tentative* — the click says the id is the wrong
+  person, not that the spelling is wrong.
+
 ### Fixed
 - **A name is not a person.** Author verification searched Wikidata for the
   name and took the first human whose name matched. Wikidata ranks by fame, so
@@ -80,13 +150,16 @@ see the [tags](https://github.com/cgillinger/colophon/tags) for the full history
   stopping at the first name match. It is a mitigation, not a cure: a namesake
   who also writes would still win.
 
-### Added
-- **Remove authority link**, in the author row's menu. A wrong anchor you
-  cannot undo was the worst situation of the lot. The entry drops to
-  *confirmed* rather than *tentative* — the click says the id is the wrong
-  person, not that the spelling is wrong.
-
 ## [1.57.0] — 2026-09-16
+
+### Added
+- **Verify selected**, on the Authors page
+  ([handbook §10](docs/handbook-en.md#10-managing-authors)). Verification
+  existed only one row at a time, so in a real library the Authority column
+  read "—" everywhere while most entries were confirmed — two unrelated things
+  the page never explained. The loop runs in the browser, one author at a
+  time, because a few hundred SPARQL round trips in one request would pass
+  Gunicorn's five-minute limit with nothing to show.
 
 ### Changed
 - **The Authority column says who, not which code.** `Q31191175` doesn't answer
@@ -97,14 +170,6 @@ see the [tags](https://github.com/cgillinger/colophon/tags) for the full history
   before this release keep their identifiers and stay without a description
   until you verify them again — the text was never stored, so there is nothing
   to backfill.
-
-### Added
-- **Verify selected**, on the Authors page. Verification existed only one row
-  at a time, so in a real library the Authority column read "—" everywhere
-  while most entries were confirmed — two unrelated things the page never
-  explained. The loop runs in the browser, one author at a time, because a few
-  hundred SPARQL round trips in one request would pass Gunicorn's five-minute
-  limit with nothing to show.
 
 ## [1.56.0] — 2026-09-16
 
@@ -130,6 +195,13 @@ see the [tags](https://github.com/cgillinger/colophon/tags) for the full history
 
 ## [1.55.0] — 2026-09-16
 
+### Added
+- **Rename a series**, on the series card
+  ([handbook §9f](docs/handbook-en.md#9f-renaming-a-series)). Deterministic, no
+  AI. A card already gathers books whose series names differ only in spelling,
+  so the rename fixes those variants on the way past; every book keeps its own
+  number.
+
 ### Fixed
 - **A Swedish interface was showing English.** The i18n map in the main
   template closed one line too early, so 55 keys — the whole language check and
@@ -143,24 +215,26 @@ see the [tags](https://github.com/cgillinger/colophon/tags) for the full history
   pre-ticked — you decide whether a tidier spelling is worth a reload on the
   Kobo. The columns are now **Now** and **Becomes**.
 
-### Added
-- **Rename a series**, on the series card. Deterministic, no AI. A card already
-  gathers books whose series names differ only in spelling, so the rename fixes
-  those variants on the way past; every book keeps its own number.
-
 ## [1.54.0] — 2026-09-16
 
 ### Added
-- **Order an author's series** — the same review as *Order the series*, but
-  across a whole body of work, with the AI also deciding which series exist.
-  One block per proposed series, and a last block for the books it places
-  outside all of them; those rows have no checkbox at all, which is what stops
-  a standalone book from being given a number. Each block is judged on its own,
-  so a thin series can't arrive pre-ticked on the strength of a fat one beside
-  it. Two ways in: the button on the author's row, and the one in the blue bar
-  when you have filtered the library on an author.
+- **Order an author's series** ([handbook §9e](docs/handbook-en.md#9e-ordering-an-authors-series))
+  — the same review as *Order the series*, but across a whole body of work,
+  with the AI also deciding which series exist. One block per proposed series,
+  and a last block for the books it places outside all of them; those rows have
+  no checkbox at all, which is what stops a standalone book from being given a
+  number. Each block is judged on its own, so a thin series can't arrive
+  pre-ticked on the strength of a fat one beside it. Two ways in: the button on
+  the author's row, and the one in the blue bar when you have filtered the
+  library on an author.
 
 ## [1.53.2] — 2026-09-16
+
+### Changed
+- **The default model is now `ministral-14b-latest`**, the largest that answers
+  on a free key. It was `mistral-small-latest`, which a fresh install with a
+  free key would never get an answer from. Existing installations have their
+  own value in the database and need to change it themselves.
 
 ### Fixed
 - **It is the model that isn't in the free plan, not your quota.** A correction
@@ -170,12 +244,6 @@ see the [tags](https://github.com/cgillinger/colophon/tags) for the full history
   ceiling of zero and `mistral-large` returns 403. The account is healthy — the
   `mistral-*` family is no longer included in the free plan. The message now
   points at the model and tells you to pick another one under Settings → AI.
-
-### Changed
-- **The default model is now `ministral-14b-latest`**, the largest that answers
-  on a free key. It was `mistral-small-latest`, which a fresh install with a
-  free key would never get an answer from. Existing installations have their
-  own value in the database and need to change it themselves.
 
 ## [1.53.1] — 2026-09-16
 
@@ -193,16 +261,17 @@ see the [tags](https://github.com/cgillinger/colophon/tags) for the full history
 ## [1.53.0] — 2026-09-16
 
 ### Added
-- **Order the series.** Every card in the Series view gets a button that asks
-  the AI about the whole series in one call — not book by book, which is what
-  makes numbering drift — and cross-checks the answer against Wikidata before
-  showing you anything. Each row says where it stands: *Confirmed* (both
-  agree), *Suggested* (the AI alone, pre-ticked only when it is confident),
-  *Differs from what is recorded* (never pre-ticked — a number you typed is not
-  overwritten unless you tick it yourself), *Spelling only*, and dimmed rows
-  with no checkbox for books the AI puts outside the series or didn't answer
-  about. The header warns about duplicate numbers and gaps. A lone unconfirmed
-  proposal is downgraded, so it can never arrive pre-ticked.
+- **Order the series** ([handbook §9d](docs/handbook-en.md#9d-ordering-a-series)).
+  Every card in the Series view gets a button that asks the AI about the whole
+  series in one call — not book by book, which is what makes numbering drift —
+  and cross-checks the answer against Wikidata before showing you anything.
+  Each row says where it stands: *Confirmed* (both agree), *Suggested* (the AI
+  alone, pre-ticked only when it is confident), *Differs from what is recorded*
+  (never pre-ticked — a number you typed is not overwritten unless you tick it
+  yourself), *Spelling only*, and dimmed rows with no checkbox for books the AI
+  puts outside the series or didn't answer about. The header warns about
+  duplicate numbers and gaps. A lone unconfirmed proposal is downgraded, so it
+  can never arrive pre-ticked.
 
   Series and series number are fields the Kobo reads, so a synced device
   reloads those books even with **Write to the files too** unticked. The modal
@@ -211,27 +280,32 @@ see the [tags](https://github.com/cgillinger/colophon/tags) for the full history
 ## [1.52.0] — 2026-09-16
 
 ### Added
-- **See what's missing.** Every book in the table view has a dot beside its
-  checkbox: green means the metadata is essentially complete, amber that
-  something is missing, red that most of it is — hover for the list. Above the
-  list, three counters say how many sit in each state and filter down to them
-  when clicked, and the sort menu gains **Least complete first**. The score was
-  an internal prefetch heuristic before this, only recalculated in one place
-  and therefore stale on hand-edited and freshly scanned rows; it is now
-  recalculated on every write path, with a backfill for older rows.
-- **Check language.** **Tools → Check language** reads the text inside every
-  EPUB and reports only what deserves a human: no language recorded, or a
-  recorded language the text contradicts. It samples two passages from 30 % and
-  60 % into the book rather than the start, because forewords and copyright
-  pages are routinely in another language and asking them gives the wrong
-  answer; when the two samples disagree the book is flagged and left unticked.
-  Books with no language at all arrive pre-ticked, books whose value is merely
-  contradicted do not. **Write to the files too** is pre-ticked here and
-  nowhere else — the Kobo picks its dictionary and hyphenation from the
-  language, so reaching the device is the entire point — and the label says how
-  many books will reload.
+- **See what's missing** ([handbook §9b](docs/handbook-en.md#9b-seeing-whats-missing)).
+  Every book in the table view has a dot beside its checkbox: green means the
+  metadata is essentially complete, amber that something is missing, red that
+  most of it is — hover for the list. Above the list, three counters say how
+  many sit in each state and filter down to them when clicked, and the sort
+  menu gains **Least complete first**. The score was an internal prefetch
+  heuristic before this, only recalculated in one place and therefore stale on
+  hand-edited and freshly scanned rows; it is now recalculated on every write
+  path, with a backfill for older rows.
+- **Check language** ([handbook §9c](docs/handbook-en.md#9c-checking-language)).
+  **Tools → Check language** reads the text inside every EPUB and reports only
+  what deserves a human: no language recorded, or a recorded language the text
+  contradicts. It samples two passages from 30 % and 60 % into the book rather
+  than the start, because forewords and copyright pages are routinely in
+  another language and asking them gives the wrong answer; when the two samples
+  disagree the book is flagged and left unticked. Books with no language at all
+  arrive pre-ticked, books whose value is merely contradicted do not. **Write
+  to the files too** is pre-ticked here and nowhere else — the Kobo picks its
+  dictionary and hyphenation from the language, so reaching the device is the
+  entire point — and the label says how many books will reload.
 
 ## [1.51.1] — 2026-09-16
+
+### Changed
+- **The generic batch entry point is hidden** behind `COLOPHON_SHOW_LEGACY_BATCH`
+  (off by default) while the scenario flows that replace it are built.
 
 ### Fixed
 - **The batch wrote before you saw anything.** The bulk run classified a match
@@ -244,14 +318,12 @@ see the [tags](https://github.com/cgillinger/colophon/tags) for the full history
   confirmed before writing; that section has been rewritten to say what is
   actually true.
 
-### Changed
-- **The generic batch entry point is hidden** behind `COLOPHON_SHOW_LEGACY_BATCH`
-  (off by default) while the scenario flows that replace it are built.
-
 ## [1.51.0] — 2026-09-16
 
 ### Changed
-- **AI suggestions now see the rest of your library.** The prompt carried one
+- **AI suggestions now see the rest of your library**
+  ([handbook §7](docs/handbook-en.md#7-ai-features), requested in
+  [#173](https://github.com/cgillinger/colophon/issues/173)). The prompt carried one
   book in isolation, so a run over many books produced a new spelling of the
   same series each time and a fresh synonym for every subject. It now also
   carries the author's other books, the series names already in use and your
