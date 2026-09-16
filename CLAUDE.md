@@ -437,6 +437,39 @@ COLOPHON_LIBRARY_DIR=<repo>/var/books-dev   # under gitignored var/
 Then `.venv/bin/python -m pytest tests/ -q`. Containers ignore this file — they
 get their env from docker-compose.
 
+The local `.venv` runs **Python 3.14** (the dev box has no 3.12); the container
+runs 3.12. The suite is green on both, but that is the one difference to
+suspect if something passes locally and fails in the image.
+
+### Running a real local instance (dev library)
+
+Useful for seeing a change against real books without touching prod. It needs
+its **own data dir**, separate from the one the `.env` above points at — the
+suite wipes `DATA_DIR/colophon.db` on every run, so sharing it means every
+`pytest` empties the dev library:
+
+```bash
+COLOPHON_DATA_DIR=$PWD/var/data-dev COLOPHON_LIBRARY_DIR=$PWD/var/books-dev \
+  .venv/bin/gunicorn -b 127.0.0.1:5055 -w 2 -t 300 --error-logfile - wsgi:app
+# then: curl -s http://127.0.0.1:5055/scan   (GET, not POST) to populate the DB
+```
+
+Fill `var/books-dev/` by **copying** from server2's working copy — never the
+Synology originals, and never a move:
+
+```bash
+rsync -a -r --files-from=<list of author folders> \
+  chris@192.168.50.8:/mnt/docker/appdata/colophon/bibliotek/ var/books-dev/
+```
+
+`/mnt/docker/appdata/colophon/bibliotek/` is itself already a working copy
+(the originals live on the Synology at `/volume2/komga`), so an rsync **pull**
+from it touches nothing of value. Both `var/` and `data/` are gitignored.
+
+Note that the local instance has **no API keys** (`ai_is_configured()` is
+False, no Google Books key), so AI flows and metadata fetches do nothing there
+until keys are added to its settings.
+
 > ⚠️ **Never run the suite inside the live `colophon` / `colophon2` container.**
 > The `test_kobo_sync.py` fixture calls the real `create_app()` and runs
 > `DELETE FROM library_items / kobo_devices / kobo_book_states` on
