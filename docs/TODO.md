@@ -205,16 +205,17 @@ landed 588.
 **Scope:** small. Polish → PATCH. Not blocking — the reported "stale data after
 edit" bug is already fixed (v1.6.0); this is just exact scroll position.
 
-## Delete the batch.js leftovers after step 6
+## Wizard-only CSS in bulk_metadata.css
 
-**What:** `app/static/js/batch.js` still carries the generic wizard (field
-picker, synopsis review, wizard steps) and `SHOW_LEGACY_BATCH` still gates
-its hidden entry point. Step 6 of
-[`docs/plan-batch-scenarios.md`](plan-batch-scenarios.md) is the last
-scenario that uses the old engine; once it ships, delete the rest of the
-wizard and the flag with it.
+**What:** `batch.js`, the wizard modal and `SHOW_LEGACY_BATCH` were deleted
+in v1.60.0, but their styles were not. Some of that block is still in use —
+`bp-*` by the single-book modal's progress table, `cover-review-*` by the
+cover scenario — so the dead rules (`batch-wizard-steps`, `batch-step`,
+`batch-field-*`, `brc-*`, `brt-*`, the batch summary) have to be picked out
+one at a time against the remaining markup rather than deleted as a block.
 
-**Scope:** small. Pure removal → PATCH.
+**Scope:** small, and purely cosmetic weight → PATCH. No user-visible
+change, so it is worth doing only alongside other CSS work.
 
 ## Series + subject cleanup view (align spellings already in the library)
 
@@ -313,7 +314,7 @@ write path is EPUB-only and the MOBI/AZW3 read path is unexercised. `kepubify`
 - Remove the tier-2 Calibre step from `metadata_pipeline.py`; drop
   `include_calibre`, `METADATA_SOURCE_CALIBRE_ENABLED`, the settings toggle +
   `calibre_available`, and the Calibre column/skipped-dash handling in
-  `book-modal.js`/`batch.js` (or leave the columns, just never populated).
+  `book-modal.js` (or leave the columns, just never populated).
 - Net loss of sources (verified 2026-06-01 against the Calibre manual + the
   installed kiwidude plugins): **four**, not three — **Amazon.com, Edelweiss,
   Fantastic Fiction, FictionDB**. Calibre's built-in set in this install is

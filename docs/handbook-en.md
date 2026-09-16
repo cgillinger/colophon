@@ -211,10 +211,10 @@ provider's answer makes it visible.
 
 ## 9. Doing many books at once: batch operations
 
-**Being rebuilt.** The generic batch wizard — select N books, pick fields, run
-— is hidden for now. It wrote to your files before you had a chance to review
-the result, and reviewing N unrelated books in a row was never a sensible way
-to work anyway.
+The generic batch wizard — select N books, pick fields, run — is gone. It
+wrote to your files before you had a chance to review the result, and
+reviewing N unrelated books in a row was never a sensible way to work
+anyway.
 
 What replaces it is scenarios where the books share a fact: a series, an
 author's work, a field that can be settled for the whole selection at once.

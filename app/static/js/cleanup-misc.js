@@ -19,13 +19,13 @@
 
     document.addEventListener('keydown', function (e) {
         if (e.key !== 'Escape') return;
-        var batchModal      = document.getElementById('batchModal');
+        var coverBatchModal = document.getElementById('coverBatchModal');
         var bulkResultModal = document.getElementById('bulkResultModal');
         var bookModal       = document.getElementById('bookModal');
         var seriesModal     = document.getElementById('seriesModal');
 
-        if (batchModal && batchModal.style.display === 'flex') {
-            if (typeof closeBatchModal === 'function') closeBatchModal();
+        if (coverBatchModal && coverBatchModal.style.display === 'flex') {
+            if (typeof closeCoverBatch === 'function') closeCoverBatch();
         } else if (bulkResultModal && bulkResultModal.style.display === 'flex') {
             if (typeof closeBulkResultModal === 'function') closeBulkResultModal();
         } else if (bookModal && bookModal.style.display === 'flex') {

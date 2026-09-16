@@ -1,9 +1,8 @@
 # Genomförandeplan: scenario-batch i stället för generisk wizard
 
-Status: **planen är genomförd.** Steg 1–6 klara — se avsnitt 6 för
-statustabell och vad varje steg lämnade efter sig. Det enda som återstår av
-planen är raderingen av `batch.js` och `SHOW_LEGACY_BATCH`, som steg 6
-medvetet lade i ett eget commit direkt efter sitt eget.
+Status: **planen är genomförd.** Steg 1–6 klara, och `batch.js` +
+`SHOW_LEGACY_BATCH` är raderade i commiten efter steg 6 — se avsnitt 6 för
+statustabell och vad varje steg lämnade efter sig.
 Ursprungligen skriven 2026-09-16. Bakgrund i samtalet som ledde hit: den generiska
 batchwizarden (markera N blandade böcker, välj fält, kör) lönar sig inte,
 eftersom N böcker utan delat faktum är N oberoende granskningar. Scenarier
@@ -661,8 +660,14 @@ ihop, och ett ihopfällt formatsyskon saknar omslag lika mycket — omslag
 tillämpas per fil. `_filteredIds()` läser därför `filterHidden` direkt.
 
 **Raderingen ligger i ett eget commit.** Bygget först, verifierat mot
-devinstansen, sedan `batch.js` + `SHOW_LEGACY_BATCH`. En 2 000-raders
-radering i samma diff som ny logik går inte att granska.
+devinstansen, sedan `batch.js` (2 194 rader) + wizardmodalen +
+`SHOW_LEGACY_BATCH` + 58 i18n-nycklar som bara wizarden använde. En
+2 000-raders radering i samma diff som ny logik går inte att granska.
+Fem hjälpfunktioner överlevde filen och ligger nu i `core.js` —
+`_esc`, `_cleanDate`, `_applyFieldLabel`, `_resultLabel`, `_resultTooltip`
+— eftersom bokmodalen och resultatmodalen fortfarande visar hämtresultat.
+Wizardens CSS ligger kvar; delar av den delas med kvarvarande UI, så den
+är en egen TODO.
 
 **Devinstansen har inga API-nycklar, och Google Books svarar 429 utan
 nyckel.** En riktig körning hittade därför noll omslag där. Den vägen

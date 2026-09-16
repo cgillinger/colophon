@@ -219,10 +219,9 @@ felmeddelandet när det går att se på leverantörens svar.
 
 ## 9. Många böcker på en gång: batchåtgärder
 
-**Under ombyggnad.** Den generiska batchguiden — markera N böcker, välj fält,
-kör — är tills vidare dold. Den skrev till filerna innan du hann granska
-resultatet, och att granska N obesläktade böcker i en följd var ändå inget
-vettigt arbetssätt.
+Den generiska batchguiden — markera N böcker, välj fält, kör — finns inte
+längre. Den skrev till filerna innan du hann granska resultatet, och att
+granska N obesläktade böcker i en följd var ändå inget vettigt arbetssätt.
 
 Det som ersätter den är scenarier där böckerna delar ett faktum: en serie, ett
 författarskap, ett fält som kan avgöras för hela urvalet på en gång. Varje

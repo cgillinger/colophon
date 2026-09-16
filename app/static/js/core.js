@@ -18,7 +18,9 @@
  *
  * Exposes globals consumed by the template / other modules:
  *   toggleTheme, setViewMode, setDensity, _syncDensityRadios,
- *   setSkriptorium, isSkriptoriumOn, applyViewMode, setLanguage
+ *   setSkriptorium, isSkriptoriumOn, applyViewMode, setLanguage,
+ *   _pluralize, and the shared display helpers _esc / _cleanDate /
+ *   _applyFieldLabel / _resultLabel / _resultTooltip (from batch.js)
  * ------------------------------------------------------------------ */
 (function (window, document) {
     'use strict';
@@ -258,6 +260,85 @@
         return out;
     }
     window._pluralize = _pluralize;
+
+    /* ---- Shared metadata display helpers -------------------------- *
+     * These lived in batch.js, which the scenario flows replaced. The
+     * book modal and the bulk result modal still render fetch results,
+     * so the label and escaping helpers outlived the wizard.
+     * ---------------------------------------------------------------- */
+
+    function _esc(str) {
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    window._esc = _esc;
+
+    function _cleanDate(val) {
+        if (!val || typeof val !== 'string') return val;
+        if (val.length > 10 && val[4] === '-' && val[7] === '-') {
+            return val.substring(0, 10);
+        }
+        return val;
+    }
+    window._cleanDate = _cleanDate;
+
+    function _applyFieldLabel(f) {
+        var _i18n = (window.__colophonConfig && window.__colophonConfig.i18n) || {};
+        var labels = {
+            title: _i18n.batchFieldTitle, author: _i18n.batchFieldAuthor,
+            description: _i18n.batchFieldSynopsis, isbn: 'ISBN',
+            publisher: _i18n.batchFieldPublisher, series: _i18n.batchFieldSeries,
+            series_index: _i18n.batchFieldPart, language: _i18n.batchFieldLanguage,
+            genres: _i18n.batchFieldGenre, published_date: _i18n.batchFieldPublicationDate,
+            cover: _i18n.batchFieldCover
+        };
+        return labels[f] || f;
+    }
+    window._applyFieldLabel = _applyFieldLabel;
+
+    /* What a finished single-book fetch says in the result column. */
+    function _resultLabel(d) {
+        var _i18n = (window.__colophonConfig && window.__colophonConfig.i18n) || {};
+        if (d.classification === 'auto_apply') {
+            var details = d.apply_details || {};
+            var added = details.fields_added || [];
+            var replaced = details.fields_replaced || [];
+            if (added.length === 0 && replaced.length === 0) {
+                return '<span class="bp-skip">— ' + _i18n.noChanges + '</span>';
+            }
+            var parts = [];
+            if (added.length > 0) parts.push(_i18n.addedNFields.replace('{count}', added.length));
+            if (replaced.length > 0) parts.push(_i18n.batchReplacedCount.replace('{count}', replaced.length));
+            var cls = replaced.length > 0 ? 'bp-warn' : 'bp-ok';
+            return '<span class="' + cls + '">✓ ' + parts.join(', ') + '</span>';
+        }
+        var labels = {
+            'review_needed': '<span class="bp-warn">' + _i18n.batchReviewLabel + '</span>',
+            'no_match':      '<span class="bp-fail">' + _i18n.batchNoMatchLabel + '</span>',
+            'skipped':       '<span class="bp-skip">' + _i18n.batchSkippedLabel + '</span>',
+            'source_error':  '<span class="bp-fail">' + _i18n.batchSourceErrorLabel + '</span>'
+        };
+        return labels[d.classification] || _esc(d.classification || '');
+    }
+    window._resultLabel = _resultLabel;
+
+    function _resultTooltip(d) {
+        var _i18n = (window.__colophonConfig && window.__colophonConfig.i18n) || {};
+        if (d.classification !== 'auto_apply') return '';
+        var details = d.apply_details || {};
+        var added = details.fields_added || [];
+        var replaced = details.fields_replaced || [];
+        var skipped = details.fields_skipped || [];
+
+        var lines = [];
+        if (added.length) lines.push(_i18n.batchAdded + ' ' + added.map(_applyFieldLabel).join(', '));
+        if (replaced.length) lines.push(_i18n.replacedBetterQuality + ' ' + replaced.map(_applyFieldLabel).join(', '));
+        if (skipped.length) lines.push(_i18n.keptExisting + ' ' + skipped.map(_applyFieldLabel).join(', '));
+        if (lines.length === 0) {
+            lines.push(_i18n.bookHadAllMetadata);
+        }
+        return lines.join('\n');
+    }
+    window._resultTooltip = _resultTooltip;
 
     /* ---- Series name normalisation -------------------------------- *
      * Series are grouped/compared by this key so case- and whitespace-

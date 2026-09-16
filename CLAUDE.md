@@ -156,7 +156,6 @@ series-order.js          # Series-order review: one block per group, ticked rows
                          #   Two entry points — one series (series card) and a whole
                          #   author (/authors row, author-filter banner)
 book-modal.js            # Single-book edit modal (large)
-batch.js                 # Batch wizard (large — bulk enrichment, AI, covers)
 bulk-result-modal.js     # Post-batch summary modal
 duplicates.js            # Duplicate cleanup UI
 reading-now.js           # "Currently reading" widget
@@ -477,13 +476,18 @@ always passes it. The writing path is now the single-book modal's alone
 (`book-modal.js`) — the cover scenario drives this engine too, but as a dry
 run like everything else (see "Fetching covers for the filter").
 
-The wizard's own entry point is hidden behind `SHOW_LEGACY_BATCH`
-(`COLOPHON_SHOW_LEGACY_BATCH=1` brings it back), because a batch over N
-books with no shared fact is N independent reviews. It is being replaced by
-scenario flows — a series, an author's work, one deterministic field — per
-[`docs/plan-batch-scenarios.md`](docs/plan-batch-scenarios.md). Regression
+The wizard itself is **gone** as of v1.60.0 — `batch.js`, its modal and
+`SHOW_LEGACY_BATCH` with it — because a batch over N books with no shared
+fact is N independent reviews. The five scenario flows of
+[`docs/plan-batch-scenarios.md`](docs/plan-batch-scenarios.md) replaced it.
+What survived the file: `_esc`, `_cleanDate`, `_applyFieldLabel`,
+`_resultLabel` and `_resultTooltip` moved to `core.js`, because the book
+modal and the bulk result modal still render fetch results. Regression
 test: `tests/test_batch_dry_run.py`, whose control case must stay green, or
 a false-green dry-run test would hide a harness that never reaches `_apply`.
+The wizard's CSS is still in `bulk_metadata.css`; some of it (`bp-*`,
+`cover-review-*`) is shared with the single-book modal and the cover
+scenario, so it was left rather than untangled.
 
 ### AI library context (v1.51.0)
 
@@ -802,7 +806,7 @@ Colophon runs against the **real library** — every book and metadata field bel
 **Never do** without explicit per-action user authorization:
 - Click "Radera" / "Delete" / trash icons on books, duplicates, or groups
 - Save edits to metadata fields (the bulk modal's Save button writes to the DB and optionally the file)
-- Run batch operations (the batch wizard mutates many rows at once)
+- Run a scenario flow to completion (the Apply step mutates many rows at once)
 - Toggle settings in the Settings pages
 - Click "Fetch metadata" / "Ask AI" on real books (these mutate state and consume API quota)
 

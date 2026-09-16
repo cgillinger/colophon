@@ -683,127 +683,6 @@
     </div>
 </div>
 
-<!-- Batch operations modal (wizard) -->
-<div id="batchModal" style="display:none;">
-    <div class="modal-box" style="max-width:800px; max-height:90vh; overflow-y:auto;">
-
-        <h2 id="batchTitle" style="margin-top:0;">{{ _('Batch operations') }}</h2>
-        <div id="batchSubtitle" class="hint" style="margin-bottom:12px;"></div>
-
-        <!-- Step indicator -->
-        <div class="batch-wizard-steps" id="batchWizardSteps">
-            <span class="step-1 active">{{ _('1. Choose fields') }}</span>
-            <span class="separator">→</span>
-            <span class="step-2">{{ _('2. Search') }}</span>
-            <span class="separator">→</span>
-            <span class="step-3">{{ _('3. Review') }}</span>
-            <span class="separator">→</span>
-            <span class="step-4">{{ _('4. Done') }}</span>
-        </div>
-
-        <!-- Hidden controls (kept so existing SSE logic still works). -->
-        <div style="display:none;" aria-hidden="true">
-            <input type="checkbox" id="batchOverwrite">
-            <input type="number" id="batchMaxItems" value="25">
-            <input type="checkbox" class="batch-smart" value="author" checked>
-            <input type="checkbox" class="batch-smart" value="description" checked>
-            <input type="checkbox" class="batch-smart" value="published_date" checked>
-        </div>
-
-        <!-- Step 1: Field selection -->
-        <div id="batchStep1" class="batch-step">
-            <div style="margin-bottom:16px;">{{ _('Selected books:') }} <strong id="batchBookCount">0</strong></div>
-
-            <div style="margin-top:16px;">
-                <div class="batch-field-group-label">{{ _('Basic info') }}</div>
-                <div class="batch-field-checks">
-                    <label class="field-check"><input type="checkbox" class="bw-field" value="title" checked> {{ _('Title') }}</label>
-                    <label class="field-check"><input type="checkbox" class="bw-field" value="author" checked> {{ _('Author') }}</label>
-                    <label class="field-check"><input type="checkbox" class="bw-field" value="series" checked> {{ _('Series') }}</label>
-                    <label class="field-check"><input type="checkbox" class="bw-field" value="isbn" checked> {{ _('ISBN') }}</label>
-                    <label class="field-check"><input type="checkbox" class="bw-field" value="publisher" checked> {{ _('Publisher') }}</label>
-                    <label class="field-check"><input type="checkbox" class="bw-field" value="language" checked> {{ _('Language') }}</label>
-                    <label class="field-check"><input type="checkbox" class="bw-field" value="genres" checked> {{ _('Genre') }}</label>
-                    <label class="field-check"><input type="checkbox" class="bw-field" value="published_date" checked> {{ _('Publication date') }}</label>
-                </div>
-
-                <div class="batch-field-group-label" style="margin-top:12px;">{{ _('Description') }}</div>
-                <div class="batch-field-checks">
-                    <label class="field-check"><input type="checkbox" class="bw-field" value="description" checked> {{ _('Synopsis') }}</label>
-                </div>
-
-                <div class="batch-field-checks" style="margin-top:12px;">
-                    <label class="field-check"><input type="checkbox" class="bw-field" value="cover" checked> {{ _('Cover') }}</label>
-                </div>
-
-                <div style="font-size:11px; margin-top:6px;">
-                    <a href="#" onclick="toggleBwFields(true);return false;" style="color:var(--text-secondary);">{{ _('All') }}</a> ·
-                    <a href="#" onclick="toggleBwFields(false);return false;" style="color:var(--text-secondary);">{{ _('None') }}</a>
-                </div>
-
-                <div class="batch-field-group-label" style="margin-top:14px;">{{ _('Search depth') }}</div>
-                <div class="fetch-mode" id="batchFetchMode" role="group" aria-label="{{ _('Search depth') }}">
-                    <button type="button" class="fetch-mode-btn" data-mode="fast" title="{{ _('Only local + the fastest sources') }}">⚡ {{ _('Quick') }}</button>
-                    <button type="button" class="fetch-mode-btn" data-mode="more" title="{{ _('Escalates to more sources when needed') }}">✓ {{ _('Normal') }}</button>
-                    <button type="button" class="fetch-mode-btn" data-mode="deep" title="{{ _('All sources, slowest') }}">🔎 {{ _('Deep') }}</button>
-                </div>
-            </div>
-
-            <div class="modal-actions">
-                <button class="btn primary" type="button" onclick="batchWizardStartSearch()">
-                    <i class="ti ti-search"></i> {{ _('Fetch metadata') }}
-                </button>
-                <button class="btn ghost" type="button" onclick="closeBatchModal()">{{ _('Cancel') }}</button>
-            </div>
-        </div>
-
-        <!-- Step 2: Search (progress) -->
-        <div id="batchStep2" class="batch-step" style="display:none;">
-            <div id="batchProgress">
-                <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
-                    <div id="batchProgressTitle" style="font-weight:500; flex:1;">{{ _('Searching metadata...') }}</div>
-                    <button type="button" class="btn btn-danger-outline" id="batchAbortBtn" onclick="abortBatchSearch()">
-                        <i class="ti ti-x"></i> {{ _('Abort search') }}
-                    </button>
-                </div>
-                <div id="batchProgressSub" class="hint" style="margin-bottom:8px;"></div>
-                <div class="hint" style="font-size:12px; margin-bottom:8px;">
-                    <span class="bp-ok">{{ _('✓ ≥90 strong match') }}</span> ·
-                    <span class="bp-warn">{{ _('● 70–89 likely') }}</span> ·
-                    <span class="bp-uncertain">{{ _('⚠ 50–69 uncertain') }}</span> ·
-                    <span class="bp-skip">{{ _('— <50 weak')|safe }}</span>
-                </div>
-                <table id="batchProgressTable">
-                    <thead>
-                        <tr>
-                            <th style="width:40%;">{{ _('Title') }}</th>
-                            <th style="width:15%; text-align:center;">Google</th>
-                            <th style="width:15%; text-align:center;">Calibre</th>
-                            <th style="width:15%; text-align:center;">{{ _('Score') }}</th>
-                            <th style="width:15%; text-align:center;">{{ _('Result') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody id="batchProgressBody"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Steg 3: Granskning (placeholder, implementeras i senare uppdrag) -->
-        <div id="batchStep3" class="batch-step" style="display:none;">
-            <div id="batchReviewContainer"></div>
-        </div>
-
-        <!-- Steg 4: Sammanfattning (utvidgas i senare uppdrag) -->
-        <div id="batchStep4" class="batch-step" style="display:none;">
-            <div id="batchSummaryContainer">
-                <div id="batchResult">
-                    <div id="batchResultSummary" style="font-weight:500;"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Bulk result comparison modal -->
 <div id="bulkResultModal" style="display:none;">
     <div class="modal-box" style="max-width:900px;">
@@ -975,13 +854,6 @@
 <!-- Sticky batch bar -->
 <div id="batchBar" class="batch-bar" style="display:none;">
     <span id="batchBarCount">{{ _('%(count)d books selected', count=0) }}</span>
-    {# Generic batch wizard: hidden while the scenario flows replace it.
-       Set COLOPHON_SHOW_LEGACY_BATCH=1 to bring the entry point back. #}
-    {% if config.SHOW_LEGACY_BATCH %}
-    <button class="btn primary" type="button" onclick="openBatchModal()">
-        <i class="ti ti-settings-2"></i> {{ _('Batch operations') }}
-    </button>
-    {% endif %}
     <button class="btn ghost" type="button" onclick="deselectAll()">{{ _('Deselect') }}</button>
 </div>
 
@@ -1047,48 +919,21 @@
         syncErrorLoading: {{ _('Could not load pending changes:')|tojson }},
         syncModifiedAt: {{ _('modified {time}')|tojson }},
         syncUnknownAuthor: {{ _('Unknown author')|tojson }},
-        chooseAtLeastOneField: {{ _('Choose at least one field to fetch.')|tojson }},
         chooseAtLeastOneFieldShort: {{ _('Choose at least one field.')|tojson }},
         chooseAtLeastOneBook: {{ _('Choose at least one book.')|tojson }},
-        invalidLanguageCode: {{ _('Invalid language code')|tojson }},
-        unknownSource: {{ _('Unknown')|tojson }},
         useSource: {{ _('Use')|tojson }},
-        useAll: {{ _('Use all')|tojson }},
-        addField: {{ _('+ add field')|tojson }},
-        currentArrowFetched: {{ _('📄 Current  →  🔍 Fetched')|tojson }},
-        saveSelectedContinue: {{ _('Save selected & continue')|tojson }},
         saveSelected: {{ _('Save selected')|tojson }},
         applySelected: {{ _('Apply selected')|tojson }},
         skip: {{ _('Skip')|tojson }},
         noMatches: {{ _('— No matches')|tojson }},
-        sourcesAvailable: {{ _('source available')|tojson }},
-        sourcesAvailablePlural: {{ _('sources available')|tojson }},
         noChanges: {{ _('No changes')|tojson }},
-        oneChange: {{ _('1 change')|tojson }},
-        nChanges: {{ _('{count} changes')|tojson }},
-        brcClickToApply: {{ _('Click to apply the fetched value')|tojson }},
         bookHeader: {{ _('Book')|tojson }},
         currentHeader: {{ _('📄 Current')|tojson }},
-        fetchedHeader: {{ _('🔍 Fetched')|tojson }},
-        changeHeader: {{ _('Change')|tojson }},
-        emptyEquivalent: {{ _('Equivalent')|tojson }},
-        timesLonger: {{ _('{times}x longer')|tojson }},
         fetchedLabel: {{ _('Fetched')|tojson }},
-        fetchedWithChars: {{ _('Fetched ({count} chars)')|tojson }},
-        noNewCoverFound: {{ _('No new cover was found for any book.')|tojson }},
-        coverWithoutFetched: {{ _('without a fetched cover are not shown.')|tojson }},
-        fieldUpdated: {{ _('updated for')|tojson }},
-        nFieldsUpdated: {{ _('{fields} fields updated · {books} books affected')|tojson }},
-        noFieldsUpdated: {{ _('No fields were updated')|tojson }},
-        noFieldsUpdatedDetail: {{ _('None of the fetched values differed from existing ones, or no rows were selected.')|tojson }},
         remaining: {{ _('Remaining')|tojson }},
         close: {{ _('Close')|tojson }},
         searchAborted: {{ _('Search aborted')|tojson }},
-        searchAbortedWith: {{ _('Search aborted —')|tojson }},
-        continueToReview: {{ _('Continue to review →')|tojson }},
-        sseNotSupported: {{ _('Your browser does not support SSE.')|tojson }},
         searchingMetadata: {{ _('Searching metadata...')|tojson }},
-        syncedFields: {{ _('↔ Synced {count} fields within group ({formats} formats)')|tojson }},
         bookSingular: {{ _('book')|tojson }},
         bookPlural: {{ _('books')|tojson }},
         fileSingular: {{ _('file')|tojson }},
@@ -1103,14 +948,7 @@
         nBooksDeletedMany: {{ _('{count} books deleted.')|tojson }},
         nFileCouldNotBeDeletedOne: {{ _('1 file could not be deleted.')|tojson }},
         nFilesCouldNotBeDeletedMany: {{ _('{count} files could not be deleted.')|tojson }},
-        nBookProcessedOne: {{ _('1 book processed')|tojson }},
-        nBooksProcessedMany: {{ _('{count} books processed')|tojson }},
-        nBookMissingFieldOne: {{ _('1 book missing {field}')|tojson }},
-        nBooksMissingFieldMany: {{ _('{count} books missing {field}')|tojson }},
-        deleteBookConfirmOne: {{ _('Delete 1 book?')|tojson }},
-        deleteBooksConfirmMany: {{ _('Delete {count} books?')|tojson }},
         deletionFailed: {{ _('Deletion failed.')|tojson }},
-        showShort: {{ _('Show')|tojson }},
         dismiss: {{ _('Dismiss')|tojson }},
         readingNoActivity: {{ _('no activity')|tojson }},
         readingJustNow: {{ _('just now')|tojson }},
@@ -1119,25 +957,11 @@
         readingWeeksAgo: {{ _('{n}w ago')|tojson }},
         readingMonthsAgo: {{ _('{n}mo ago')|tojson }},
         readingMoreOnPause: {{ _('+{n} other paused')|tojson }},
-        cancelLabel: {{ _('Cancel')|tojson }},
         deleting: {{ _('Deleting…')|tojson }},
-        deletePermanentlyIncludeFile: {{ _('Delete permanently (incl. file)')|tojson }},
-        searchAbortedNothing: {{ _('Aborted. Nothing was processed.')|tojson }},
-        searchAbortedSummary: {{ _('Aborted. {parts}')|tojson }},
-        nSaved: {{ _('{count} saved')|tojson }},
-        nReviewNeeded: {{ _('{count} review needed')|tojson }},
-        likelyMatch: {{ _('Likely match – please review')|tojson }},
-        uncertainMatch: {{ _('Uncertain match')|tojson }},
         weakMatch: {{ _('Weak match')|tojson }},
-        noMatch: {{ _('No match')|tojson }},
-        sourceError: {{ _('Source error')|tojson }},
         scoreShort: {{ _('Score:')|tojson }},
         sourceShort: {{ _('Source:')|tojson }},
         searchDone: {{ _('Metadata search done')|tojson }},
-        sNoMatch: {{ _('{count} no match')|tojson }},
-        sSourceError: {{ _('{count} source error')|tojson }},
-        removeFromLibrary: {{ _('Remove from library')|tojson }},
-        deleteEnterRADERA: {{ _('Type DELETE to confirm permanent deletion of files.\n\nLeave empty or Cancel for library-only removal.')|tojson }},
         errorWithMsg: {{ _('Error: {msg}')|tojson }},
         unknownError: {{ _('unknown')|tojson }},
         confirmBulkDeleteHeader: {{ _('Delete selected books?\n\n• OK = remove from library (files preserved)\n• Cancel to abort')|tojson }},
@@ -1190,8 +1014,6 @@
         showingNBooks: {{ _('Showing {start}–{end} of {total} books')|tojson }},
         noBooksMatch: {{ _('No books match')|tojson }},
         showingZero: {{ _('Showing 0 books')|tojson }},
-        notImplemented: {{ _('not implemented')|tojson }},
-        reviewViewFor: {{ _('Review view for:')|tojson }},
         connectionDropped: {{ _('Connection dropped.')|tojson }},
         dupSearching: {{ _('Searching for duplicates...')|tojson }},
         dupErrorLoading: {{ _('Error loading duplicates:')|tojson }},
@@ -1213,19 +1035,12 @@
         statusFinished: {{ _('Finished')|tojson }},
         statusMarkFinishedTooltip: {{ _('Click to mark as finished')|tojson }},
         statusResetTooltip: {{ _('Click to reset to unread')|tojson }},
-        batchStep1: {{ _('1. Choose fields')|tojson }},
-        batchStep2: {{ _('2. Search')|tojson }},
-        batchStep3: {{ _('3. Review')|tojson }},
-        batchStep4: {{ _('4. Done')|tojson }},
-        batchDone: {{ _('Batch done!')|tojson }},
-        batchSaved: {{ _('Saved')|tojson }},
         batchReplacedCount: {{ _('replaced {count}')|tojson }},
         batchReviewLabel: {{ _('👁 Review')|tojson }},
         batchNoMatchLabel: {{ _('✗ No match')|tojson }},
         batchSkippedLabel: {{ _('⏭ Skipped')|tojson }},
         batchSourceErrorLabel: {{ _('⚠ Source error')|tojson }},
         batchAdded: {{ _('Added:')|tojson }},
-        batchAbortSearch: {{ _('Abort search')|tojson }},
         batchFieldTitle: {{ _('Title')|tojson }},
         batchFieldAuthor: {{ _('Author')|tojson }},
         batchFieldSeries: {{ _('Series')|tojson }},
@@ -1233,7 +1048,6 @@
         batchFieldPublisher: {{ _('Publisher')|tojson }},
         batchFieldLanguage: {{ _('Language')|tojson }},
         batchFieldGenre: {{ _('Genre')|tojson }},
-        batchFieldDate: {{ _('Date')|tojson }},
         batchFieldSynopsis: {{ _('Synopsis')|tojson }},
         batchFieldCover: {{ _('Cover')|tojson }},
         batchFieldPublicationDate: {{ _('Publication date')|tojson }},
@@ -1396,7 +1210,6 @@
 <script src="{{ url_for('static', filename='js/series-rename.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/selection.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/filters-sort-paging.js') }}?v={{ app_version }}"></script>
-<script src="{{ url_for('static', filename='js/batch.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/author-combobox.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/book-modal.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/bulk-result-modal.js') }}?v={{ app_version }}"></script>
