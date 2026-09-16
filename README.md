@@ -142,10 +142,38 @@ Open `http://localhost:5000`.
 
 ## Environment variables
 
-All variables are read from `.env` (loaded via `env_file` in `docker-compose.yml`).
+Set these in `.env` (loaded via `env_file` in `docker-compose.yml`) or under `environment:` in the compose file.
 
-| Variable | Required | Default | Description |
-|---|---|---|---|
+### Must set
+
+| Variable | What it is |
+|---|---|
+| `COLOPHON_SECRET_KEY` | A random string that protects your browser session. Generate one with `python3 -c "import secrets; print(secrets.token_hex(32))"` |
+| `COLOPHON_PUBLIC_URL` | Only if you use Kobo sync. The address the Kobo uses to reach Colophon, with the port, e.g. `http://192.168.x.x:5000` |
+
+### Can set
+
+Everything below has a sensible default. API keys can also be entered in the web UI under **Settings → API settings**, and values set there win over these.
+
+| Variable | Default | What it does |
+|---|---|---|
+| `COLOPHON_LIBRARY_HOST` | `./bibliotek` | Folder on your machine that holds the books |
+| `COLOPHON_DATA_HOST` | `./data` | Folder on your machine for the database and covers |
+| `COLOPHON_GOOGLE_BOOKS_KEY` | — | Google Books API key. Without one, Google Books is rate-limited |
+| `COLOPHON_AI_API_URL` | Mistral | The AI provider's chat endpoint |
+| `COLOPHON_AI_API_KEY` | — | The AI provider's key. No key, no AI features |
+| `COLOPHON_AI_MODEL` | `ministral-14b-latest` | The AI model name |
+| `COLOPHON_UPSTREAM_DIR` | — | Path inside the container to an upstream library, if you sync to one |
+| `COLOPHON_UPSTREAM_CLEANUP_ORPHANS` | off | Let a push remove the old upstream copy of a book you moved to an author folder |
+| `COLOPHON_LIBRARY_OWNER` | — | A name shown under the logo, e.g. `Christians bibliotek` |
+| `COLOPHON_NEW_BADGE_DAYS` | `14` | How many days a new book shows the "New" badge |
+| `COLOPHON_MAX_UPLOAD_MB` | `1024` | Largest file the in-app upload accepts |
+| `COLOPHON_USB_MOUNT_ROOTS` | `/media:/run/media:/mnt:/Volumes` | Where to look for a Kobo plugged in by USB. Set empty to turn it off |
+| `COLOPHON_LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` or `CRITICAL` |
+| `COLOPHON_LIBRARY_DIR` | `/books` | Book folder inside the container. Leave as is |
+| `COLOPHON_DATA_DIR` | `/data` | Data folder inside the container. Leave as is |
+
+---|---|---|---|
 | `COLOPHON_SECRET_KEY` | Yes | — | Flask session secret |
 | `COLOPHON_LIBRARY_DIR` | No | `/books` | Book folder inside the container |
 | `COLOPHON_DATA_DIR` | No | `/data` | Data folder (database, covers) inside the container |
