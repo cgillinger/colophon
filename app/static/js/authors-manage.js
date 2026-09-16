@@ -398,4 +398,96 @@
             }
         });
     });
+
+    /* -------------------- row overflow menu --------------------
+     * Six actions per row (Confirm/Verify/Rename/Merge/Split/Order
+     * series, +Delete) wrapped raggedly at 17 authors and was unusable
+     * on a phone. Confirm stays inline; the rest live in a "⋯" popover.
+     * Every item is still a plain data-act button/link inside the
+     * row's <tr>, so the delegated table click handler above (and the
+     * Order-series link's own navigation) keep working untouched —
+     * this section only opens, closes and positions the popover.
+     * Position is `fixed`, computed from the toggle's rect, because a
+     * menu opening on the table's last row must not get clipped by an
+     * ancestor's overflow. -------------------------------------------------------------- */
+
+    var _openRowMenu = null; // { toggle, list }
+
+    function _closeRowMenu(returnFocus) {
+        if (!_openRowMenu) return;
+        var entry = _openRowMenu;
+        _openRowMenu = null;
+        entry.list.hidden = true;
+        entry.toggle.setAttribute('aria-expanded', 'false');
+        if (returnFocus) entry.toggle.focus();
+    }
+
+    function _positionRowMenu(toggle, list) {
+        var margin = 8;
+        var tRect = toggle.getBoundingClientRect();
+        var lRect = list.getBoundingClientRect();
+        var left = tRect.right - lRect.width;
+        left = Math.max(margin, Math.min(left, window.innerWidth - lRect.width - margin));
+        var spaceBelow = window.innerHeight - tRect.bottom;
+        var top = (spaceBelow >= lRect.height + margin) ? tRect.bottom + 4 : tRect.top - lRect.height - 4;
+        top = Math.max(margin, Math.min(top, window.innerHeight - lRect.height - margin));
+        list.style.left = left + 'px';
+        list.style.top = top + 'px';
+    }
+
+    function _openRowMenuFor(toggle) {
+        var list = toggle.nextElementSibling;
+        if (!list) return;
+        if (_openRowMenu) _closeRowMenu(false);
+        list.hidden = false;
+        toggle.setAttribute('aria-expanded', 'true');
+        _positionRowMenu(toggle, list);
+        _openRowMenu = { toggle: toggle, list: list };
+    }
+
+    document.addEventListener('click', function (e) {
+        var toggle = e.target.closest('.row-menu-toggle');
+        if (toggle) {
+            e.preventDefault();
+            if (_openRowMenu && _openRowMenu.toggle === toggle) _closeRowMenu(false);
+            else _openRowMenuFor(toggle);
+            return;
+        }
+        if (_openRowMenu && _openRowMenu.list.contains(e.target)) {
+            // A menu item (button[data-act] or the "Order series" link):
+            // the delegated table handler above already ran its action
+            // during bubbling (it's bound closer to the target than this
+            // document listener), so just close the popover behind it.
+            _closeRowMenu(false);
+            return;
+        }
+        if (_openRowMenu) _closeRowMenu(false);
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (!_openRowMenu) return;
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            _closeRowMenu(true);
+            return;
+        }
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            var items = Array.prototype.slice.call(_openRowMenu.list.querySelectorAll('.row-menu-item'));
+            if (!items.length) return;
+            var idx = items.indexOf(document.activeElement);
+            var next = e.key === 'ArrowDown'
+                ? items[(idx + 1) % items.length]
+                : items[(idx - 1 + items.length) % items.length];
+            e.preventDefault();
+            next.focus();
+        }
+    });
+
+    window.addEventListener('scroll', function () {
+        if (_openRowMenu) _closeRowMenu(false);
+    }, true);
+
+    window.addEventListener('resize', function () {
+        if (_openRowMenu) _closeRowMenu(false);
+    });
 })(window, document);

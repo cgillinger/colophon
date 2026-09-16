@@ -125,8 +125,38 @@
         .split-add:hover { color: var(--accent-primary); border-color: var(--accent-primary); }
         .split-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
         td.author-ids a { color: var(--accent-primary); font-size: 12.5px; margin-right: 8px; }
-        td.actions { white-space: normal; text-align: right; display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
-        td.actions .content-act { margin-left: 10px; }
+        td.actions { white-space: nowrap; text-align: right; }
+        .btn.icon { padding: 6px 8px; justify-content: center; }
+        .row-menu { display: inline-block; margin-left: 6px; }
+        .row-menu-list {
+            position: fixed;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+            padding: 4px;
+            min-width: 180px;
+            z-index: 1000;
+        }
+        .row-menu-list[hidden] { display: none; }
+        .row-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            background: transparent;
+            border: none;
+            border-radius: 5px;
+            padding: 7px 10px;
+            font-size: 13px;
+            color: var(--text-primary);
+            text-align: left;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .row-menu-item:hover, .row-menu-item:focus { background: var(--bg-tertiary); outline: none; }
+        .row-menu-item.danger { color: var(--accent-red); }
+        .row-menu-sep { border-top: 1px solid var(--border-light); margin-top: 4px; padding-top: 4px; }
         td.count { font-variant-numeric: tabular-nums; }
         td.count .count-link { color: var(--accent-primary); font-weight: 500; }
         td.count .count-link:hover { text-decoration: underline; }
@@ -252,15 +282,23 @@
                     {% if a.source == 'tentative' %}
                     <button type="button" class="btn" data-act="confirm" title="{{ _('Mark this spelling as correct') }}"><i class="ti ti-check"></i> {{ _('Confirm') }}</button>
                     {% endif %}
-                    <button type="button" class="btn" data-act="verify" title="{{ _('Look the author up in Wikidata and store authority ids') }}"><i class="ti ti-world-search"></i> {{ _('Verify') }}</button>
-                    <button type="button" class="btn" data-act="rename"><i class="ti ti-pencil"></i> {{ _('Rename') }}</button>
-                    <button type="button" class="btn" data-act="merge"><i class="ti ti-git-merge"></i> {{ _('Merge…') }}</button>
-                    <button type="button" class="btn" data-act="split" title="{{ _('Split this entry into several authors') }}"
-                            {% if row.split_guess %}data-split-guess='{{ row.split_guess|tojson }}'{% endif %}><i class="ti ti-scissors"></i> {{ _('Split…') }}</button>
-                    <a class="btn content-act" href="{{ url_for('metadata.bulk_metadata', author=a.id, order_series=1) }}" title="{{ _('Group this author’s books into series and order them') }}"><i class="ti ti-list-numbers"></i> {{ _('Order series') }}</a>
-                    {% if row.book_count == 0 %}
-                    <button type="button" class="btn danger" data-act="delete" title="{{ _('Remove unused entry') }}"><i class="ti ti-trash"></i></button>
-                    {% endif %}
+                    <div class="row-menu">
+                        <button type="button" class="btn icon row-menu-toggle" aria-haspopup="menu" aria-expanded="false"
+                                title="{{ _('More actions') }}" aria-label="{{ _('More actions') }}"><i class="ti ti-dots"></i></button>
+                        <div class="row-menu-list" role="menu" hidden>
+                            <button type="button" class="row-menu-item" role="menuitem" data-act="verify" title="{{ _('Look the author up in Wikidata and store authority ids') }}"><i class="ti ti-world-search"></i> {{ _('Verify') }}</button>
+                            <button type="button" class="row-menu-item" role="menuitem" data-act="rename"><i class="ti ti-pencil"></i> {{ _('Rename') }}</button>
+                            <button type="button" class="row-menu-item" role="menuitem" data-act="merge"><i class="ti ti-git-merge"></i> {{ _('Merge…') }}</button>
+                            <button type="button" class="row-menu-item" role="menuitem" data-act="split" title="{{ _('Split this entry into several authors') }}"
+                                    {% if row.split_guess %}data-split-guess='{{ row.split_guess|tojson }}'{% endif %}><i class="ti ti-scissors"></i> {{ _('Split…') }}</button>
+                            <a class="row-menu-item" role="menuitem" href="{{ url_for('metadata.bulk_metadata', author=a.id, order_series=1) }}" title="{{ _('Group this author’s books into series and order them') }}"><i class="ti ti-list-numbers"></i> {{ _('Order series') }}</a>
+                            {% if row.book_count == 0 %}
+                            <div class="row-menu-sep">
+                                <button type="button" class="row-menu-item danger" role="menuitem" data-act="delete" title="{{ _('Remove unused entry') }}"><i class="ti ti-trash"></i> {{ _('Delete') }}</button>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
                 </td>
             </tr>
             {% endfor %}

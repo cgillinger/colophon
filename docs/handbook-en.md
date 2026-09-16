@@ -341,7 +341,9 @@ person is labelled identically — even when the files spell the name differentl
 - **The author field** in a book's details is backed by the registry: start
   typing and it suggests existing authors, so you reuse an entry instead of
   creating a near-duplicate.
-- **The Authors page** (Tools → *Authors*) is where you curate the registry:
+- **The Authors page** (Tools → *Authors*) is where you curate the registry.
+  Each row shows the action it actually needs — **Confirm**, when the entry is
+  tentative — and the rest sit behind **⋯** at the end of the row:
   - **Confirm** tentative entries — filter to unconfirmed, tick several, confirm
     them in one go. This is the fastest way to tidy up after a scan.
   - **Rename** or **Merge** — both cascade, relabelling every linked book in one

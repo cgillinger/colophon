@@ -60,9 +60,28 @@
     <div class="sidebar-library-owner">{{ library_owner }}</div>
     {% endif %}
 
-    {# 1. VYER — what the user is looking at right now. Empty on settings
-       pages (the block is filled by bulk_metadata only). #}
-    {% block sidebar_views %}{% endblock %}
+    {# 1. VYER — what the user is looking at right now.
+
+       bulk_metadata overrides this block with the real view toggles
+       (setViewMode, no navigation). Everywhere else the same three
+       entries render as plain links into the library, so the sidebar
+       never rearranges itself between pages and there is always an
+       obvious way back to the books. Same degrade-to-link pattern the
+       VERKTYG section below already uses. #}
+    {% block sidebar_views %}
+    <div class="sidebar-section">
+        <div class="sidebar-section-title">{{ _('Views') }}</div>
+        <a class="sidebar-nav-item" href="{{ url_for('metadata.bulk_metadata', view='table') }}">
+            <i class="ti ti-list"></i> <span>{{ _('Table') }}</span>
+        </a>
+        <a class="sidebar-nav-item" href="{{ url_for('metadata.bulk_metadata', view='shelf') }}">
+            <i class="ti ti-layout-grid"></i> <span>{{ _('Shelf') }}</span>
+        </a>
+        <a class="sidebar-nav-item" href="{{ url_for('metadata.bulk_metadata', view='series') }}">
+            <i class="ti ti-books"></i> <span>{{ _('Series') }}</span>
+        </a>
+    </div>
+    {% endblock %}
 
     {# 2. VERKTYG — actions/tools that work on the library or app config. #}
     <div class="sidebar-section">

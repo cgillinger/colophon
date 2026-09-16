@@ -347,7 +347,9 @@ märks likadant — även när filerna stavar namnet olika ("J.R.R. Tolkien" /
 - **Författarfältet** i en boks detaljer är kopplat till registret: börja skriva
   så föreslår det befintliga författare, så att du återanvänder en post i stället
   för att skapa en nästan-dubblett.
-- **Författare-sidan** (Verktyg → *Författare*) är där du kurerar registret:
+- **Författare-sidan** (Verktyg → *Författare*) är där du kurerar registret.
+  Varje rad visar den åtgärd den faktiskt behöver — **Bekräfta**, när posten är
+  preliminär — och resten ligger bakom **⋯** i radens slut:
   - **Bekräfta** preliminära poster — filtrera till obekräftade, kryssa flera,
     bekräfta dem i ett svep. Snabbaste sättet att städa efter en skanning.
   - **Byt namn** eller **Slå ihop** — båda kaskaderar och märker om varje länkad
