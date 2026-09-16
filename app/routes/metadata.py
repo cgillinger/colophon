@@ -602,6 +602,9 @@ def apply_cover(item_id):
 
     if write_result["ok"]:
         item.file_modified_by_colophon = datetime.utcnow()
+    # The cover weighs 3 of the traffic light's 10; without this the dot
+    # and the counters keep claiming the book still has none.
+    refresh_completeness(item)
     db.session.commit()
 
     if source:
@@ -1032,9 +1035,9 @@ def bulk_stream():
     overwrite = request.args.get("overwrite", "0") == "1"
 
     # Preview mode. Classify exactly as a real run would, but write nothing —
-    # not to the DB, not to the files. The review step is what applies. The
-    # writing path is kept for the cover scenario, which is the one flow that
-    # still drives this engine directly (docs/plan-batch-scenarios.md).
+    # not to the DB (group sync included), not to the files. The review step
+    # is what applies. Every batch flow passes it; the writing path below is
+    # the single-book modal's alone (docs/plan-batch-scenarios.md).
     dry_run = request.args.get("dry_run", "0") == "1"
     max_items = _parse_int(request.args.get("max_items"), 25, 1, 100)
 
@@ -1123,7 +1126,10 @@ def bulk_stream():
                 item_ids = [it.id for it in group_items]
 
                 # --- Group sync: cross-enrich within the group before external search ---
-                if len(group_items) > 1:
+                # Not in a dry run: the cross-fill commits, and a preview
+                # that quietly moves a cover between formats makes the
+                # review grid describe a "before" that no longer exists.
+                if len(group_items) > 1 and not dry_run:
                     sync_result = _sync_group(group_items, cover_dir=cover_dir)
                     if sync_result["fields_synced"] > 0:
                         try:

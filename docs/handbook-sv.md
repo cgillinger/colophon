@@ -212,6 +212,8 @@ felmeddelandet när det går att se på leverantörens svar.
   och visar kandidaterna att välja bland.
 - **Låsa ett omslag** — när du är nöjd med ett omslag, lås det så att berikning
   och omskanningar aldrig byter det.
+- **Hämta omslag för många på en gång** — se avsnitt 9g: filtrera fram
+  böckerna som saknar omslag och låt Colophon leta åt alla samtidigt.
 - Omslag sparas från filen och cachas i visningsstorlek, så katalogvyerna hålls
   snabba.
 
@@ -227,7 +229,8 @@ författarskap, ett fält som kan avgöras för hela urvalet på en gång. Varje
 scenario visar ett förslag som du får granska och kryssa i innan något sparas,
 och skrivning till själva e-boksfilerna är ett eget, synligt val.
 
-Under tiden berikar du böcker en i taget från bokens egen ruta (avsnitt 6).
+Scenarierna finns i 9c–9g. Under tiden berikar du böcker en i taget från
+bokens egen ruta (avsnitt 6).
 
 ## 9b. Se vad som saknas
 
@@ -337,6 +340,28 @@ stavning, så omdöpningen rättar sådana varianter på köpet.
 Kryssrutan **Skriv även till filerna** är avkryssad som standard. Tänk på
 att serienamnet är ett fält Kobon läser: böckerna laddas om på en synkad
 läsplatta även om du låter filerna vara.
+
+## 9g. Hämta omslag för en hel filtrering
+
+Klicka på siffran **"N saknar omslag"** under listan. Filtret visar då bara
+de böckerna, och ovanför listan dyker en rad upp: **Hämta omslag för dessa**.
+
+Colophon söker igenom hela filtreringen — inte bara sidan du ser — och visar
+de omslag den hittade sida vid sida med den tomma platsen de skulle fylla.
+Alla förslag är ikryssade från början, eftersom ingenting skrivs över: de här
+böckerna har inget omslag. Kryssa ur det du inte vill ha och tryck
+**Tillämpa**.
+
+Ingenting sparas under sökningen. Omslagen skrivs in ett i taget när du
+tillämpat, och det tar en stund per bok — omslaget läggs in i själva
+e-boksfilen också. Böcker som inget omslag hittades för räknas upp under
+rutan i stället för att visas som tomma kort.
+
+En körning tar högst 100 böcker. Har filtreringen fler står det hur många
+som återstår; kör igen så tar den nästa omgång.
+
+Ett nytt omslag får böckerna att laddas om på en synkad Kobo — det står i
+rutan hur många det gäller.
 
 ## 10. Hantera författare
 

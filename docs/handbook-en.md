@@ -204,6 +204,8 @@ provider's answer makes it visible.
   and shows you the candidates to pick from.
 - **Locking a cover** — once you're happy with a cover, lock it so enrichment and
   rescans never replace it.
+- **Fetching covers for many at once** — see section 9g: filter down to the
+  books with no cover and let Colophon look for all of them together.
 - Covers are stored from the file and cached at display size, so catalogue views
   stay quick.
 
@@ -220,8 +222,8 @@ Each scenario shows you a proposal to review and tick before anything is
 saved, and writing to the e-book files themselves is a separate, visible
 choice.
 
-In the meantime, enrich books one at a time from the book's own panel
-(section 6).
+The scenarios are 9c–9g. In the meantime, enrich books one at a time from
+the book's own panel (section 6).
 
 ## 9b. Seeing what's missing
 
@@ -331,6 +333,27 @@ spelling, so renaming tidies those variants at the same time.
 **Write to the files too** is unticked by default. Note that the series name is
 a field the Kobo reads: the books reload on a synced device even if you leave
 the files alone.
+
+## 9g. Fetching covers for a whole filter
+
+Click the **"N missing cover"** count below the list. The filter narrows to
+those books, and a row appears above the list: **Fetch covers for these**.
+
+Colophon searches the whole filter — not just the page you can see — and
+shows the covers it found beside the empty slot each one would fill. Every
+proposal starts ticked, because nothing is being overwritten: these books
+have no cover. Untick what you don't want and press **Apply**.
+
+Nothing is saved while it searches. The covers are written one book at a
+time once you apply, and each takes a moment — the cover goes into the
+e-book file as well. Books no cover was found for are counted below the
+grid rather than shown as empty cards.
+
+One run takes at most 100 books. If the filter holds more, it says how many
+are left; run it again for the next round.
+
+A new cover makes the book reload on a synced Kobo — the panel says how
+many that is.
 
 ## 10. Managing authors
 

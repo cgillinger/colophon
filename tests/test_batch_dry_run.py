@@ -176,3 +176,83 @@ def test_without_dry_run_still_calls_apply(client, app):
     assert len(events) == 1
     assert events[0]["classification"] == "auto_apply"
     assert events[0]["apply_details"] is not None
+
+
+def _add_format_sibling(primary, extension=".mobi", cover_path=None):
+    """A second format of the same book — same group_key, no cover."""
+    item = LibraryItem(
+        title=primary.title,
+        author=primary.author,
+        description=primary.description,
+        file_path=f"/books/{primary.title}{extension}",
+        file_name=f"{primary.title}{extension}",
+        extension=extension,
+        cover_path=cover_path,
+    )
+    item.group_key = primary.group_key
+    db.session.add(item)
+    db.session.commit()
+    return item
+
+
+def test_dry_run_does_not_group_sync_either(client, app, tmp_path):
+    """The group cross-fill is a DB write, and it ran before the search.
+
+    A format group whose EPUB has a cover used to hand that cover to its
+    MOBI sibling and commit it — during a *preview*. The cover scenario
+    made it visible: a book left the "missing cover" filter without the
+    user applying anything, and the review grid then showed a "Now" that
+    was no longer true. Preview means preview.
+    """
+    cover = tmp_path / "cover.jpg"
+    cover.write_bytes(b"\xff" * 6000)
+
+    item = _add_item()
+    item_id = item.id
+    sibling = _add_format_sibling(item, cover_path=str(cover))
+    item.cover_path = None
+    db.session.commit()
+    sibling_id = sibling.id
+
+    with patch(
+        "app.services.metadata_pipeline.run_metadata_enrichment",
+        return_value=_FAKE_RESULT,
+    ), patch(
+        "app.services.metadata_writer.apply_metadata_to_item",
+        return_value=_FAKE_APPLY_RESULT,
+    ):
+        _get_with_timeout(
+            client,
+            f"/metadata/bulk/stream?item_ids={item_id},{sibling_id}&dry_run=1",
+        )
+
+    with app.app_context():
+        assert db.session.get(LibraryItem, item_id).cover_path is None
+
+
+def test_without_dry_run_still_group_syncs(client, app, tmp_path):
+    """Control: the cross-fill itself is intact on the writing path."""
+    cover = tmp_path / "cover.jpg"
+    cover.write_bytes(b"\xff" * 6000)
+
+    item = _add_item()
+    item_id = item.id
+    sibling = _add_format_sibling(item, cover_path=str(cover))
+    item.cover_path = None
+    db.session.commit()
+    sibling_id = sibling.id
+
+    with patch(
+        "app.services.metadata_pipeline.run_metadata_enrichment",
+        return_value=_FAKE_RESULT,
+    ), patch(
+        "app.services.metadata_writer.apply_metadata_to_item",
+        return_value=_FAKE_APPLY_RESULT,
+    ):
+        _get_with_timeout(
+            client,
+            f"/metadata/bulk/stream?item_ids={item_id},{sibling_id}",
+        )
+
+    with app.app_context():
+        assert db.session.get(LibraryItem, item_id).cover_path == str(cover)

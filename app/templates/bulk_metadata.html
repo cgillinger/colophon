@@ -244,6 +244,16 @@
             <div class="reading-now-list" id="forgottenList"></div>
         </section>
 
+        {# Shown by covers-batch.js while the "missing cover" chip is lit:
+           the filter is the shared fact, so one run answers one question
+           for every book in it. #}
+        <div id="coverBatchBanner" class="author-filter-banner" style="display:none;">
+            <i class="ti ti-photo"></i>
+            <span id="coverBatchBannerText"></span>
+            <button type="button" class="btn" onclick="openCoverBatch()">
+                <i class="ti ti-download"></i> {{ _('Fetch covers for these') }}</button>
+        </div>
+
         <div class="table-wrap">
             <table id="bookTable">
                 <thead>
@@ -846,6 +856,31 @@
     </div>
 </div>
 
+{# ---- Fetch covers for the filter ----------------------------------------
+   Runs the enrichment stream as a dry run over the books the "missing
+   cover" filter holds, and applies the covers the user keeps, one book
+   at a time. Nothing is written before Apply. #}
+<div id="coverBatchModal" style="display:none; position:fixed; inset:0; z-index:1000; background:var(--modal-overlay); align-items:center; justify-content:center;">
+    <div class="modal-box" style="max-width:900px;">
+        <div class="modal-header-row">
+            <div class="spacer"></div>
+            <button type="button" class="modal-close-x" onclick="closeCoverBatch()" title="{{ _('Close') }}">&times;</button>
+        </div>
+        <h2 style="margin-top:0;">{{ _('Fetch covers') }}</h2>
+        <div id="coverBatchStatus" style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;"></div>
+        <div id="coverBatchBarWrap" class="lang-bar-track" style="display:none;"><div id="coverBatchBar" class="lang-bar-fill"></div></div>
+        <div id="coverBatchResults"></div>
+        <div id="coverBatchNote" style="display:none; font-size:12px; color:var(--text-secondary); margin-top:12px;"></div>
+        <div id="coverBatchKobo" style="display:none; font-size:12px; color:var(--text-secondary); margin-top:6px;"></div>
+        <div class="modal-actions">
+            <button type="button" class="btn ghost" id="coverBatchAbort" onclick="abortCoverBatch()">{{ _('Abort search') }}</button>
+            <div class="spacer"></div>
+            <button type="button" class="btn ghost" onclick="closeCoverBatch()">{{ _('Close') }}</button>
+            <button type="button" class="btn primary" id="coverBatchApply" onclick="applyCoverBatch()" disabled>{{ _('Apply') }}</button>
+        </div>
+    </div>
+</div>
+
 {# ---- Order the series ---------------------------------------------------
    Proposes reading-order indexes (and, where drifted, the series name)
    for one or more series. Pure read until Apply; nothing is written
@@ -1329,6 +1364,19 @@
         seriesRenameCount: {{ _('N books')|tojson }},
         seriesRenameEmpty: {{ _('Give the series a name.')|tojson }},
         seriesRenameFailed: {{ _('The rename failed.')|tojson }},
+        coverBatchBanner: {{ _('{count} books with no cover')|tojson }},
+        coverBatchRunning: {{ _('Looking for covers...')|tojson }},
+        coverBatchFound: {{ _('covers to review')|tojson }},
+        coverBatchNone: {{ _('No covers were found.')|tojson }},
+        coverBatchNotFound: {{ _('books had no cover to fetch.')|tojson }},
+        coverBatchLimited: {{ _('The run took the first {max}; {rest} are left. Run it again for those.')|tojson }},
+        coverBatchFailed: {{ _('The cover search could not finish.')|tojson }},
+        coverBatchNow: {{ _('Now')|tojson }},
+        coverBatchFetched: {{ _('Fetched')|tojson }},
+        coverBatchReloadOnKobo: {{ _('books reload on Kobo.')|tojson }},
+        coverBatchSaving: {{ _('Saving covers...')|tojson }},
+        coverBatchSaved: {{ _('covers saved')|tojson }},
+        coverBatchErrors: {{ _('could not be saved')|tojson }},
         book: {{ _('Book')|tojson }},
         cancel: {{ _('Cancel')|tojson }},
         apply: {{ _('Apply')|tojson }},
@@ -1358,6 +1406,7 @@
 <script src="{{ url_for('static', filename='js/shelf-view.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/cleanup-misc.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/language-check.js') }}?v={{ app_version }}"></script>
+<script src="{{ url_for('static', filename='js/covers-batch.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/reading-now.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/url-state.js') }}?v={{ app_version }}"></script>
 {% endblock %}

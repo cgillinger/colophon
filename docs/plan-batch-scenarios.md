@@ -1,7 +1,9 @@
 # Genomförandeplan: scenario-batch i stället för generisk wizard
 
-Status: steg 1–5 klara, steg 6 (valfritt) återstår — se avsnitt 6 för
-statustabell, överlämning och en färdigskriven spec för steg 6.
+Status: **planen är genomförd.** Steg 1–6 klara — se avsnitt 6 för
+statustabell och vad varje steg lämnade efter sig. Det enda som återstår av
+planen är raderingen av `batch.js` och `SHOW_LEGACY_BATCH`, som steg 6
+medvetet lade i ett eget commit direkt efter sitt eget.
 Ursprungligen skriven 2026-09-16. Bakgrund i samtalet som ledde hit: den generiska
 batchwizarden (markera N blandade böcker, välj fält, kör) lönar sig inte,
 eftersom N böcker utan delat faktum är N oberoende granskningar. Scenarier
@@ -465,7 +467,7 @@ Uppdatera raden när ett steg är klart, med version och commit.
 | — UX-svar på steg 5 (utanför planen) | klar | 1.55.0–1.55.1 | v1.55.1 |
 | — Författarsidan: meny, sidomeny (utanför planen) | klar | 1.56.0 | v1.56.0 |
 | — Auktoritetskolumnen (utanför planen) | klar | 1.57.0–1.59.0 | v1.59.0 |
-| 6 Omslag för filtret | ej påbörjat (valfritt) | | |
+| 6 Omslag för filtret | klar | 1.60.0 | v1.60.0 |
 
 ### Vad steg 4 lämnade efter sig
 
@@ -627,6 +629,46 @@ omskrivning av `cover_search.py`.
 devinstansen hämtar och tillämpar omslag efter granskning, `batch.js`
 och `SHOW_LEGACY_BATCH` är borta, TODO-posten "Delete the batch.js
 leftovers after step 6" är struken, sviten är "samma 10".
+
+### Vad steg 6 lämnade efter sig
+
+**Specen hade fel om `dry_run`, och det var värt att avvika.** Den sa "kör
+`bulk_stream` **utan** `dry_run`". Det behövdes inte: pipelinen laddar ner
+ett `preview_<id>` för varje kandidatomslag oavsett, så
+`cover_url_fetched` finns i `book_done` ändå. Att köra utan dry run hade
+bara lagt till *textfält* skrivna till fil utan granskning — precis det
+invariant 1 förbjuder. Flödet kör med `dry_run=1` som alla andra.
+`tests/test_cover_batch.py` vaktar det för hela frontenden, inte bara för
+den nya filen: varje modul utom `book-modal.js` måste be om dry run.
+
+**En dry run var inte torr.** `bulk_stream` gruppsynkade och committade
+*före* sökningen, oavsett `dry_run`. En formatgrupp där EPUB:en hade
+omslag lämnade över det till MOBI-syskonet under en förhandsvisning —
+boken försvann då ur filtret "saknar omslag" utan att användaren tillämpat
+något, och granskningens "Nu"-kolumn beskrev ett läge som inte längre
+fanns. Hittat genom att köra flödet mot devinstansen, inte genom att läsa
+koden. Gruppsynken hoppas nu över i dry run;
+`test_dry_run_does_not_group_sync_either` och dess kontrollfall pinnar
+båda halvorna.
+
+**`apply_cover` uppdaterade inte completeness.** `cover_apply_json` gjorde
+det, formulärvägen inte — en omgång omslag lämnade alltså varje trafikljus
+och räknare ett steg för rött. Omslaget väger 3 av 10.
+
+**"Dessa" måste betyda samma sak i alla tre vyerna.**
+`getFilteredRows()` släpper rader som en grupperad vy eller serievy fällt
+ihop, och ett ihopfällt formatsyskon saknar omslag lika mycket — omslag
+tillämpas per fil. `_filteredIds()` läser därför `filterHidden` direkt.
+
+**Raderingen ligger i ett eget commit.** Bygget först, verifierat mot
+devinstansen, sedan `batch.js` + `SHOW_LEGACY_BATCH`. En 2 000-raders
+radering i samma diff som ny logik går inte att granska.
+
+**Devinstansen har inga API-nycklar, och Google Books svarar 429 utan
+nyckel.** En riktig körning hittade därför noll omslag där. Den vägen
+verifierades i stället med en stubbad `EventSource` i webbläsaren plus en
+riktig `cover/apply-json` mot devbiblioteket — tomma svaret, granskningen
+och tillämpningen är alla sedda i drift.
 
 ### AI-provider: en fälla som kostade tid i steg 4
 

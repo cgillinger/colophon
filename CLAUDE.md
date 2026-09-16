@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.59.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.60.0.
 
 ## Författarmappar (v1.38.0 — byggt)
 
@@ -118,7 +118,7 @@ app/
     icons/                      # Favicons, app/PWA icons, header logo SVGs (light+dark)
     vendor/tabler-icons/        # Icon font
     vendor/foliate-js/          # Vendored EPUB renderer (MIT) for the reader
-tests/                          # 30 pytest files: metadata_pipeline, calibre_metadata,
+tests/                          # 44 pytest files: metadata_pipeline, calibre_metadata,
                                 # bookf, grouping, kobo_conf, kobo_sync, kobo_covers,
                                 # kobo_location, reader_position, kobo_usb,
                                 # device_transfers, scan_delete_guard, language,
@@ -127,7 +127,8 @@ tests/                          # 30 pytest files: metadata_pipeline, calibre_me
                                 # metadata_merge, metadata_escalation, upload,
                                 # author_authority, author_resolver,
                                 # author_routes, author_lookup, reader_dict,
-                                # multi_author, author_folders, series_batch
+                                # multi_author, author_folders, series_batch,
+                                # cover_batch
 tools/
   install_calibre_plugins.sh    # Dockerfile build step: Goodreads, FF, FictionDB plugins
   install_kepubify.sh           # Dockerfile build step: kepubify binary for Kobo conversion
@@ -166,6 +167,7 @@ url-state.js             # Mirrors view/search/filters/sort/page to the URL (bac
 author-combobox.js       # Registry-backed multi-author fields in the book modal (one row per author, typeahead + create-guard; hidden #modalAuthor holds the ' & '-joined string for legacy flows)
 authors-manage.js        # /authors page: confirm/rename/merge/verify + AI adjudicator (own page, not the bulk view)
 reader.js                # In-browser reader controller (standalone /reader page, not the bulk view; ES module, loads foliate-js)
+covers-batch.js          # "Fetch covers for these": the missing-cover filter as a batch — dry-run stream, review grid, per-book apply
 reader-dict.js           # Selection sheet for the reader. One word → definition + translation + AI; more than one → passage mode with Copy / Copy with source (v1.46.0). WORD_RE decides which.
 ```
 
@@ -418,6 +420,50 @@ places that must agree: `_completeness_bucket` in `routes/metadata.py`, the
 `completeness_level` set in `bulk_metadata.html`, and the `completeness`
 branch of `applyFilters` in `filters-sort-paging.js`.
 
+### Fetching covers for the filter (v1.60.0)
+
+The fifth and last scenario flow, and the only one that still drives the
+generic enrichment engine. The shared fact is the filter itself: click the
+**"N missing cover"** chip and a banner offers **"Fetch covers for these"**
+(`app/static/js/covers-batch.js`, banner shown from the patched
+`applyFilters` in `filters-sort-paging.js`).
+
+**It runs the stream with `dry_run=1`, contrary to what step 6 of the plan
+specified**, because the pipeline downloads a `preview_<id>` file for every
+candidate cover whether or not anything is applied — so `cover_url_fetched`
+reaches the browser either way, and running without the dry run would only
+add unreviewed *text*-field writes to the files. `tests/test_cover_batch.py`
+pins this, for `covers-batch.js` and for every other module except
+`book-modal.js` (the single-book path, which is an explicit one-book action
+and writes on purpose).
+
+Two things the flow forced into the open:
+
+**A dry run was not dry.** `bulk_stream` group-synced and committed *before*
+the search, regardless of `dry_run`, so a format group whose EPUB had a cover
+handed it to the MOBI sibling during a preview — the book then left the
+"missing cover" filter without the user applying anything, and the review
+grid's "Now" column described a state that no longer existed. Group sync is
+now skipped in a dry run; the writing path keeps it.
+`tests/test_batch_dry_run.py::test_dry_run_does_not_group_sync_either`, with
+its control, pins both halves.
+
+**`apply_cover` did not refresh completeness.** `cover_apply_json` did, the
+form route did not, so a batch of covers left every traffic-light dot and
+counter one band too red. The cover weighs 3 of the 10.
+
+`_filteredIds()` reads `row.dataset.filterHidden` directly rather than
+calling `getFilteredRows()`: that helper also drops rows a grouped or series
+view has collapsed, and a collapsed format sibling needs a cover just as
+much — a cover is applied per file. "These" therefore means the same set in
+the table, the shelf and the series view.
+
+Applying is sequential, one book at a time, in the browser. Each apply is a
+download plus an `ebook-meta` write; a hundred in parallel against two sync
+workers is Gunicorn's timeout with nothing on screen. `cover_path` is in
+`_DEVICE_CONTENT_COLUMNS`, so the modal says how many books reload on Kobo
+instead of pretending a cover is invisible to the device.
+
 ### Batch: preview before write (v1.51.1)
 
 The generic batch wizard used to write before the user saw anything:
@@ -427,8 +473,9 @@ emitting `book_done`, and a separate `action == "ai"` branch in
 `bulk_metadata` wrote every `high`-confidence AI field straight to file with
 no review at all. Both are gone. `bulk_stream` now takes **`dry_run=1`**:
 same classification, no `_apply`, `apply_details` is `None` — and the wizard
-always passes it. The writing path stays for the cover scenario, which is
-the one flow that still drives this engine directly.
+always passes it. The writing path is now the single-book modal's alone
+(`book-modal.js`) — the cover scenario drives this engine too, but as a dry
+run like everything else (see "Fetching covers for the filter").
 
 The wizard's own entry point is hidden behind `SHOW_LEGACY_BATCH`
 (`COLOPHON_SHOW_LEGACY_BATCH=1` brings it back), because a batch over N

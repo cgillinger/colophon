@@ -643,6 +643,8 @@
         _updateFilterActiveDot();
         if (window._viewMode === 'shelf' && typeof refreshShelfView === 'function') refreshShelfView();
         if (window._viewMode === 'series' && typeof renderSeriesView === 'function') renderSeriesView();
+        // The "Fetch covers for these" banner follows the chip filter.
+        if (typeof window._refreshCoverBatchBanner === 'function') window._refreshCoverBatchBanner();
         if (window._writeUrlState) window._writeUrlState(false);
     };
     var _origSortTable2 = sortTable;
