@@ -243,6 +243,31 @@ not trigger a re-download.
 
 **Scope:** small, but it is a schema change → MINOR.
 
+## UI language as a setting, not a hand-written toggle
+
+**What:** the interface language is chosen by the `colophon_lang` cookie,
+set by two hard-coded EN/SV buttons. Those buttons are duplicated in five
+templates (`_layout.html`, `cover_lookup.html`, `metadata.html`,
+`metadata_ai_preview.html`, `metadata_enrichment_preview.html`), and the
+allowed set is a tuple in `app/__init__.py` (`SUPPORTED_LANGUAGES`). Adding
+a third language today means editing all of that by hand, and it still
+comes out half-Swedish: `book-modal.js` carries its own `_modalI18n` map
+with only `sv`/`en`, and anything that is not `en` falls back to Swedish.
+
+**How:** one place decides. A `Language` setting under Settings, stored
+through `app_settings` like the rest, rendered as a list built from
+`SUPPORTED_LANGUAGES` plus a display name per code (`("sv", "Svenska")`,
+kept next to the tuple). `get_locale()` reads the setting first, then the
+cookie (so a device can still differ from the instance default), then
+`Accept-Language`, then `en`. The sidebar keeps a small current-language
+indicator that links to the setting; the five hand-written toggles go.
+Fold `_modalI18n` into `window.__colophonConfig.i18n` on the way, so the
+book modal is translated by the same `.po` file as everything else.
+Adding a language then is: append to the tuple, `pybabel init`, translate.
+
+**Scope:** small. New setting → MINOR. Independent of the book-language
+check (`services/language_check.py`), which is about the books, not the UI.
+
 ## Author authority control (canonical author registry)
 
 **What:** Reconcile author spellings to one canonical form per author, so the
