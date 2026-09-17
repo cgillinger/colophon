@@ -179,7 +179,15 @@ def create_app():
         v = __version__
         assets = [
             url_for("static", filename="js/reader.js") + "?v=" + v,
+            # reader.js imports reader-dict.js WITHOUT a ?v= (a bare ES-module
+            # specifier), so the request the browser makes carries no query and
+            # Cache Storage's exact-query match misses the ?v= copy. Cache the
+            # unversioned URL too — the one the import actually asks for — or the
+            # whole reader.js graph fails to load offline and the reader hangs
+            # on "Loading book…". (cacheFirst also matches ignoreSearch as a
+            # backstop; this makes the exact URL present regardless.)
             url_for("static", filename="js/reader-dict.js") + "?v=" + v,
+            url_for("static", filename="js/reader-dict.js"),
             url_for("static", filename="css/bulk_metadata.css") + "?v=" + v,
             url_for("static", filename="vendor/tabler-icons/tabler-icons.min.css"),
             url_for("static", filename="vendor/tabler-icons/fonts/tabler-icons.woff2"),

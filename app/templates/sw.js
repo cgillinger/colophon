@@ -216,7 +216,12 @@ async function cacheFirst(req) {
     const cache = await caches.open(CACHE);
     const hit = await cache.match(req);
     if (hit) return hit;
-    const offlineHit = await (await caches.open(OFFLINE)).match(req);
+    // ignoreSearch: a bare ES-module import (e.g. reader.js -> './reader-dict.js')
+    // requests the URL with NO ?v=, but the offline bundle saved the ?v= copy.
+    // Exact query matching would miss it and the whole module graph would fail
+    // to load offline. OFFLINE only holds a saved book's own assets, so relaxing
+    // the query match can't collide with anything unrelated.
+    const offlineHit = await (await caches.open(OFFLINE)).match(req, { ignoreSearch: true });
     if (offlineHit) return offlineHit;
     const res = await fetch(req);
     if (res && res.ok && new URL(req.url).searchParams.has('v')) cache.put(req, res.clone());
@@ -298,7 +303,13 @@ async function staleWhileRevalidate(req, cacheName) {
     const net = fetch(req).then(function (res) {
         if (res && res.ok) cache.put(req, res.clone());
         return res;
-    }).catch(function () { return hit; });
+    }).catch(function (e) {
+        // Offline with nothing cached: surface a real network error rather than
+        // resolving to `undefined` (respondWith(undefined) throws a confusing
+        // TypeError and a module import then fails silently).
+        if (hit) return hit;
+        throw e;
+    });
     return hit || net;
 }
 

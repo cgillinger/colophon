@@ -664,6 +664,82 @@
             });
         }
     </script>
-    <script type="module" src="{{ url_for('static', filename='js/reader.js') }}?v={{ app_version }}"></script>
+    {# Self-diagnosis for offline load failures. A failed module import fires
+       `error` on the <script type="module"> element (not window), so an inline
+       classic script — parsed before the module runs — is the only thing that
+       can report "the reader never started". Only ever surfaces when the
+       loading overlay is still up after 8 s AND we're offline (or ?debug=1),
+       so it never intrudes on a normal read. Lists which cached assets the SW
+       fails to serve, with a Copy button, so a hang is diagnosable on an iOS
+       PWA with no devtools. #}
+    <script>
+    (function () {
+        var cfg = window.__readerConfig || {};
+        var overlay = document.getElementById('readerOverlay');
+        var log = [];
+        function paint() {
+            if (!overlay) return;
+            overlay.style.whiteSpace = 'pre-wrap';
+            overlay.style.userSelect = 'text';
+            overlay.style.textAlign = 'left';
+            overlay.style.fontSize = '12px';
+            overlay.style.lineHeight = '1.4';
+            overlay.style.padding = '16px';
+            overlay.textContent = log.join('\n');
+            if (!document.getElementById('readerDiagCopy')) {
+                var b = document.createElement('button');
+                b.id = 'readerDiagCopy';
+                b.textContent = 'Kopiera';
+                b.style.cssText = 'display:block;margin-top:12px;padding:6px 12px;';
+                b.onclick = function () {
+                    try { navigator.clipboard.writeText(log.join('\n')); b.textContent = 'Kopierat'; }
+                    catch (e) { b.textContent = 'Markera texten och kopiera manuellt'; }
+                };
+                overlay.appendChild(b);
+            }
+        }
+        function show(line) { if (line) { log.push(line); paint(); } }
+        var probed = false;
+        function probe() {
+            if (probed) return; probed = true;
+            show('DIAGNOS  online=' + navigator.onLine + '  sw=' +
+                 !!(navigator.serviceWorker && navigator.serviceWorker.controller));
+            var urls = [
+                '/static/js/reader-dict.js',
+                '/static/vendor/foliate-js/view.js',
+                '/static/vendor/foliate-js/epub.js',
+                '/static/vendor/foliate-js/vendor/zip.js',
+                cfg.fileUrl, cfg.pageUrl
+            ].concat(Array.isArray(cfg.shellAssets) ? cfg.shellAssets : []).filter(Boolean);
+            var miss = [], pending = urls.length;
+            urls.forEach(function (u) {
+                fetch(u).then(function (r) {
+                    if (!r || !r.ok) miss.push(u + ' (' + (r ? r.status : 'ingen') + ')');
+                }).catch(function () { miss.push(u + ' (nätfel)'); }).then(function () {
+                    if (--pending === 0) show(miss.length
+                        ? 'SAKNAS/FEL:\n  ' + miss.join('\n  ')
+                        : 'Alla assets nås — felet ligger inte i cachningen.');
+                });
+            });
+        }
+        window.__readerDiag = { moduleError: function () {
+            show('MODULFEL: reader.js eller en import laddades aldrig.'); probe();
+        } };
+        window.addEventListener('error', function (e) {
+            if (e && e.message) show('ERROR: ' + e.message +
+                (e.filename ? ' @ ' + e.filename + ':' + e.lineno : ''));
+        });
+        window.addEventListener('unhandledrejection', function (e) {
+            var r = e && e.reason; show('REJECT: ' + ((r && (r.stack || r.message)) || r));
+        });
+        setTimeout(function () {
+            var stuck = overlay && overlay.offsetParent !== null && !overlay.hidden;
+            if (stuck && (/[?&]debug=1/.test(location.search) || !navigator.onLine)) probe();
+        }, 8000);
+    })();
+    </script>
+    <script type="module" id="readerModule"
+            src="{{ url_for('static', filename='js/reader.js') }}?v={{ app_version }}"
+            onerror="window.__readerDiag && window.__readerDiag.moduleError()"></script>
 </body>
 </html>
