@@ -2447,6 +2447,39 @@
         }
         .modal-box.display-mode .modal-read-btn.readable i { font-size: 1rem; }
 
+        /* "Save for offline" CTA — same shape as the Read button above it, but
+           gated on the service worker actually controlling the page (JS adds
+           `sw-ready`) in addition to display-mode + readable format, since
+           there is nothing to talk to otherwise. `.is-saved`/`.is-busy` mirror
+           the reader's own offline button states. */
+        .modal-box.display-mode #modalOfflineBtn.readable.sw-ready {
+            display: flex;
+            width: 100%;
+            margin-top: 8px;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border: 1px solid var(--accent-primary-border);
+            border-radius: 999px;
+            background: var(--accent-primary-light);
+            color: var(--accent-primary-text);
+            font-size: .82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background .12s ease, transform .12s ease;
+            white-space: nowrap;
+        }
+        .modal-box.display-mode #modalOfflineBtn.readable.sw-ready:hover {
+            background: var(--accent-primary);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+        .modal-box.display-mode #modalOfflineBtn.readable.sw-ready i { font-size: 1rem; }
+        .modal-box.display-mode #modalOfflineBtn.is-saved { color: #059669; border-color: #059669; }
+        .modal-box.display-mode #modalOfflineBtn.is-busy { opacity: .6; pointer-events: none; }
+
         /* Wide screens: slightly larger cover. */
         @media (min-width: 900px) {
             .modal-box.display-mode .modal-grid {
@@ -2481,6 +2514,9 @@
             /* Column is 1fr here (not the cover width), so pin the read button
                to the cover's 120px instead of stretching it full-width. */
             .modal-box.display-mode .modal-read-btn.readable {
+                width: 120px;
+            }
+            .modal-box.display-mode #modalOfflineBtn.readable.sw-ready {
                 width: 120px;
             }
             .modal-box.display-mode .display-genres {

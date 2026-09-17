@@ -577,6 +577,9 @@
             shareMime: {{ share_mimetype|tojson }},
             bookTitle: {{ (item.title or item.file_name or '')|tojson }},
             bookAuthor: {{ (item.author or '')|tojson }},
+            // Used by the offline index (see sw.js) so the "Downloaded books"
+            // shelf can show a cover with no connection.
+            coverUrl: {{ url_for('metadata.cover_item', item_id=item.id, w=320)|tojson }},
             // Dictionary lookup (docs/reader-dictionary-lookup.md): the book's
             // language picks which dictionaries to query/download; the AI
             // button only renders when a provider is configured.
@@ -589,15 +592,7 @@
             // reader works offline. foliate's module graph is cached separately
             // by the service worker (stale-while-revalidate). Tabler's icon
             // font is included so the toolbar icons render with no connection.
-            shellAssets: [
-                {{ (url_for('static', filename='js/reader.js') ~ '?v=' ~ app_version)|tojson }},
-                {{ (url_for('static', filename='js/reader-dict.js') ~ '?v=' ~ app_version)|tojson }},
-                {{ (url_for('static', filename='css/bulk_metadata.css') ~ '?v=' ~ app_version)|tojson }},
-                {{ url_for('static', filename='vendor/tabler-icons/tabler-icons.min.css')|tojson }},
-                {{ url_for('static', filename='vendor/tabler-icons/fonts/tabler-icons.woff2')|tojson }},
-                {{ url_for('static', filename='fonts/opendyslexic-400.woff2')|tojson }},
-                {{ url_for('static', filename='fonts/opendyslexic-700.woff2')|tojson }}
-            ],
+            shellAssets: {{ reader_shell_assets|tojson }},
             // The book renders in a separate iframe document that does NOT
             // inherit this page's @font-face, so the OpenDyslexic face must be
             // re-declared inside the book CSS with an absolute URL (the iframe's

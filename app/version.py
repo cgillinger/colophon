@@ -1,2 +1,2 @@
 # Colophon – e-book metadata manager
-__version__ = "1.61.3"
+__version__ = "1.62.0"

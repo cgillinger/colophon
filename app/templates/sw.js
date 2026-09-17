@@ -1,16 +1,17 @@
-/* Colophon service worker — version-driven caching.
+/* Colophon service worker — version-driven caching + offline reading.
  *
- * WHY THIS EXISTS (read before removing): Colophon is desktop-first and has no
- * offline use case today — the app is useless without the server. This worker
- * is deliberate groundwork for a possible future in-browser reader, where
- * offline reading of a downloaded book WOULD be a real feature (see
- * docs/TODO.md "In-browser reader + offline"). What it provides now is the
- * reusable plumbing: installability and a reliable update mechanism. It does
- * NOT cache book content — that is net-new work (explicit "download for
- * offline" into Cache Storage/IndexedDB + quota/eviction) to be built with the
- * reader, not something this file gives for free. It is intentionally
- * conservative (navigations are network-first, so an always-online LAN/Tailscale
- * client can never get stuck on a stale shell), so keeping it dormant is safe.
+ * WHY THIS EXISTS (read before removing): Colophon is desktop-first and online
+ * by default — over Tailscale/LAN the server is essentially always reachable —
+ * but offline reading of a *downloaded* book is a real feature (v1.26.0, with
+ * the landing page + book-modal save + "Downloaded" filter added v1.62.0; see
+ * docs/TODO.md "Offline reading" and §12b of the handbooks). This worker does
+ * three things: installability + a reliable update mechanism; caching a
+ * saved book's file and reader shell into the persistent `colophon-offline`
+ * cache (an explicit "save for offline" action, never silent); and a small
+ * index of what's saved (OFFLINE_INDEX) that a precached /offline landing page
+ * reads so a no-connection app launch lands on the "Downloaded books" shelf.
+ * It stays conservative for the online case — navigations are network-first,
+ * so an always-online client can never get stuck on a stale shell.
  *
  * Rendered by Flask (see /sw.js route) so {{ app_version }} is baked into
  * the file body. That matters twice over:
@@ -48,10 +49,26 @@ const READER_FILE = /^\/reader\/\d+\/file$/;
 const READER_PAGE = /^\/reader\/\d+$/;
 const FOLIATE_PREFIX = '/static/vendor/foliate-js/';
 
-self.addEventListener('install', function () {
+// Synthetic URL for the list of downloaded books (never a real route — the
+// server can't know what's in the browser's cache). Read by offline.html and
+// offline.js; written by indexUpsert/indexRemove below whenever a book is
+// saved or removed.
+const OFFLINE_INDEX = '/reader/offline-index.json';
+
+self.addEventListener('install', function (event) {
     // Do NOT skipWaiting here. The new worker waits until the page tells it
     // to (via the "new version" prompt), so we never reload out from under
     // an in-progress edit.
+    //
+    // Precache the offline landing page so opening the PWA with no connection
+    // always lands on the "Downloaded books" shelf instead of a dead
+    // fallback. Deliberately in the persistent OFFLINE cache (not the
+    // per-version one) so it survives version bumps.
+    event.waitUntil(
+        caches.open(OFFLINE).then(function (c) {
+            return c.add(new Request('/offline', { cache: 'reload' }));
+        }).catch(function () { /* first install may be offline itself */ })
+    );
 });
 
 self.addEventListener('activate', function (event) {
@@ -71,19 +88,34 @@ self.addEventListener('message', function (event) {
     if (data === 'skipWaiting') { self.skipWaiting(); return; }
     if (!data || typeof data !== 'object') return;
 
-    // Offline-reader controls from the reader page. Each replies to the sender
-    // so the UI can reflect the result (saved / removed / current state).
+    // Offline-reader controls from the reader page / library view. Each
+    // replies to the sender so the UI can reflect the result (saved /
+    // removed / current state).
     if (data.type === 'cacheBook') {
         event.waitUntil(cacheBook(data.assets || []).then(function (ok) {
-            reply(event, { type: 'cacheBook', id: data.id, ok: ok });
+            // Only a successful cache earns a place on the "Downloaded
+            // books" shelf — a partial failure must not claim the book is
+            // available offline.
+            var indexed = ok
+                ? indexUpsert({ id: data.id, title: data.title, author: data.author, coverUrl: data.coverUrl })
+                : Promise.resolve();
+            return indexed.then(function () {
+                reply(event, { type: 'cacheBook', id: data.id, ok: ok });
+            });
         }));
     } else if (data.type === 'removeBook') {
         event.waitUntil(removeBook(data.assets || []).then(function () {
+            return indexRemove(data.id);
+        }).then(function () {
             reply(event, { type: 'removeBook', id: data.id, ok: true });
         }));
     } else if (data.type === 'isBookCached') {
         event.waitUntil(isBookCached(data.fileUrl).then(function (cached) {
             reply(event, { type: 'isBookCached', id: data.id, cached: cached });
+        }));
+    } else if (data.type === 'listCachedBooks') {
+        event.waitUntil(readIndex().then(function (list) {
+            reply(event, { type: 'listCachedBooks', books: list });
         }));
     }
 });
@@ -127,6 +159,40 @@ async function isBookCached(fileUrl) {
     return !!hit;
 }
 
+// The offline index: a small JSON list of {id,title,author,coverUrl}, stored
+// as a synthetic Response at OFFLINE_INDEX inside the OFFLINE cache itself —
+// no IndexedDB needed for something this small, and it lives in the same
+// cache as the books it describes so it can never point at content that was
+// evicted separately.
+async function readIndex() {
+    try {
+        const cache = await caches.open(OFFLINE);
+        const hit = await cache.match(OFFLINE_INDEX);
+        if (!hit) return [];
+        return await hit.json();
+    } catch (e) { return []; }
+}
+async function writeIndex(list) {
+    const cache = await caches.open(OFFLINE);
+    await cache.put(OFFLINE_INDEX, new Response(JSON.stringify(list), {
+        headers: { 'Content-Type': 'application/json' }
+    }));
+}
+async function indexUpsert(book) {
+    if (!book || book.id == null) return;
+    const list = await readIndex();
+    const rest = list.filter(function (b) { return String(b.id) !== String(book.id); });
+    rest.push({
+        id: book.id, title: book.title || String(book.id),
+        author: book.author || '', coverUrl: book.coverUrl || ''
+    });
+    await writeIndex(rest);
+}
+async function indexRemove(id) {
+    const list = await readIndex();
+    await writeIndex(list.filter(function (b) { return String(b.id) !== String(id); }));
+}
+
 async function cacheFirst(req) {
     const cache = await caches.open(CACHE);
     const hit = await cache.match(req);
@@ -147,6 +213,11 @@ async function networkFirst(req) {
         if (hit) return hit;
         const root = await cache.match('/');
         if (root) return root;
+        // Last resort before the bare 503: the precached offline landing page,
+        // so "no connection at all" opens on the "Downloaded books" shelf
+        // instead of a dead end.
+        const offline = await (await caches.open(OFFLINE)).match('/offline');
+        if (offline) return offline;
         return new Response(
             '<!doctype html><meta charset="utf-8">' +
             '<meta name="viewport" content="width=device-width, initial-scale=1">' +
@@ -216,6 +287,24 @@ self.addEventListener('fetch', function (event) {
     }
     if (url.pathname.indexOf(FOLIATE_PREFIX) === 0) {
         event.respondWith(staleWhileRevalidate(req, OFFLINE));
+        return;
+    }
+
+    // Synthetic offline index: always from cache, never the network — an
+    // empty list if nothing has been saved yet, so the shelf renders its
+    // empty state rather than failing the fetch.
+    if (url.pathname === OFFLINE_INDEX) {
+        event.respondWith(readIndex().then(function (list) {
+            return new Response(JSON.stringify(list), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }));
+        return;
+    }
+    // The precached offline landing page: cache-first so it opens with no
+    // network at all, even on a direct/first visit while offline.
+    if (url.pathname === '/offline') {
+        event.respondWith(offlineFirst(req));
         return;
     }
 

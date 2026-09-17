@@ -443,6 +443,25 @@ och PDF**; DRM-skyddade (eller lösenordskrypterade) filer går inte att öppna
 
 Din läsposition sparas automatiskt och **synkar med din Kobo** (se §13).
 
+## 12b. Läsa offline
+
+- **Förutsättning:** öppna Colophon via den **säkra Tailscale-adressen**
+  (`https://…`), inte `http://<lan-ip>:5055` — offline kräver HTTPS (se §15).
+- **Installera som app** — "Lägg till på hemskärmen" (§18), särskilt på iOS:
+  annars kan systemet rensa den sparade lagringen när enheten behöver plats.
+- **Spara en bok offline** på två sätt: inifrån läsaren (nedladdningsikonen i
+  verktygsraden, §12) eller direkt från bokens kort/modal i **Hyllvy** —
+  knappen **Spara offline** syns när boken är läsbar och en säker anslutning
+  är aktiv.
+- **Hitta nedladdade böcker:** chippet **"N nedladdade"** i biblioteksräknaren
+  filtrerar fram dem. Startar du appen helt utan uppkoppling landar du direkt
+  på hyllan **"Nedladdade böcker"** i stället för en död sida.
+- **Läsläget synkar tillbaka** till Kobo/biblioteket så fort uppkopplingen är
+  tillbaka (§13).
+- **Ta bort en offline-kopia** genom att öppna boken igen (eller dess kort)
+  och trycka på samma knapp — den visar då "Sparad offline"; tryck igen för
+  att ta bort.
+
 ## 13. Lässtatus och läsläge
 
 Lässtatusen är en enda gemensam sanning, oavsett om du läser på Kobon eller i

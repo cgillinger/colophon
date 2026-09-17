@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Colophon 1.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-09-16 21:25+0200\n"
+"POT-Creation-Date: 2026-09-17 13:41+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: sv\n"
@@ -23,7 +23,7 @@ msgstr ""
 "Metadata sparades i biblioteket, men kunde inte skrivas till e-boksfilen "
 "(%(label)s)."
 
-#: app/routes/metadata.py:440 app/templates/bulk_metadata.html:993
+#: app/routes/metadata.py:440 app/templates/bulk_metadata.html:1007
 msgid "Title cannot be empty."
 msgstr "Titel får inte vara tom."
 
@@ -141,7 +141,7 @@ msgstr ""
 "nyckel.AI är inte konfigurerat. Öppna API-inställningar och lägg till en "
 "API-nyckel."
 
-#: app/routes/metadata.py:1785 app/templates/bulk_metadata.html:984
+#: app/routes/metadata.py:1785 app/templates/bulk_metadata.html:998
 msgid "The AI service rejected the request. Check the API key."
 msgstr "AI-tjänsten nekade anropet. Kontrollera API-nyckeln."
 
@@ -505,7 +505,7 @@ msgstr ""
 "Hittade %(count)d möjliga träffar. Bästa träff: %(score)d poäng, "
 "%(source)s."
 
-#: app/services/metadata_pipeline.py:813 app/templates/bulk_metadata.html:977
+#: app/services/metadata_pipeline.py:813 app/templates/bulk_metadata.html:991
 msgid "No secure matches found."
 msgstr "Inga säkra träffar hittades."
 
@@ -684,8 +684,8 @@ msgid "Shelf"
 msgstr "Hyllvy"
 
 #: app/templates/_layout.html:81 app/templates/bulk_metadata.html:24
-#: app/templates/bulk_metadata.html:565 app/templates/bulk_metadata.html:626
-#: app/templates/bulk_metadata.html:1046 app/templates/metadata.html:462
+#: app/templates/bulk_metadata.html:579 app/templates/bulk_metadata.html:640
+#: app/templates/bulk_metadata.html:1060 app/templates/metadata.html:462
 #: app/templates/metadata.html:558
 msgid "Series"
 msgstr "Serie"
@@ -703,12 +703,12 @@ msgid "Find new books"
 msgstr "Hitta nya böcker"
 
 #: app/templates/_layout.html:97 app/templates/_layout.html:110
-#: app/templates/bulk_metadata.html:823
+#: app/templates/bulk_metadata.html:837
 msgid "Find duplicates"
 msgstr "Hitta dubbletter"
 
-#: app/templates/_layout.html:100 app/templates/bulk_metadata.html:721
-#: app/templates/bulk_metadata.html:1125
+#: app/templates/_layout.html:100 app/templates/bulk_metadata.html:735
+#: app/templates/bulk_metadata.html:1139
 msgid "Check language"
 msgstr "Kontrollera språk"
 
@@ -718,7 +718,7 @@ msgid "%(n)d files modified locally, push to upstream library"
 msgstr "%(n)d filer ändrade lokalt, skicka till uppströmsbiblioteket"
 
 #: app/templates/_layout.html:118 app/templates/_layout.html:126
-#: app/templates/bulk_metadata.html:840
+#: app/templates/bulk_metadata.html:854
 msgid "Sync to library"
 msgstr "Synka till bibliotek"
 
@@ -749,20 +749,20 @@ msgid "AI settings"
 msgstr "AI-inställningar"
 
 #: app/templates/_layout.html:152 app/templates/_layout.html:168
-#: app/templates/bulk_metadata.html:1034
+#: app/templates/bulk_metadata.html:1048
 msgid "Reading"
 msgstr "Läser"
 
-#: app/templates/_layout.html:156 app/templates/bulk_metadata.html:448
-#: app/templates/bulk_metadata.html:635
+#: app/templates/_layout.html:156 app/templates/bulk_metadata.html:454
+#: app/templates/bulk_metadata.html:649
 msgid "All"
 msgstr "Alla"
 
-#: app/templates/_layout.html:162 app/templates/bulk_metadata.html:1033
+#: app/templates/_layout.html:162 app/templates/bulk_metadata.html:1047
 msgid "Unread"
 msgstr "Oläst"
 
-#: app/templates/_layout.html:174 app/templates/bulk_metadata.html:1035
+#: app/templates/_layout.html:174 app/templates/bulk_metadata.html:1049
 msgid "Finished"
 msgstr "Läst"
 
@@ -838,7 +838,7 @@ msgstr ""
 msgid "Ask the AI whether these are the same person"
 msgstr "Fråga AI:n om det är samma person"
 
-#: app/templates/authors.html:213 app/templates/bulk_metadata.html:648
+#: app/templates/authors.html:213 app/templates/bulk_metadata.html:662
 msgid "Ask AI"
 msgstr "Fråga AI"
 
@@ -880,8 +880,8 @@ msgid "Select all"
 msgstr "Markera alla"
 
 #: app/templates/authors.html:252 app/templates/bulk_metadata.html:264
-#: app/templates/bulk_metadata.html:543 app/templates/bulk_metadata.html:625
-#: app/templates/bulk_metadata.html:1045 app/templates/metadata.html:457
+#: app/templates/bulk_metadata.html:557 app/templates/bulk_metadata.html:639
+#: app/templates/bulk_metadata.html:1059 app/templates/metadata.html:457
 #: app/templates/metadata.html:555
 msgid "Author"
 msgstr "Författare"
@@ -925,7 +925,7 @@ msgid "Authority-linked"
 msgstr "Auktoriserad"
 
 #: app/templates/authors.html:269 app/templates/authors.html:363
-#: app/templates/bulk_metadata.html:1154
+#: app/templates/bulk_metadata.html:1168
 msgid "Confirmed"
 msgstr "Bekräftad"
 
@@ -992,8 +992,8 @@ msgstr "Uppslaget matchade fel person — ta bort id:n och beskrivningen"
 msgid "Remove authority link"
 msgstr "Ta bort auktoritetslänk"
 
-#: app/templates/authors.html:315 app/templates/bulk_metadata.html:812
-#: app/templates/bulk_metadata.html:1177
+#: app/templates/authors.html:315 app/templates/bulk_metadata.html:826
+#: app/templates/bulk_metadata.html:1191
 msgid "Rename"
 msgstr "Byt namn"
 
@@ -1014,7 +1014,7 @@ msgid "Group this author’s books into series and order them"
 msgstr "Gruppera författarens böcker i serier och ordna dem"
 
 #: app/templates/authors.html:319 app/templates/bulk_metadata.html:46
-#: app/templates/bulk_metadata.html:1142
+#: app/templates/bulk_metadata.html:1156
 msgid "Order series"
 msgstr "Ordna serier"
 
@@ -1049,12 +1049,12 @@ msgstr ""
 "Alla länkade böcker länkas om, och beslutet kommer ihåg så att "
 "omskanningar av filerna inte återskapar den hopslagna posten."
 
-#: app/templates/authors.html:342 app/templates/bulk_metadata.html:551
+#: app/templates/authors.html:342 app/templates/bulk_metadata.html:565
 msgid "Add author"
 msgstr "Lägg till författare"
 
-#: app/templates/authors.html:344 app/templates/bulk_metadata.html:846
-#: app/templates/bulk_metadata.html:1195 app/templates/metadata.html:387
+#: app/templates/authors.html:344 app/templates/bulk_metadata.html:860
+#: app/templates/bulk_metadata.html:1209 app/templates/metadata.html:387
 #: app/templates/metadata.html:506 app/templates/metadata_ai_preview.html:359
 #: app/templates/metadata_enrichment_preview.html:379
 msgid "Cancel"
@@ -1097,7 +1097,7 @@ msgstr "Ta bort den oanvända posten ”{name}”?"
 msgid "The action failed."
 msgstr "Åtgärden misslyckades."
 
-#: app/templates/authors.html:361 app/templates/reader.html:625
+#: app/templates/authors.html:361 app/templates/reader.html:620
 msgid "Looking up…"
 msgstr "Slår upp…"
 
@@ -1160,15 +1160,15 @@ msgstr "AI: osäkert — {reason}"
 msgid "AI is not configured (Settings → AI)."
 msgstr "AI är inte konfigurerat (Inställningar → AI)."
 
-#: app/templates/authors.html:375 app/templates/bulk_metadata.html:1149
-#: app/templates/reader.html:635
+#: app/templates/authors.html:375 app/templates/bulk_metadata.html:1163
+#: app/templates/reader.html:630
 msgid ""
 "The AI quota is used up. Topping up the account is what helps, not "
 "waiting."
 msgstr "AI-kvoten är slut. Det som hjälper är att fylla på kontot, inte att vänta."
 
-#: app/templates/authors.html:376 app/templates/bulk_metadata.html:1150
-#: app/templates/reader.html:636
+#: app/templates/authors.html:376 app/templates/bulk_metadata.html:1164
+#: app/templates/reader.html:631
 msgid ""
 "The provider allows no requests for this model on your plan. Pick another"
 " model in Settings → AI."
@@ -1176,13 +1176,13 @@ msgstr ""
 "Leverantören tillåter inga anrop för den här modellen på din plan. Välj "
 "en annan modell under Inställningar → AI."
 
-#: app/templates/authors.html:377 app/templates/bulk_metadata.html:1151
-#: app/templates/reader.html:637
+#: app/templates/authors.html:377 app/templates/bulk_metadata.html:1165
+#: app/templates/reader.html:632
 msgid "The AI is busy. Try again in N min."
 msgstr "AI:n är upptagen. Försök igen om N min."
 
-#: app/templates/authors.html:378 app/templates/bulk_metadata.html:1152
-#: app/templates/reader.html:638
+#: app/templates/authors.html:378 app/templates/bulk_metadata.html:1166
+#: app/templates/reader.html:633
 msgid "The AI limit has been reached. Try again later."
 msgstr "AI-gränsen är nådd. Försök igen senare."
 
@@ -1341,15 +1341,15 @@ msgstr "Filter"
 msgid "Sort series"
 msgstr "Sortera serier"
 
-#: app/templates/bulk_metadata.html:160 app/templates/bulk_metadata.html:898
+#: app/templates/bulk_metadata.html:160 app/templates/bulk_metadata.html:912
 msgid "A–Ö"
 msgstr "A–Ö"
 
-#: app/templates/bulk_metadata.html:161 app/templates/bulk_metadata.html:899
+#: app/templates/bulk_metadata.html:161 app/templates/bulk_metadata.html:913
 msgid "Most books"
 msgstr "Flest böcker"
 
-#: app/templates/bulk_metadata.html:165 app/templates/bulk_metadata.html:897
+#: app/templates/bulk_metadata.html:165 app/templates/bulk_metadata.html:911
 msgid "Hide single-book series"
 msgstr "Dölj serier med bara en bok"
 
@@ -1366,7 +1366,7 @@ msgstr "Rensa seriefilter"
 msgid "%(count)d selected"
 msgstr "%(count)d valda"
 
-#: app/templates/bulk_metadata.html:182 app/templates/bulk_metadata.html:901
+#: app/templates/bulk_metadata.html:182 app/templates/bulk_metadata.html:915
 msgid "Scanning..."
 msgstr "Skannar..."
 
@@ -1462,7 +1462,7 @@ msgstr "Tillagd (äldst först)"
 msgid "Least complete first"
 msgstr "Mest ofullständig först"
 
-#: app/templates/bulk_metadata.html:225 app/templates/bulk_metadata.html:1026
+#: app/templates/bulk_metadata.html:225 app/templates/bulk_metadata.html:1040
 msgid "Delete selected"
 msgstr "Radera valda"
 
@@ -1482,42 +1482,42 @@ msgstr "Hämta omslag för dessa"
 msgid "Select all/none"
 msgstr "Markera alla/inga"
 
-#: app/templates/bulk_metadata.html:262 app/templates/bulk_metadata.html:1052
+#: app/templates/bulk_metadata.html:262 app/templates/bulk_metadata.html:1066
 #: app/templates/metadata.html:557
 #: app/templates/metadata_enrichment_preview.html:354
 msgid "Cover"
 msgstr "Omslag"
 
-#: app/templates/bulk_metadata.html:263 app/templates/bulk_metadata.html:930
-#: app/templates/bulk_metadata.html:1055 app/templates/bulk_metadata.html:1194
+#: app/templates/bulk_metadata.html:263 app/templates/bulk_metadata.html:944
+#: app/templates/bulk_metadata.html:1069 app/templates/bulk_metadata.html:1208
 #: app/templates/settings_ai.html:435
 msgid "Book"
 msgstr "Bok"
 
-#: app/templates/bulk_metadata.html:265 app/templates/bulk_metadata.html:602
-#: app/templates/bulk_metadata.html:631 app/templates/bulk_metadata.html:1050
+#: app/templates/bulk_metadata.html:265 app/templates/bulk_metadata.html:616
+#: app/templates/bulk_metadata.html:645 app/templates/bulk_metadata.html:1064
 #: app/templates/metadata.html:490
 msgid "Genre"
 msgstr "Genre"
 
-#: app/templates/bulk_metadata.html:266 app/templates/bulk_metadata.html:584
-#: app/templates/bulk_metadata.html:628 app/templates/bulk_metadata.html:1048
+#: app/templates/bulk_metadata.html:266 app/templates/bulk_metadata.html:598
+#: app/templates/bulk_metadata.html:642 app/templates/bulk_metadata.html:1062
 #: app/templates/metadata.html:487 app/templates/reader.html:456
 msgid "Publisher"
 msgstr "Förlag"
 
-#: app/templates/bulk_metadata.html:267 app/templates/bulk_metadata.html:588
-#: app/templates/bulk_metadata.html:629 app/templates/bulk_metadata.html:1049
+#: app/templates/bulk_metadata.html:267 app/templates/bulk_metadata.html:602
+#: app/templates/bulk_metadata.html:643 app/templates/bulk_metadata.html:1063
 #: app/templates/metadata.html:477
 msgid "Language"
 msgstr "Språk"
 
-#: app/templates/bulk_metadata.html:268 app/templates/bulk_metadata.html:580
-#: app/templates/bulk_metadata.html:627 app/templates/metadata.html:473
+#: app/templates/bulk_metadata.html:268 app/templates/bulk_metadata.html:594
+#: app/templates/bulk_metadata.html:641 app/templates/metadata.html:473
 msgid "ISBN"
 msgstr "ISBN"
 
-#: app/templates/bulk_metadata.html:269 app/templates/bulk_metadata.html:1073
+#: app/templates/bulk_metadata.html:269 app/templates/bulk_metadata.html:1087
 msgid "Published"
 msgstr "Publicerat"
 
@@ -1558,7 +1558,7 @@ msgstr "Komplett"
 msgid "Added in the last %(days)d days"
 msgstr "Tillagd de senaste %(days)d dagarna"
 
-#: app/templates/bulk_metadata.html:338 app/templates/bulk_metadata.html:1122
+#: app/templates/bulk_metadata.html:338 app/templates/bulk_metadata.html:1136
 msgid "New"
 msgstr "Nytillagt"
 
@@ -1574,7 +1574,7 @@ msgstr "Ny författare — ännu inte bekräftad"
 msgid "Author missing"
 msgstr "Författare saknas"
 
-#: app/templates/bulk_metadata.html:358 app/templates/bulk_metadata.html:994
+#: app/templates/bulk_metadata.html:358 app/templates/bulk_metadata.html:1008
 msgid "Unknown"
 msgstr "Okänd"
 
@@ -1600,595 +1600,604 @@ msgstr "%(count)d böcker"
 msgid "%(count)d missing cover"
 msgstr "%(count)d saknar omslag"
 
-#: app/templates/bulk_metadata.html:420
+#: app/templates/bulk_metadata.html:426
 #, python-format
 msgid "%(count)d unsynced"
 msgstr "%(count)d osynkade"
 
-#: app/templates/bulk_metadata.html:423
+#: app/templates/bulk_metadata.html:429
 #, python-format
 msgid "%(count)d authors to review"
 msgstr "%(count)d författare att granska"
 
-#: app/templates/bulk_metadata.html:426
+#: app/templates/bulk_metadata.html:432
 #, python-format
 msgid "%(count)d newly added"
 msgstr "%(count)d nytillagda"
 
-#: app/templates/bulk_metadata.html:430
+#: app/templates/bulk_metadata.html:436
 #, python-format
 msgid "%(count)d incomplete"
 msgstr "%(count)d ofullständiga"
 
-#: app/templates/bulk_metadata.html:433
+#: app/templates/bulk_metadata.html:439
 #, python-format
 msgid "%(count)d partial"
 msgstr "%(count)d delvis"
 
-#: app/templates/bulk_metadata.html:436
+#: app/templates/bulk_metadata.html:442
 #, python-format
 msgid "%(count)d complete"
 msgstr "%(count)d kompletta"
 
-#: app/templates/bulk_metadata.html:440
+#: app/templates/bulk_metadata.html:446
 #, python-format
 msgid "Showing %(count)d books"
 msgstr "Visar %(count)d böcker"
 
-#: app/templates/bulk_metadata.html:443
+#: app/templates/bulk_metadata.html:449
 msgid "Show:"
 msgstr "Visa:"
 
-#: app/templates/bulk_metadata.html:445
+#: app/templates/bulk_metadata.html:451
 msgid "20 per page"
 msgstr "20 per sida"
 
-#: app/templates/bulk_metadata.html:446
+#: app/templates/bulk_metadata.html:452
 msgid "50 per page"
 msgstr "50 per sida"
 
-#: app/templates/bulk_metadata.html:447
+#: app/templates/bulk_metadata.html:453
 msgid "100 per page"
 msgstr "100 per sida"
 
-#: app/templates/bulk_metadata.html:448
+#: app/templates/bulk_metadata.html:454
 msgid "May be slow with many books"
 msgstr "Kan vara långsamt med många böcker"
 
-#: app/templates/bulk_metadata.html:461
+#: app/templates/bulk_metadata.html:467
 msgid "Delete book"
 msgstr "Radera bok"
 
-#: app/templates/bulk_metadata.html:464 app/templates/bulk_metadata.html:651
-#: app/templates/bulk_metadata.html:661 app/templates/bulk_metadata.html:706
-#: app/templates/bulk_metadata.html:719 app/templates/bulk_metadata.html:732
-#: app/templates/bulk_metadata.html:746 app/templates/bulk_metadata.html:757
-#: app/templates/bulk_metadata.html:771 app/templates/bulk_metadata.html:783
-#: app/templates/bulk_metadata.html:798 app/templates/bulk_metadata.html:811
-#: app/templates/bulk_metadata.html:821 app/templates/bulk_metadata.html:828
-#: app/templates/bulk_metadata.html:838 app/templates/bulk_metadata.html:877
-#: app/templates/bulk_metadata.html:934 app/templates/reader.html:518
+#: app/templates/bulk_metadata.html:470 app/templates/bulk_metadata.html:665
+#: app/templates/bulk_metadata.html:675 app/templates/bulk_metadata.html:720
+#: app/templates/bulk_metadata.html:733 app/templates/bulk_metadata.html:746
+#: app/templates/bulk_metadata.html:760 app/templates/bulk_metadata.html:771
+#: app/templates/bulk_metadata.html:785 app/templates/bulk_metadata.html:797
+#: app/templates/bulk_metadata.html:812 app/templates/bulk_metadata.html:825
+#: app/templates/bulk_metadata.html:835 app/templates/bulk_metadata.html:842
+#: app/templates/bulk_metadata.html:852 app/templates/bulk_metadata.html:891
+#: app/templates/bulk_metadata.html:948 app/templates/reader.html:518
 msgid "Close"
 msgstr "Stäng"
 
-#: app/templates/bulk_metadata.html:466
+#: app/templates/bulk_metadata.html:472
 msgid "Edit metadata"
 msgstr "Redigera metadata"
 
-#: app/templates/bulk_metadata.html:467
+#: app/templates/bulk_metadata.html:473
 msgid "Edit"
 msgstr "Redigera"
 
-#: app/templates/bulk_metadata.html:472 app/templates/bulk_metadata.html:473
+#: app/templates/bulk_metadata.html:478 app/templates/bulk_metadata.html:479
 #: app/templates/metadata.html:412 app/templates/metadata.html:413
 msgid "My rating"
 msgstr "Mitt betyg"
 
-#: app/templates/bulk_metadata.html:479 app/templates/metadata.html:419
+#: app/templates/bulk_metadata.html:485 app/templates/metadata.html:419
 msgid "Clear rating"
 msgstr "Ta bort betyg"
 
-#: app/templates/bulk_metadata.html:484
+#: app/templates/bulk_metadata.html:490
 msgid "Reading state"
 msgstr "Lässtatus"
 
-#: app/templates/bulk_metadata.html:492
+#: app/templates/bulk_metadata.html:498
 msgid "Mark as finished manually (without Kobo sync)"
 msgstr "Markera som läst manuellt (utan Kobo-synk)"
 
-#: app/templates/bulk_metadata.html:493
+#: app/templates/bulk_metadata.html:499
 msgid "Mark as finished"
 msgstr "Markera som läst"
 
-#: app/templates/bulk_metadata.html:496
+#: app/templates/bulk_metadata.html:502
 msgid "Reset reading state"
 msgstr "Nollställ lässtatus"
 
-#: app/templates/bulk_metadata.html:508
+#: app/templates/bulk_metadata.html:514
 msgid "Read in browser"
 msgstr "Läs i webbläsaren"
 
 # In-browser reader (reader.html, bulk_metadata.html book modal)
-#: app/templates/bulk_metadata.html:510
+#: app/templates/bulk_metadata.html:516
 msgid "Read"
 msgstr "Läs"
 
-#: app/templates/bulk_metadata.html:515 app/templates/bulk_metadata.html:995
+#: app/templates/bulk_metadata.html:522 app/templates/reader.html:400
+#: app/templates/reader.html:606
+msgid "Save for offline reading"
+msgstr "Spara för offline-läsning"
+
+#: app/templates/bulk_metadata.html:524 app/templates/bulk_metadata.html:1212
+msgid "Save for offline"
+msgstr "Spara offline"
+
+#: app/templates/bulk_metadata.html:529 app/templates/bulk_metadata.html:1009
 msgid "Search covers"
 msgstr "Sök omslag"
 
-#: app/templates/bulk_metadata.html:539 app/templates/bulk_metadata.html:624
-#: app/templates/bulk_metadata.html:1044 app/templates/metadata.html:454
+#: app/templates/bulk_metadata.html:553 app/templates/bulk_metadata.html:638
+#: app/templates/bulk_metadata.html:1058 app/templates/metadata.html:454
 #: app/templates/metadata.html:554
 msgid "Title"
 msgstr "Titel"
 
-#: app/templates/bulk_metadata.html:559
+#: app/templates/bulk_metadata.html:573
 msgid "Move to author folder"
 msgstr "Flytta till författarmapp"
 
-#: app/templates/bulk_metadata.html:569 app/templates/bulk_metadata.html:1047
+#: app/templates/bulk_metadata.html:583 app/templates/bulk_metadata.html:1061
 #: app/templates/metadata.html:466
 msgid "Part"
 msgstr "Del"
 
-#: app/templates/bulk_metadata.html:575
+#: app/templates/bulk_metadata.html:589
 msgid "Find series with AI"
 msgstr "Hitta serie med AI"
 
-#: app/templates/bulk_metadata.html:576
+#: app/templates/bulk_metadata.html:590
 msgid "Find series"
 msgstr "Hitta serie"
 
-#: app/templates/bulk_metadata.html:602 app/templates/metadata.html:490
+#: app/templates/bulk_metadata.html:616 app/templates/metadata.html:490
 msgid "(comma-separated)"
 msgstr "(kommaseparerat)"
 
-#: app/templates/bulk_metadata.html:603 app/templates/metadata.html:491
+#: app/templates/bulk_metadata.html:617 app/templates/metadata.html:491
 msgid "e.g. Fantasy, Adventure"
 msgstr "t.ex. Fantasy, Äventyr"
 
-#: app/templates/bulk_metadata.html:606 app/templates/bulk_metadata.html:632
-#: app/templates/bulk_metadata.html:1053 app/templates/metadata.html:493
+#: app/templates/bulk_metadata.html:620 app/templates/bulk_metadata.html:646
+#: app/templates/bulk_metadata.html:1067 app/templates/metadata.html:493
 msgid "Publication date"
 msgstr "Publiceringsdatum"
 
-#: app/templates/bulk_metadata.html:606 app/templates/metadata.html:493
+#: app/templates/bulk_metadata.html:620 app/templates/metadata.html:493
 msgid "(YYYY, YYYY-MM or YYYY-MM-DD)"
 msgstr "(YYYY, YYYY-MM eller YYYY-MM-DD)"
 
-#: app/templates/bulk_metadata.html:607 app/templates/metadata.html:494
+#: app/templates/bulk_metadata.html:621 app/templates/metadata.html:494
 msgid "e.g. 2010 or 2010-05-15"
 msgstr "t.ex. 2010 eller 2010-05-15"
 
-#: app/templates/bulk_metadata.html:610 app/templates/bulk_metadata.html:617
-#: app/templates/bulk_metadata.html:630 app/templates/bulk_metadata.html:1051
+#: app/templates/bulk_metadata.html:624 app/templates/bulk_metadata.html:631
+#: app/templates/bulk_metadata.html:644 app/templates/bulk_metadata.html:1065
 #: app/templates/metadata.html:496 app/templates/metadata.html:556
 msgid "Synopsis"
 msgstr "Synopsis"
 
-#: app/templates/bulk_metadata.html:622
+#: app/templates/bulk_metadata.html:636
 msgid "Fetch/update:"
 msgstr "Hämta/uppdatera:"
 
-#: app/templates/bulk_metadata.html:636
+#: app/templates/bulk_metadata.html:650
 msgid "None"
 msgstr "Inga"
 
-#: app/templates/bulk_metadata.html:638 app/templates/bulk_metadata.html:639
-#: app/templates/bulk_metadata.html:1085 app/templates/metadata.html:523
+#: app/templates/bulk_metadata.html:652 app/templates/bulk_metadata.html:653
+#: app/templates/bulk_metadata.html:1099 app/templates/metadata.html:523
 msgid "Search depth"
 msgstr "Sökdjup"
 
-#: app/templates/bulk_metadata.html:640 app/templates/bulk_metadata.html:1089
+#: app/templates/bulk_metadata.html:654 app/templates/bulk_metadata.html:1103
 #: app/templates/metadata.html:524
 msgid "Only local + the fastest sources"
 msgstr "Bara lokala + de snabbaste källorna"
 
-#: app/templates/bulk_metadata.html:640 app/templates/bulk_metadata.html:1086
+#: app/templates/bulk_metadata.html:654 app/templates/bulk_metadata.html:1100
 #: app/templates/metadata.html:524
 msgid "Quick"
 msgstr "Snabb"
 
-#: app/templates/bulk_metadata.html:641 app/templates/bulk_metadata.html:1090
+#: app/templates/bulk_metadata.html:655 app/templates/bulk_metadata.html:1104
 #: app/templates/metadata.html:525
 msgid "Escalates to more sources when needed"
 msgstr "Eskalerar till fler källor vid behov"
 
-#: app/templates/bulk_metadata.html:641 app/templates/bulk_metadata.html:1087
+#: app/templates/bulk_metadata.html:655 app/templates/bulk_metadata.html:1101
 #: app/templates/metadata.html:525 app/templates/reader.html:467
 #: app/templates/reader.html:476
 msgid "Normal"
 msgstr "Normal"
 
-#: app/templates/bulk_metadata.html:642 app/templates/bulk_metadata.html:1091
+#: app/templates/bulk_metadata.html:656 app/templates/bulk_metadata.html:1105
 #: app/templates/metadata.html:526
 msgid "All sources, slowest"
 msgstr "Alla källor, långsammast"
 
-#: app/templates/bulk_metadata.html:642 app/templates/bulk_metadata.html:1088
+#: app/templates/bulk_metadata.html:656 app/templates/bulk_metadata.html:1102
 #: app/templates/metadata.html:526 app/templates/settings_api.html:623
 msgid "Deep"
 msgstr "Djup"
 
-#: app/templates/bulk_metadata.html:647 app/templates/metadata.html:529
+#: app/templates/bulk_metadata.html:661 app/templates/metadata.html:529
 #: app/templates/metadata.html:548
 msgid "Fetch metadata"
 msgstr "Hämta metadata"
 
-#: app/templates/bulk_metadata.html:650 app/templates/metadata.html:503
+#: app/templates/bulk_metadata.html:664 app/templates/metadata.html:503
 #: app/templates/settings_ai.html:388
 msgid "Save"
 msgstr "Spara"
 
-#: app/templates/bulk_metadata.html:663
+#: app/templates/bulk_metadata.html:677
 msgid "View this series in the table"
 msgstr "Visa serien i tabellen"
 
-#: app/templates/bulk_metadata.html:664
+#: app/templates/bulk_metadata.html:678
 msgid "View in table"
 msgstr "Visa i tabell"
 
-#: app/templates/bulk_metadata.html:681
+#: app/templates/bulk_metadata.html:695
 msgid "Books in this series"
 msgstr "Böcker i den här serien"
 
-#: app/templates/bulk_metadata.html:696 app/templates/bulk_metadata.html:1070
+#: app/templates/bulk_metadata.html:710 app/templates/bulk_metadata.html:1084
 #: app/templates/metadata_ai_preview.html:307
 #: app/templates/metadata_enrichment_preview.html:329
 msgid "Field"
 msgstr "Fält"
 
-#: app/templates/bulk_metadata.html:697
+#: app/templates/bulk_metadata.html:711
 msgid "📋 Current"
 msgstr "📋 Nuvarande"
 
-#: app/templates/bulk_metadata.html:698
+#: app/templates/bulk_metadata.html:712
 msgid "Pick"
 msgstr "Välj"
 
-#: app/templates/bulk_metadata.html:699
+#: app/templates/bulk_metadata.html:713
 msgid "🔍 Fetched"
 msgstr "🔍 Hämtat"
 
-#: app/templates/bulk_metadata.html:705 app/templates/bulk_metadata.html:925
+#: app/templates/bulk_metadata.html:719 app/templates/bulk_metadata.html:939
 #: app/templates/metadata_ai_preview.html:353
 #: app/templates/metadata_enrichment_preview.html:378
 msgid "Save selected"
 msgstr "Spara valda"
 
-#: app/templates/bulk_metadata.html:733 app/templates/bulk_metadata.html:758
-#: app/templates/bulk_metadata.html:784 app/templates/bulk_metadata.html:1196
+#: app/templates/bulk_metadata.html:747 app/templates/bulk_metadata.html:772
+#: app/templates/bulk_metadata.html:798 app/templates/bulk_metadata.html:1210
 msgid "Apply"
 msgstr "Tillämpa"
 
-#: app/templates/bulk_metadata.html:748
+#: app/templates/bulk_metadata.html:762
 msgid "Fetch covers"
 msgstr "Hämta omslag"
 
-#: app/templates/bulk_metadata.html:755
+#: app/templates/bulk_metadata.html:769
 msgid "Abort search"
 msgstr "Avbryt sökning"
 
-#: app/templates/bulk_metadata.html:773 app/templates/bulk_metadata.html:1139
-#: app/templates/bulk_metadata.html:1140
+#: app/templates/bulk_metadata.html:787 app/templates/bulk_metadata.html:1153
+#: app/templates/bulk_metadata.html:1154
 msgid "Order the series"
 msgstr "Ordna serien"
 
-#: app/templates/bulk_metadata.html:800
+#: app/templates/bulk_metadata.html:814
 msgid "Rename the series"
 msgstr "Byt namn på serien"
 
-#: app/templates/bulk_metadata.html:856
+#: app/templates/bulk_metadata.html:870
 #, python-format
 msgid "%(count)d books selected"
 msgstr "%(count)d böcker valda"
 
-#: app/templates/bulk_metadata.html:857
+#: app/templates/bulk_metadata.html:871
 msgid "Deselect"
 msgstr "Avmarkera"
 
-#: app/templates/bulk_metadata.html:868
+#: app/templates/bulk_metadata.html:882
 msgid "Drop books to upload"
 msgstr "Släpp böcker för att ladda upp"
 
-#: app/templates/bulk_metadata.html:869
+#: app/templates/bulk_metadata.html:883
 msgid "EPUB, MOBI, AZW3, KEPUB, PDF, CBZ, CBR"
 msgstr "EPUB, MOBI, AZW3, KEPUB, PDF, CBZ, CBR"
 
-#: app/templates/bulk_metadata.html:875 app/templates/bulk_metadata.html:1094
-#: app/templates/bulk_metadata.html:1095
+#: app/templates/bulk_metadata.html:889 app/templates/bulk_metadata.html:1108
+#: app/templates/bulk_metadata.html:1109
 msgid "Uploading…"
 msgstr "Laddar upp…"
 
-#: app/templates/bulk_metadata.html:893 app/templates/bulk_metadata.html:938
+#: app/templates/bulk_metadata.html:907 app/templates/bulk_metadata.html:952
 msgid "books"
 msgstr "böcker"
 
-#: app/templates/bulk_metadata.html:894
+#: app/templates/bulk_metadata.html:908
 msgid "read"
 msgstr "lästa"
 
-#: app/templates/bulk_metadata.html:895
+#: app/templates/bulk_metadata.html:909
 msgid "Standalone books"
 msgstr "Fristående böcker"
 
-#: app/templates/bulk_metadata.html:896
+#: app/templates/bulk_metadata.html:910
 msgid "Series view"
 msgstr "Serievy"
 
-#: app/templates/bulk_metadata.html:900
+#: app/templates/bulk_metadata.html:914
 msgid "Connection lost."
 msgstr "Anslutningen bröts."
 
-#: app/templates/bulk_metadata.html:902
+#: app/templates/bulk_metadata.html:916
 msgid "Searching for ebooks..."
 msgstr "Söker e-böcker..."
 
-#: app/templates/bulk_metadata.html:903
+#: app/templates/bulk_metadata.html:917
 msgid "Fetching from library:"
 msgstr "Hämtar från bibliotek:"
 
-#: app/templates/bulk_metadata.html:904
+#: app/templates/bulk_metadata.html:918
 msgid "Could not fetch from the upstream library:"
 msgstr "Kunde inte hämta från huvudbiblioteket:"
 
-#: app/templates/bulk_metadata.html:905
+#: app/templates/bulk_metadata.html:919
 msgid "Scanning:"
 msgstr "Skannar:"
 
-#: app/templates/bulk_metadata.html:906
+#: app/templates/bulk_metadata.html:920
 #, python-brace-format
 msgid "Done! Added: {added}, updated: {updated}, removed: {removed}"
 msgstr "Klar! Tillagda: {added}, uppdaterade: {updated}, borttagna: {removed}"
 
-#: app/templates/bulk_metadata.html:907
+#: app/templates/bulk_metadata.html:921
 msgid "Error:"
 msgstr "Fel:"
 
-#: app/templates/bulk_metadata.html:908
+#: app/templates/bulk_metadata.html:922
 msgid "Syncing..."
 msgstr "Synkar..."
 
-#: app/templates/bulk_metadata.html:909
+#: app/templates/bulk_metadata.html:923
 #, python-brace-format
 msgid "Syncing {current}/{total}: {file}"
 msgstr "Synkar {current}/{total}: {file}"
 
-#: app/templates/bulk_metadata.html:910
+#: app/templates/bulk_metadata.html:924
 #, python-brace-format
 msgid "{synced} files synced."
 msgstr "{synced} filer synkade."
 
-#: app/templates/bulk_metadata.html:911
+#: app/templates/bulk_metadata.html:925
 #, python-brace-format
 msgid "{errors} errors."
 msgstr "{errors} fel."
 
-#: app/templates/bulk_metadata.html:912
+#: app/templates/bulk_metadata.html:926
 msgid "0 unsynced"
 msgstr "0 osynkade"
 
-#: app/templates/bulk_metadata.html:913
+#: app/templates/bulk_metadata.html:927
 msgid "Checking what needs syncing..."
 msgstr "Kontrollerar vad som behöver synkas..."
 
-#: app/templates/bulk_metadata.html:914
+#: app/templates/bulk_metadata.html:928
 msgid "Everything is already in sync."
 msgstr "Allt är redan synkat."
 
-#: app/templates/bulk_metadata.html:915
+#: app/templates/bulk_metadata.html:929
 #, python-brace-format
 msgid "{count} books will be pushed to the upstream library:"
 msgstr "{count} böcker skickas till uppströmsbiblioteket:"
 
-#: app/templates/bulk_metadata.html:916
+#: app/templates/bulk_metadata.html:930
 #, python-brace-format
 msgid "{count} old copies of moved books will be removed upstream:"
 msgstr "{count} gamla kopior av flyttade böcker tas bort uppströms:"
 
-#: app/templates/bulk_metadata.html:917
+#: app/templates/bulk_metadata.html:931
 #, python-brace-format
 msgid "Clean up {count} file(s) upstream"
 msgstr "Städa {count} fil(er) uppströms"
 
-#: app/templates/bulk_metadata.html:918
+#: app/templates/bulk_metadata.html:932
 #, python-brace-format
 msgid "Sync {count} books"
 msgstr "Synka {count} böcker"
 
-#: app/templates/bulk_metadata.html:919
+#: app/templates/bulk_metadata.html:933
 msgid "Could not load pending changes:"
 msgstr "Kunde inte ladda väntande ändringar:"
 
-#: app/templates/bulk_metadata.html:920
+#: app/templates/bulk_metadata.html:934
 #, python-brace-format
 msgid "modified {time}"
 msgstr "ändrad {time}"
 
-#: app/templates/bulk_metadata.html:921
+#: app/templates/bulk_metadata.html:935
 msgid "Unknown author"
 msgstr "Okänd författare"
 
-#: app/templates/bulk_metadata.html:922
+#: app/templates/bulk_metadata.html:936
 msgid "Choose at least one field."
 msgstr "Välj minst ett fält."
 
-#: app/templates/bulk_metadata.html:923
+#: app/templates/bulk_metadata.html:937
 msgid "Choose at least one book."
 msgstr "Välj minst en bok."
 
-#: app/templates/bulk_metadata.html:924 app/templates/bulk_metadata.html:1105
+#: app/templates/bulk_metadata.html:938 app/templates/bulk_metadata.html:1119
 msgid "Use"
 msgstr "Använd"
 
-#: app/templates/bulk_metadata.html:926
+#: app/templates/bulk_metadata.html:940
 msgid "Apply selected"
 msgstr "Applicera valda"
 
-#: app/templates/bulk_metadata.html:927
+#: app/templates/bulk_metadata.html:941
 msgid "Skip"
 msgstr "Hoppa över"
 
-#: app/templates/bulk_metadata.html:928
+#: app/templates/bulk_metadata.html:942
 msgid "— No matches"
 msgstr "— Inga träffar"
 
-#: app/templates/bulk_metadata.html:929
+#: app/templates/bulk_metadata.html:943
 msgid "No changes"
 msgstr "Inga ändringar"
 
-#: app/templates/bulk_metadata.html:931
+#: app/templates/bulk_metadata.html:945
 msgid "📄 Current"
 msgstr "📄 Nuvarande"
 
-#: app/templates/bulk_metadata.html:932 app/templates/bulk_metadata.html:1189
+#: app/templates/bulk_metadata.html:946 app/templates/bulk_metadata.html:1203
 #: app/templates/metadata_enrichment_preview.html:331
 msgid "Fetched"
 msgstr "Hämtat"
 
-#: app/templates/bulk_metadata.html:933
+#: app/templates/bulk_metadata.html:947
 msgid "Remaining"
 msgstr "Kvarstår"
 
-#: app/templates/bulk_metadata.html:935
+#: app/templates/bulk_metadata.html:949
 msgid "Search aborted"
 msgstr "Sökning avbruten"
 
-#: app/templates/bulk_metadata.html:936
+#: app/templates/bulk_metadata.html:950
 msgid "Searching metadata..."
 msgstr "Söker metadata…"
 
-#: app/templates/bulk_metadata.html:937
+#: app/templates/bulk_metadata.html:951
 msgid "book"
 msgstr "bok"
 
 # --- Plural / selection / batch UI strings ----------------------------------
-#: app/templates/bulk_metadata.html:939
+#: app/templates/bulk_metadata.html:953
 msgid "file"
 msgstr "fil"
 
-#: app/templates/bulk_metadata.html:940 app/templates/settings_kobo.html:377
+#: app/templates/bulk_metadata.html:954 app/templates/settings_kobo.html:377
 msgid "files"
 msgstr "filer"
 
-#: app/templates/bulk_metadata.html:941
+#: app/templates/bulk_metadata.html:955
 msgid "1 book selected"
 msgstr "1 bok vald"
 
-#: app/templates/bulk_metadata.html:942
+#: app/templates/bulk_metadata.html:956
 #, python-brace-format
 msgid "{count} books selected"
 msgstr "{count} böcker valda"
 
-#: app/templates/bulk_metadata.html:943
+#: app/templates/bulk_metadata.html:957
 msgid "1 group selected"
 msgstr "1 grupp vald"
 
-#: app/templates/bulk_metadata.html:944
+#: app/templates/bulk_metadata.html:958
 #, python-brace-format
 msgid "{count} groups selected"
 msgstr "{count} grupper valda"
 
-#: app/templates/bulk_metadata.html:945
+#: app/templates/bulk_metadata.html:959
 #, python-brace-format
 msgid "1 group ({files}) selected"
 msgstr "1 grupp ({files}) vald"
 
-#: app/templates/bulk_metadata.html:946
+#: app/templates/bulk_metadata.html:960
 #, python-brace-format
 msgid "{count} groups ({files}) selected"
 msgstr "{count} grupper ({files}) valda"
 
-#: app/templates/bulk_metadata.html:947
+#: app/templates/bulk_metadata.html:961
 msgid "1 book deleted."
 msgstr "1 bok raderad."
 
-#: app/templates/bulk_metadata.html:948
+#: app/templates/bulk_metadata.html:962
 #, python-brace-format
 msgid "{count} books deleted."
 msgstr "{count} böcker raderade."
 
-#: app/templates/bulk_metadata.html:949
+#: app/templates/bulk_metadata.html:963
 msgid "1 file could not be deleted."
 msgstr "1 fil kunde inte raderas."
 
-#: app/templates/bulk_metadata.html:950
+#: app/templates/bulk_metadata.html:964
 #, python-brace-format
 msgid "{count} files could not be deleted."
 msgstr "{count} filer kunde inte raderas."
 
-#: app/templates/bulk_metadata.html:951
+#: app/templates/bulk_metadata.html:965
 msgid "Deletion failed."
 msgstr "Radering misslyckades."
 
-#: app/templates/bulk_metadata.html:952
+#: app/templates/bulk_metadata.html:966
 msgid "Dismiss"
 msgstr "Avfärda"
 
-#: app/templates/bulk_metadata.html:953
+#: app/templates/bulk_metadata.html:967
 msgid "no activity"
 msgstr "ingen aktivitet"
 
-#: app/templates/bulk_metadata.html:954
+#: app/templates/bulk_metadata.html:968
 msgid "just now"
 msgstr "just nu"
 
-#: app/templates/bulk_metadata.html:955
+#: app/templates/bulk_metadata.html:969
 #, python-brace-format
 msgid "{n}h ago"
 msgstr "{n}h sen"
 
-#: app/templates/bulk_metadata.html:956
+#: app/templates/bulk_metadata.html:970
 #, python-brace-format
 msgid "{n}d ago"
 msgstr "{n}d sen"
 
-#: app/templates/bulk_metadata.html:957
+#: app/templates/bulk_metadata.html:971
 #, python-brace-format
 msgid "{n}w ago"
 msgstr "{n}v sen"
 
-#: app/templates/bulk_metadata.html:958
+#: app/templates/bulk_metadata.html:972
 #, python-brace-format
 msgid "{n}mo ago"
 msgstr "{n}mån sen"
 
-#: app/templates/bulk_metadata.html:959
+#: app/templates/bulk_metadata.html:973
 #, python-brace-format
 msgid "+{n} other paused"
 msgstr "+{n} andra pausade"
 
-#: app/templates/bulk_metadata.html:960
+#: app/templates/bulk_metadata.html:974
 msgid "Deleting…"
 msgstr "Raderar…"
 
-#: app/templates/bulk_metadata.html:961
+#: app/templates/bulk_metadata.html:975
 msgid "Weak match"
 msgstr "Svag match"
 
-#: app/templates/bulk_metadata.html:962
+#: app/templates/bulk_metadata.html:976
 msgid "Score:"
 msgstr "Poäng:"
 
-#: app/templates/bulk_metadata.html:963
+#: app/templates/bulk_metadata.html:977
 msgid "Source:"
 msgstr "Källa:"
 
-#: app/templates/bulk_metadata.html:964
+#: app/templates/bulk_metadata.html:978
 msgid "Metadata search done"
 msgstr "Metadatasökning klar"
 
-#: app/templates/bulk_metadata.html:965
+#: app/templates/bulk_metadata.html:979
 #, python-brace-format
 msgid "Error: {msg}"
 msgstr "Fel: {msg}"
 
-#: app/templates/bulk_metadata.html:966
+#: app/templates/bulk_metadata.html:980
 msgid "unknown"
 msgstr "okänt"
 
-#: app/templates/bulk_metadata.html:967
+#: app/templates/bulk_metadata.html:981
 msgid ""
 "Delete selected books?\n"
 "\n"
@@ -2200,7 +2209,7 @@ msgstr ""
 "• OK = ta bort från biblioteket (filer bevaras)\n"
 "• Avbryt om du ångrar dig"
 
-#: app/templates/bulk_metadata.html:968
+#: app/templates/bulk_metadata.html:982
 msgid ""
 "Type DELETE if you also want to permanently delete the FILES from disk.\n"
 "\n"
@@ -2210,737 +2219,750 @@ msgstr ""
 "\n"
 "Lämna tomt eller tryck Avbryt för att bara ta bort från biblioteket."
 
-#: app/templates/bulk_metadata.html:969
+#: app/templates/bulk_metadata.html:983
 msgid "Kept existing:"
 msgstr "Behöll befintliga:"
 
-#: app/templates/bulk_metadata.html:970
+#: app/templates/bulk_metadata.html:984
 msgid "Replaced (better quality):"
 msgstr "Ersatte (bättre kvalitet):"
 
-#: app/templates/bulk_metadata.html:971
+#: app/templates/bulk_metadata.html:985
 #, python-brace-format
 msgid "Added {count} fields"
 msgstr "Lade till {count} fält"
 
-#: app/templates/bulk_metadata.html:972
+#: app/templates/bulk_metadata.html:986
 msgid "The book already had all metadata — nothing changed."
 msgstr "Boken hade redan all metadata — inget ändrades."
 
-#: app/templates/bulk_metadata.html:973 app/templates/metadata.html:521
+#: app/templates/bulk_metadata.html:987 app/templates/metadata.html:521
 #: app/templates/metadata.html:543
 msgid "Searching..."
 msgstr "Söker..."
 
-#: app/templates/bulk_metadata.html:974
+#: app/templates/bulk_metadata.html:988
 msgid "Invalid language code"
 msgstr "Ogiltig språkkod"
 
-#: app/templates/bulk_metadata.html:975
+#: app/templates/bulk_metadata.html:989
 msgid "Search failed."
 msgstr "Sökningen misslyckades."
 
-#: app/templates/bulk_metadata.html:976
+#: app/templates/bulk_metadata.html:990
 msgid "Fetching metadata..."
 msgstr "Hämtar metadata…"
 
-#: app/templates/bulk_metadata.html:978
+#: app/templates/bulk_metadata.html:992
 msgid "Metadata fetched"
 msgstr "Metadata hämtad"
 
-#: app/templates/bulk_metadata.html:979
+#: app/templates/bulk_metadata.html:993
 msgid "Review and save."
 msgstr "Granska och spara."
 
-#: app/templates/bulk_metadata.html:980
+#: app/templates/bulk_metadata.html:994
 msgid "Fetch failed."
 msgstr "Hämtning misslyckades."
 
-#: app/templates/bulk_metadata.html:981
+#: app/templates/bulk_metadata.html:995
 msgid "Show source details"
 msgstr "Visa källdetaljer"
 
-#: app/templates/bulk_metadata.html:982
+#: app/templates/bulk_metadata.html:996
 msgid "Search aborted."
 msgstr "Sökning avbruten."
 
-#: app/templates/bulk_metadata.html:983
+#: app/templates/bulk_metadata.html:997
 msgid "AI is not configured."
 msgstr "AI är inte konfigurerat."
 
-#: app/templates/bulk_metadata.html:985
+#: app/templates/bulk_metadata.html:999
 msgid "The AI request took too long."
 msgstr "AI-anropet tog för lång tid."
 
-#: app/templates/bulk_metadata.html:986
+#: app/templates/bulk_metadata.html:1000
 msgid "API limit reached. Try again."
 msgstr "API-gränsen är nådd. Försök igen."
 
-#: app/templates/bulk_metadata.html:987
+#: app/templates/bulk_metadata.html:1001
 msgid "The AI service returned an invalid response."
 msgstr "AI-tjänsten returnerade ett ogiltigt svar."
 
-#: app/templates/bulk_metadata.html:988
+#: app/templates/bulk_metadata.html:1002
 msgid "No valid AI fields selected."
 msgstr "Inga giltiga AI-fält valda."
 
-#: app/templates/bulk_metadata.html:989
+#: app/templates/bulk_metadata.html:1003
 msgid "AI had no new suggestions."
 msgstr "AI hade inga nya förslag."
 
-#: app/templates/bulk_metadata.html:990
+#: app/templates/bulk_metadata.html:1004
 msgid "🤖 Asking AI..."
 msgstr "🤖 Frågar AI..."
 
-#: app/templates/bulk_metadata.html:991
+#: app/templates/bulk_metadata.html:1005
 msgid "🤖 AI suggestions — review"
 msgstr "🤖 AI-förslag — granska"
 
-#: app/templates/bulk_metadata.html:992
+#: app/templates/bulk_metadata.html:1006
 #, python-brace-format
 msgid "{count} AI fields applied. Review and save."
 msgstr "{count} AI-fält applicerade. Granska och spara."
 
-#: app/templates/bulk_metadata.html:996
+#: app/templates/bulk_metadata.html:1010
 msgid "Cover search failed."
 msgstr "Omslagssökning misslyckades."
 
-#: app/templates/bulk_metadata.html:997
+#: app/templates/bulk_metadata.html:1011
 msgid "Searched:"
 msgstr "Sökte:"
 
-#: app/templates/bulk_metadata.html:998
+#: app/templates/bulk_metadata.html:1012
 msgid "No covers found."
 msgstr "Inga omslag hittades."
 
-#: app/templates/bulk_metadata.html:999
+#: app/templates/bulk_metadata.html:1013
 msgid "Use fetched value"
 msgstr "Använd hämtat värde"
 
-#: app/templates/bulk_metadata.html:1000
+#: app/templates/bulk_metadata.html:1014
 msgid "Low confidence — please review this field"
 msgstr "Låg konfidans — granska detta fält"
 
-#: app/templates/bulk_metadata.html:1001
+#: app/templates/bulk_metadata.html:1015
 msgid "Kept"
 msgstr "Behölls"
 
-#: app/templates/bulk_metadata.html:1002
+#: app/templates/bulk_metadata.html:1016
 msgid "Choose source:"
 msgstr "Välj källa:"
 
-#: app/templates/bulk_metadata.html:1003
+#: app/templates/bulk_metadata.html:1017
 msgid "Source"
 msgstr "Källa"
 
-#: app/templates/bulk_metadata.html:1004
+#: app/templates/bulk_metadata.html:1018
 msgid "score"
 msgstr "poäng"
 
-#: app/templates/bulk_metadata.html:1005
+#: app/templates/bulk_metadata.html:1019
 msgid "No sources have data for this field."
 msgstr "Inga källor har data för detta fält."
 
-#: app/templates/bulk_metadata.html:1006
+#: app/templates/bulk_metadata.html:1020
 msgid "Choose at least one field to update."
 msgstr "Välj minst ett fält att uppdatera."
 
-#: app/templates/bulk_metadata.html:1007
+#: app/templates/bulk_metadata.html:1021
 msgid "No cached result — reload the page and run the search again."
 msgstr "Inget cachat resultat — ladda om sidan och kör sökningen igen."
 
-#: app/templates/bulk_metadata.html:1008
+#: app/templates/bulk_metadata.html:1022
 #, python-brace-format
 msgid "Saved! ({fields} fields × {books} formats)"
 msgstr "Sparad! ({fields} fält × {books} format)"
 
-#: app/templates/bulk_metadata.html:1009
+#: app/templates/bulk_metadata.html:1023
 msgid "No source details."
 msgstr "Inga källdetaljer."
 
-#: app/templates/bulk_metadata.html:1010
+#: app/templates/bulk_metadata.html:1024
 msgid "No cached result for this book."
 msgstr "Inget cachat resultat för denna bok."
 
-#: app/templates/bulk_metadata.html:1011
+#: app/templates/bulk_metadata.html:1025
 msgid "ℹ No changes — the book already had all metadata."
 msgstr "ℹ Inga ändringar — boken hade redan all metadata."
 
-#: app/templates/bulk_metadata.html:1012
+#: app/templates/bulk_metadata.html:1026
 msgid "ℹ Existing fields were kept. Only empty fields were filled in."
 msgstr "ℹ Befintliga fält behölls. Bara tomma fält fylldes i."
 
-#: app/templates/bulk_metadata.html:1013
+#: app/templates/bulk_metadata.html:1027
 #, python-brace-format
 msgid "{count} fields replaced due to better quality."
 msgstr "{count} fält ersattes pga bättre kvalitet."
 
-#: app/templates/bulk_metadata.html:1014
+#: app/templates/bulk_metadata.html:1028
 #, python-brace-format
 msgid "Showing {start}–{end} of {total} books"
 msgstr "Visar {start}–{end} av {total} böcker"
 
-#: app/templates/bulk_metadata.html:1015
+#: app/templates/bulk_metadata.html:1029
 msgid "No books match"
 msgstr "Inga böcker matchar"
 
-#: app/templates/bulk_metadata.html:1016
+#: app/templates/bulk_metadata.html:1030
 msgid "Showing 0 books"
 msgstr "Visar 0 böcker"
 
-#: app/templates/bulk_metadata.html:1017
+#: app/templates/bulk_metadata.html:1031
 msgid "Connection dropped."
 msgstr "Anslutningen bröts."
 
-#: app/templates/bulk_metadata.html:1018
+#: app/templates/bulk_metadata.html:1032
 msgid "Searching for duplicates..."
 msgstr "Söker efter dubbletter..."
 
-#: app/templates/bulk_metadata.html:1019
+#: app/templates/bulk_metadata.html:1033
 msgid "Error loading duplicates:"
 msgstr "Kunde inte ladda dubbletter:"
 
-#: app/templates/bulk_metadata.html:1020
+#: app/templates/bulk_metadata.html:1034
 msgid "Same ISBN"
 msgstr "Samma ISBN"
 
-#: app/templates/bulk_metadata.html:1021
+#: app/templates/bulk_metadata.html:1035
 msgid "Same title"
 msgstr "Samma titel"
 
-#: app/templates/bulk_metadata.html:1022
+#: app/templates/bulk_metadata.html:1036
 msgid "Similar title"
 msgstr "Liknande titel"
 
-#: app/templates/bulk_metadata.html:1023
+#: app/templates/bulk_metadata.html:1037
 msgid "No duplicates found"
 msgstr "Inga dubbletter hittades"
 
-#: app/templates/bulk_metadata.html:1024
+#: app/templates/bulk_metadata.html:1038
 msgid "Potential duplicate groups found"
 msgstr "Potentiella dubblettgrupper hittade"
 
-#: app/templates/bulk_metadata.html:1025
+#: app/templates/bulk_metadata.html:1039
 msgid "Skip — not duplicates"
 msgstr "Hoppa över — inte dubbletter"
 
-#: app/templates/bulk_metadata.html:1027
+#: app/templates/bulk_metadata.html:1041
 msgid "At least one book must be kept"
 msgstr "Minst en bok måste behållas"
 
-#: app/templates/bulk_metadata.html:1028
+#: app/templates/bulk_metadata.html:1042
 msgid "Delete file? This cannot be undone."
 msgstr "Radera filen? Detta kan inte ångras."
 
-#: app/templates/bulk_metadata.html:1029
+#: app/templates/bulk_metadata.html:1043
 #, python-brace-format
 msgid "Delete {count} files? This cannot be undone."
 msgstr "Radera {count} filer? Detta kan inte ångras."
 
-#: app/templates/bulk_metadata.html:1030
+#: app/templates/bulk_metadata.html:1044
 #, python-brace-format
 msgid "Could not delete {count} file(s)."
 msgstr "Kunde inte radera {count} fil(er)."
 
-#: app/templates/bulk_metadata.html:1031
+#: app/templates/bulk_metadata.html:1045
 msgid "authors"
 msgstr "författare"
 
-#: app/templates/bulk_metadata.html:1032
+#: app/templates/bulk_metadata.html:1046
 msgid "reading"
 msgstr "läser"
 
-#: app/templates/bulk_metadata.html:1036
+#: app/templates/bulk_metadata.html:1050
 msgid "Click to mark as finished"
 msgstr "Klicka för att markera som läst"
 
-#: app/templates/bulk_metadata.html:1037
+#: app/templates/bulk_metadata.html:1051
 msgid "Click to reset to unread"
 msgstr "Klicka för att återställa till oläst"
 
-#: app/templates/bulk_metadata.html:1038
+#: app/templates/bulk_metadata.html:1052
 #, python-brace-format
 msgid "replaced {count}"
 msgstr "ersatte {count}"
 
-#: app/templates/bulk_metadata.html:1039
+#: app/templates/bulk_metadata.html:1053
 msgid "👁 Review"
 msgstr "👁 Granska"
 
-#: app/templates/bulk_metadata.html:1040
+#: app/templates/bulk_metadata.html:1054
 msgid "✗ No match"
 msgstr "✗ Ingen träff"
 
-#: app/templates/bulk_metadata.html:1041
+#: app/templates/bulk_metadata.html:1055
 msgid "⏭ Skipped"
 msgstr "⏭ Hoppad"
 
-#: app/templates/bulk_metadata.html:1042
+#: app/templates/bulk_metadata.html:1056
 msgid "⚠ Source error"
 msgstr "⚠ Källfel"
 
-#: app/templates/bulk_metadata.html:1043
+#: app/templates/bulk_metadata.html:1057
 msgid "Added:"
 msgstr "Lade till:"
 
-#: app/templates/bulk_metadata.html:1054
+#: app/templates/bulk_metadata.html:1068
 msgid "by"
 msgstr "av"
 
-#: app/templates/bulk_metadata.html:1056
+#: app/templates/bulk_metadata.html:1070
 msgid "No synopsis available."
 msgstr "Ingen synopsis tillgänglig."
 
-#: app/templates/bulk_metadata.html:1057
+#: app/templates/bulk_metadata.html:1071
 msgid "Started"
 msgstr "Påbörjad"
 
-#: app/templates/bulk_metadata.html:1058
+#: app/templates/bulk_metadata.html:1072
 msgid "Times started"
 msgstr "Påbörjad gånger"
 
-#: app/templates/bulk_metadata.html:1059
+#: app/templates/bulk_metadata.html:1073
 msgid "Last update"
 msgstr "Senast uppdaterad"
 
-#: app/templates/bulk_metadata.html:1060
+#: app/templates/bulk_metadata.html:1074
 msgid "Marked as finished. Sync your Kobo to push the change."
 msgstr "Markerad som läst. Synka din Kobo för att skicka ändringen."
 
-#: app/templates/bulk_metadata.html:1061
+#: app/templates/bulk_metadata.html:1075
 msgid "Could not update reading state."
 msgstr "Kunde inte uppdatera lässtatus."
 
-#: app/templates/bulk_metadata.html:1062
+#: app/templates/bulk_metadata.html:1076
 msgid "Reading state cleared."
 msgstr "Lässtatus nollställd."
 
-#: app/templates/bulk_metadata.html:1063
+#: app/templates/bulk_metadata.html:1077
 msgid "≥90 strong match"
 msgstr "≥90 stark match"
 
-#: app/templates/bulk_metadata.html:1064
+#: app/templates/bulk_metadata.html:1078
 msgid "70–89 review"
 msgstr "70–89 granska"
 
-#: app/templates/bulk_metadata.html:1065
+#: app/templates/bulk_metadata.html:1079
 msgid "50–69 uncertain"
 msgstr "50–69 osäker"
 
-#: app/templates/bulk_metadata.html:1066
+#: app/templates/bulk_metadata.html:1080
 msgid "<50 no match"
 msgstr "<50 ingen match"
 
-#: app/templates/bulk_metadata.html:1067
+#: app/templates/bulk_metadata.html:1081
 msgid "TITLE"
 msgstr "TITEL"
 
-#: app/templates/bulk_metadata.html:1068
+#: app/templates/bulk_metadata.html:1082
 msgid "SCORE"
 msgstr "POÄNG"
 
-#: app/templates/bulk_metadata.html:1069
+#: app/templates/bulk_metadata.html:1083
 msgid "RESULT"
 msgstr "RESULTAT"
 
-#: app/templates/bulk_metadata.html:1071
+#: app/templates/bulk_metadata.html:1085
 msgid "🤖 AI"
 msgstr "🤖 AI"
 
-#: app/templates/bulk_metadata.html:1072
+#: app/templates/bulk_metadata.html:1086
 msgid "Series number"
 msgstr "Serienummer"
 
-#: app/templates/bulk_metadata.html:1074
+#: app/templates/bulk_metadata.html:1088
 msgid "✓ Saved automatically"
 msgstr "✓ Sparad automatiskt"
 
-#: app/templates/bulk_metadata.html:1075
+#: app/templates/bulk_metadata.html:1089
 msgid "👁 Review recommended"
 msgstr "👁 Rekommenderas granska"
 
-#: app/templates/bulk_metadata.html:1076
+#: app/templates/bulk_metadata.html:1090
 msgid "✗ No secure match"
 msgstr "✗ Ingen säker match"
 
-#: app/templates/bulk_metadata.html:1077
+#: app/templates/bulk_metadata.html:1091
 msgid "No result"
 msgstr "Inget resultat"
 
-#: app/templates/bulk_metadata.html:1078
+#: app/templates/bulk_metadata.html:1092
 msgid "✓ Metadata was added automatically"
 msgstr "✓ Metadata lades till automatiskt"
 
-#: app/templates/bulk_metadata.html:1079
+#: app/templates/bulk_metadata.html:1093
 msgid "replaced —"
 msgstr "ersattes —"
 
-#: app/templates/bulk_metadata.html:1080
+#: app/templates/bulk_metadata.html:1094
 #: app/templates/metadata_ai_preview.html:308
 #: app/templates/metadata_enrichment_preview.html:330
 msgid "Current"
 msgstr "Nuvarande"
 
-#: app/templates/bulk_metadata.html:1081
+#: app/templates/bulk_metadata.html:1095
 #: app/templates/metadata_enrichment_preview.html:357
 msgid "Current cover"
 msgstr "Nuvarande omslag"
 
-#: app/templates/bulk_metadata.html:1082
+#: app/templates/bulk_metadata.html:1096
 #: app/templates/metadata_ai_preview.html:320
 #: app/templates/metadata_enrichment_preview.html:343
 #: app/templates/metadata_enrichment_preview.html:358
 msgid "(missing)"
 msgstr "(saknas)"
 
-#: app/templates/bulk_metadata.html:1083
+#: app/templates/bulk_metadata.html:1097
 #: app/templates/metadata_enrichment_preview.html:362
 msgid "Fetched cover"
 msgstr "Hämtat omslag"
 
-#: app/templates/bulk_metadata.html:1084
+#: app/templates/bulk_metadata.html:1098
 msgid "(none)"
 msgstr "(inget)"
 
-#: app/templates/bulk_metadata.html:1092 app/templates/metadata.html:552
+#: app/templates/bulk_metadata.html:1106 app/templates/metadata.html:552
 msgid "Tier"
 msgstr "Nivå"
 
-#: app/templates/bulk_metadata.html:1093 app/templates/metadata.html:553
+#: app/templates/bulk_metadata.html:1107 app/templates/metadata.html:553
 msgid "sources"
 msgstr "Källor"
 
-#: app/templates/bulk_metadata.html:1096
+#: app/templates/bulk_metadata.html:1110
 msgid "Added"
 msgstr "Tillagd"
 
-#: app/templates/bulk_metadata.html:1097
+#: app/templates/bulk_metadata.html:1111
 msgid "Updated"
 msgstr "Uppdaterad"
 
-#: app/templates/bulk_metadata.html:1098
+#: app/templates/bulk_metadata.html:1112
 msgid "Already in library"
 msgstr "Finns redan i biblioteket"
 
-#: app/templates/bulk_metadata.html:1099
+#: app/templates/bulk_metadata.html:1113
 msgid "Unsupported format"
 msgstr "Format som inte stöds"
 
 # --- Plural / selection / batch UI strings ----------------------------------
-#: app/templates/bulk_metadata.html:1100
+#: app/templates/bulk_metadata.html:1114
 msgid "Failed"
 msgstr "Misslyckades"
 
-#: app/templates/bulk_metadata.html:1101
+#: app/templates/bulk_metadata.html:1115
 #, python-brace-format
 msgid "{added} added, {skipped} skipped, {errors} failed"
 msgstr "{added} tillagda, {skipped} överhoppade, {errors} misslyckade"
 
-#: app/templates/bulk_metadata.html:1102
+#: app/templates/bulk_metadata.html:1116
 msgid "Refreshing…"
 msgstr "Uppdaterar…"
 
-#: app/templates/bulk_metadata.html:1103
+#: app/templates/bulk_metadata.html:1117
 #, python-brace-format
 msgid "Authors: {known} known · {review} to review · {missing} missing"
 msgstr "Författare: {known} kända · {review} att granska · {missing} saknas"
 
-#: app/templates/bulk_metadata.html:1104
+#: app/templates/bulk_metadata.html:1118
 #, python-brace-format
 msgid "Did you mean {name}?"
 msgstr "Menade du {name}?"
 
-#: app/templates/bulk_metadata.html:1106
+#: app/templates/bulk_metadata.html:1120
 #, python-brace-format
 msgid "Create new: “{name}”"
 msgstr "Skapa ny: ”{name}”"
 
-#: app/templates/bulk_metadata.html:1107
+#: app/templates/bulk_metadata.html:1121
 #, python-brace-format
 msgid "“{name}” is very similar to “{existing}”. Create as a new author anyway?"
 msgstr "”{name}” är mycket likt ”{existing}”. Skapa som ny författare ändå?"
 
-#: app/templates/bulk_metadata.html:1108
+#: app/templates/bulk_metadata.html:1122
 #, python-brace-format
 msgid "Will be linked to {name} on save."
 msgstr "Länkas till {name} när du sparar."
 
-#: app/templates/bulk_metadata.html:1109
+#: app/templates/bulk_metadata.html:1123
 msgid "Resembles a known author — pick one in the list or keep your text."
 msgstr "Liknar en känd författare — välj en i listan eller behåll din text."
 
-#: app/templates/bulk_metadata.html:1110
+#: app/templates/bulk_metadata.html:1124
 msgid "New author — saving confirms the spelling."
 msgstr "Ny författare — att spara bekräftar stavningen."
 
-#: app/templates/bulk_metadata.html:1111
+#: app/templates/bulk_metadata.html:1125
 msgid "No author in the file — type or pick one."
 msgstr "Ingen författare i filen — skriv eller välj en."
 
-#: app/templates/bulk_metadata.html:1112
+#: app/templates/bulk_metadata.html:1126
 msgid "No registered authors match."
 msgstr "Inga registrerade författare matchar."
 
-#: app/templates/bulk_metadata.html:1113
+#: app/templates/bulk_metadata.html:1127
 msgid "Author search failed."
 msgstr "Författarsökningen misslyckades."
 
-#: app/templates/bulk_metadata.html:1114
+#: app/templates/bulk_metadata.html:1128
 msgid "Remove author"
 msgstr "Ta bort författare"
 
-#: app/templates/bulk_metadata.html:1115
+#: app/templates/bulk_metadata.html:1129
 msgid "Author name"
 msgstr "Författarnamn"
 
-#: app/templates/bulk_metadata.html:1116
+#: app/templates/bulk_metadata.html:1130
 #, python-brace-format
 msgid "Target: {path}"
 msgstr "Mål: {path}"
 
-#: app/templates/bulk_metadata.html:1117
+#: app/templates/bulk_metadata.html:1131
 msgid "Add an author first — the folder is named after the primary author."
 msgstr "Lägg till en författare först — mappen namnges efter huvudförfattaren."
 
-#: app/templates/bulk_metadata.html:1118
+#: app/templates/bulk_metadata.html:1132
 msgid "A file with the same name already exists in the target folder."
 msgstr "En fil med samma namn finns redan i målmappen."
 
-#: app/templates/bulk_metadata.html:1119
+#: app/templates/bulk_metadata.html:1133
 #, python-brace-format
 msgid "Moved {count} file(s) to “{folder}”."
 msgstr "Flyttade {count} fil(er) till ”{folder}”."
 
-#: app/templates/bulk_metadata.html:1120
+#: app/templates/bulk_metadata.html:1134
 msgid "The move failed — no files were changed."
 msgstr "Flytten misslyckades — inga filer ändrades."
 
-#: app/templates/bulk_metadata.html:1121
+#: app/templates/bulk_metadata.html:1135
 msgid "No supported files were selected."
 msgstr "Inga filer med format som stöds valdes."
 
-#: app/templates/bulk_metadata.html:1123
+#: app/templates/bulk_metadata.html:1137
 msgid "Newly added"
 msgstr "Nytillagt"
 
-#: app/templates/bulk_metadata.html:1124
+#: app/templates/bulk_metadata.html:1138
 #, python-brace-format
 msgid "+{count} more"
 msgstr "+{count} till"
 
-#: app/templates/bulk_metadata.html:1126
+#: app/templates/bulk_metadata.html:1140
 msgid "Reading the books..."
 msgstr "Läser böckerna ..."
 
-#: app/templates/bulk_metadata.html:1127
+#: app/templates/bulk_metadata.html:1141
 msgid "books to look at"
 msgstr "böcker att titta på"
 
-#: app/templates/bulk_metadata.html:1128
+#: app/templates/bulk_metadata.html:1142
 msgid "Every book agrees with its recorded language."
 msgstr "Alla böcker stämmer med sitt angivna språk."
 
-#: app/templates/bulk_metadata.html:1129
+#: app/templates/bulk_metadata.html:1143
 msgid "files could not be read (PDF, MOBI or no text)."
 msgstr "filer kunde inte läsas (PDF, MOBI eller ingen text)."
 
-#: app/templates/bulk_metadata.html:1130
+#: app/templates/bulk_metadata.html:1144
 msgid "The check could not finish."
 msgstr "Kontrollen kunde inte slutföras."
 
-#: app/templates/bulk_metadata.html:1131 app/templates/bulk_metadata.html:1175
+#: app/templates/bulk_metadata.html:1145 app/templates/bulk_metadata.html:1189
 msgid "books updated"
 msgstr "böcker uppdaterade"
 
-#: app/templates/bulk_metadata.html:1132 app/templates/bulk_metadata.html:1176
+#: app/templates/bulk_metadata.html:1146 app/templates/bulk_metadata.html:1190
 msgid "could not be written"
 msgstr "kunde inte skrivas"
 
-#: app/templates/bulk_metadata.html:1133
+#: app/templates/bulk_metadata.html:1147
 msgid "The two samples disagreed"
 msgstr "De två styckena var inte överens"
 
-#: app/templates/bulk_metadata.html:1134
+#: app/templates/bulk_metadata.html:1148
 msgid "Recorded"
 msgstr "Angivet"
 
-#: app/templates/bulk_metadata.html:1135
+#: app/templates/bulk_metadata.html:1149
 msgid "Detected"
 msgstr "Hittat"
 
-#: app/templates/bulk_metadata.html:1136
+#: app/templates/bulk_metadata.html:1150
 msgid "Confidence"
 msgstr "Säkerhet"
 
-#: app/templates/bulk_metadata.html:1137 app/templates/bulk_metadata.html:1172
+#: app/templates/bulk_metadata.html:1151 app/templates/bulk_metadata.html:1186
 msgid "Write to the files too"
 msgstr "Skriv även till filerna"
 
-#: app/templates/bulk_metadata.html:1138 app/templates/bulk_metadata.html:1173
+#: app/templates/bulk_metadata.html:1152 app/templates/bulk_metadata.html:1187
 msgid "reload on Kobo"
 msgstr "laddas om på Kobo"
 
-#: app/templates/bulk_metadata.html:1141
+#: app/templates/bulk_metadata.html:1155
 msgid "Order the author's series"
 msgstr "Ordna författarens serier"
 
-#: app/templates/bulk_metadata.html:1143
+#: app/templates/bulk_metadata.html:1157
 msgid "Reading the series..."
 msgstr "Läser serien ..."
 
-#: app/templates/bulk_metadata.html:1144
+#: app/templates/bulk_metadata.html:1158
 msgid "The proposal could not be made."
 msgstr "Förslaget kunde inte tas fram."
 
-#: app/templates/bulk_metadata.html:1145
+#: app/templates/bulk_metadata.html:1159
 msgid "No AI is configured in Settings."
 msgstr "Ingen AI är inställd under Inställningar."
 
-#: app/templates/bulk_metadata.html:1146
+#: app/templates/bulk_metadata.html:1160
 msgid "Too many books for one proposal (max 60)."
 msgstr "För många böcker för ett förslag (max 60)."
 
-#: app/templates/bulk_metadata.html:1147
+#: app/templates/bulk_metadata.html:1161
 msgid "No books to order."
 msgstr "Inga böcker att ordna."
 
-#: app/templates/bulk_metadata.html:1148
+#: app/templates/bulk_metadata.html:1162
 msgid "That author could not be found."
 msgstr "Författaren kunde inte hittas."
 
-#: app/templates/bulk_metadata.html:1153
+#: app/templates/bulk_metadata.html:1167
 msgid "Nothing to change."
 msgstr "Inget att ändra."
 
-#: app/templates/bulk_metadata.html:1155
+#: app/templates/bulk_metadata.html:1169
 msgid "Suggested"
 msgstr "Förslag"
 
-#: app/templates/bulk_metadata.html:1156
+#: app/templates/bulk_metadata.html:1170
 msgid "Differs from what is recorded"
 msgstr "Avviker från det angivna"
 
-#: app/templates/bulk_metadata.html:1157
+#: app/templates/bulk_metadata.html:1171
 msgid "Unchanged"
 msgstr "Oförändrad"
 
-#: app/templates/bulk_metadata.html:1158
+#: app/templates/bulk_metadata.html:1172
 msgid "Spelling only"
 msgstr "Endast stavning"
 
-#: app/templates/bulk_metadata.html:1159
+#: app/templates/bulk_metadata.html:1173
 msgid "Not in the series"
 msgstr "Ingår inte i serien"
 
-#: app/templates/bulk_metadata.html:1160
+#: app/templates/bulk_metadata.html:1174
 msgid "No answer"
 msgstr "Inget svar"
 
-#: app/templates/bulk_metadata.html:1161 app/templates/bulk_metadata.html:1162
+#: app/templates/bulk_metadata.html:1175 app/templates/bulk_metadata.html:1176
 msgid "Not in a series"
 msgstr "Ingår inte i någon serie"
 
-#: app/templates/bulk_metadata.html:1163
+#: app/templates/bulk_metadata.html:1177
 msgid "co-written"
 msgstr "samförfattad"
 
-#: app/templates/bulk_metadata.html:1164 app/templates/bulk_metadata.html:1188
+#: app/templates/bulk_metadata.html:1178 app/templates/bulk_metadata.html:1202
 msgid "Now"
 msgstr "Nu"
 
-#: app/templates/bulk_metadata.html:1165
+#: app/templates/bulk_metadata.html:1179
 msgid "Becomes"
 msgstr "Blir"
 
-#: app/templates/bulk_metadata.html:1166
+#: app/templates/bulk_metadata.html:1180
 msgid "duplicate numbers"
 msgstr "dubbletter"
 
-#: app/templates/bulk_metadata.html:1167
+#: app/templates/bulk_metadata.html:1181
 msgid "gap at"
 msgstr "lucka vid"
 
-#: app/templates/bulk_metadata.html:1168
+#: app/templates/bulk_metadata.html:1182
 msgid "Spelling follows the library."
 msgstr "Stavningen följer biblioteket."
 
-#: app/templates/bulk_metadata.html:1169
+#: app/templates/bulk_metadata.html:1183
 msgid "Change the series spelling on all of them"
 msgstr "Byt seriestavning på alla"
 
-#: app/templates/bulk_metadata.html:1170
+#: app/templates/bulk_metadata.html:1184
 msgid "Wikidata"
 msgstr "Wikidata"
 
-#: app/templates/bulk_metadata.html:1171
+#: app/templates/bulk_metadata.html:1185
 msgid "applies to N formats"
 msgstr "gäller N format"
 
-#: app/templates/bulk_metadata.html:1174
+#: app/templates/bulk_metadata.html:1188
 msgid "A series change reloads the book on a synced Kobo."
 msgstr "En serieändring laddar om boken på en synkad Kobo."
 
-#: app/templates/bulk_metadata.html:1178
+#: app/templates/bulk_metadata.html:1192
 msgid "N books"
 msgstr "N böcker"
 
-#: app/templates/bulk_metadata.html:1179
+#: app/templates/bulk_metadata.html:1193
 msgid "Give the series a name."
 msgstr "Ge serien ett namn."
 
-#: app/templates/bulk_metadata.html:1180
+#: app/templates/bulk_metadata.html:1194
 msgid "The rename failed."
 msgstr "Namnbytet misslyckades."
 
-#: app/templates/bulk_metadata.html:1181
+#: app/templates/bulk_metadata.html:1195
 #, python-brace-format
 msgid "{count} books with no cover"
 msgstr "{count} böcker saknar omslag"
 
-#: app/templates/bulk_metadata.html:1182
+#: app/templates/bulk_metadata.html:1196
 msgid "Looking for covers..."
 msgstr "Söker omslag …"
 
-#: app/templates/bulk_metadata.html:1183
+#: app/templates/bulk_metadata.html:1197
 msgid "covers to review"
 msgstr "omslag att granska"
 
-#: app/templates/bulk_metadata.html:1184
+#: app/templates/bulk_metadata.html:1198
 msgid "No covers were found."
 msgstr "Inga omslag hittades."
 
-#: app/templates/bulk_metadata.html:1185
+#: app/templates/bulk_metadata.html:1199
 msgid "books had no cover to fetch."
 msgstr "böcker hade inget omslag att hämta."
 
-#: app/templates/bulk_metadata.html:1186
+#: app/templates/bulk_metadata.html:1200
 #, python-brace-format
 msgid "The run took the first {max}; {rest} are left. Run it again for those."
 msgstr "Körningen tog de första {max}; {rest} återstår. Kör igen för dem."
 
-#: app/templates/bulk_metadata.html:1187
+#: app/templates/bulk_metadata.html:1201
 msgid "The cover search could not finish."
 msgstr "Omslagssökningen kunde inte slutföras."
 
-#: app/templates/bulk_metadata.html:1190
+#: app/templates/bulk_metadata.html:1204
 msgid "books reload on Kobo."
 msgstr "böcker laddas om på Kobo."
 
-#: app/templates/bulk_metadata.html:1191
+#: app/templates/bulk_metadata.html:1205
 msgid "Saving covers..."
 msgstr "Sparar omslag …"
 
-#: app/templates/bulk_metadata.html:1192
+#: app/templates/bulk_metadata.html:1206
 msgid "covers saved"
 msgstr "omslag sparade"
 
-#: app/templates/bulk_metadata.html:1193
+#: app/templates/bulk_metadata.html:1207
 msgid "could not be saved"
 msgstr "kunde inte sparas"
 
-#: app/templates/bulk_metadata.html:1197
-msgid "Saving..."
-msgstr "Sparar ..."
+#: app/templates/bulk_metadata.html:1211
+#, python-brace-format
+msgid "{count} downloaded"
+msgstr "{count} nedladdade"
+
+#: app/templates/bulk_metadata.html:1213
+msgid "Saved offline"
+msgstr "Sparad offline"
+
+#: app/templates/bulk_metadata.html:1214 app/templates/reader.html:607
+msgid "Saving for offline…"
+msgstr "Sparar för offline…"
+
+#: app/templates/bulk_metadata.html:1215 app/templates/reader.html:609
+msgid "Could not save for offline"
+msgstr "Kunde inte spara för offline"
 
 #: app/templates/cover_lookup.html:16 app/templates/metadata.html:537
 msgid "Fetch cover"
@@ -3117,6 +3139,26 @@ msgstr "Omslag är låst — bocka ur låsning för att byta."
 msgid "Sources:"
 msgstr "Källor:"
 
+#: app/templates/offline.html:13 app/templates/offline.html:76
+msgid "Downloaded books"
+msgstr "Nedladdade böcker"
+
+#: app/templates/offline.html:77
+msgid "Books saved for offline reading. This page works with no connection."
+msgstr "Böcker sparade för offline-läsning. Den här sidan fungerar utan uppkoppling."
+
+#: app/templates/offline.html:78
+msgid "Back to the library"
+msgstr "Tillbaka till biblioteket"
+
+#: app/templates/offline.html:84
+msgid ""
+"No books saved for offline reading yet. Open a book and tap “Save for "
+"offline”."
+msgstr ""
+"Inga böcker sparade för offline-läsning än. Öppna en bok och tryck "
+"”Spara offline”."
+
 #: app/templates/reader.html:22 app/templates/reader.html:397
 msgid "Reader"
 msgstr "Läsare"
@@ -3124,10 +3166,6 @@ msgstr "Läsare"
 #: app/templates/reader.html:394
 msgid "Back"
 msgstr "Tillbaka"
-
-#: app/templates/reader.html:400 app/templates/reader.html:611
-msgid "Save for offline reading"
-msgstr "Spara för offline-läsning"
 
 #: app/templates/reader.html:404
 msgid "Give this book to someone"
@@ -3245,7 +3283,7 @@ msgstr "Börja om från början"
 msgid "Dictionary"
 msgstr "Ordbok"
 
-#: app/templates/reader.html:510 app/templates/reader.html:621
+#: app/templates/reader.html:510 app/templates/reader.html:616
 msgid "Move up"
 msgstr "Flytta upp"
 
@@ -3273,23 +3311,15 @@ msgstr "Förklara med AI"
 msgid "AI — in this sentence"
 msgstr "AI — i den här meningen"
 
-#: app/templates/reader.html:610
+#: app/templates/reader.html:605
 msgid "Could not open this book."
 msgstr "Kunde inte öppna boken."
 
-#: app/templates/reader.html:612
-msgid "Saving for offline…"
-msgstr "Sparar för offline…"
-
-#: app/templates/reader.html:613
+#: app/templates/reader.html:608
 msgid "Saved — tap to remove offline copy"
 msgstr "Sparad — tryck för att ta bort offline-kopian"
 
-#: app/templates/reader.html:614
-msgid "Could not save for offline"
-msgstr "Kunde inte spara för offline"
-
-#: app/templates/reader.html:615
+#: app/templates/reader.html:610
 msgid ""
 "This book is copy-protected (DRM) and can’t be shared. The recipient "
 "wouldn’t be able to open the file — the protection is tied to your "
@@ -3298,7 +3328,7 @@ msgstr ""
 "Den här boken är kopieringsskyddad (DRM) och kan inte delas. Mottagaren "
 "skulle ändå inte kunna öppna filen — skyddet är låst till ditt konto."
 
-#: app/templates/reader.html:616
+#: app/templates/reader.html:611
 msgid ""
 "Sharing needs a secure (HTTPS) connection. Open Colophon via your "
 "Tailscale address (https://…) instead of the plain http:// address, then "
@@ -3308,7 +3338,7 @@ msgstr ""
 "Tailscale-adress (https://…) i stället för den vanliga http://-adressen "
 "och försök igen."
 
-#: app/templates/reader.html:617
+#: app/templates/reader.html:612
 msgid ""
 "Your browser can’t share files directly — the book will download instead,"
 " so you can send it yourself."
@@ -3316,76 +3346,76 @@ msgstr ""
 "Din webbläsare kan inte dela filer direkt — boken laddas ned i stället, "
 "så att du kan skicka den själv."
 
-#: app/templates/reader.html:618
+#: app/templates/reader.html:613
 msgid "Could not share this book."
 msgstr "Det gick inte att dela boken."
 
-#: app/templates/reader.html:619
+#: app/templates/reader.html:614
 msgid "Preparing book to share…"
 msgstr "Förbereder boken för delning…"
 
-#: app/templates/reader.html:620
+#: app/templates/reader.html:615
 msgid "Selected text"
 msgstr "Markerad text"
 
-#: app/templates/reader.html:622
+#: app/templates/reader.html:617
 msgid "Move down"
 msgstr "Flytta ner"
 
-#: app/templates/reader.html:623
+#: app/templates/reader.html:618
 msgid "Copied."
 msgstr "Kopierat."
 
-#: app/templates/reader.html:624
+#: app/templates/reader.html:619
 msgid "Could not copy. Use your browser’s own copy instead."
 msgstr "Kunde inte kopiera. Använd webbläsarens egen kopiering i stället."
 
-#: app/templates/reader.html:626
+#: app/templates/reader.html:621
 #, python-brace-format
 msgid "Downloading dictionaries ({mb} MB, one-time)…"
 msgstr "Hämtar ordböcker ({mb} MB, engångsnedladdning)…"
 
-#: app/templates/reader.html:627
+#: app/templates/reader.html:622
 msgid "Dictionary download failed — see the server log."
 msgstr "Ordboksnedladdningen misslyckades — se serverloggen."
 
-#: app/templates/reader.html:628
+#: app/templates/reader.html:623
 msgid "No entry found — try the AI explanation."
 msgstr "Ingen träff i ordboken — prova AI-förklaringen."
 
-#: app/templates/reader.html:629
+#: app/templates/reader.html:624
 msgid "No entry found."
 msgstr "Ingen träff i ordboken."
 
-#: app/templates/reader.html:630
+#: app/templates/reader.html:625
 msgid "No dictionary for this language yet — the AI explanation still works."
 msgstr "Ingen ordbok för det här språket ännu — AI-förklaringen fungerar ändå."
 
-#: app/templates/reader.html:631
+#: app/templates/reader.html:626
 msgid "No dictionary for this language yet."
 msgstr "Ingen ordbok för det här språket ännu."
 
-#: app/templates/reader.html:632
+#: app/templates/reader.html:627
 msgid "Lookup failed."
 msgstr "Uppslaget misslyckades."
 
-#: app/templates/reader.html:633
+#: app/templates/reader.html:628
 msgid "Thinking…"
 msgstr "Tänker…"
 
-#: app/templates/reader.html:634
+#: app/templates/reader.html:629
 msgid "AI explanation failed."
 msgstr "AI-förklaringen misslyckades."
 
-#: app/templates/reader.html:639
+#: app/templates/reader.html:634
 msgid "Show more"
 msgstr "Visa mer"
 
-#: app/templates/reader.html:640
+#: app/templates/reader.html:635
 msgid "Show less"
 msgstr "Visa mindre"
 
-#: app/templates/reader.html:641
+#: app/templates/reader.html:636
 msgid ""
 "Start this book over from the beginning? Reading progress is reset "
 "everywhere, including on the Kobo."
@@ -3393,7 +3423,7 @@ msgstr ""
 "Börja om boken från början? Läsförloppet nollställs överallt, även på "
 "Kobo-läsplattan."
 
-#: app/templates/reader.html:642
+#: app/templates/reader.html:637
 msgid "Could not reset reading progress — are you offline?"
 msgstr "Kunde inte nollställa läsförloppet — är du offline?"
 
@@ -5345,4 +5375,7 @@ msgstr "URL kopierad till urklipp."
 
 #~ msgid "Saved"
 #~ msgstr "Sparad"
+
+#~ msgid "Saving..."
+#~ msgstr "Sparar ..."
 

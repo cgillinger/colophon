@@ -416,6 +416,12 @@
                 {% if missing_cover_count %}
                     · <span class="stats-badge" id="libraryChipMissingCover" data-badge="missing_cover:1" onclick="toggleBadgeFilter('missing_cover', '1', event)">{{ _('%(count)d missing cover', count=missing_cover_count) }}</span>
                 {% endif %}
+                {# Filled + shown by offline.js when the service worker reports >=1 cached book.
+                   Client-side only: the server can't know what's in the browser's offline cache. #}
+                <span id="downloadedChipWrap" style="display:none;">
+                    · <span class="stats-badge" id="libraryChipDownloaded" data-badge="downloaded:1"
+                            onclick="toggleBadgeFilter('downloaded', '1', event)"></span>
+                </span>
                 {% if upstream_enabled and unsynced_count %}
                     · <span class="stats-badge" id="libraryChipUnsynced" data-badge="unsynced:1" onclick="toggleBadgeFilter('unsynced', '1', event)">{{ _('%(count)d unsynced', count=unsynced_count) }}</span>
                 {% endif %}
@@ -508,6 +514,14 @@
                         onclick="openReader()" title="{{ _('Read in browser') }}">
                     <i class="ti ti-book-2"></i>
                     <span>{{ _('Read') }}</span>
+                </button>
+                {# Save-for-offline. Shown in display-mode like the Read button, only for a
+                   readable format (JS adds `readable`) AND only when a service worker controls
+                   the page (JS adds `sw-ready`). Toggles saved/idle; also removes. #}
+                <button type="button" class="modal-read-btn" id="modalOfflineBtn"
+                        onclick="toggleModalOffline()" title="{{ _('Save for offline reading') }}">
+                    <i class="ti ti-download"></i>
+                    <span id="modalOfflineLabel">{{ _('Save for offline') }}</span>
                 </button>
                 <div id="modalFileInfo" class="modal-fileinfo"></div>
                 <button type="button" class="btn btn-sm ghost modal-cover-search-btn"
@@ -1194,11 +1208,19 @@
         book: {{ _('Book')|tojson }},
         cancel: {{ _('Cancel')|tojson }},
         apply: {{ _('Apply')|tojson }},
-        saving: {{ _('Saving...')|tojson }},
+        downloadedChip: {{ _('{count} downloaded')|tojson }},
+        saveOfflineShort: {{ _('Save for offline')|tojson }},
+        savedOfflineShort: {{ _('Saved offline')|tojson }},
+        saving: {{ _('Saving for offline…')|tojson }},
+        saveFailed: {{ _('Could not save for offline')|tojson }},
         },
         urls: {
             coverItemBase: '{{ url_for("metadata.cover_item", item_id=0) }}'.replace(/\/0$/, '')
         },
+        // Reader-shell assets — shared with reader.html (see the
+        // `reader_shell_assets` context processor) so "Save for offline"
+        // from the book modal caches the exact same shell the reader does.
+        shellAssets: {{ reader_shell_assets|tojson }},
         /* Default fetch depth (fast|more|deep); the tier chooser initialises
            from this and each fetch can override it per-run. */
         fetchMode: {{ fetch_mode|tojson }}
@@ -1220,6 +1242,7 @@
 <script src="{{ url_for('static', filename='js/cleanup-misc.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/language-check.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/covers-batch.js') }}?v={{ app_version }}"></script>
+<script src="{{ url_for('static', filename='js/offline.js') }}?v={{ app_version }}" defer></script>
 <script src="{{ url_for('static', filename='js/reading-now.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/url-state.js') }}?v={{ app_version }}"></script>
 {% endblock %}

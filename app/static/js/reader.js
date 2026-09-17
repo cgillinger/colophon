@@ -585,9 +585,11 @@ import { initDictLookup } from './reader-dict.js';
     }
 
     function bookAssets() {
-        // Per-book first (removed on un-save), then shared shell (kept).
+        // Per-book first (removed on un-save), then shared shell (kept). The
+        // cover rides along too, so the offline index (see sw.js) can show it
+        // on the "Downloaded books" shelf with no connection.
         var shell = Array.isArray(cfg.shellAssets) ? cfg.shellAssets : [];
-        return [cfg.pageUrl, cfg.fileUrl].concat(shell).filter(Boolean);
+        return [cfg.pageUrl, cfg.fileUrl, cfg.coverUrl].concat(shell).filter(Boolean);
     }
 
     async function toggleOffline() {
@@ -601,7 +603,11 @@ import { initDictLookup } from './reader-dict.js';
             setOfflineUI('idle');
         } else {
             setOfflineUI('busy');
-            var res = await swRequest({ type: 'cacheBook', id: cfg.itemId, assets: bookAssets() }, 120000);
+            var res = await swRequest({
+                type: 'cacheBook', id: cfg.itemId,
+                title: cfg.bookTitle, author: cfg.bookAuthor, coverUrl: cfg.coverUrl,
+                assets: bookAssets()
+            }, 120000);
             offlineSaved = !!(res && res.ok);
             setOfflineUI(offlineSaved ? 'saved' : 'idle');
             if (!offlineSaved && offlineBtn) {

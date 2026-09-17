@@ -1,0 +1,143 @@
+<!doctype html>
+{# Standalone offline landing page. Deliberately does NOT extend _layout.html:
+   this page must render with zero connectivity, so it carries its own inline
+   CSS/JS and no external stylesheet, script or font — anything fetched from
+   elsewhere could fail and leave the shelf blank. Precached in the
+   persistent `colophon-offline` cache on service-worker install (see
+   app/templates/sw.js), so it is the fallback every navigation lands on when
+   neither the requested page nor `/` is available. #}
+<html lang="{{ get_locale() }}" data-theme="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ _('Downloaded books') }} — Colophon</title>
+    <style>
+        :root {
+            --bg: #ffffff; --fg: #1a1a1a; --fg-muted: #6b7280;
+            --card-bg: #f6f7f8; --border: rgba(0,0,0,.08); --accent: #1a6dd0;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1b1f24; --fg: #e8ecef; --fg-muted: #8b949e;
+                --card-bg: #23282e; --border: rgba(255,255,255,.1); --accent: #6cb6ff;
+            }
+        }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
+        body {
+            background: var(--bg); color: var(--fg);
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+        header {
+            padding: 24px 20px 8px;
+            max-width: 960px; margin: 0 auto;
+        }
+        h1 { margin: 0 0 4px; font-size: 1.4rem; }
+        .subtitle { margin: 0; color: var(--fg-muted); font-size: .92rem; }
+        main {
+            max-width: 960px; margin: 0 auto; padding: 16px 20px 40px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 16px;
+        }
+        .card {
+            display: flex; flex-direction: column; gap: 6px;
+            text-decoration: none; color: inherit;
+        }
+        .cover {
+            background: var(--card-bg); border: 1px solid var(--border);
+            border-radius: 8px; aspect-ratio: 2 / 3;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2rem; overflow: hidden;
+        }
+        .cover img { width: 100%; height: 100%; object-fit: cover; }
+        .card .title {
+            font-size: .86rem; font-weight: 600; line-height: 1.25;
+            overflow-wrap: anywhere;
+        }
+        .card .author { font-size: .78rem; color: var(--fg-muted); }
+        .empty {
+            text-align: center; padding: 60px 20px; color: var(--fg-muted);
+            font-size: .95rem; max-width: 420px; margin: 0 auto;
+        }
+        .empty .icon { font-size: 2.4rem; margin-bottom: 12px; }
+        .back-link {
+            display: inline-block; margin-top: 8px;
+            color: var(--accent); font-size: .88rem; text-decoration: none;
+        }
+        .back-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>{{ _('Downloaded books') }}</h1>
+        <p class="subtitle">{{ _('Books saved for offline reading. This page works with no connection.') }}</p>
+        <a class="back-link" href="/">{{ _('Back to the library') }}</a>
+    </header>
+    <main>
+        <div id="grid" class="grid" hidden></div>
+        <div id="empty" class="empty" hidden>
+            <div class="icon">📖</div>
+            <div>{{ _('No books saved for offline reading yet. Open a book and tap “Save for offline”.') }}</div>
+        </div>
+    </main>
+    <script>
+        (function () {
+            function esc(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            }
+            function render(list) {
+                var grid = document.getElementById('grid');
+                var empty = document.getElementById('empty');
+                if (!list || !list.length) {
+                    grid.hidden = true;
+                    empty.hidden = false;
+                    return;
+                }
+                empty.hidden = true;
+                grid.hidden = false;
+                grid.innerHTML = list.map(function (b) {
+                    var cover = b.coverUrl
+                        ? '<img src="' + esc(b.coverUrl) + '" alt="" loading="lazy" onerror="this.parentNode.innerHTML=\'📖\';">'
+                        : '📖';
+                    return '<a class="card" href="/reader/' + encodeURIComponent(b.id) + '">'
+                        + '<div class="cover">' + cover + '</div>'
+                        + '<div class="title">' + esc(b.title) + '</div>'
+                        + '<div class="author">' + esc(b.author) + '</div>'
+                        + '</a>';
+                }).join('');
+            }
+            // Never let this crash the page — an unreachable or malformed
+            // index just means an empty shelf, not a blank screen.
+            fetch('/reader/offline-index.json')
+                .then(function (r) { return r.json(); })
+                .then(render)
+                .catch(function () { render([]); });
+
+            // Register the service worker so a direct visit to /offline (or
+            // one restored from a bookmark) is SW-controlled too. Same
+            // immediate-promote pattern as reader.html: this standalone page
+            // has no in-progress edit to protect.
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function () {
+                    navigator.serviceWorker.register('/sw.js').then(function (reg) {
+                        function promote(w) { if (w && w.state !== 'redundant') w.postMessage('skipWaiting'); }
+                        if (reg.waiting) promote(reg.waiting);
+                        reg.addEventListener('updatefound', function () {
+                            var nw = reg.installing;
+                            if (nw) nw.addEventListener('statechange', function () {
+                                if (nw.state === 'installed') promote(nw);
+                            });
+                        });
+                    }).catch(function () { /* still offline; nothing to do */ });
+                });
+            }
+        })();
+    </script>
+</body>
+</html>

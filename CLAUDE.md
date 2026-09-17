@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.61.3.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.62.0.
 
 ## Författarmappar (v1.38.0 — byggt)
 
@@ -544,7 +544,9 @@ missing backfill re-ships the entire library once.
 ### In-browser reader + reading-state sync (v1.5.0)
 
 `reader_bp` (`/reader/<id>`) renders an EPUB in the browser with vendored
-foliate-js (`static/vendor/foliate-js/`, an ES module, no build step). `/reader/<id>/file` serves the **raw** EPUB (not the kepubified Kobo variant); the URL is stable and token-free so a future "download for offline" step can cache it. Step 1 is **online-only** — offline caching of book content is still deferred (see `docs/TODO.md`).
+foliate-js (`static/vendor/foliate-js/`, an ES module, no build step). `/reader/<id>/file` serves the **raw** EPUB (not the kepubified Kobo variant); the URL is stable and token-free so it can be cached for offline reading (see below — v1.26.0 onward).
+
+**Offline reading (v1.26.0, landing page + modal button + filter added v1.62.0)**: "Save for offline" caches the book + reader shell into the persistent `colophon-offline` service-worker cache. As of v1.62.0 that action is also reachable from the book modal in Shelf view (`#modalOfflineBtn`, `book-modal.js`), not just from inside an open reader; a precached `/offline` landing page (`app/templates/offline.html`, its own service-worker index at the synthetic `/reader/offline-index.json`) lists every saved book and is what a no-connection app launch lands on instead of a dead fallback; and a "Downloaded" chip/filter in the library view (`app/static/js/offline.js`) surfaces which rows are cached. See `docs/TODO.md`'s "Offline reading" entry and §12b of the handbooks.
 
 Reading progress is **not** a separate store: the reader writes to the same canonical `LibraryItem` reading-state fields the Kobo sync uses (`read_status`, `read_progress`, …) via the shared `services/reading_state.py:apply_reading_state()`, which both the Kobo PUT handler and `/reader/<id>/progress` call. Because it bumps `read_last_modified`, progress made in the browser rides the existing Kobo delta to the device, and vice versa — no new sync infra. Position syncs **exactly in both directions** since v1.42.0. Kobo spans (`kobo.N.M`) don't exist in the source EPUB, but kepubify preserves the text character for character, so the shared coordinate is *non-whitespace characters into the chapter*: the reader posts `{href, offset}`, `services/kobo_location.py` walks the cached KEPUB's spans to that offset, and `reader.py:_resume_anchor` runs it backwards for resume. When that can't resolve (PDF, no KEPUB) the reader falls back to percent and **clears** the stored location (`clear_location=True`, v1.41.0), and the Kobo gets a chapter derived from the percent — a stale bookmark paired with newer progress used to drag the device back and deadlock the sync. The "Läs" button is a `display-only` element gated to EPUB, so it appears only in the shelf view's passive modal, not the table view's edit modal.
 

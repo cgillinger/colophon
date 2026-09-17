@@ -155,6 +155,23 @@ def create_app():
         return {"app_version": __version__}
 
     @app.context_processor
+    def inject_reader_shell_assets():
+        """The static assets the reader shell needs to run offline, version-stamped.
+        Shared by reader.html (its own save-for-offline) and bulk_metadata.html
+        (save-for-offline from the book modal) so the two lists can never drift."""
+        from app.version import __version__
+        v = __version__
+        return {"reader_shell_assets": [
+            url_for("static", filename="js/reader.js") + "?v=" + v,
+            url_for("static", filename="js/reader-dict.js") + "?v=" + v,
+            url_for("static", filename="css/bulk_metadata.css") + "?v=" + v,
+            url_for("static", filename="vendor/tabler-icons/tabler-icons.min.css"),
+            url_for("static", filename="vendor/tabler-icons/fonts/tabler-icons.woff2"),
+            url_for("static", filename="fonts/opendyslexic-400.woff2"),
+            url_for("static", filename="fonts/opendyslexic-700.woff2"),
+        ]}
+
+    @app.context_processor
     def inject_completeness_helpers():
         """The traffic light's tooltip must list exactly the fields the
         score counted, so the template asks the scorer rather than
@@ -252,6 +269,13 @@ def create_app():
         resp = jsonify(data)
         resp.headers["Content-Type"] = "application/manifest+json"
         return resp
+
+    @app.route("/offline")
+    def offline_page():
+        # Standalone landing page for the "no connection at all" case — see
+        # app/templates/offline.html. Precached by sw.js on install so it is
+        # always available regardless of network state.
+        return render_template("offline.html")
 
     @app.route("/sw.js")
     def service_worker():

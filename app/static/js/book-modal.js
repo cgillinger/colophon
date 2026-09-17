@@ -170,7 +170,26 @@
         // `readable` class here is the second half of the gate.
         var readBtn = document.getElementById('modalReadBtn');
         var READABLE_EXTS = ['.epub', '.mobi', '.azw3', '.azw', '.pdf'];
-        if (readBtn) readBtn.classList.toggle('readable', READABLE_EXTS.indexOf((data.extension || '').toLowerCase()) !== -1);
+        var isReadable = READABLE_EXTS.indexOf((data.extension || '').toLowerCase()) !== -1;
+        if (readBtn) readBtn.classList.toggle('readable', isReadable);
+
+        // "Save for offline" gate: readable format (as above) AND a service
+        // worker actually controls the page — offline.js has nothing to talk
+        // to otherwise. Mirrors the current saved/idle state asynchronously
+        // so re-opening a book shows what's really in the cache.
+        var offlineBtn = document.getElementById('modalOfflineBtn');
+        if (offlineBtn) {
+            var swReady = window.colophonOffline && window.colophonOffline.swReady();
+            offlineBtn.classList.toggle('readable', isReadable);
+            offlineBtn.classList.toggle('sw-ready', !!swReady);
+            if (isReadable && swReady) {
+                _setModalOfflineState('idle');
+                window.colophonOffline.isSaved(itemId).then(function (saved) {
+                    // Only apply if the modal still shows the same book.
+                    if (window._modalItemId === itemId) _setModalOfflineState(saved ? 'saved' : 'idle');
+                });
+            }
+        }
 
         document.getElementById('modalTitle').value         = data.title          || '';
         document.getElementById('modalAuthor').value        = data.author         || '';
@@ -536,6 +555,48 @@
         window.location.href = '/reader/' + window._modalItemId;
     }
     window.openReader = openReader;
+
+    // "Save for offline" from the modal — the reader has its own version of
+    // this button; this is the same action reachable without opening a book
+    // first. Talks to window.colophonOffline (app/static/js/offline.js).
+    function _setModalOfflineState(state) {
+        var btn = document.getElementById('modalOfflineBtn');
+        var label = document.getElementById('modalOfflineLabel');
+        if (!btn) return;
+        btn.classList.toggle('is-saved', state === 'saved');
+        btn.classList.toggle('is-busy', state === 'busy');
+        var i = btn.querySelector('i');
+        if (label) label.textContent =
+            state === 'saved' ? (_i18n.savedOfflineShort || 'Saved offline')
+          : state === 'busy'  ? (_i18n.saving || 'Saving…')
+          :                     (_i18n.saveOfflineShort || 'Save for offline');
+        if (i) i.className = state === 'saved' ? 'ti ti-circle-check'
+                           : state === 'busy'  ? 'ti ti-loader-2'
+                           :                     'ti ti-download';
+    }
+    function toggleModalOffline() {
+        var id = window._modalItemId;
+        if (!id || !(window.colophonOffline && window.colophonOffline.swReady())) return;
+        var btn = document.getElementById('modalOfflineBtn');
+        if (btn && btn.classList.contains('is-busy')) return;
+        var saved = btn && btn.classList.contains('is-saved');
+        _setModalOfflineState('busy');
+        var title = document.getElementById('modalTitle');
+        var author = document.getElementById('modalAuthor');
+        var meta = { title: title ? title.value : '', author: author ? author.value : '' };
+        var p = saved ? window.colophonOffline.removeOffline(id)
+                      : window.colophonOffline.saveForOffline(id, meta);
+        p.then(function (ok) {
+            if (window._modalItemId !== id) return;
+            if (saved)      _setModalOfflineState('idle');
+            else            _setModalOfflineState(ok ? 'saved' : 'idle');
+            if (!saved && !ok && _i18n.saveFailed) setModalFeedback('error', _i18n.saveFailed);
+            // Refresh the chip + row dataset so the library view reflects
+            // this change immediately, without waiting for a reload.
+            if (window.colophonOffline.refreshDownloaded) window.colophonOffline.refreshDownloaded();
+        });
+    }
+    window.toggleModalOffline = toggleModalOffline;
 
     function resetReadingState() {
         if (!window._modalItemId) return;

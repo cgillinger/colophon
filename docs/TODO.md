@@ -28,7 +28,7 @@ scrub. Port assignment with reference commits, files, an important pdf.js
 `wasmUrl` pitfall (query strings break document loading entirely) and
 delivery criteria: [`docs/lasarfunktioner_uppdrag.md`](lasarfunktioner_uppdrag.md).
 
-## Offline reading — core shipped (v1.26.0), follow-ups deferred
+## Offline reading — core shipped (v1.26.0), follow-ups shipped (v1.62.0)
 
 **Done (v1.26.0):** "save for offline" in the reader caches the book file +
 reader shell into a persistent `colophon-offline` cache (survives version
@@ -40,13 +40,17 @@ worker secure context) — served on the LAN via **Tailscale Serve**
 not run the SW. See `app/templates/sw.js`, `app/static/js/reader.js`,
 `app/routes/reader.py`, and the "In-browser reader" section in CLAUDE.md.
 
-**Still deferred (net-new):**
-- **"Downloaded books" overview + storage management.** Today you save/remove a
-  book from inside its own reader; there's no list of what's cached and no
-  quota/eviction handling. iOS evicts storage for non-installed sites — "Add to
-  Home Screen" makes it durable; a UI surfacing this would help.
-- **Download from the book modal** (not just from inside the open reader), so a
-  book can be saved for offline without opening it first.
+**Done (v1.62.0):**
+- **"Downloaded books" overview.** A precached `/offline` landing page (own
+  service-worker index, `colophon-offline` cache) lists every saved book and
+  is what a no-connection app launch lands on, plus a "Downloaded" chip/filter
+  in the library view. A simple storage overview now exists too — the chip's
+  tooltip reads book count + MB via `navigator.storage.estimate()` — but
+  fine-grained quota/eviction handling (evicting the *oldest* book when
+  storage is tight, say) is still open.
+- **Download from the book modal.** "Save for offline" now also lives on the
+  book card/modal in Shelf view (`#modalOfflineBtn`, `book-modal.js`), not
+  just inside an already-open reader.
 
 ## Annotations — notes and highlights in the reader
 

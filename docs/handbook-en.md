@@ -437,6 +437,26 @@ never strips DRM).
 Your reading position is saved automatically and **syncs with your Kobo** (see
 §13).
 
+## 12b. Reading offline
+
+- **Requirement:** open Colophon via the **secure Tailscale address**
+  (`https://…`), not `http://<lan-ip>:5055` — offline needs HTTPS (see §15).
+- **Install as an app** — "Add to Home Screen" (§18), especially on iOS:
+  otherwise the system can clear the saved storage when the device needs
+  space.
+- **Save a book offline** two ways: from inside the reader (the download icon
+  in the toolbar, §12) or straight from the book's card/modal in **Shelf**
+  view — the **Save for offline** button appears once the book is readable
+  and a secure connection is active.
+- **Find your downloads:** the **"N downloaded"** chip in the library counter
+  filters them into view. Opening the app with no connection at all lands you
+  straight on the **"Downloaded books"** shelf instead of a dead page.
+- **Reading position syncs back** to the Kobo/library as soon as the
+  connection returns (§13).
+- **Remove an offline copy** by opening the book again (or its card) and
+  tapping the same button — it now reads "Saved offline"; tap again to
+  remove it.
+
 ## 13. Reading progress and status
 
 Reading state is one shared truth, whether you read on the Kobo or in the

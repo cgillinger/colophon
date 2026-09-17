@@ -334,6 +334,11 @@
                     } else if (filterValue === 'green') {
                         if (compVal > 1) show = false;
                     }
+                } else if (filterType === 'downloaded') {
+                    // offline.js stamps this per row from the service worker's
+                    // cache index — the server has no idea what's in Cache
+                    // Storage, so this dataset value is the only source of truth.
+                    if ((row.dataset.offlineCached || '') !== '1') show = false;
                 }
             }
 
