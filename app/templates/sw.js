@@ -47,6 +47,7 @@ const CACHE = 'colophon-v' + VERSION;
 const OFFLINE = 'colophon-offline';
 const READER_FILE = /^\/reader\/\d+\/file$/;
 const READER_PAGE = /^\/reader\/\d+$/;
+const COVER = /^\/cover\/\d+$/;
 const FOLIATE_PREFIX = '/static/vendor/foliate-js/';
 
 // Synthetic URL for the list of downloaded books (never a real route — the
@@ -247,6 +248,22 @@ async function offlineFirst(req) {
     return fetch(req);
 }
 
+// Cover thumbnail: network-first so an updated cover shows online, but fall
+// back to the OFFLINE copy saved alongside a book so the "Downloaded books"
+// shelf (and the reader) show a cover with no connection. Never writes — only
+// "save for offline" puts covers in this cache, so unsaved books are never
+// silently stored.
+async function coverImage(req) {
+    try {
+        return await fetch(req);
+    } catch (err) {
+        const cache = await caches.open(OFFLINE);
+        const hit = await cache.match(req);
+        if (hit) return hit;
+        throw err;
+    }
+}
+
 // Reader page: prefer the network (fresh progress/markup), fall back to the
 // downloaded copy when offline so a saved book still opens.
 async function readerPage(req) {
@@ -295,6 +312,11 @@ self.addEventListener('fetch', function (event) {
     }
     if (url.pathname.indexOf(FOLIATE_PREFIX) === 0) {
         event.respondWith(staleWhileRevalidate(req, OFFLINE));
+        return;
+    }
+    // Cover thumbnails: network-first, OFFLINE copy as the offline fallback.
+    if (COVER.test(url.pathname)) {
+        event.respondWith(coverImage(req));
         return;
     }
 

@@ -158,10 +158,26 @@ def create_app():
     def inject_reader_shell_assets():
         """The static assets the reader shell needs to run offline, version-stamped.
         Shared by reader.html (its own save-for-offline) and bulk_metadata.html
-        (save-for-offline from the book modal) so the two lists can never drift."""
+        (save-for-offline from the book modal) so the two lists can never drift.
+
+        Includes foliate-js's whole module graph *except* the pdf.js vendor
+        subtree. foliate loads format parsers with runtime dynamic imports
+        (``view.js`` does ``import('./epub.js')``, ``import('./vendor/zip.js')``
+        for EPUB, ``import('./vendor/fflate.js')`` for MOBI, plus ``ui/*``), so
+        the graph is not knowable from static imports and a top-level-only list
+        would miss ``vendor/zip.js`` — the EPUB unzip — and hang the offline
+        reader on "Loading book". These files carry no ``?v=`` (their relative
+        imports must resolve, and they match the SW's FOLIATE_PREFIX rule), and
+        they are cached at *save* time here rather than relying on
+        stale-while-revalidate having run the reader online first. The pdf.js
+        subtree (``vendor/pdfjs/``, ~6 MB) is deliberately excluded: PDF offline
+        reading still needs the book opened online once. EPUB/MOBI do not.
+        """
+        import glob
+        import os
         from app.version import __version__
         v = __version__
-        return {"reader_shell_assets": [
+        assets = [
             url_for("static", filename="js/reader.js") + "?v=" + v,
             url_for("static", filename="js/reader-dict.js") + "?v=" + v,
             url_for("static", filename="css/bulk_metadata.css") + "?v=" + v,
@@ -169,7 +185,15 @@ def create_app():
             url_for("static", filename="vendor/tabler-icons/fonts/tabler-icons.woff2"),
             url_for("static", filename="fonts/opendyslexic-400.woff2"),
             url_for("static", filename="fonts/opendyslexic-700.woff2"),
-        ]}
+        ]
+        foliate_dir = os.path.join(app.static_folder, "vendor", "foliate-js")
+        pdfjs_dir = os.path.join(foliate_dir, "vendor", "pdfjs") + os.sep
+        for path in sorted(glob.glob(os.path.join(foliate_dir, "**", "*.js"), recursive=True)):
+            if path.startswith(pdfjs_dir):
+                continue  # PDF-only, ~6 MB
+            rel = os.path.relpath(path, app.static_folder).replace(os.sep, "/")
+            assets.append(url_for("static", filename=rel))
+        return {"reader_shell_assets": assets}
 
     @app.context_processor
     def inject_completeness_helpers():
