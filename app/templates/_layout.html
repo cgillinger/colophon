@@ -248,48 +248,45 @@
     })();
 </script>
 
-{# PWA: register the service worker and surface a non-disruptive prompt when a
-   new version is installed and waiting. Clicking it activates the new worker
-   (skipWaiting) and the controllerchange handler reloads once — so the user
-   always lands on the fresh version, but never mid-edit by surprise. #}
+{# PWA: register the service worker. The worker self-activates (skipWaiting in
+   its install, see sw.js), so a deploy takes effect on the next open with no
+   manual step — critical because offline saving only writes its index when the
+   NEW worker is in control. We deliberately do NOT reload on controllerchange:
+   the new worker taking over must never interrupt an in-progress edit, and the
+   offline feature needs control, not a reload. HTML is network-first, so the
+   next navigation is fresh anyway; we just offer an optional refresh for the
+   currently-visible page, and only when this was an update (a worker already
+   controlled the page at load), never on the first-ever install. #}
 <script>
     (function () {
         if (!('serviceWorker' in navigator)) return;
-        function showUpdateToast(reg) {
+        // A controller present at load means any later controllerchange is a
+        // NEW version taking over (an update), not the first worker claiming
+        // the page on first install.
+        var hadController = !!navigator.serviceWorker.controller;
+        function showUpdateToast() {
             if (document.getElementById('pwaUpdateToast')) return;
             var bar = document.createElement('div');
             bar.id = 'pwaUpdateToast';
             bar.className = 'pwa-toast';
             var msg = document.createElement('span');
-            msg.textContent = {{ _('New version available') | tojson }};
+            msg.textContent = {{ _('Updated in the background. Refresh to see the latest.') | tojson }};
             var btn = document.createElement('button');
             btn.type = 'button';
             btn.textContent = {{ _('Reload') | tojson }};
-            btn.onclick = function () {
-                if (reg.waiting) reg.waiting.postMessage('skipWaiting');
-            };
+            btn.onclick = function () { window.location.reload(); };
             bar.appendChild(msg);
             bar.appendChild(btn);
             document.body.appendChild(bar);
         }
         window.addEventListener('load', function () {
-            navigator.serviceWorker.register('/sw.js').then(function (reg) {
-                if (reg.waiting && navigator.serviceWorker.controller) showUpdateToast(reg);
-                reg.addEventListener('updatefound', function () {
-                    var nw = reg.installing;
-                    if (!nw) return;
-                    nw.addEventListener('statechange', function () {
-                        if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-                            showUpdateToast(reg);
-                        }
-                    });
-                });
-            }).catch(function () { /* SW unavailable (e.g. insecure context) — app still works */ });
-            var reloading = false;
+            navigator.serviceWorker.register('/sw.js').catch(function () {
+                /* SW unavailable (e.g. insecure context) — app still works */
+            });
             navigator.serviceWorker.addEventListener('controllerchange', function () {
-                if (reloading) return;
-                reloading = true;
-                window.location.reload();
+                // The new worker is now in control — offline features already
+                // work. Offer, but never force, a refresh for the visible UI.
+                if (hadController) showUpdateToast();
             });
         });
     })();

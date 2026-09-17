@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Colophon 1.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-09-17 13:41+0200\n"
+"POT-Creation-Date: 2026-09-17 14:22+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: sv\n"
@@ -776,11 +776,11 @@ msgstr "Byt tema"
 msgid "Toggle navigation"
 msgstr "Visa/dölj navigering"
 
-#: app/templates/_layout.html:264
-msgid "New version available"
-msgstr "Ny version tillgänglig"
+#: app/templates/_layout.html:273
+msgid "Updated in the background. Refresh to see the latest."
+msgstr "Uppdaterad i bakgrunden. Ladda om för att se det senaste."
 
-#: app/templates/_layout.html:267
+#: app/templates/_layout.html:276
 msgid "Reload"
 msgstr "Ladda om"
 
@@ -3145,7 +3145,9 @@ msgstr "Nedladdade böcker"
 
 #: app/templates/offline.html:77
 msgid "Books saved for offline reading. This page works with no connection."
-msgstr "Böcker sparade för offline-läsning. Den här sidan fungerar utan uppkoppling."
+msgstr ""
+"Böcker sparade för offline-läsning. Den här sidan fungerar utan "
+"uppkoppling."
 
 #: app/templates/offline.html:78
 msgid "Back to the library"
@@ -3156,8 +3158,8 @@ msgid ""
 "No books saved for offline reading yet. Open a book and tap “Save for "
 "offline”."
 msgstr ""
-"Inga böcker sparade för offline-läsning än. Öppna en bok och tryck "
-"”Spara offline”."
+"Inga böcker sparade för offline-läsning än. Öppna en bok och tryck ”Spara"
+" offline”."
 
 #: app/templates/reader.html:22 app/templates/reader.html:397
 msgid "Reader"
@@ -5378,4 +5380,7 @@ msgstr "URL kopierad till urklipp."
 
 #~ msgid "Saving..."
 #~ msgstr "Sparar ..."
+
+#~ msgid "New version available"
+#~ msgstr "Ny version tillgänglig"
 

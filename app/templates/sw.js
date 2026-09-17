@@ -56,10 +56,18 @@ const FOLIATE_PREFIX = '/static/vendor/foliate-js/';
 const OFFLINE_INDEX = '/reader/offline-index.json';
 
 self.addEventListener('install', function (event) {
-    // Do NOT skipWaiting here. The new worker waits until the page tells it
-    // to (via the "new version" prompt), so we never reload out from under
-    // an in-progress edit.
-    //
+    // Self-activate: a new worker that skipWaiting()s in its own install takes
+    // over immediately — the OLD worker and the page don't have to allow it.
+    // This is deliberate (it reverses the earlier "wait for a prompt" policy):
+    // without it, a deploy leaves the old worker controlling an installed PWA
+    // until the user happens to tap an update toast, and until then the new
+    // offline-index code never runs — so "save for offline" caches the file
+    // but writes no index entry and the Downloaded shelf stays empty. The
+    // matching page-side change (app/templates/_layout.html) is what makes
+    // this safe: it no longer reloads on controllerchange, so taking over
+    // mid-edit can't lose work. The offline feature needs the new worker to
+    // *control* the page (clients.claim below), not a reload.
+    self.skipWaiting();
     // Precache the offline landing page so opening the PWA with no connection
     // always lands on the "Downloaded books" shelf instead of a dead
     // fallback. Deliberately in the persistent OFFLINE cache (not the
