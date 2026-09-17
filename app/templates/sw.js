@@ -202,12 +202,24 @@ async function indexRemove(id) {
     await writeIndex(list.filter(function (b) { return String(b.id) !== String(id); }));
 }
 
+// Static assets (/static/…), versioned or not. Cache-first from EITHER cache:
+// the per-version CACHE (populated by online visits) OR the persistent OFFLINE
+// bundle a saved book put there. This is what makes the offline reader boot at
+// all — reader.js/reader-dict.js/CSS carry a ?v= and so were previously served
+// only from the per-version CACHE, which is empty on a cold offline launch, so
+// the reader's own module never loaded and the page hung on "Loading book".
+// Unversioned vendored libs (tabler icons, fonts) had no offline rule before
+// and were simply unreachable. Only versioned URLs are cached forward into
+// CACHE (they're immutable per URL); unversioned ones come from OFFLINE if a
+// book saved them, else the network.
 async function cacheFirst(req) {
     const cache = await caches.open(CACHE);
     const hit = await cache.match(req);
     if (hit) return hit;
+    const offlineHit = await (await caches.open(OFFLINE)).match(req);
+    if (offlineHit) return offlineHit;
     const res = await fetch(req);
-    if (res && res.ok) cache.put(req, res.clone());
+    if (res && res.ok && new URL(req.url).searchParams.has('v')) cache.put(req, res.clone());
     return res;
 }
 
@@ -338,8 +350,11 @@ self.addEventListener('fetch', function (event) {
         return;
     }
 
-    // Versioned static assets: cache-first.
-    if (url.pathname.indexOf('/static/') === 0 && url.searchParams.has('v')) {
+    // Static assets (foliate handled above): cache-first from the per-version
+    // CACHE or the persistent OFFLINE bundle, so a downloaded book's shell —
+    // reader.js, its CSS, icon font and reading fonts — is reachable with no
+    // connection even after the per-version CACHE was purged by an update.
+    if (url.pathname.indexOf('/static/') === 0) {
         event.respondWith(cacheFirst(req));
         return;
     }
