@@ -741,5 +741,9 @@
     <script type="module" id="readerModule"
             src="{{ url_for('static', filename='js/reader.js') }}?v={{ app_version }}"
             onerror="window.__readerDiag && window.__readerDiag.moduleError()"></script>
+    {# Global offline-progress flush (also loaded on the main app via _layout):
+       drains pending progress for every offline-read book when a connection
+       returns, not only the book currently open. #}
+    <script src="{{ url_for('static', filename='js/offline-progress-sync.js') }}?v={{ app_version }}"></script>
 </body>
 </html>

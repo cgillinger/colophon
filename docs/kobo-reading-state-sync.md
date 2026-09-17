@@ -306,6 +306,29 @@ flags them; Colophon deliberately doesn't merge them on its own.
 | Colophon browser-reader progress doesn't set the **exact page** on the Kobo | Position syncs exactly since v1.42.0; the *page number* still differs by design, because a Kobo paginates for its own screen and font settings. |
 | Position lands in the right chapter but the wrong sentence | The character bridge fell back. Check that a KEPUB exists for the item (`kobo_kepub.py` cache) and that `reader.js` posted `href`/`offset` — without them only percent travels. |
 
+## Offline reading progress and cross-device reset (v1.62.5)
+
+Progress read **offline** in the in-browser reader is mirrored to `localStorage`
+(`colophon-reader-progress-<id>`, `synced:false`) and flushed to the server on
+reconnect — the open book by `reader.js:flushUnsynced`, and **every**
+offline-read book by `static/js/offline-progress-sync.js` (loaded on the app and
+in the reader; runs on load and the `online` event, skipping the book the reader
+itself owns). Each post carries the original `savedAt` (client ms-epoch), so
+`reader.py:update_progress` can drop a stale flush that would otherwise undo a
+reset: if the item is in the exact post-reset shape (`ReadyToRead` + NULL
+`read_progress`) and `read_last_modified` is **newer** than `savedAt`, it returns
+`applied:false` without writing. Both flush paths keep the *original* savedAt
+(never `Date.now()`), or the guard would be defeated — pinned by
+`test_reset_guard_*` in `tests/test_reader_position.py`.
+
+**Known limitation (accepted, not a bug to chase):** the reader's resume-guard in
+`reader.js:start` lets an *unsynced* local copy win regardless of savedAt, so
+after a cross-device reset the book still **opens** at the old local position on
+the device holding the unsynced copy; the next relocate re-posts with a fresh
+savedAt and applies normally. So a reset on device A, while device B holds
+unsynced offline progress for that same book, only "sticks" on B if you don't
+keep reading it there. Acceptable for a single-user hobby project.
+
 ## Known-and-unfixed (documented so the next investigation skips them)
 
 Found during Bookstation's comparison against Colophon (2026-08-10). All three

@@ -292,6 +292,12 @@
     })();
 </script>
 
+{# Global offline reading-progress flush: pushes up progress for EVERY book
+   read offline as soon as any app page loads with a connection, so they all
+   keep their sync with the server — not just the last book open in the reader.
+   The reader loads this too (reader.html). #}
+<script src="{{ url_for('static', filename='js/offline-progress-sync.js') }}?v={{ app_version }}"></script>
+
 {% block scripts %}{% endblock %}
 
 </body>

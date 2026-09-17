@@ -179,6 +179,9 @@ def create_app():
         v = __version__
         assets = [
             url_for("static", filename="js/reader.js") + "?v=" + v,
+            # Loads in the reader too; cache it so the offline reader page finds
+            # it (it no-ops while offline, then drains pending progress online).
+            url_for("static", filename="js/offline-progress-sync.js") + "?v=" + v,
             # reader.js imports reader-dict.js WITHOUT a ?v= (a bare ES-module
             # specifier), so the request the browser makes carries no query and
             # Cache Storage's exact-query match misses the ?v= copy. Cache the

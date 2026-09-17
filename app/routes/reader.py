@@ -222,6 +222,40 @@ def update_progress(item_id):
     item = get_item_or_404(item_id)
     payload = request.get_json(silent=True) or {}
 
+    # Reset guard: a "reset reading state" in the library sets ReadyToRead +
+    # NULL progress and bumps read_last_modified. A delayed offline flush (the
+    # browser reader mirrors progress to localStorage and re-sends it on
+    # reconnect — for every offline-read book, via offline-progress-sync.js)
+    # would otherwise resurrect the old position via furthest-read-wins. If the
+    # client stamps the progress with savedAt and the server was reset *after*
+    # that, drop the post rather than undo the reset. Only fires in the exact
+    # post-reset shape, so a never-read book (read_last_modified NULL) or one
+    # already being re-read (status Reading) is unaffected.
+    saved_at = payload.get("savedAt")
+    if (
+        saved_at is not None
+        and item.read_last_modified is not None
+        and item.read_status == "ReadyToRead"
+        and item.read_progress is None
+    ):
+        try:
+            saved_ms = int(saved_at)
+        except (TypeError, ValueError):
+            saved_ms = None
+        if saved_ms is not None:
+            rlm_ms = int(
+                (item.read_last_modified - datetime(1970, 1, 1)).total_seconds() * 1000
+            )
+            if rlm_ms > saved_ms:
+                return jsonify(
+                    {
+                        "ok": True,
+                        "applied": False,
+                        "read_status": item.read_status,
+                        "read_progress": item.read_progress,
+                    }
+                )
+
     status = payload.get("status") or "Reading"
     if status not in ("Reading", "Finished"):
         status = "Reading"

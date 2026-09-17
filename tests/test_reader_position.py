@@ -190,3 +190,58 @@ def test_round_trip_browser_to_span_to_browser(app, client):
         assert json.loads(item.read_location_json)["Value"] == "kobo.2.1"
     # kobo.2.1 starts at 35 dense characters; 40 was 5 characters into it.
     assert "resumeOffset: 35" in html
+
+
+def _epoch_ms(dt):
+    from datetime import datetime
+    return int((dt - datetime(1970, 1, 1)).total_seconds() * 1000)
+
+
+def test_reset_guard_drops_stale_offline_progress(app, client):
+    """A reset (ReadyToRead + NULL progress + bumped read_last_modified) must
+    not be undone by a delayed offline flush stamped BEFORE the reset. The
+    global flusher (offline-progress-sync.js) sends progress for every
+    offline-read book on reconnect, so this guard is what keeps a reset done on
+    another device from being resurrected."""
+    from datetime import datetime
+    from app.models import LibraryItem
+
+    reset_at = datetime(2026, 1, 1, 12, 0, 0)
+    with app.app_context():
+        item_id = _make_item(
+            read_status="ReadyToRead", read_progress=None, read_last_modified=reset_at
+        )
+
+    resp = client.post(
+        f"/reader/{item_id}/progress",
+        json={"percent": 50.0, "status": "Reading", "savedAt": _epoch_ms(reset_at) - 60000},
+    )
+    assert resp.status_code == 200
+    assert resp.get_json()["applied"] is False
+    with app.app_context():
+        item = LibraryItem.query.get(item_id)
+        assert item.read_progress is None
+        assert item.read_status == "ReadyToRead"
+
+
+def test_reset_guard_lets_through_progress_made_after_reset(app, client):
+    """Progress stamped AFTER the reset is real reading and must apply — the
+    guard only fires for the exact stale-post case."""
+    from datetime import datetime
+    from app.models import LibraryItem
+
+    reset_at = datetime(2026, 1, 1, 12, 0, 0)
+    with app.app_context():
+        item_id = _make_item(
+            read_status="ReadyToRead", read_progress=None, read_last_modified=reset_at
+        )
+
+    resp = client.post(
+        f"/reader/{item_id}/progress",
+        json={"percent": 50.0, "status": "Reading", "savedAt": _epoch_ms(reset_at) + 60000},
+    )
+    assert resp.status_code == 200
+    assert resp.get_json()["applied"] is True
+    with app.app_context():
+        item = LibraryItem.query.get(item_id)
+        assert item.read_progress == 50.0

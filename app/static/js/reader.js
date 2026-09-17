@@ -348,14 +348,17 @@ import { initDictLookup } from './reader-dict.js';
     // marked unsynced and retried on reconnect.
     var PROGRESS_KEY = 'colophon-reader-progress-' + (cfg.itemId != null ? cfg.itemId : 'x');
 
-    function persistLocal(state, synced) {
+    function persistLocal(state, synced, savedAt) {
         try {
             // savedAt lets resume compare this copy against the server's
             // read_last_modified, so a library-side reset isn't undone by a
-            // stale-but-further local copy.
+            // stale-but-further local copy. The same savedAt is sent in the
+            // POST body so the server can drop a stale offline flush too, and
+            // so the global flusher (offline-progress-sync.js) can tell whether
+            // the copy it posted is still the current one before marking synced.
             localStorage.setItem(PROGRESS_KEY, JSON.stringify({
                 percent: state.percent, status: state.status, synced: !!synced,
-                savedAt: Date.now()
+                savedAt: savedAt != null ? savedAt : Date.now()
             }));
         } catch (e) { /* private mode / quota */ }
     }
@@ -364,14 +367,22 @@ import { initDictLookup } from './reader-dict.js';
         catch (e) { return null; }
     }
 
-    function flush(useBeacon) {
+    function flush(useBeacon, keepSavedAt) {
         if (!latest || sameState(latest, lastSaved)) return;
         var payload = latest;
-        persistLocal(payload, false);     // keep a local copy regardless of network
-        var body = JSON.stringify(payload);
+        // A reconnect flush of progress made offline (flushUnsynced) must keep
+        // the ORIGINAL savedAt: re-stamping it with Date.now() would make the
+        // stale post look newer than a reset done meanwhile and defeat the
+        // server's reset guard. A live flush has no keepSavedAt and stamps now.
+        var savedAt = keepSavedAt != null ? keepSavedAt : Date.now();
+        persistLocal(payload, false, savedAt);   // keep a local copy regardless of network
+        // Carry savedAt so the server can drop a stale offline post that would
+        // otherwise undo a reset (see reader.py update_progress); href/offset
+        // from payload still give the exact position when online.
+        var body = JSON.stringify(Object.assign({}, payload, { savedAt: savedAt }));
         if (useBeacon && navigator.sendBeacon) {
             var ok = navigator.sendBeacon(cfg.progressUrl, new Blob([body], { type: 'application/json' }));
-            if (ok) { lastSaved = payload; persistLocal(payload, true); }
+            if (ok) { lastSaved = payload; persistLocal(payload, true, savedAt); }
             return;
         }
         fetch(cfg.progressUrl, {
@@ -380,7 +391,7 @@ import { initDictLookup } from './reader-dict.js';
             body: body,
             keepalive: true
         }).then(function (r) {
-            if (r && r.ok) { lastSaved = payload; persistLocal(payload, true); }
+            if (r && r.ok) { lastSaved = payload; persistLocal(payload, true, savedAt); }
         }).catch(function () { /* stays unsynced; retried on 'online' / next change */ });
     }
 
@@ -389,7 +400,7 @@ import { initDictLookup } from './reader-dict.js';
         var local = readLocalProgress();
         if (local && local.synced === false) {
             latest = { percent: local.percent, status: local.status };
-            flush(false);
+            flush(false, local.savedAt);   // keep the original stamp for the reset guard
         }
     }
 
