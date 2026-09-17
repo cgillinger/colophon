@@ -31,6 +31,7 @@ Two things to check:
 | **Order a series.** One AI call for the whole series, checked against Wikidata, reviewed row by row. | Series view → **Order the series** on a card | [§9d](docs/handbook-en.md#9d-ordering-a-series) | 1.53.0 |
 | **Order an author's series.** Same review across everything one author wrote. The AI also decides which series exist. | Authors page → ⋯ menu → **Order series**, or the banner when you filter on an author | [§9e](docs/handbook-en.md#9e-ordering-an-authors-series) | 1.54.0 |
 | **Fetch covers for a filter.** Searches every book without a cover, not just the visible page. | Click **N missing cover** → **Fetch covers for these** | [§9g](docs/handbook-en.md#9g-fetching-covers-for-a-whole-filter) | 1.60.0 |
+| **Reading offline.** Save books to read with no connection; a *Downloaded books* shelf and an *N downloaded* filter, and everything you read offline resyncs when you're back. | Reader download icon, or Shelf-view **Save for offline** | [§12b](docs/handbook-en.md#12b-reading-offline) | 1.62.0 |
 | **See what's missing.** A colour dot per book, three counters that filter, and *Least complete first* in the sort menu. | Table view | [§9b](docs/handbook-en.md#9b-seeing-whats-missing) | 1.52.0 |
 | **Check language.** Reads the text inside your EPUBs and lists the books whose recorded language is wrong or missing. | **Tools → Check language** | [§9c](docs/handbook-en.md#9c-checking-language) | 1.52.0 |
 | **Rename a series.** No AI. Gives every book on the card the same name and keeps their numbers. | Series view → **Rename** on a card | [§9f](docs/handbook-en.md#9f-renaming-a-series) | 1.55.0 |
@@ -57,6 +58,26 @@ Two things to check:
   per book.
 
 ---
+
+## [1.62.5] — 2026-09-17
+
+### Added
+- **Offline reading.** Save a book to read with no connection — the download
+  icon in the browser reader, or **Save for offline** on a book's card in Shelf
+  view. Open the app offline and you land on a **Downloaded books** shelf
+  instead of a dead page; an **N downloaded** filter in the library shows what's
+  saved. Reading you do offline — in *every* downloaded book, not just the last
+  one open — syncs back to your library and Kobo as soon as you're online again.
+  Needs the app opened over your secure (HTTPS) Tailscale address; add it to the
+  home screen so the device keeps the files. See the [handbook,
+  §12b](docs/handbook-en.md#12b-reading-offline).
+
+### Fixed
+- A downloaded book now opens, shows its cover and reads with no connection at
+  all, and the app updates itself after a new release without a manual step
+  (1.62.1–1.62.4).
+- A reset of a book's reading state is no longer undone by progress that synced
+  late from a device that was offline when you reset it.
 
 ## [1.61.3] — 2026-09-16
 

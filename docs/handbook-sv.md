@@ -457,7 +457,8 @@ Din läsposition sparas automatiskt och **synkar med din Kobo** (se §13).
   filtrerar fram dem. Startar du appen helt utan uppkoppling landar du direkt
   på hyllan **"Nedladdade böcker"** i stället för en död sida.
 - **Läsläget synkar tillbaka** till Kobo/biblioteket så fort uppkopplingen är
-  tillbaka (§13).
+  tillbaka — för **alla** böcker du läst offline, inte bara den senast öppnade
+  (§13).
 - **Ta bort en offline-kopia** genom att öppna boken igen (eller dess kort)
   och trycka på samma knapp — den visar då "Sparad offline"; tryck igen för
   att ta bort.

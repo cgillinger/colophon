@@ -54,6 +54,12 @@ One Docker container, MIT licence, no telemetry. It is a personal project built 
 - Installs as an app (PWA) on phone, tablet or desktop
 - English and Swedish interface, light and dark themes
 
+## Reading offline
+
+Colophon installs as an app (PWA) and reads a downloaded book with **no connection**. Open a book in the browser reader and tap the download icon — or, in Shelf view, **Save for offline** on the book's card. Launch the app offline and you land on a **Downloaded books** shelf; a **N downloaded** filter shows what's saved. Anything you read offline syncs back to your library and Kobo when you're online again — for every downloaded book, not just the last one open.
+
+It needs the app opened over a **secure (HTTPS)** address; on a home network that's a [Tailscale](https://tailscale.com/) address. On iOS, add it to the home screen so the saved files aren't cleared. Full steps in the [handbook, §12b](docs/handbook-en.md#12b-reading-offline).
+
 ## What it doesn't do
 
 - Render comics page by page (Komga and Kavita do that well)

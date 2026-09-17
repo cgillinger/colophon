@@ -452,7 +452,8 @@ Your reading position is saved automatically and **syncs with your Kobo** (see
   filters them into view. Opening the app with no connection at all lands you
   straight on the **"Downloaded books"** shelf instead of a dead page.
 - **Reading position syncs back** to the Kobo/library as soon as the
-  connection returns (§13).
+  connection returns — for **every** book you read offline, not just the last
+  one open (§13).
 - **Remove an offline copy** by opening the book again (or its card) and
   tapping the same button — it now reads "Saved offline"; tap again to
   remove it.
