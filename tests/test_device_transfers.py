@@ -22,7 +22,7 @@ def _make_mount(tmp_path, serial="N123456789", token=None, api_endpoint=None):
         f"{serial},4.9.77,4.45.23697,4.9.77,4.9.77,00000000-0000-0000-0000-000000000390\n"
     )
     if api_endpoint is None and token is not None:
-        api_endpoint = f"http://192.168.50.8:5055/kobo/{token}"
+        api_endpoint = f"http://192.168.1.100:5055/kobo/{token}"
     if api_endpoint is None:
         api_endpoint = "https://storeapi.kobo.com"
     conf = (

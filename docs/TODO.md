@@ -36,7 +36,7 @@ bumps) via the service worker; foliate's module graph is stale-while-revalidated
 into the same cache; reading progress is mirrored to localStorage so a saved
 book resumes offline and re-syncs on reconnect. **Requires HTTPS** (service
 worker secure context) — served on the LAN via **Tailscale Serve**
-(`https://server2.heron-anaconda.ts.net/`); plain `http://<lan-ip>:5055` will
+(`https://<host>.<tailnet>.ts.net/`); plain `http://<lan-ip>:5055` will
 not run the SW. See `app/templates/sw.js`, `app/static/js/reader.js`,
 `app/routes/reader.py`, and the "In-browser reader" section in CLAUDE.md.
 

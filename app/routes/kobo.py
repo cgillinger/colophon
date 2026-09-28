@@ -224,7 +224,7 @@ def initialization(device):
     if not auth.startswith("Bearer "):
         return jsonify({"error": "unauthorized"}), 401
 
-    # The Kobo Libra Color empirically sends `Host: 192.168.50.8`
+    # The Kobo Libra Color empirically sends `Host: 192.168.1.100`
     # without the port even when api_endpoint has :5055, so
     # request.host_url comes back without the port and our image
     # URLs in the conf end up pointing at port 80. Prefer an explicit
@@ -459,7 +459,7 @@ def _public_base_url() -> str:
     when set, otherwise falls back to request.host_url.
 
     Why we can't trust request.host_url alone: the Kobo Libra Color
-    sends Host: 192.168.50.8 (no port) even when api_endpoint includes
+    sends Host: 192.168.1.100 (no port) even when api_endpoint includes
     :5055, so Flask reconstructs host_url without the port. URLs we
     bake into responses then point at port 80 and silent-fail when
     the device follows them. The env var sidesteps this entirely.

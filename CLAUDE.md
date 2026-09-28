@@ -25,7 +25,7 @@ befintliga mappar (skjutet upp).
 Repo:           /mnt/docker/stacks/colophon/repo
 Compose file:   /mnt/docker/stacks/colophon/docker-compose.yml
 Container:      colophon
-URL:            http://192.168.50.8:5055
+URL:            http://192.168.1.100:5055
 Entry point:    wsgi.py → app.create_app()
 DB:             SQLite at /data/colophon.db (inside container)
 Books mount:    /books (host: configurable via COLOPHON_LIBRARY_HOST)
@@ -686,12 +686,12 @@ COLOPHON_DATA_DIR=$PWD/var/data-dev COLOPHON_LIBRARY_DIR=$PWD/var/books-dev \
 # then: curl -s http://127.0.0.1:5055/scan   (GET, not POST) to populate the DB
 ```
 
-Fill `var/books-dev/` by **copying** from server2's working copy — never the
+Fill `var/books-dev/` by **copying** from the server's working copy — never the
 Synology originals, and never a move:
 
 ```bash
 rsync -a -r --files-from=<list of author folders> \
-  chris@192.168.50.8:/mnt/docker/appdata/colophon/bibliotek/ var/books-dev/
+  user@192.168.1.100:/mnt/docker/appdata/colophon/bibliotek/ var/books-dev/
 ```
 
 `/mnt/docker/appdata/colophon/bibliotek/` is itself already a working copy
@@ -787,12 +787,12 @@ docker exec -it colophon bash
 docker exec colophon python -c "from app.services.cover_search import search_covers; print(search_covers(isbn='9780261103573'))"
 
 # Check a route
-curl -s http://192.168.50.8:5055/scan | python -m json.tool
+curl -s http://192.168.1.100:5055/scan | python -m json.tool
 ```
 
 ## Playwright MCP (UI testing)
 
-Playwright MCP is installed globally (`--scope user`) with headless Chromium bundled. The running Colophon instance lives at `http://192.168.50.8:5055` — point the browser there to verify UI changes after a rebuild.
+Playwright MCP is installed globally (`--scope user`) with headless Chromium bundled. The running Colophon instance lives at `http://192.168.1.100:5055` — point the browser there to verify UI changes after a rebuild.
 
 **How to invoke**: say "Använd Playwright MCP" (or "Use Playwright MCP") in the first prompt of a session that needs UI verification. The MCP tools only load when explicitly requested.
 

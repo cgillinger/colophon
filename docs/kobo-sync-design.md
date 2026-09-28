@@ -30,7 +30,7 @@ We want the same capability in Colophon, in Python/Flask, reusing the existing `
 ### One-time setup per device
 1. User opens Colophon → Settings → **Kobo Sync** (new tab).
 2. Clicks **"Generate API key for new device"**, optionally names it ("My Libra 2").
-3. Colophon shows a URL like `http://192.168.50.8:5055/kobo/ab12cd34ef56…` and a short setup guide.
+3. Colophon shows a URL like `http://192.168.1.100:5055/kobo/ab12cd34ef56…` and a short setup guide.
 4. User connects Kobo via USB, edits `.kobo/Kobo/Kobo eReader.conf`, replaces the `api_endpoint=` line under `[OneStoreServices]` with that URL, ejects.
 5. On the Kobo, Settings → Sync. New books appear in the library.
 

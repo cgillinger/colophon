@@ -693,6 +693,6 @@ pinnar tolkningen.
 **Före steg 5:** kontrollera att AI faktiskt svarar innan du felsöker en
 prompt. `.venv/bin/python -m pytest tests/test_ai_rate_limit.py -q` säger
 inget om kontot — kör i stället ett riktigt anrop mot devinstansen. De två
-produktionsinstanserna på server2 stod kvar på `mistral-small-latest` när
+produktionsinstanserna på servern stod kvar på `mistral-small-latest` när
 steg 4 avslutades; det byts i Inställningar → AI och är användarens beslut,
 inte planens.

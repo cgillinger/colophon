@@ -447,13 +447,13 @@ Two solutions:
 
 ### The Host-header port-stripping bug
 
-The Kobo Libra Color empirically sends `Host: 192.168.50.8` in HTTP requests even when `api_endpoint` is `http://192.168.50.8:5055`. The port disappears from the Host header. If your `/v1/initialization` handler does:
+The Kobo Libra Color empirically sends `Host: 192.168.1.100` in HTTP requests even when `api_endpoint` is `http://192.168.1.100:5055`. The port disappears from the Host header. If your `/v1/initialization` handler does:
 
 ```python
 base = request.host_url.rstrip("/")  # ← this!
 ```
 
-…the resulting `image_host` and `image_url_template` come back as `http://192.168.50.8` without the port. The device writes those to its conf, then tries to fetch covers on port 80, where nothing listens. **Zero thumbnail requests will reach your server.**
+…the resulting `image_host` and `image_url_template` come back as `http://192.168.1.100` without the port. The device writes those to its conf, then tries to fetch covers on port 80, where nothing listens. **Zero thumbnail requests will reach your server.**
 
 The same bug bites you a second time in `/v1/library/sync` and `/v1/library/{id}/metadata`, which build the `DownloadUrls[0].Url` from `request.host_url`. The device follows that URL to port 80, the download silent-fails after a few seconds, and the Kobo UI shows "Ladda ner" reverting back to its pre-download state. No `/v1/books/<id>/file/epub` request ever reaches your server.
 
@@ -465,7 +465,7 @@ def _public_base_url() -> str:
     return explicit or request.host_url.rstrip("/")
 ```
 
-Then set `MYAPP_PUBLIC_URL=http://192.168.50.8:5055` in your deployment env (docker-compose, systemd, whatever). The env var wins, your URLs survive Kobo's Host mangling, **and you only need this in one place — the helper.**
+Then set `MYAPP_PUBLIC_URL=http://192.168.1.100:5055` in your deployment env (docker-compose, systemd, whatever). The env var wins, your URLs survive Kobo's Host mangling, **and you only need this in one place — the helper.**
 
 ### Sleep aggressively interrupts post-sync indexing
 
