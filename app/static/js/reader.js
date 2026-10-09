@@ -341,6 +341,210 @@ import { initDictLookup } from './reader-dict.js';
         } catch (e) { return null; }
     }
 
+    // --- Virtual page numbers ----------------------------------------------
+    // A percentage means something different on every screen; a virtual page
+    // is a fixed number of dense characters (app/services/page_map.py), so
+    // page 212 is the same place everywhere. The three helpers below mirror
+    // page_for_position / position_for_page / print_page_for_position there
+    // exactly — same clamping, same section lookup — and must change together.
+    var pageMap = null;        // parsed /pagemap JSON, or null (none / not loaded)
+    var lastAnchor = null;     // { href, offset } of the last relocate
+    // True while start() positions the book. The relocates that placement
+    // itself fires report the top of the rendered spread, which can sit a
+    // screen *before* the exact anchor when pagination differs slightly
+    // between loads (fonts, viewport). Saving those would walk the stored
+    // position backwards a little on every open; the user's own first page
+    // turn is the first thing worth recording.
+    var placing = false;
+
+    function fmt(template, vars) {
+        return String(template).replace(/\{(\w+)\}/g, function (m, k) {
+            return vars && vars[k] != null ? vars[k] : m;
+        });
+    }
+
+    // posixpath.normpath(source.split('#')[0]) — compare sections by this.
+    function normSource(source) {
+        if (!source) return null;
+        var parts = String(source).split('#')[0].split('/');
+        var out = [];
+        parts.forEach(function (p) {
+            if (p === '' || p === '.') return;
+            if (p === '..') { if (out.length) out.pop(); return; }
+            out.push(p);
+        });
+        return out.join('/');
+    }
+
+    function findSection(source) {
+        if (!pageMap) return null;
+        var src = normSource(source);
+        var secs = pageMap.sections || [];
+        for (var i = 0; i < secs.length; i++) {
+            if (secs[i].source === src) return secs[i];
+        }
+        return null;
+    }
+
+    function pageOf(href, offset) {
+        if (!pageMap) return null;
+        var sec = findSection(href);
+        if (!sec) return null;
+        var off = Math.max(0, parseInt(offset, 10) || 0);
+        var page = Math.floor((sec.start + off) / pageMap.page_chars) + 1;
+        return Math.max(1, Math.min(page, pageMap.total_pages));
+    }
+
+    function anchorForPage(page) {
+        if (!pageMap || !pageMap.sections || !pageMap.sections.length) return null;
+        var n = parseInt(page, 10);
+        if (isNaN(n)) return null;
+        n = Math.max(1, Math.min(n, pageMap.total_pages));
+        var target = (n - 1) * pageMap.page_chars;
+        var populated = pageMap.sections.filter(function (s) { return s.chars > 0; });
+        if (!populated.length) return { href: pageMap.sections[0].source, offset: 0 };
+        for (var i = 0; i < populated.length; i++) {
+            var s = populated[i];
+            if (target < s.start + s.chars) {
+                return { href: s.source, offset: Math.max(0, target - s.start) };
+            }
+        }
+        var last = populated[populated.length - 1];
+        return { href: last.source, offset: Math.max(0, last.chars - 1) };
+    }
+
+    // Label of the last print page break at or before the position, or null.
+    function printPageAt(href, offset) {
+        if (!pageMap || !pageMap.page_list || !pageMap.page_list.length) return null;
+        var order = {};
+        pageMap.sections.forEach(function (s, i) { order[s.source] = i; });
+        var src = normSource(href);
+        if (!(src in order)) return null;
+        var off = parseInt(offset, 10) || 0;
+        var found = null;
+        pageMap.page_list.forEach(function (entry) {
+            var idx = order[entry.source];
+            if (idx === undefined) return;
+            if (idx < order[src] || (idx === order[src] && entry.offset <= off)) {
+                found = entry.label;
+            }
+        });
+        return found;
+    }
+
+    // Total pages, known from the loaded map or (before it lands) from the
+    // count the server cached with the page; fixed-layout books have none.
+    function virtualTotal() {
+        if (view && view.isFixedLayout) return null;
+        if (pageMap) return pageMap.total_pages;
+        return Number(cfg.totalPages) || null;
+    }
+    function approxPage(fraction, total) {
+        return Math.min(total, Math.floor(fraction * total) + 1);
+    }
+
+    // The top-bar readout: "p. 212 / 540 (198)" when the page map and the
+    // relocate anchor are known, plain percent otherwise. The percent stays in
+    // the tooltip so it is never lost.
+    function renderPosition() {
+        if (!percentEl) return;
+        var pct = Math.round(lastFraction * 100) + '%';
+        var text = pct;
+        if (pageMap && lastAnchor && !(view && view.isFixedLayout)) {
+            var page = pageOf(lastAnchor.href, lastAnchor.offset);
+            if (page != null) {
+                text = fmt(i18n.pageOf || 'p. {page} / {total}',
+                    { page: page, total: pageMap.total_pages });
+                var printed = printPageAt(lastAnchor.href, lastAnchor.offset);
+                if (printed) text += ' (' + printed + ')';
+            }
+        }
+        percentEl.textContent = text;
+        percentEl.title = pct;
+    }
+
+    var gotoRow = document.getElementById('rsGotoRow');
+    var gotoInput = document.getElementById('rsGotoPage');
+    var gotoGo = document.getElementById('rsGotoGo');
+    var gotoTotal = document.getElementById('rsGotoTotal');
+
+    function syncGotoRow() {
+        if (!gotoRow) return;
+        var show = !!pageMap && !(view && view.isFixedLayout);
+        gotoRow.hidden = !show;
+        if (!show) return;
+        if (gotoInput) gotoInput.max = String(pageMap.total_pages);
+        if (gotoTotal) gotoTotal.textContent = '/ ' + pageMap.total_pages;
+    }
+
+    // Non-blocking: a missing/offline map just means "no page numbers".
+    function loadPageMap() {
+        if (!cfg.pageMapUrl) return;
+        fetch(cfg.pageMapUrl).then(function (r) {
+            return r && r.ok ? r.json() : null;
+        }).then(function (m) {
+            pageMap = m && m.available && !(view && view.isFixedLayout) ? m : null;
+            syncGotoRow();
+            renderPosition();
+            if (scrubLabel && !scrubbing && lastDetail) scrubLabel.textContent = positionLabel(lastDetail);
+        }).catch(function () { pageMap = null; });
+    }
+
+    async function goToPageFromInput() {
+        if (!gotoInput || !view) return;
+        var anchor = anchorForPage(gotoInput.value);
+        if (!anchor) { showToast(i18n.gotoPageFailed || 'Could not find that page.'); return; }
+        setSnapback();   // before the jump, so the chip can bring us back
+        var ok = await goToAnchor(anchor.href, anchor.offset);
+        if (!ok) {
+            clearSnapback();
+            showToast(i18n.gotoPageFailed || 'Could not find that page.');
+            return;
+        }
+        closeSheet();
+    }
+
+    function bindGoto() {
+        if (gotoGo) gotoGo.addEventListener('click', goToPageFromInput);
+        if (gotoInput) gotoInput.addEventListener('keydown', function (ev) {
+            if (ev.key === 'Enter') { ev.preventDefault(); goToPageFromInput(); }
+        });
+        // The readout doubles as a shortcut: tap it to type a page number.
+        function openGoto() {
+            openSheet();
+            if (gotoRow && !gotoRow.hidden && gotoInput) gotoInput.focus();
+        }
+        if (percentEl) {
+            percentEl.addEventListener('click', openGoto);
+            percentEl.addEventListener('keydown', function (ev) {
+                if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); openGoto(); }
+            });
+        }
+    }
+
+    // Move to "N non-whitespace characters into this section". Returns true
+    // when the exact placement worked; callers fall back to a fraction.
+    async function goToAnchor(href, offset) {
+        try {
+            await view.goTo(href);
+            var contents = view.renderer && view.renderer.getContents
+                ? view.renderer.getContents() : null;
+            var doc = contents && contents[0] && contents[0].doc;
+            var range = rangeAtDenseOffset(doc, Number(offset));
+            var want = normSource(href);
+            var index = view.book.sections.findIndex(function (s) {
+                return normSource(s.id || s.href || '') === want;
+            });
+            if (range && index >= 0) {
+                var cfi = view.getCFI(index, range);
+                if (cfi) { await view.goTo(cfi); return true; }
+            }
+        } catch (e) {
+            console.warn('Reader: exact placement failed', e);
+        }
+        return false;
+    }
+
     // --- Offline-safe progress -------------------------------------------
     // Progress is always mirrored to localStorage so the book resumes at the
     // right place even when opened offline (the server-rendered initial
@@ -358,7 +562,11 @@ import { initDictLookup } from './reader-dict.js';
             // the copy it posted is still the current one before marking synced.
             localStorage.setItem(PROGRESS_KEY, JSON.stringify({
                 percent: state.percent, status: state.status, synced: !!synced,
-                savedAt: savedAt != null ? savedAt : Date.now()
+                savedAt: savedAt != null ? savedAt : Date.now(),
+                // The exact position, so the offline copy resumes (and flushes)
+                // to the same sentence, not just the same percent.
+                href: state.href || null,
+                offset: state.offset != null ? state.offset : null
             }));
         } catch (e) { /* private mode / quota */ }
     }
@@ -400,6 +608,12 @@ import { initDictLookup } from './reader-dict.js';
         var local = readLocalProgress();
         if (local && local.synced === false) {
             latest = { percent: local.percent, status: local.status };
+            // Post the exact position too: a percent-only post makes the
+            // server clear the stored Kobo location (see update_progress).
+            if (local.href && local.offset != null) {
+                latest.href = local.href;
+                latest.offset = local.offset;
+            }
             flush(false, local.savedAt);   // keep the original stamp for the reset guard
         }
     }
@@ -433,6 +647,14 @@ import { initDictLookup } from './reader-dict.js';
         if (view && view.isFixedLayout && sec && sec.total) {
             return (sec.current + 1) + ' / ' + sec.total;
         }
+        var total = virtualTotal();
+        if (total) {
+            // onRelocate has already walked the DOM for this detail; reuse it.
+            var anchor = detail === lastDetail ? lastAnchor : anchorFromRelocate(detail);
+            var page = anchor ? pageOf(anchor.href, anchor.offset) : null;
+            if (page == null) page = approxPage(fraction, total);
+            return fmt(i18n.pageOf || 'p. {page} / {total}', { page: page, total: total });
+        }
         return Math.round(fraction * 100) + '%';
     }
 
@@ -441,12 +663,28 @@ import { initDictLookup } from './reader-dict.js';
         var total = view && view.isFixedLayout && lastDetail
             && lastDetail.section && lastDetail.section.total;
         if (total) return Math.min(total, Math.floor(fraction * total) + 1) + ' / ' + total;
+        // Reflowable: the virtual page, approximated from the fraction (the
+        // real page needs a relocate to know which section the drag lands in).
+        var vt = virtualTotal();
+        if (vt) {
+            return fmt(i18n.pageOf || 'p. {page} / {total}',
+                { page: approxPage(fraction, vt), total: vt });
+        }
         return Math.round(fraction * 100) + '%';
     }
 
     function clearSnapback() {
         snapTarget = null;
         if (snapbackBtn) snapbackBtn.hidden = true;
+    }
+
+    // Remember where we are before a jump (scrub bar, "Go to page") so the
+    // chip can bring the reader back. Only the first jump of a series sets it.
+    function setSnapback() {
+        if (snapTarget) return;
+        snapTarget = { fraction: lastFraction, label: positionLabel(lastDetail) };
+        if (snapbackLabel) snapbackLabel.textContent = snapTarget.label;
+        if (snapbackBtn) snapbackBtn.hidden = false;
     }
 
     function bindNav() {
@@ -460,11 +698,7 @@ import { initDictLookup } from './reader-dict.js';
             scrubEl.addEventListener('change', function () {
                 scrubbing = false;
                 if (!view) return;
-                if (!snapTarget) {
-                    snapTarget = { fraction: lastFraction, label: positionLabel(lastDetail) };
-                    if (snapbackLabel) snapbackLabel.textContent = snapTarget.label;
-                    if (snapbackBtn) snapbackBtn.hidden = false;
-                }
+                setSnapback();
                 view.goToFraction(Number(scrubEl.value) / 1000);
             });
         }
@@ -501,7 +735,8 @@ import { initDictLookup } from './reader-dict.js';
         var fraction = typeof detail.fraction === 'number' ? detail.fraction : 0;
         lastFraction = fraction;
         lastDetail = detail;
-        if (percentEl) percentEl.textContent = Math.round(fraction * 100) + '%';
+        lastAnchor = anchorFromRelocate(detail);
+        renderPosition();
         if (!scrubbing) {
             if (scrubEl) scrubEl.value = String(Math.round(fraction * 1000));
             if (scrubLabel) scrubLabel.textContent = positionLabel(detail);
@@ -511,8 +746,9 @@ import { initDictLookup } from './reader-dict.js';
         if (snapTarget && Math.abs(fraction - snapTarget.fraction) < SNAP_DONE_EPSILON) {
             clearSnapback();
         }
+        if (placing) return;   // resume's own relocates: nothing new to record
         var state = fractionToState(fraction);
-        var anchor = anchorFromRelocate(detail);
+        var anchor = lastAnchor;
         if (anchor) { state.href = anchor.href; state.offset = anchor.offset; }
         scheduleSave(state);
     }
@@ -600,7 +836,8 @@ import { initDictLookup } from './reader-dict.js';
         // cover rides along too, so the offline index (see sw.js) can show it
         // on the "Downloaded books" shelf with no connection.
         var shell = Array.isArray(cfg.shellAssets) ? cfg.shellAssets : [];
-        return [cfg.pageUrl, cfg.fileUrl, cfg.coverUrl].concat(shell).filter(Boolean);
+        // pageMapUrl follows the two essential assets (the SW treats the first two as must-have).
+        return [cfg.pageUrl, cfg.fileUrl, cfg.coverUrl, cfg.pageMapUrl].concat(shell).filter(Boolean);
     }
 
     async function toggleOffline() {
@@ -609,7 +846,7 @@ import { initDictLookup } from './reader-dict.js';
         if (offlineSaved) {
             // Remove only the per-book assets so other saved books survive.
             setOfflineUI('busy');
-            await swRequest({ type: 'removeBook', id: cfg.itemId, assets: [cfg.pageUrl, cfg.fileUrl] }, 15000);
+            await swRequest({ type: 'removeBook', id: cfg.itemId, assets: [cfg.pageUrl, cfg.fileUrl, cfg.pageMapUrl].filter(Boolean) }, 15000);
             offlineSaved = false;
             setOfflineUI('idle');
         } else {
@@ -620,6 +857,9 @@ import { initDictLookup } from './reader-dict.js';
                 assets: bookAssets()
             }, 120000);
             offlineSaved = !!(res && res.ok);
+            if (res && res.ok && res.failed && res.failed.length) {
+                console.warn('Reader: some offline assets were not cached', res.failed);
+            }
             setOfflineUI(offlineSaved ? 'saved' : 'idle');
             if (!offlineSaved && offlineBtn) {
                 offlineBtn.setAttribute('title', i18n.saveFailed || 'Could not save for offline');
@@ -743,6 +983,7 @@ import { initDictLookup } from './reader-dict.js';
         bindControls();
         bindNav();
         bindSettings();
+        bindGoto();
         window.addEventListener('online', flushUnsynced);
         initOffline();
         initShare();
@@ -755,6 +996,7 @@ import { initDictLookup } from './reader-dict.js';
             // module listens for start firing as soon as the book renders.
             dictCtl = initDictLookup({ view: view, cfg: cfg });
             await view.open(cfg.fileUrl);
+            loadPageMap();   // non-blocking; no map just means no page numbers
 
             // Tailor the settings sheet to the book's layout before showing it.
             adaptControlsForLayout();
@@ -762,55 +1004,46 @@ import { initDictLookup } from './reader-dict.js';
             // fraction maps to the final paginated layout.
             applyReaderStyles();
 
-            var initial = Number(cfg.initialProgress) || 0;
+            // Newest position wins: the server's stored position (reader or
+            // Kobo) against this browser's local copy, by timestamp. Progress
+            // (furthest read) is a separate field and does not take part —
+            // stepping back a page must resume on that page. Ties go to the
+            // server; an unsynced local copy is pushed up by flushUnsynced
+            // either way.
+            var chosen = {
+                href: cfg.resumeHref, offset: cfg.resumeOffset,
+                percent: cfg.resumePercent != null ? cfg.resumePercent : cfg.initialProgress,
+                at: cfg.resumeAt != null ? cfg.resumeAt : cfg.progressModifiedAt
+            };
             var status = cfg.readStatus;
-            // Local copy vs server: an *unsynced* copy is offline progress the
-            // server never saw — furthest wins (it re-syncs via flushUnsynced).
-            // A *synced* copy only wins when it's also newer than the server's
-            // read_last_modified; otherwise a "Reset reading state" done in the
-            // library (or progress made on the Kobo) would lose to a stale
-            // localStorage copy that just happens to be further along.
             var local = readLocalProgress();
-            if (local && Number(local.percent) > initial) {
-                var newerThanServer = (Number(local.savedAt) || 0) > (Number(cfg.progressModifiedAt) || 0);
-                if (local.synced === false || newerThanServer) {
-                    initial = Number(local.percent);
-                    status = local.status || status;
-                }
+            if (local && (Number(local.savedAt) || 0) > (Number(chosen.at) || 0)) {
+                chosen = {
+                    href: local.href, offset: local.offset,
+                    percent: local.percent, at: local.savedAt
+                };
+                status = local.status || status;
             }
+            var initial = Number(chosen.percent) || 0;
+            var finished = status === 'Finished';   // a finished book starts over
             var frac = 0;
-            // Resume by percent. Don't jump to the end of a finished book —
-            // start it over instead.
-            if (initial > 0 && initial < 100 && status !== 'Finished') {
-                frac = initial / 100;
-            }
-            // Exact resume wins when the server could translate the stored
-            // Kobo position into a character offset — that lands on the same
-            // sentence the Kobo was on, not just the same chapter. Percent
-            // stays the fallback, including when the local copy is further
-            // along (the offset then belongs to an older position).
-            var exact = frac > 0 && cfg.resumeHref && cfg.resumeOffset != null
-                && Math.abs((Number(cfg.initialProgress) || 0) - initial) < 0.5;
+            if (initial > 0 && initial < 100 && !finished) frac = initial / 100;
+            // Exact placement when the candidate carries an anchor; percent is
+            // the fallback, and the only route for entries that predate it.
             var placed = false;
-            if (exact) {
-                try {
-                    await view.goTo(cfg.resumeHref);
-                    var contents = view.renderer && view.renderer.getContents
-                        ? view.renderer.getContents() : null;
-                    var doc = contents && contents[0] && contents[0].doc;
-                    var range = rangeAtDenseOffset(doc, Number(cfg.resumeOffset));
-                    var index = view.book.sections.findIndex(function (s) {
-                        return (s.id || s.href || '').split('#')[0] === cfg.resumeHref;
-                    });
-                    if (range && index >= 0) {
-                        var cfi = view.getCFI(index, range);
-                        if (cfi) { await view.goTo(cfi); placed = true; }
-                    }
-                } catch (e) {
-                    console.warn('Reader: exact resume failed, falling back to percent', e);
+            placing = true;
+            try {
+                if (!finished && chosen.href && chosen.offset != null) {
+                    placed = await goToAnchor(chosen.href, chosen.offset);
                 }
+                if (!placed) await view.goToFraction(frac);
+            } finally {
+                // foliate dispatches the placement's relocate *after* goTo
+                // resolves (its view-level event carries no reason to tell it
+                // apart), so hold the guard a moment longer. A page turn
+                // inside this window is recorded by the next one.
+                setTimeout(function () { placing = false; }, 400);
             }
-            if (!placed) await view.goToFraction(frac);
             if (scrubEl) scrubEl.disabled = false;
 
             if (overlay) overlay.hidden = true;

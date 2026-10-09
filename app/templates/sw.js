@@ -31,6 +31,12 @@
  *   - Navigations / HTML            -> network-first, falling back to cache
  *     only when offline. The app shell is always fresh when the server is
  *     reachable (which, over Tailscale/LAN, it essentially always is).
+ *   - Timeout: network-first and the reader page race the network against
+ *     NETWORK_TIMEOUT_MS (4 s) whenever a cached copy exists. A link that is
+ *     "up" but dead (VPN connected, server unreachable, captive wifi) makes
+ *     iOS wait very long before failing a fetch; with a cached copy in hand
+ *     the user gets it after 4 s instead of a spinner. With no cached copy
+ *     there is nothing to fall back to, so those requests wait as before.
  *   - Everything else (SSE, /scan, /kobo, POSTs, cover fetches, the API) ->
  *     not intercepted at all. We never call respondWith for these, so the
  *     browser handles them normally and live event-streams are never cached.
@@ -45,9 +51,15 @@ const CACHE = 'colophon-v' + VERSION;
 // module graph is runtime-cached here too (see fetch handler) because those
 // relative imports carry no ?v= and so escape the versioned-static rule.
 const OFFLINE = 'colophon-offline';
-const READER_FILE = /^\/reader\/\d+\/file$/;
+// The book file and its page map (a small JSON of virtual page boundaries) are
+// saved together with the book and served offline-first, exactly alike. The
+// callers of 'cacheBook' add the page-map URL to the asset list themselves.
+const READER_ASSET = /^\/reader\/\d+\/(file|pagemap)$/;
 const READER_PAGE = /^\/reader\/\d+$/;
 const COVER = /^\/cover\/\d+$/;
+// How long a network-first request may wait before a cached copy is served
+// instead. Only applied when such a copy exists (see fetchWithTimeout users).
+const NETWORK_TIMEOUT_MS = 4000;
 const FOLIATE_PREFIX = '/static/vendor/foliate-js/';
 
 // Synthetic URL for the list of downloaded books (never a real route — the
@@ -82,6 +94,15 @@ self.addEventListener('install', function (event) {
 
 self.addEventListener('activate', function (event) {
     event.waitUntil((async function () {
+        // Install may have happened offline, leaving /offline unprecached and
+        // never retried. Try once more now (failure is fine; the fetch
+        // handler also fills it in on the first online visit).
+        try {
+            const off = await caches.open(OFFLINE);
+            if (!(await off.match('/offline'))) {
+                await off.add(new Request('/offline', { cache: 'reload' }));
+            }
+        } catch (e) { /* still offline; the fetch handler will populate it */ }
         const keys = await caches.keys();
         await Promise.all(
             keys
@@ -101,7 +122,8 @@ self.addEventListener('message', function (event) {
     // replies to the sender so the UI can reflect the result (saved /
     // removed / current state).
     if (data.type === 'cacheBook') {
-        event.waitUntil(cacheBook(data.assets || []).then(function (ok) {
+        event.waitUntil(cacheBook(data.assets || []).then(function (r) {
+            var ok = r.ok;
             // Only a successful cache earns a place on the "Downloaded
             // books" shelf — a partial failure must not claim the book is
             // available offline.
@@ -109,7 +131,7 @@ self.addEventListener('message', function (event) {
                 ? indexUpsert({ id: data.id, title: data.title, author: data.author, coverUrl: data.coverUrl })
                 : Promise.resolve();
             return indexed.then(function () {
-                reply(event, { type: 'cacheBook', id: data.id, ok: ok });
+                reply(event, { type: 'cacheBook', id: data.id, ok: ok, failed: r.failed });
             });
         }));
     } else if (data.type === 'removeBook') {
@@ -140,17 +162,33 @@ function reply(event, msg) {
 // so one odd asset can't sink the whole download. `cache: 'reload'` bypasses
 // the HTTP cache to snapshot a fresh, self-consistent set for the version
 // that's live right now.
+//
+// Contract: callers pass [pageUrl, fileUrl, coverUrl, ...shell]. The first two
+// are ESSENTIAL (without the reader page or the book file there is nothing to
+// read); the rest are best-effort. Returns { ok, failed }: ok is true only if
+// both essentials were cached, failed lists every URL that was not. When not
+// ok, the essentials that did land are deleted again so a half-saved book can
+// never look saved to isBookCached.
 async function cacheBook(assets) {
+    const failed = [];
     try {
         const cache = await caches.open(OFFLINE);
         await Promise.all(assets.map(async function (u) {
             try {
                 const res = await fetch(u, { cache: 'reload' });
                 if (res && res.ok) await cache.put(u, res.clone());
-            } catch (e) { /* skip this asset; book may still be readable */ }
+                else failed.push(u);
+            } catch (e) { failed.push(u); }
         }));
-        return true;
-    } catch (e) { return false; }
+        const essentials = assets.slice(0, 2);
+        const ok = essentials.length === 2 && essentials.every(function (u) {
+            return failed.indexOf(u) === -1;
+        });
+        if (!ok) {
+            await Promise.all(essentials.map(function (u) { return cache.delete(u); }));
+        }
+        return { ok: ok, failed: failed };
+    } catch (e) { return { ok: false, failed: failed.length ? failed : assets.slice() }; }
 }
 
 // Remove only the per-book assets (the EPUB + its reader page). Shared deps
@@ -228,14 +266,34 @@ async function cacheFirst(req) {
     return res;
 }
 
+// fetch() that gives up after `ms` and rejects with Error('timeout'). The
+// timer is cleared whichever side wins. The losing fetch is not aborted — its
+// result is simply ignored (callers that cache do so before returning).
+function fetchWithTimeout(req, ms) {
+    return new Promise(function (resolve, reject) {
+        const timer = setTimeout(function () { reject(new Error('timeout')); }, ms);
+        fetch(req).then(function (res) {
+            clearTimeout(timer);
+            resolve(res);
+        }, function (err) {
+            clearTimeout(timer);
+            reject(err);
+        });
+    });
+}
+
 async function networkFirst(req) {
     const cache = await caches.open(CACHE);
+    // A cached copy (either cache) means we can afford to give up on a dead
+    // link after NETWORK_TIMEOUT_MS; without one we wait for the real answer.
+    const cached = (await cache.match(req)) ||
+        (await (await caches.open(OFFLINE)).match(req));
     try {
-        const res = await fetch(req);
+        const res = cached ? await fetchWithTimeout(req, NETWORK_TIMEOUT_MS) : await fetch(req);
         if (res && res.ok) cache.put(req, res.clone());
         return res;
     } catch (err) {
-        const hit = await cache.match(req);
+        const hit = cached || await cache.match(req);
         if (hit) return hit;
         const root = await cache.match('/');
         if (root) return root;
@@ -271,11 +329,12 @@ async function offlineFirst(req) {
 // "save for offline" puts covers in this cache, so unsaved books are never
 // silently stored.
 async function coverImage(req) {
+    const cache = await caches.open(OFFLINE);
+    const cached = await cache.match(req);
     try {
-        return await fetch(req);
+        return cached ? await fetchWithTimeout(req, NETWORK_TIMEOUT_MS) : await fetch(req);
     } catch (err) {
-        const cache = await caches.open(OFFLINE);
-        const hit = await cache.match(req);
+        const hit = cached || await cache.match(req);
         if (hit) return hit;
         throw err;
     }
@@ -285,10 +344,11 @@ async function coverImage(req) {
 // downloaded copy when offline so a saved book still opens.
 async function readerPage(req) {
     const cache = await caches.open(OFFLINE);
+    const cached = await cache.match(req);
     try {
-        return await fetch(req);
+        return cached ? await fetchWithTimeout(req, NETWORK_TIMEOUT_MS) : await fetch(req);
     } catch (err) {
-        const hit = await cache.match(req);
+        const hit = cached || await cache.match(req);
         if (hit) return hit;
         throw err;
     }
@@ -321,11 +381,11 @@ self.addEventListener('fetch', function (event) {
     if (url.origin !== self.location.origin) return;
 
     // Offline reading (checked before the generic rules below):
-    //   - the book file        -> offline-cache-first (download-only)
+    //   - the book file + page map -> offline-cache-first (download-only)
     //   - the reader page       -> network-first, offline copy as fallback
     //   - foliate modules       -> stale-while-revalidate into the persistent
     //                              cache (relative imports, no ?v=)
-    if (READER_FILE.test(url.pathname)) {
+    if (READER_ASSET.test(url.pathname)) {
         event.respondWith(offlineFirst(req));
         return;
     }
@@ -354,10 +414,11 @@ self.addEventListener('fetch', function (event) {
         }));
         return;
     }
-    // The precached offline landing page: cache-first so it opens with no
-    // network at all, even on a direct/first visit while offline.
+    // The offline landing page: stale-while-revalidate into OFFLINE, so it
+    // opens instantly with no network at all, is refreshed on every online
+    // visit, and is populated by the first one if install happened offline.
     if (url.pathname === '/offline') {
-        event.respondWith(offlineFirst(req));
+        event.respondWith(staleWhileRevalidate(req, OFFLINE));
         return;
     }
 

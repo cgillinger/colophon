@@ -13,6 +13,7 @@ THIRD_PARTY_LICENSES.md. No code copied; DTOs rebuilt in Python.
 import json
 import logging
 import os
+import posixpath
 import re
 import uuid
 from datetime import datetime, timezone
@@ -32,7 +33,7 @@ from app.models import LibraryItem, db
 from app.services.kobo_auth import find_device_by_token, touch_device
 from app.services.kobo_kepub import convert_epub_to_kepub
 from app.services.kobo_location import location_for_percent, range_for_source
-from app.services.reading_state import apply_reading_state
+from app.services.reading_state import _as_progress as _as_float, apply_reading_state
 from app.services.kobo_sync import (
     SyncToken,
     compute_delta,
@@ -1194,6 +1195,28 @@ def update_reading_state(device, book_id):
                 book_id,
             )
         return jsonify({}), 200
+
+    # Remember where the device is, apart from how far it has been. Only with
+    # a resolvable span (needs the KEPUB); otherwise the reader falls back to
+    # _resume_anchor as before.
+    if incoming_location and incoming_location.get("Source") and incoming_location.get("Value"):
+        from app.services.kobo_location import offset_for_span
+        from app.services.page_map import load_page_map, page_for_position
+        from app.services.reading_state import record_position
+
+        pos_source = posixpath.normpath(str(incoming_location["Source"]).split("#", 1)[0])
+        pos_offset = offset_for_span(item, incoming_location["Source"], incoming_location["Value"])
+        if pos_offset is not None:
+            at_dt = incoming_mod or datetime.utcnow()
+            record_position(
+                item,
+                source=pos_source,
+                offset=pos_offset,
+                percent=_as_float(progress),
+                at_ms=int((at_dt - datetime(1970, 1, 1)).total_seconds() * 1000),
+                origin="kobo",
+                page=page_for_position(load_page_map(item, build=False), pos_source, pos_offset),
+            )
 
     db.session.commit()
     logger.info(

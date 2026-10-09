@@ -503,8 +503,14 @@
             pct = (status === 'Finished') ? 100 : 0;
         }
         document.getElementById('modalReadFill').style.width = pct + '%';
-        document.getElementById('modalReadPercent').textContent =
-            (status === 'ReadyToRead') ? '—' : (Math.round(pct) + '%');
+        var pctText = (status === 'ReadyToRead') ? '—' : (Math.round(pct) + '%');
+        // The virtual page the reader last left off on, beside the furthest %.
+        if (typeof data.read_page === 'number') {
+            pctText += ' · ' + (_i18n.pageOf || 'p. {page} / {total}')
+                .replace('{page}', data.read_page)
+                .replace('{total}', typeof data.read_pages === 'number' ? data.read_pages : '?');
+        }
+        document.getElementById('modalReadPercent').textContent = pctText;
 
         var dates = [];
         if (data.read_started_at) {

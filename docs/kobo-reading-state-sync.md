@@ -370,6 +370,36 @@ built from an item. Until then, a factory reset + re-pair is the only reliable
 way to clear stale entitlements off a device — Colophon owns the reading state,
 so nothing is lost by doing that.
 
+## Position vs progress (v1.63.0)
+
+Two different questions used to share one answer. **Progress**
+(`read_progress`, status, stats) is "how far have I been" and stays
+furthest-read-wins — a peek ahead must never lose the high-water mark.
+**Position** (`read_position_json`) is "where am I now" and is plain
+last-write-wins by its own `at` (epoch ms). Without the split, the reader
+resumed at the furthest point ever reached, and a browser save below the Kobo's
+number (the two compute percent differently for the same sentence) was dropped
+entirely.
+
+Shape: `{source, offset, percent, page, at, origin: "reader"|"kobo"}`, where
+`source`/`offset` are the same dense-character coordinates as the bridge above.
+The column is **not** in `_DEVICE_CONTENT_COLUMNS` and never stamps
+`content_updated_at`; moving around in a book must not re-download it.
+
+Write paths (`services/reading_state.py:record_position`):
+- Reader `POST /reader/<id>/progress` — always, even when
+  `apply_reading_state` dropped the progress. `at` is the client's `savedAt`
+  (distrusted if more than 5 min in the future), else server time.
+- Kobo state PUT — only when the PUT was applied and the span resolves to an
+  offset (needs the KEPUB). A dropped PUT records nothing.
+- `reset-read` clears it.
+
+Read path: the reader prefers the position for `resumeHref`/`resumeOffset`;
+without one it falls back to translating `read_location_json` as before.
+`page` comes from the virtual page map (`services/page_map.py`, 1500 dense
+characters per page, cached under `DATA_DIR/page-maps/`) and is only filled
+from a *cached* map — a map is never built inside a write path.
+
 ## Footgun
 
 **Never run `pytest` inside the live `colophon` / `colophon2` container** — the
@@ -401,3 +431,6 @@ path overrides instead.
   classification (`sent_updated_at` / `sent_content_at`); cover downscaling on
   the Kobo endpoint; indexed `kobo_book_id` instead of a per-request table
   scan; versioned `CoverImageId`. Plus "Force full resync" per device.
+- **v1.63.0** — position split from progress (`read_position_json`,
+  last-write-wins, recorded from both the reader and the Kobo PUT) and the
+  virtual page map (`page_map.py`, `GET /reader/<id>/pagemap`).

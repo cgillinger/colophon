@@ -429,6 +429,11 @@ never strips DRM).
   lookups are instant and fully local. Works for books in English in EPUB, MOBI
   and AZW3 (not PDF); lookups need the server, so a book saved for offline has
   no dictionary without a connection.
+- **Page numbers** — the top bar shows a page count such as *p. 212 / 540*
+  instead of a percentage (a page is a fixed amount of text, so it is the same
+  on every device); books that carry their own print page numbers show them in
+  parentheses. To jump, open the settings sheet and use **Go to page**, or just
+  tap the page readout. The jump leaves a *back* chip so you can return.
 - **Save for offline** (the download icon) caches the book so you can read it
   with no connection; your progress is kept locally and re-syncs when you're back
   online. *Requires a secure (HTTPS) connection* — see §15 on serving over
@@ -474,6 +479,8 @@ progress percentage.
   ever moves **forward** — a quick "peek" on one device can't wipe how far you
   actually read on another. Status only moves forward too (a finished book stays
   finished); to re-read, use *Reset reading state*.
+- **Resume goes to where you last were**, even if that is earlier than your
+  furthest point; the percentage still shows the furthest point you have reached.
 - **Position syncs exactly** both ways: read a chapter in the browser, sync
   the Kobo, and it opens on the same sentence. For PDFs, and for books never
   sent to a Kobo, you land on the nearest chapter. Page numbers still differ

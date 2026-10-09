@@ -1930,8 +1930,22 @@ def metadata_json(item_id):
         "read_started_at": item.read_started_at.isoformat() if item.read_started_at else None,
         "read_finished_at": item.read_finished_at.isoformat() if item.read_finished_at else None,
         "times_started": int(item.times_started or 0),
+        "read_page": _read_page_info(item)[0],
+        "read_pages": _read_page_info(item)[1],
         "user_rating": item.user_rating or 0,
     })
+
+
+def _read_page_info(item):
+    """``(current_page, total_pages)`` from the *cached* page map only; the
+    modal must never trigger a build. (None, None) when unknown."""
+    from app.services.page_map import load_page_map
+    from app.services.reading_state import read_position
+
+    page_map = load_page_map(item, build=False)
+    total = page_map["total_pages"] if page_map else None
+    pos = read_position(item)
+    return (pos.get("page") if pos else None), total
 
 
 def _author_folder_info(item):
@@ -2008,6 +2022,8 @@ def reset_reading_state(item_id):
     # Also clear the full Kobo Location, else the next sync would echo the old
     # span back and the device would resume the position we just reset.
     item.read_location_json = None
+    # The remembered "where I am" would resurrect the old place on next open.
+    item.read_position_json = None
     item.read_started_at = None
     item.read_finished_at = None
     item.times_started = 0

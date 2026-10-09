@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.62.5.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.63.0.
 
 ## Författarmappar (v1.38.0 — byggt)
 
@@ -98,6 +98,7 @@ app/
     kobo_usb.py                 # Read a mounted Kobo: detect, harvest reading state
     device_transfers.py         # USB channel ledger — what WiFi must NOT re-offer
     reading_state.py            # Shared monotonic reading-state writer (Kobo + reader)
+    page_map.py                 # Virtual page map per EPUB (1500 dense chars/page) + print page-list labels
     dictionaries.py             # Reader word lookup: on-demand StarDict download + server-side lookup
   templates/
     _layout.html                # Base template — sidebar, topbar, theme bootstrap
@@ -119,7 +120,7 @@ app/
     icons/                      # Favicons, app/PWA icons, header logo SVGs (light+dark)
     vendor/tabler-icons/        # Icon font
     vendor/foliate-js/          # Vendored EPUB renderer (MIT) for the reader
-tests/                          # 44 pytest files: ai_library_context, ai_rate_limit,
+tests/                          # 45 pytest files: ai_library_context, ai_rate_limit,
                                 # author_authority, author_folders, author_lookup,
                                 # author_resolver, author_routes, batch_dry_run, bookf,
                                 # calibre_metadata, completeness, cover_batch,
@@ -128,7 +129,7 @@ tests/                          # 44 pytest files: ai_library_context, ai_rate_l
                                 # language_check, metadata_escalation, metadata_hardcover,
                                 # metadata_libris, metadata_merge, metadata_openlibrary,
                                 # metadata_pipeline, metadata_wikidata, modal_author_save,
-                                # multi_author, quality, reader_dict, reader_position,
+                                # multi_author, page_map, quality, reader_dict, reader_position,
                                 # reading_state, scan_delete_guard, scanner, schema_lock,
                                 # scoring, series_batch, source_status, title_clean, upload,
                                 # wikipedia
@@ -556,6 +557,8 @@ bottom sheet with an English definition (GCIDE) + Swedish translation
 on demand (pinned URL + checksum in `services/dictionaries.py`'s MANIFEST) to
 `DATA_DIR/dictionaries/<pair>/` and lookups run **server-side** — full design
 and how to add languages in [`docs/reader-dictionary-lookup.md`](docs/reader-dictionary-lookup.md).
+
+**Position vs progress and page numbers (v1.63.0)**: two different questions with two different rules. *Progress* (`read_progress`, the percentage) stays furthest-read-wins. *Position* (`read_position_json`) is last-write-wins and is recorded on every reader post, including backward moves, so **resume returns to where you last were**: the reader picks the newest of the server's stored position and the browser's local copy by timestamp (`resumeAt` vs the local `savedAt`; ties go to the server), and the local copy now mirrors the exact `href`/`offset` so an offline flush posts the exact position instead of a percent-only one. A *virtual page* is 1500 dense (non-whitespace) characters, built once per EPUB by `services/page_map.py` (cached under `DATA_DIR/page-maps/`, served at `/reader/<id>/pagemap`) and mirrored in `reader.js` (`pageOf` / `anchorForPage` / `printPageAt` — keep the two in lockstep). The top bar shows `p. 212 / 540`, with the EPUB's own print page-list label in parentheses when it has one; the sheet's **Go to page** row (and a tap on the readout) jumps there, setting the snapback chip first. The page map is cached with the book for offline reading (it is in the `cacheBook` asset list), and the book modal shows the last virtual page beside the percent.
 
 **Reading-state sync gotchas live in [`docs/kobo-reading-state-sync.md`](docs/kobo-reading-state-sync.md)** — read it before touching `reading_state.py` or the Kobo PUT/DTO paths. It records the conflict-resolution rules (monotonic status + furthest-read-wins, v1.28.1), the full-Location round-trip (`read_location_json`, v1.28.2 — `Source` is the chapter file, never the book UUID), the content-vs-progress re-download distinction, why sideloaded books (foreign v4 UUIDs) can't sync, and a symptom→cause triage table.
 

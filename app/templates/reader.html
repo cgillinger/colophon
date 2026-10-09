@@ -268,6 +268,7 @@
         .reader-sheet .rs-row {
             display: flex; align-items: center; gap: 12px;
         }
+        .reader-sheet .rs-row[hidden] { display: none; }
         .reader-sheet .rs-label {
             flex: 0 0 84px; font-size: .82rem; font-weight: 600;
             text-transform: uppercase; letter-spacing: .03em; opacity: .75;
@@ -294,6 +295,16 @@
 
         .reader-sheet .rs-stepper {
             flex: 1 1 auto; display: flex; align-items: center; gap: 8px;
+        }
+        .reader-sheet .rs-goto .rs-input {
+            flex: 1 1 auto; min-width: 0; padding: 9px 10px; font: inherit; font-size: .95rem;
+            border: 1px solid var(--rs-line); border-radius: 8px;
+            background: var(--rs-chip); color: inherit; font-variant-numeric: tabular-nums;
+        }
+        .reader-sheet .rs-goto .rs-val { font-size: .9rem; opacity: .75; white-space: nowrap; }
+        .reader-sheet .rs-goto .rs-gobtn {
+            padding: 9px 16px; border: 1px solid var(--rs-chip-on); border-radius: 8px;
+            background: var(--rs-chip-on); color: #fff; font: inherit; font-weight: 600; cursor: pointer;
         }
         .reader-sheet .rs-restart {
             width: 100%; display: flex; align-items: center; justify-content: center;
@@ -395,7 +406,8 @@
             <i class="ti ti-arrow-left"></i>
         </button>
         <div class="reader-title">{{ item.title or item.file_name or _('Reader') }}</div>
-        <div class="reader-percent" id="readerPercent">—</div>
+        <div class="reader-percent" id="readerPercent" role="button" tabindex="0"
+             aria-label="{{ _('Go to page') }}" style="cursor:pointer">—</div>
         <button type="button" class="reader-settings reader-offline" id="readerOfflineBtn"
                 aria-label="{{ _('Save for offline reading') }}" title="{{ _('Save for offline reading') }}" hidden>
             <i class="ti ti-download"></i>
@@ -489,6 +501,15 @@
         {# One-tap restart: resets the server-side reading state (same endpoint
            as the library's "Reset reading state") and jumps to the beginning —
            without it, furthest-read-wins would resurrect the old position. #}
+        {# Jump to a virtual page (static/js/reader.js). Hidden until the page
+           map is known; never offered for fixed-layout books. #}
+        <div class="rs-row rs-goto" id="rsGotoRow" data-flow-only hidden>
+            <label class="rs-label" for="rsGotoPage">{{ _('Go to page') }}</label>
+            <input type="number" min="1" inputmode="numeric" id="rsGotoPage" class="rs-input">
+            <span class="rs-val" id="rsGotoTotal"></span>
+            <button type="button" class="rs-gobtn" id="rsGotoGo">{{ _('Go') }}</button>
+        </div>
+
         <div class="rs-row">
             <button type="button" class="rs-restart" id="rsRestart">
                 <i class="ti ti-rotate"></i> {{ _('Start over from the beginning') }}
@@ -565,6 +586,11 @@
                no stored position or no KEPUB to translate against. #}
             resumeHref: {{ resume_href|tojson }},
             resumeOffset: {{ resume_offset|tojson }},
+            resumePercent: {{ resume_percent|tojson }},
+            resumeAt: {{ resume_at|tojson }},
+            resumePage: {{ resume_page|tojson }},
+            pageMapUrl: {{ page_map_url|tojson }},
+            totalPages: {{ total_pages|tojson }},
             resetUrl: {{ url_for('metadata.reset_reading_state', item_id=item.id)|tojson }},
             homeUrl: {{ url_for('metadata.index')|tojson }},
             // "Give this book to someone": hand the raw file (EPUB or
@@ -634,7 +660,9 @@
                 dictShowMore: {{ _('Show more')|tojson }},
                 dictShowLess: {{ _('Show less')|tojson }},
                 restartConfirm: {{ _('Start this book over from the beginning? Reading progress is reset everywhere, including on the Kobo.')|tojson }},
-                restartFailed: {{ _('Could not reset reading progress — are you offline?')|tojson }}
+                restartFailed: {{ _('Could not reset reading progress — are you offline?')|tojson }},
+                pageOf: {{ _('p. {page} / {total}')|tojson }},
+                gotoPageFailed: {{ _('Could not find that page.')|tojson }}
             }
         };
 

@@ -47,7 +47,12 @@ from app.services import dictionaries
 from app.services.ai_metadata import ai_is_configured, explain_word_in_context
 from app.services.drm import file_has_drm
 from app.services.kobo_location import location_for_offset, offset_for_span
-from app.services.reading_state import apply_reading_state
+from app.services.page_map import load_page_map, page_for_position
+from app.services.reading_state import (
+    apply_reading_state,
+    read_position,
+    record_position,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +159,22 @@ def read_book(item_id):
     # Exact resume: turn the stored KoboSpan back into "N non-whitespace
     # characters into this chapter", which the reader can find in its own DOM.
     # This is the Kobo -> browser direction; percent is the fallback.
-    resume_href, resume_offset = _resume_anchor(item)
+    # "Where you are" (last position) beats "how far you have been": a position
+    # exists whenever the reader or a Kobo reported one, even a backward move.
+    # Without one, fall back to translating the Kobo location as before.
+    position = read_position(item)
+    page_map = load_page_map(item, build=False)
+    if position and position.get("source"):
+        resume_href = position.get("source")
+        resume_offset = position.get("offset")
+        resume_percent = position.get("percent")
+        resume_at = position.get("at")
+        resume_page = position.get("page")
+    else:
+        resume_href, resume_offset = _resume_anchor(item)
+        resume_percent = item.read_progress
+        resume_at = progress_modified_at
+        resume_page = None
     return render_template(
         "reader.html",
         item=item,
@@ -163,6 +183,11 @@ def read_book(item_id):
         initial_progress=item.read_progress or 0,
         resume_href=resume_href,
         resume_offset=resume_offset,
+        resume_percent=resume_percent,
+        resume_at=resume_at,
+        resume_page=resume_page,
+        page_map_url=url_for("reader.page_map", item_id=item.id),
+        total_pages=page_map["total_pages"] if page_map else None,
         read_status=item.read_status or "ReadyToRead",
         progress_modified_at=progress_modified_at,
         can_share=_can_share(item),
@@ -199,6 +224,17 @@ def book_file(item_id):
         download_name=os.path.basename(item.file_path),
         conditional=True,
     )
+
+
+@reader_bp.route("/<int:item_id>/pagemap")
+def page_map(item_id):
+    """Virtual page map for the reader. Always 200: the service worker caches
+    this URL beside the book, and "no page numbers" is a valid answer."""
+    item = get_item_or_404(item_id)
+    result = load_page_map(item, build=True)
+    if not result:
+        return jsonify({"available": False})
+    return jsonify({"available": True, **result})
 
 
 @reader_bp.route("/<int:item_id>/progress", methods=["POST"])
@@ -278,13 +314,45 @@ def update_progress(item_id):
         modified_at=datetime.utcnow(),
         clear_location=location is None,
     )
-    if applied:
+
+    # Position is last-write-wins and recorded even when progress was dropped:
+    # stepping back a page is a drop for furthest-read, but it is still where
+    # the user is. The client's savedAt orders offline flushes; a future
+    # timestamp is distrusted (clock skew) in favour of the server's.
+    now_ms = int(
+        (datetime.utcnow() - datetime(1970, 1, 1)).total_seconds() * 1000
+    )
+    try:
+        at_ms = int(saved_at)
+    except (TypeError, ValueError):
+        at_ms = now_ms
+    if at_ms > now_ms + 5 * 60 * 1000:
+        at_ms = now_ms
+    href = payload.get("href")
+    try:
+        offset = int(payload.get("offset"))
+    except (TypeError, ValueError):
+        offset = None
+    page = None
+    if href and offset is not None:
+        page = page_for_position(load_page_map(item, build=False), href, offset)
+    recorded = record_position(
+        item,
+        source=href or None,
+        offset=offset,
+        percent=percent,
+        at_ms=at_ms,
+        origin="reader",
+        page=page,
+    )
+    if applied or recorded:
         db.session.commit()
 
     return jsonify(
         {
             "ok": True,
             "applied": applied,
+            "read_page": page,
             "read_status": item.read_status,
             "read_progress": item.read_progress,
         }

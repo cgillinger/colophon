@@ -171,8 +171,7 @@ def test_reader_page_without_a_stored_position_offers_nothing(app, client):
 def test_round_trip_browser_to_span_to_browser(app, client):
     """Post an offset, read the page back, and land on the same offset.
 
-    Not exactly the same number — the span is a chunk, so resume lands at its
-    start — but within that chunk, which is the promise.
+    Resume now uses the recorded position, so it is the same number.
     """
     from app.models import LibraryItem
 
@@ -188,8 +187,9 @@ def test_round_trip_browser_to_span_to_browser(app, client):
     with app.app_context():
         item = LibraryItem.query.get(item_id)
         assert json.loads(item.read_location_json)["Value"] == "kobo.2.1"
-    # kobo.2.1 starts at 35 dense characters; 40 was 5 characters into it.
-    assert "resumeOffset: 35" in html
+    # The stored position is exact (40), no longer snapped to the span start
+    # (35) — the span-derived anchor is only the fallback without a position.
+    assert "resumeOffset: 40" in html
 
 
 def _epoch_ms(dt):
@@ -245,3 +245,96 @@ def test_reset_guard_lets_through_progress_made_after_reset(app, client):
     with app.app_context():
         item = LibraryItem.query.get(item_id)
         assert item.read_progress == 50.0
+
+
+def _position(app, item_id):
+    from app.models import LibraryItem
+
+    with app.app_context():
+        raw = LibraryItem.query.get(item_id).read_position_json
+        return json.loads(raw) if raw else None
+
+
+def test_backward_post_drops_progress_but_moves_position(app, client):
+    """Furthest-read-wins for progress, last-write-wins for position."""
+    from app.models import LibraryItem
+
+    with app.app_context():
+        item_id = _make_item()
+    client.post(f"/reader/{item_id}/progress", json={
+        "percent": 60.0, "status": "Reading", "href": CHAPTER, "offset": 40})
+    resp = client.post(f"/reader/{item_id}/progress", json={
+        "percent": 20.0, "status": "Reading", "href": CHAPTER, "offset": 5})
+    assert resp.get_json()["applied"] is False
+    pos = _position(app, item_id)
+    assert pos["offset"] == 5 and pos["source"] == CHAPTER
+    assert pos["percent"] == 20.0 and pos["origin"] == "reader"
+    with app.app_context():
+        assert LibraryItem.query.get(item_id).read_progress == 60.0
+
+
+def test_stale_saved_at_does_not_overwrite_position(app, client):
+    import time
+
+    now = int(time.time() * 1000)
+    with app.app_context():
+        item_id = _make_item()
+    client.post(f"/reader/{item_id}/progress", json={
+        "percent": 30.0, "status": "Reading", "href": CHAPTER, "offset": 30,
+        "savedAt": now})
+    client.post(f"/reader/{item_id}/progress", json={
+        "percent": 30.0, "status": "Reading", "href": CHAPTER, "offset": 3,
+        "savedAt": now - 60000})
+    assert _position(app, item_id)["offset"] == 30
+
+
+def test_reader_page_prefers_position_over_kobo_location(app, client):
+    stored = {"Source": CHAPTER, "Type": "KoboSpan", "Value": "kobo.2.1"}
+    with app.app_context():
+        item_id = _make_item(
+            read_status="Reading", read_progress=70.0,
+            read_location="kobo.2.1", read_location_json=json.dumps(stored),
+            read_position_json=json.dumps({
+                "source": CHAPTER, "offset": 7, "percent": 12.5, "page": None,
+                "at": 1234, "origin": "reader"}),
+        )
+    html = client.get(f"/reader/{item_id}").get_data(as_text=True)
+    assert "resumeOffset: 7" in html
+    assert "resumePercent: 12.5" in html
+    assert "resumeAt: 1234" in html
+
+
+def test_reset_clears_position(app, client):
+    with app.app_context():
+        item_id = _make_item()
+    client.post(f"/reader/{item_id}/progress", json={
+        "percent": 30.0, "status": "Reading", "href": CHAPTER, "offset": 30})
+    assert _position(app, item_id) is not None
+    client.post(f"/metadata/{item_id}/reset-read")
+    assert _position(app, item_id) is None
+
+
+def test_applied_kobo_put_records_a_kobo_position(app, client):
+    from app.models import LibraryItem
+    from app.routes.kobo import _book_uuid
+    from app.services.kobo_auth import create_device
+
+    with app.app_context():
+        _, token = create_device("Position device")
+        item_id = _make_item()
+        book_uuid = _book_uuid(LibraryItem.query.get(item_id))
+    put = client.put(
+        f"/kobo/{token}/v1/library/{book_uuid}/state",
+        json={"ReadingStates": [{
+            "StatusInfo": {"Status": "Reading", "LastModified": "2026-05-28T10:00:00.000Z"},
+            "CurrentBookmark": {
+                "ProgressPercent": 33.0,
+                "Location": {"Source": CHAPTER, "Value": "kobo.2.1", "Type": "KoboSpan"},
+            },
+            "LastModified": "2026-05-28T10:00:00.000Z",
+        }]},
+    )
+    assert put.status_code == 200
+    pos = _position(app, item_id)
+    assert pos["origin"] == "kobo" and pos["offset"] == 35
+    assert pos["source"] == CHAPTER and pos["percent"] == 33.0

@@ -437,6 +437,11 @@ och PDF**; DRM-skyddade (eller lösenordskrypterade) filer går inte att öppna
   — därefter är uppslagen omedelbara och helt lokala. Fungerar för böcker på
   engelska i EPUB, MOBI och AZW3 (inte PDF); uppslag kräver att servern nås,
   så en offline-sparad bok har ingen ordbok utan uppkoppling.
+- **Sidnummer** — överst visas ett sidantal som *s. 212 / 540* i stället för
+  procent (en sida är en fast mängd text, så den är densamma på alla enheter);
+  böcker med egna tryckta sidnummer visar dem inom parentes. För att hoppa,
+  öppna inställningarna och använd **Gå till sida**, eller tryck på sidnumret.
+  Hoppet lämnar en *tillbaka*-bricka så att du kan återvända.
 - **Spara offline** (nedladdningsikonen) cachar boken så att du kan läsa utan
   uppkoppling; din progress sparas lokalt och synkas igen när du är online. *Kräver
   en säker (HTTPS) anslutning* — se §15 om att servera via Tailscale.
@@ -479,6 +484,8 @@ procentuell progress.
   bara **framåt** — en snabb "titt" på en enhet kan inte radera hur långt du
   faktiskt läst på en annan. Status rör sig bara framåt också (en läst bok förblir
   läst); för att läsa om, använd *Återställ läsläge*.
+- **Återupptagning går till där du senast var**, även om det är tidigare än din
+  längsta punkt; procenten visar fortfarande den längsta punkten du nått.
 - **Positionen synkar exakt** åt båda håll: läs ett kapitel i webbläsaren,
   synka Kobon, och den öppnar på samma mening. För PDF, och för böcker som
   aldrig skickats till en Kobo, hamnar du på närmaste kapitel. Sidnumret

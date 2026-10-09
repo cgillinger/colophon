@@ -27,7 +27,7 @@
     }
 
     function assetsFor(id) {
-        return ['/reader/' + id, '/reader/' + id + '/file', coverUrlFor(id)].concat(shellAssets());
+        return ['/reader/' + id, '/reader/' + id + '/file', coverUrlFor(id), '/reader/' + id + '/pagemap'].concat(shellAssets());
     }
 
     // One-shot request/response to the controlling SW over a dedicated
@@ -101,6 +101,9 @@
             title: meta.title, author: meta.author, coverUrl: coverUrlFor(id),
             assets: assetsFor(id)
         }, 120000).then(function (res) {
+            if (res && res.ok && res.failed && res.failed.length) {
+                console.warn('Offline: some assets were not cached', res.failed);
+            }
             return !!(res && res.ok);
         });
     }
@@ -110,7 +113,7 @@
         // exactly as in reader.js's toggleOffline.
         return swRequest({
             type: 'removeBook', id: id,
-            assets: ['/reader/' + id, '/reader/' + id + '/file', coverUrlFor(id)]
+            assets: ['/reader/' + id, '/reader/' + id + '/file', coverUrlFor(id), '/reader/' + id + '/pagemap']
         }, 15000).then(function () { return true; });
     }
 

@@ -33,6 +33,47 @@ def _as_progress(value):
         return None
 
 
+def read_position(item) -> dict | None:
+    """The stored position as a dict, or None when absent/unreadable."""
+    raw = getattr(item, "read_position_json", None)
+    if not raw:
+        return None
+    try:
+        pos = json.loads(raw)
+    except (ValueError, TypeError):
+        return None
+    return pos if isinstance(pos, dict) else None
+
+
+def record_position(
+    item, *, source, offset, percent, at_ms, origin, page=None
+) -> bool:
+    """Remember where the user is, last-write-wins by ``at_ms``.
+
+    Separate from ``apply_reading_state`` on purpose: progress is
+    furthest-read-wins (a peek ahead must never lose the high-water mark), but
+    the place to resume is simply the most recent one. Does NOT commit.
+    """
+    existing = read_position(item)
+    try:
+        existing_at = int(existing["at"]) if existing and existing.get("at") is not None else None
+    except (TypeError, ValueError):
+        existing_at = None
+    if existing_at is not None and at_ms < existing_at:
+        return False
+    item.read_position_json = json.dumps(
+        {
+            "source": source,
+            "offset": offset,
+            "percent": percent,
+            "page": page,
+            "at": int(at_ms),
+            "origin": origin,
+        }
+    )
+    return True
+
+
 def apply_reading_state(
     item, status, progress=None, location=None, modified_at=None, clear_location=False
 ):

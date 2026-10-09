@@ -252,3 +252,18 @@ def test_reset_to_readytoread_not_blocked_by_furthest_read_rule():
     item.read_location = None
     assert item.read_status == "ReadyToRead"
     assert item.read_progress is None
+
+
+def test_record_position_is_last_write_wins():
+    from app.services.reading_state import read_position, record_position
+
+    item = _Item(read_position_json=None)
+    kw = dict(source="a.xhtml", percent=1.0, origin="reader")
+    assert record_position(item, offset=10, at_ms=1000, **kw) is True
+    assert record_position(item, offset=5, at_ms=2000, **kw) is True   # backwards, newer
+    assert record_position(item, offset=99, at_ms=1500, **kw) is False  # older
+    assert read_position(item)["offset"] == 5
+    assert record_position(item, offset=6, at_ms=2000, **kw) is True    # equal wins
+    item.read_position_json = "not json"
+    assert read_position(item) is None
+    assert record_position(item, offset=1, at_ms=1, **kw) is True

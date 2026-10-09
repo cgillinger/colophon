@@ -12,8 +12,8 @@
  * Loaded on the main app (via _layout.html) and in the reader (reader.html),
  * so wherever you regain a connection, everything drains. Runs at load and on
  * the 'online' event. Safe to double-post with reader.js: the server merge is
- * monotonic / furthest-read-wins, so a late or slightly-stale post can never
- * move a book backwards. Only touches entries the reader itself wrote.
+ * keeps progress furthest-read-wins and orders positions by savedAt, so a late
+ * or slightly-stale post cannot undo anything newer. Only touches entries the reader itself wrote.
  */
 (function (window, document) {
     'use strict';
@@ -73,16 +73,22 @@
         var selfId = currentReaderBookId();
         pendingEntries().forEach(function (p) {
             if (selfId && p.id === selfId) return;
-            // Percent + status only: the exact location (href/offset) isn't
-            // mirrored to localStorage, and the server derives a chapter from
-            // the percent when none is sent — same as reader.js's own reconnect
-            // flush. savedAt lets the server drop a stale post that would undo a
+            // Percent + status, plus the exact location (href/offset) when the
+            // reader mirrored one: a percent-only post makes the server clear
+            // the stored Kobo location and derive a chapter from the percent.
+            // Entries that predate the exact mirror still go percent-only.
+            // savedAt lets the server drop a stale post that would undo a
             // reset. keepalive lets it complete through a navigation.
             var savedAt = p.val.savedAt, percent = p.val.percent;
+            var body = { percent: percent, status: p.val.status, savedAt: savedAt };
+            if (p.val.href && p.val.offset != null) {
+                body.href = p.val.href;
+                body.offset = p.val.offset;
+            }
             fetch('/reader/' + p.id + '/progress', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ percent: percent, status: p.val.status, savedAt: savedAt }),
+                body: JSON.stringify(body),
                 keepalive: true
             }).then(function (r) {
                 if (r && r.ok) markSyncedIfUnchanged(p.key, savedAt, percent);

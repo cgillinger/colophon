@@ -109,6 +109,11 @@ class LibraryItem(db.Model):
     # the exact span. read_location keeps just the Value for display/compat.
     # Never synthesize this — a fabricated Source makes the Kobo jump to start.
     read_location_json = db.Column(db.Text, nullable=True)
+    # Where the user *is* (last-write-wins), as opposed to read_progress which is
+    # how far they have *been* (furthest-read-wins). JSON: source, offset,
+    # percent, page, at (epoch ms), origin. Deliberately not a device-content
+    # column: moving around in a book must never make a Kobo re-download it.
+    read_position_json = db.Column(db.Text, nullable=True)
     read_last_modified = db.Column(db.DateTime, nullable=True)
     read_started_at = db.Column(db.DateTime, nullable=True)
     read_finished_at = db.Column(db.DateTime, nullable=True)

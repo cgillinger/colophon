@@ -70,3 +70,89 @@ def test_reader_shell_assets_shared_by_both_templates(app):
         first = _render_app_context(app)["reader_shell_assets"]
         second = _render_app_context(app)["reader_shell_assets"]
         assert first == second
+
+
+# --- service worker body (static-string checks; no JS runtime in the suite) ---
+
+def _sw_body(client):
+    resp = client.get("/sw.js")
+    assert resp.status_code == 200
+    return resp.get_data(as_text=True)
+
+
+def _function_body(body, name):
+    """Slice from `async function <name>` up to the next `async function`."""
+    start = body.index("async function " + name)
+    nxt = body.find("async function ", start + 1)
+    return body[start:nxt if nxt != -1 else len(body)]
+
+
+def test_sw_defines_network_timeout(client):
+    import re
+
+    body = _sw_body(client)
+    assert re.search(r"const\s+NETWORK_TIMEOUT_MS\s*=\s*\d+\s*;", body)
+    assert re.search(r"function\s+fetchWithTimeout\s*\(\s*req\s*,\s*ms\s*\)", body)
+
+
+def test_sw_network_first_and_reader_page_use_timeout(client):
+    body = _sw_body(client)
+    for name in ("networkFirst", "readerPage", "coverImage"):
+        assert "fetchWithTimeout(req, NETWORK_TIMEOUT_MS)" in _function_body(body, name), name
+    # Cache-first / SWR / offline-first must stay free of the timeout.
+    for name in ("cacheFirst", "offlineFirst", "staleWhileRevalidate"):
+        assert "NETWORK_TIMEOUT_MS" not in _function_body(body, name), name
+
+
+def test_sw_reader_asset_matches_pagemap_and_file(client):
+    import re
+
+    body = _sw_body(client)
+    m = re.search(r"const\s+READER_ASSET\s*=\s*/(.+)/\s*;", body)
+    assert m, "READER_ASSET missing"
+    assert "READER_FILE" not in body
+    # The JS literal is also a valid Python regex once the escapes are kept.
+    pattern = re.compile(m.group(1))
+    assert pattern.match("/reader/12/file")
+    assert pattern.match("/reader/12/pagemap")
+    assert not pattern.match("/reader/12")
+    assert not pattern.match("/reader/12/other")
+
+
+def test_sw_cache_book_reports_failures(client):
+    body = _sw_body(client)
+    assert "failed" in _function_body(body, "cacheBook")
+    handler = body[body.index("data.type === 'cacheBook'"):body.index("data.type === 'removeBook'")]
+    assert "failed:" in handler
+    assert "r.ok" in handler
+
+
+def test_sw_offline_page_is_stale_while_revalidate(client):
+    import re
+
+    body = _sw_body(client)
+    assert re.search(
+        r"pathname\s*===\s*'/offline'\s*\)\s*\{\s*event\.respondWith\(\s*staleWhileRevalidate\(req,\s*OFFLINE\)",
+        body,
+    )
+
+
+def test_reader_page_has_goto_page_controls_and_page_map_url(app, client):
+    """The settings sheet carries the "Go to page" row, the readout is a
+    button, and reader.js is wired to the page-map URL the server renders."""
+    from pathlib import Path
+
+    from app.models import LibraryItem, db
+
+    with app.app_context():
+        item = LibraryItem(file_path="/tmp/x.epub", file_name="x.epub", extension=".epub", title="X")
+        db.session.add(item)
+        db.session.commit()
+        item_id = item.id
+    body = client.get(f"/reader/{item_id}").get_data(as_text=True)
+    for needle in ('id="rsGotoPage"', 'id="rsGotoGo"', 'id="rsGotoTotal"',
+                   "pageMapUrl", f"/reader/{item_id}/pagemap", "pageOf"):
+        assert needle in body
+    js = (Path(app.root_path) / "static" / "js" / "reader.js").read_text()
+    assert "pageMapUrl" in js
+    assert "anchorForPage" in js
