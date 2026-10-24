@@ -31,6 +31,7 @@ Two things to check:
 | **Order a series.** One AI call for the whole series, checked against Wikidata, reviewed row by row. | Series view → **Order the series** on a card | [§9d](docs/handbook-en.md#9d-ordering-a-series) | 1.53.0 |
 | **Order an author's series.** Same review across everything one author wrote. The AI also decides which series exist. | Authors page → ⋯ menu → **Order series**, or the banner when you filter on an author | [§9e](docs/handbook-en.md#9e-ordering-an-authors-series) | 1.54.0 |
 | **Fetch covers for a filter.** Searches every book without a cover, not just the visible page. | Click **N missing cover** → **Fetch covers for these** | [§9g](docs/handbook-en.md#9g-fetching-covers-for-a-whole-filter) | 1.60.0 |
+| **Other e-readers over OPDS and KOSync.** An Xteink on CrossPoint (or KOReader) browses and downloads from your library, and syncs an exact reading position shared with the Kobo and the browser reader. | Sidebar → **E-readers (OPDS)** | [§15b](docs/handbook-en.md#15b-other-e-readers-opds-and-kosync-xteink-koreader) | 1.64.0 |
 | **Reading offline.** Save books to read with no connection; a *Downloaded books* shelf and an *N downloaded* filter, and everything you read offline resyncs when you're back. | Reader download icon, or Shelf-view **Save for offline** | [§12b](docs/handbook-en.md#12b-reading-offline) | 1.62.0 |
 | **See what's missing.** A colour dot per book, three counters that filter, and *Least complete first* in the sort menu. | Table view | [§9b](docs/handbook-en.md#9b-seeing-whats-missing) | 1.52.0 |
 | **Check language.** Reads the text inside your EPUBs and lists the books whose recorded language is wrong or missing. | **Tools → Check language** | [§9c](docs/handbook-en.md#9c-checking-language) | 1.52.0 |
@@ -58,6 +59,26 @@ Two things to check:
   per book.
 
 ---
+
+## [1.64.0] — 2026-10-25
+
+### Added
+- **E-readers that are not a Kobo.** Colophon now serves an **OPDS catalogue**
+  and a **KOSync server**, so an Xteink running CrossPoint — or KOReader —
+  can browse your library, download books, and sync where you are. Add the
+  device under **E-readers (OPDS)** in the sidebar and enter the two addresses
+  it shows on the reader. See the [README](README.md#setting-up-an-opds-e-reader-xteink-crosspoint-koreader)
+  and the [handbook, §15b](docs/handbook-en.md#15b-other-e-readers-opds-and-kosync-xteink-koreader).
+- **The position is exact and shared.** What the reader reports is translated
+  into the same position the Kobo and the browser reader use, so you continue
+  on the same sentence whichever device you pick up.
+
+### Good to know
+- The reader is always sent to where you last were, never to the furthest
+  point you have reached, and it never marks a book as read.
+- The reader has to reach Colophon on its own network; set
+  `COLOPHON_PUBLIC_URL` to the LAN address. The database adds two tables on
+  first start.
 
 ## [1.62.5] — 2026-09-17
 

@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Colophon 1.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-09 17:40+0200\n"
+"POT-Creation-Date: 2026-10-25 00:11+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: sv\n"
@@ -195,6 +195,46 @@ msgstr "Metadata sparad (%(count)d fält uppdaterade)."
 msgid "No books selected."
 msgstr "Inga böcker valda."
 
+#: app/routes/opds.py:175
+#, python-format
+msgid "%(n)d books"
+msgstr "%(n)d böcker"
+
+#: app/routes/opds.py:191 app/routes/opds.py:207
+#: app/templates/bulk_metadata.html:236
+msgid "Reading now"
+msgstr "Läser nu"
+
+#: app/routes/opds.py:192
+msgid "Books you have started, most recent first"
+msgstr "Böcker du har påbörjat, senast lästa först"
+
+#: app/routes/opds.py:193 app/routes/opds.py:214
+msgid "Recently added"
+msgstr "Senast tillagda"
+
+#: app/routes/opds.py:194 app/routes/opds.py:221
+msgid "All books"
+msgstr "Alla böcker"
+
+#: app/routes/opds.py:194
+msgid "By title"
+msgstr "Efter titel"
+
+#: app/routes/opds.py:195 app/routes/opds.py:254 app/templates/_layout.html:132
+#: app/templates/authors.html:3 app/templates/authors.html:175
+msgid "Authors"
+msgstr "Författare"
+
+#: app/routes/opds.py:196 app/routes/opds.py:272
+msgid "Book series"
+msgstr "Serier"
+
+#: app/routes/opds.py:228
+#, python-format
+msgid "Search: %(q)s"
+msgstr "Sök: %(q)s"
+
 #: app/routes/settings.py:159
 msgid "The upstream library is configured via an environment variable."
 msgstr "Huvudbiblioteket konfigureras via miljövariabel."
@@ -268,15 +308,16 @@ msgstr ""
 msgid "Cleared %(n)d cached KEPUB files."
 msgstr "Rensade %(n)d cachade KEPUB-filer."
 
-#: app/routes/settings.py:482
+#: app/routes/settings.py:482 app/routes/settings.py:525
 msgid "Device revoked."
 msgstr "Enheten återkallad."
 
-#: app/routes/settings.py:484 app/routes/settings.py:502
+#: app/routes/settings.py:484 app/routes/settings.py:527
+#: app/routes/settings.py:545
 msgid "Device not found."
 msgstr "Enheten hittades inte."
 
-#: app/routes/settings.py:507
+#: app/routes/settings.py:550
 #, python-format
 msgid ""
 "Full resync queued for %(name)s — %(count)d book(s) will be sent again on"
@@ -285,7 +326,7 @@ msgstr ""
 "Full omsynk köad för %(name)s — %(count)d bok/böcker skickas om vid nästa"
 " synk."
 
-#: app/routes/settings.py:528
+#: app/routes/settings.py:571
 msgid ""
 "The next sync may send a large delete signal. This is a one-time unlock —"
 " it is spent by the sync that uses it."
@@ -293,27 +334,27 @@ msgstr ""
 "Nästa synk får skicka en stor raderingssignal. Upplåsningen är engångs — "
 "den förbrukas av den synk som utnyttjar den."
 
-#: app/routes/settings.py:559
+#: app/routes/settings.py:602
 msgid "Invalid or missing device token."
 msgstr "Ogiltig eller saknad enhetstoken."
 
-#: app/routes/settings.py:564
+#: app/routes/settings.py:607
 msgid "Device not found — was it revoked?"
 msgstr "Enheten hittades inte — har den återkallats?"
 
-#: app/routes/settings.py:569
+#: app/routes/settings.py:612
 msgid "No file uploaded."
 msgstr "Ingen fil uppladdad."
 
-#: app/routes/settings.py:574
+#: app/routes/settings.py:617
 msgid "Uploaded file was empty."
 msgstr "Den uppladdade filen var tom."
 
-#: app/routes/settings.py:577
+#: app/routes/settings.py:620
 msgid "Uploaded file is too large to be a Kobo conf (max 200 KB)."
 msgstr "Den uppladdade filen är för stor för att vara en Kobo-conf (max 200 KB)."
 
-#: app/routes/settings.py:585
+#: app/routes/settings.py:628
 #, python-format
 msgid "Could not patch the file: %(msg)s"
 msgstr "Kunde inte patcha filen: %(msg)s"
@@ -727,60 +768,60 @@ msgstr "Synka till bibliotek"
 msgid "%(n)d files awaiting upstream sync (open library to start)"
 msgstr "%(n)d filer väntar på uppströmssynk (öppna biblioteket för att starta)"
 
-#: app/templates/_layout.html:132 app/templates/authors.html:3
-#: app/templates/authors.html:175
-msgid "Authors"
-msgstr "Författare"
-
 #: app/templates/_layout.html:136 app/templates/settings_kobo.html:3
 #: app/templates/settings_kobo.html:141
 msgid "Kobo sync"
 msgstr "Kobo-synk"
 
-#: app/templates/_layout.html:140 app/templates/metadata.html:538
+#: app/templates/_layout.html:140 app/templates/settings_ereaders.html:3
+#: app/templates/settings_ereaders.html:142
+msgid "E-readers (OPDS)"
+msgstr "Läsplattor (OPDS)"
+
+#: app/templates/_layout.html:144 app/templates/metadata.html:538
 #: app/templates/settings_ai.html:325 app/templates/settings_ai.html:330
 #: app/templates/settings_api.html:3 app/templates/settings_api.html:422
 msgid "API settings"
 msgstr "API-inställningar"
 
-#: app/templates/_layout.html:144 app/templates/settings_ai.html:3
+#: app/templates/_layout.html:148 app/templates/settings_ai.html:3
 #: app/templates/settings_ai.html:294
 msgid "AI settings"
 msgstr "AI-inställningar"
 
-#: app/templates/_layout.html:152 app/templates/_layout.html:168
+#: app/templates/_layout.html:156 app/templates/_layout.html:172
 #: app/templates/bulk_metadata.html:1048
 msgid "Reading"
 msgstr "Läser"
 
-#: app/templates/_layout.html:156 app/templates/bulk_metadata.html:454
+#: app/templates/_layout.html:160 app/templates/bulk_metadata.html:454
 #: app/templates/bulk_metadata.html:649
 msgid "All"
 msgstr "Alla"
 
-#: app/templates/_layout.html:162 app/templates/bulk_metadata.html:1047
+#: app/templates/_layout.html:166 app/templates/bulk_metadata.html:1047
 msgid "Unread"
 msgstr "Oläst"
 
-#: app/templates/_layout.html:174 app/templates/bulk_metadata.html:1049
+#: app/templates/_layout.html:178 app/templates/bulk_metadata.html:1049
 msgid "Finished"
 msgstr "Läst"
 
-#: app/templates/_layout.html:191 app/templates/cover_lookup.html:262
+#: app/templates/_layout.html:195 app/templates/cover_lookup.html:262
 #: app/templates/metadata.html:357 app/templates/metadata_ai_preview.html:276
 #: app/templates/metadata_enrichment_preview.html:294
 msgid "Toggle theme"
 msgstr "Byt tema"
 
-#: app/templates/_layout.html:198
+#: app/templates/_layout.html:202
 msgid "Toggle navigation"
 msgstr "Visa/dölj navigering"
 
-#: app/templates/_layout.html:273
+#: app/templates/_layout.html:277
 msgid "Updated in the background. Refresh to see the latest."
 msgstr "Uppdaterad i bakgrunden. Ladda om för att se det senaste."
 
-#: app/templates/_layout.html:276
+#: app/templates/_layout.html:280
 msgid "Reload"
 msgstr "Ladda om"
 
@@ -1465,10 +1506,6 @@ msgstr "Mest ofullständig först"
 #: app/templates/bulk_metadata.html:225 app/templates/bulk_metadata.html:1040
 msgid "Delete selected"
 msgstr "Radera valda"
-
-#: app/templates/bulk_metadata.html:236
-msgid "Reading now"
-msgstr "Läser nu"
 
 #: app/templates/bulk_metadata.html:241
 msgid "Resume?"
@@ -3306,7 +3343,9 @@ msgstr "Flytta upp"
 msgid "Reset position"
 msgstr "Återställ läge"
 
-#: app/templates/reader.html:549 app/templates/settings_kobo.html:221
+#: app/templates/reader.html:549 app/templates/settings_ereaders.html:164
+#: app/templates/settings_ereaders.html:169
+#: app/templates/settings_kobo.html:221
 msgid "Copy"
 msgstr "Kopiera"
 
@@ -4064,6 +4103,179 @@ msgstr "ingen nyckel"
 msgid "error"
 msgstr "fel"
 
+#: app/templates/settings_ereaders.html:144
+msgid ""
+"For e-readers that browse a catalogue and sync their reading position "
+"themselves — CrossPoint on an Xteink, or KOReader. The reader downloads "
+"books over OPDS and reports where you are over KOSync. Positions are "
+"exact and shared with your Kobo and the browser reader."
+msgstr ""
+"För läsplattor som själva bläddrar i en katalog och synkar läspositionen "
+"– CrossPoint på en Xteink, eller KOReader. Plattan hämtar böcker via OPDS"
+" och rapporterar var du är via KOSync. Positionen är exakt och delas med "
+"din Kobo och läsaren i webbläsaren."
+
+#: app/templates/settings_ereaders.html:159
+#: app/templates/settings_kobo.html:217
+#, python-format
+msgid "Device created: %(name)s"
+msgstr "Enhet skapad: %(name)s"
+
+#: app/templates/settings_ereaders.html:160
+msgid "Enter these two addresses on the reader. They will not be shown again."
+msgstr "Ange de här två adresserna på läsplattan. De visas inte igen."
+
+#: app/templates/settings_ereaders.html:161
+msgid "OPDS catalogue"
+msgstr "OPDS-katalog"
+
+#: app/templates/settings_ereaders.html:166
+msgid "Reading position (KOSync server)"
+msgstr "Läsposition (KOSync-server)"
+
+#: app/templates/settings_ereaders.html:171
+msgid ""
+"Save them now — Colophon stores only the hash, never the addresses "
+"themselves."
+msgstr "Spara dem nu – Colophon lagrar bara hashen, aldrig själva adresserna."
+
+#: app/templates/settings_ereaders.html:179
+#: app/templates/settings_kobo.html:260
+msgid "Devices"
+msgstr "Enheter"
+
+#: app/templates/settings_ereaders.html:187
+#: app/templates/settings_ereaders.html:228
+#: app/templates/settings_kobo.html:268
+msgid "Name"
+msgstr "Namn"
+
+#: app/templates/settings_ereaders.html:188
+#: app/templates/settings_kobo.html:269
+msgid "Key prefix"
+msgstr "Nyckel-prefix"
+
+#: app/templates/settings_ereaders.html:189
+#: app/templates/settings_kobo.html:270
+msgid "Last seen"
+msgstr "Senast sedd"
+
+#: app/templates/settings_ereaders.html:190
+msgid "Last position sync"
+msgstr "Senaste positionssynk"
+
+#: app/templates/settings_ereaders.html:204
+msgid ""
+"Revoke this device? It will stop reaching the catalogue and syncing its "
+"position until it is set up again."
+msgstr ""
+"Återkalla den här enheten? Den kommer inte längre åt katalogen eller "
+"synkar sin position förrän den ställts in igen."
+
+#: app/templates/settings_ereaders.html:205
+#: app/templates/settings_kobo.html:293
+msgid "Revoke"
+msgstr "Återkalla"
+
+#: app/templates/settings_ereaders.html:215
+msgid "No devices yet. Add one below."
+msgstr "Inga enheter än. Lägg till en nedan."
+
+#: app/templates/settings_ereaders.html:223
+#: app/templates/settings_kobo.html:331
+msgid "Add device"
+msgstr "Lägg till enhet"
+
+#: app/templates/settings_ereaders.html:229
+msgid "e.g. Xteink X4 Pro"
+msgstr "t.ex. Xteink X4 Pro"
+
+#: app/templates/settings_ereaders.html:231
+msgid "Create"
+msgstr "Skapa"
+
+#: app/templates/settings_ereaders.html:234
+msgid ""
+"The catalogue is shown in the language Colophon is set to when you add "
+"the device."
+msgstr ""
+"Katalogen visas på det språk Colophon är inställt på när du lägger till "
+"enheten."
+
+#: app/templates/settings_ereaders.html:240
+msgid "Setting up CrossPoint"
+msgstr "Ställa in CrossPoint"
+
+#: app/templates/settings_ereaders.html:243
+msgid ""
+"Books: Settings → Connectivity → OPDS → add a server with the catalogue "
+"address. Leave username and password empty."
+msgstr ""
+"Böcker: Settings → Connectivity → OPDS → lägg till en server med "
+"katalogadressen. Lämna användarnamn och lösenord tomma."
+
+#: app/templates/settings_ereaders.html:244
+msgid ""
+"Position: Settings → Connectivity → CrossPoint Sync → choose a KOSync "
+"server and enter the reading-position address. Username and password can "
+"be anything — the address is the key."
+msgstr ""
+"Position: Settings → Connectivity → CrossPoint Sync → välj en KOSync-"
+"server och ange läspositionsadressen. Användarnamn och lösenord kan vara "
+"vad som helst – adressen är nyckeln."
+
+#: app/templates/settings_ereaders.html:245
+msgid ""
+"Document matching: choose Binary. Filename matching also works for books "
+"downloaded from this catalogue or copied over USB with their library "
+"filename, but Binary is the robust choice."
+msgstr ""
+"Dokumentmatchning: välj Binary. Matchning på filnamn fungerar också för "
+"böcker som hämtats från katalogen eller kopierats via USB med "
+"bibliotekets filnamn, men Binary är det säkra valet."
+
+#: app/templates/settings_ereaders.html:246
+msgid ""
+"Sync behaviour: Smart jumps to whichever position is further along. "
+"Choose Ask every time if you sometimes go back in a book on another "
+"device and want the reader to follow."
+msgstr ""
+"Synkbeteende: Smart hoppar till den position som ligger längst fram. Välj"
+" Ask every time om du ibland går tillbaka i en bok på en annan enhet och "
+"vill att läsplattan ska följa med."
+
+#: app/templates/settings_ereaders.html:247
+msgid ""
+"Sync from the reader menu while a book is open. Nothing syncs in the "
+"background."
+msgstr "Synka från läsmenyn medan en bok är öppen. Inget synkas i bakgrunden."
+
+#: app/templates/settings_ereaders.html:249
+msgid ""
+"What syncs: where you are (exact, shared with Kobo and the browser "
+"reader) and how far you have read. What does not: a book is never marked "
+"as read from the reader — mark it here or on the Kobo. Books that did not"
+" come from this library are ignored."
+msgstr ""
+"Det som synkas: var du är (exakt, delat med Kobo och webbläsarläsaren) "
+"och hur långt du har läst. Det som inte synkas: en bok markeras aldrig "
+"som läst från läsplattan – markera den här eller på Kobon. Böcker som "
+"inte kommer från det här biblioteket ignoreras."
+
+#: app/templates/settings_ereaders.html:250
+msgid ""
+"The reader must reach Colophon on the network it is on. It cannot use "
+"Tailscale, so the address has to be one it can reach directly, such as "
+"Colophon on your home network."
+msgstr ""
+"Läsplattan måste nå Colophon på det nätverk den är ansluten till. Den kan"
+" inte använda Tailscale, så adressen måste gå att nå direkt, till exempel"
+" Colophon på hemnätet."
+
+#: app/templates/settings_ereaders.html:260
+msgid "Copied to clipboard."
+msgstr "Kopierat till urklipp."
+
 #: app/templates/settings_kobo.html:143
 msgid ""
 "Let a Kobo e-reader sync EPUB books wirelessly from Colophon, as if "
@@ -4152,11 +4364,6 @@ msgstr ""
 " lässtatus och position, så du förlorar inget annat än tid. Importera "
 "lässtatus först om någon av posterna ovan bär progress."
 
-#: app/templates/settings_kobo.html:217
-#, python-format
-msgid "Device created: %(name)s"
-msgstr "Enhet skapad: %(name)s"
-
 #: app/templates/settings_kobo.html:218
 msgid ""
 "Copy this URL into the api_endpoint setting on your Kobo. It will not be "
@@ -4219,25 +4426,9 @@ msgstr ""
 msgid "Patch & download"
 msgstr "Patcha & ladda ner"
 
-#: app/templates/settings_kobo.html:260
-msgid "Devices"
-msgstr "Enheter"
-
 #: app/templates/settings_kobo.html:262
 msgid "connected"
 msgstr "anslutna"
-
-#: app/templates/settings_kobo.html:268
-msgid "Name"
-msgstr "Namn"
-
-#: app/templates/settings_kobo.html:269
-msgid "Key prefix"
-msgstr "Nyckel-prefix"
-
-#: app/templates/settings_kobo.html:270
-msgid "Last seen"
-msgstr "Senast sedd"
 
 #: app/templates/settings_kobo.html:271
 msgid "Syncs"
@@ -4264,10 +4455,6 @@ msgid ""
 msgstr ""
 "Återkalla den här enheten? Kobon kommer inte längre kunna synka förrän "
 "den konfigureras om."
-
-#: app/templates/settings_kobo.html:293
-msgid "Revoke"
-msgstr "Återkalla"
 
 #: app/templates/settings_kobo.html:303
 msgid "No devices yet. Add one below to start syncing."
@@ -4300,10 +4487,6 @@ msgstr ""
 #: app/templates/settings_kobo.html:319
 msgid "Allow one large deletion"
 msgstr "Tillåt en stor radering"
-
-#: app/templates/settings_kobo.html:331
-msgid "Add device"
-msgstr "Lägg till enhet"
 
 #: app/templates/settings_kobo.html:335
 msgid ""

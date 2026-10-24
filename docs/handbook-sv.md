@@ -35,6 +35,7 @@ en "preliminär" författare?*
 13. [Lässtatus och läsläge](#13-lässtatus-och-läsläge)
 14. [Dela en bok (ge bort den)](#14-dela-en-bok-ge-bort-den)
 15. [Trådlös Kobo-synk](#15-trådlös-kobo-synk)
+   - [15b. Andra läsplattor: OPDS och KOSync](#15b-andra-läsplattor-opds-och-kosync-xteink-koreader)
 16. [Synka till ett uppströmsbibliotek](#16-synka-till-ett-uppströmsbibliotek)
 17. [Inställningar](#17-inställningar)
 18. [Installera som app (PWA)](#18-installera-som-app-pwa)
@@ -536,6 +537,44 @@ enhet, kopiera dess URL (visas en gång), eller återkalla en.
 **Felsökning** (mer i README): om inget dyker upp efter en synk är URL:en i
 Kobons `.conf` oftast fel; om böcker dyker upp men inte omslag är det
 `image_host`/`image_url_template`-raderna (de måste innehålla porten).
+
+## 15b. Andra läsplattor: OPDS och KOSync (Xteink, KOReader)
+
+En läsplatta som inte är en Kobo kan också använda ditt bibliotek. Colophon
+erbjuder den en **katalog** (OPDS) att bläddra och ladda ner ur, och en
+**server för läsposition** (KOSync) som plattan berättar var du är för. Den
+byggdes för en Xteink X4 Pro med CrossPoint; KOReader fungerar likadant.
+
+**Inställning.** Gå till **Läsplattor (OPDS)** i sidomenyn, ge enheten ett namn
+och tryck **Skapa**. Du får två adresser som visas en gång: en för katalogen
+och en för läspositionen. Skriv in dem på plattan – sidan visar exakt var i
+CrossPoints inställningar, och README:n har hela genomgången. Välj **Binary**
+som dokumentmatchning.
+
+**Användning.** Öppna katalogen på plattan och bläddra i *Läser nu*, *Senast
+tillagda*, *Alla böcker*, *Författare* och *Serier*, eller sök. Välj en bok för
+att ladda ner den. Välj **Sync** i plattans meny medan du läser; inget synkas i
+bakgrunden.
+
+**Det här kan du lita på:**
+
+- **Positionen är exakt.** Läs på Xteinken, synka, öppna samma bok på Kobon
+  eller i webbläsaren – du hamnar på samma mening, och tvärtom.
+- **Plattan skickas till där du var, inte till det längsta du någonsin kommit.**
+  En snabb titt på sista kapitlet flyttar inte fram boken på dina andra enheter.
+- **Plattan markerar aldrig en bok som läst.** Gör det i Colophon eller på
+  Kobon.
+- **Bara böcker från ditt bibliotek synkas.** En bok som kommit någon annanstans
+  ifrån ignoreras.
+
+**Bra att veta:**
+
+- Med CrossPoints **Smart**-synk följer plattan en position som ligger *längre
+  fram* än dess egen, men inte en som ligger bakom. Om du har gått tillbaka i en
+  bok på en annan enhet och vill att Xteinken ska följa med, välj **Ask every
+  time**.
+- Plattan måste nå Colophon på det nätverk den sitter på, till exempel hemma.
+  Den kan inte använda Tailscale.
 
 ## 16. Synka till ett uppströmsbibliotek
 

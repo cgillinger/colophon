@@ -17,7 +17,9 @@ from app.models import db
 from app.paths import LOG_DIR
 from app.routes.authors import authors_bp
 from app.routes.kobo import kobo_bp
+from app.routes.kosync import kosync_bp
 from app.routes.metadata import metadata_bp
+from app.routes.opds import opds_bp
 from app.routes.reader import reader_bp
 from app.routes.scan import scan_bp
 from app.routes.settings import settings_bp
@@ -351,6 +353,8 @@ def create_app():
     app.register_blueprint(settings_bp)
     app.register_blueprint(kobo_bp)
     app.register_blueprint(reader_bp)
+    app.register_blueprint(opds_bp)
+    app.register_blueprint(kosync_bp)
 
     @app.after_request
     def no_cache_html(response):

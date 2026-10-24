@@ -365,6 +365,53 @@ class KoboBookState(db.Model):
     )
 
 
+class ReaderDevice(db.Model):
+    """An e-reader that browses over OPDS and syncs position over KOSync.
+
+    CrossPoint on an Xteink is the one this was built for; KOReader speaks the
+    same two protocols. Like a Kobo, the device reaches us through a path token
+    (``/opds/<token>/…``, ``/kosync/<token>/…``) of which only the SHA-256
+    hash is stored — see services/reader_devices.py.
+    """
+    __tablename__ = "reader_devices"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    api_key_hash = db.Column(db.String(64), nullable=False, unique=True, index=True)
+    api_key_prefix = db.Column(db.String(16), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_seen_at = db.Column(db.DateTime, nullable=True)
+    last_sync_at = db.Column(db.DateTime, nullable=True)
+    revoked = db.Column(db.Boolean, default=False)
+    # The interface language when the device was added. The device sends no
+    # cookie or Accept-Language, so this is what its catalogue is shown in.
+    language = db.Column(db.String(8), nullable=True)
+
+
+class KosyncDocument(db.Model):
+    """A KOSync document id we know belongs to a book.
+
+    KOSync names a book by a hash the device computes from its own copy —
+    of the file's bytes or of its filename (services/kosync_documents.py).
+    Rows are kept after the file changes, because the device still holds the
+    old copy and keeps reporting the old hash. ``book_uid`` guards against a
+    deleted item's id being reused by a different book.
+    """
+    __tablename__ = "kosync_documents"
+
+    id = db.Column(db.Integer, primary_key=True)
+    doc_hash = db.Column(db.String(32), nullable=False, index=True)
+    item_id = db.Column(db.Integer, nullable=False, index=True)
+    book_uid = db.Column(db.String(64), nullable=True)
+    kind = db.Column(db.String(16), nullable=False)
+    fingerprint = db.Column(db.String(64), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint("doc_hash", "item_id", name="uq_kosync_document_hash_item"),
+    )
+
+
 # ---------------------------------------------------------------------------
 # content_updated_at stamping
 # ---------------------------------------------------------------------------

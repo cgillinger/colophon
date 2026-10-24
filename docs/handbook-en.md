@@ -34,6 +34,7 @@ to look up one thing — *How do I share a book? Why won't my Kobo sync? What's 
 13. [Reading progress and status](#13-reading-progress-and-status)
 14. [Sharing a book (giving it away)](#14-sharing-a-book-giving-it-away)
 15. [Kobo wireless sync](#15-kobo-wireless-sync)
+   - [15b. Other e-readers: OPDS and KOSync](#15b-other-e-readers-opds-and-kosync-xteink-koreader)
 16. [Syncing to an upstream library](#16-syncing-to-an-upstream-library)
 17. [Settings](#17-settings)
 18. [Install as an app (PWA)](#18-install-as-an-app-pwa)
@@ -529,6 +530,46 @@ copy its URL (shown once), or revoke one.
 **Troubleshooting** (more in the README): if nothing appears after a sync, the
 URL in the Kobo's `.conf` is usually wrong; if books appear but covers don't,
 it's the `image_host`/`image_url_template` lines (they must include the port).
+
+## 15b. Other e-readers: OPDS and KOSync (Xteink, KOReader)
+
+An e-reader that is not a Kobo can still use your library. Colophon offers it a
+**catalogue** (OPDS) to browse and download from, and a **reading-position
+server** (KOSync) to report where you are. It was built for an Xteink X4 Pro
+running CrossPoint; KOReader works the same way.
+
+**Setting up.** Go to **E-readers (OPDS)** in the sidebar, give the device a
+name and press **Create**. You get two addresses, shown once: one for the
+catalogue and one for the reading position. Enter them on the reader — the
+page lists exactly where in CrossPoint's settings, and the README has the full
+walkthrough. Choose **Binary** for document matching.
+
+**Using it.** On the reader, open the catalogue to browse *Reading now*,
+*Recently added*, *All books*, *Authors* and *Series*, or search. Pick a book
+to download it. While reading, choose **Sync** in the reader's menu; nothing
+syncs in the background.
+
+**What you can rely on:**
+
+- **The position is exact.** Read on the Xteink, sync, open the same book on
+  the Kobo or in the browser — you land on the same sentence, and the other
+  way round.
+- **The reader is sent to where you were, not to the furthest point you ever
+  reached.** A quick look at the last chapter does not move the book forward
+  on your other devices.
+- **The reader never marks a book as read.** Do that in Colophon or on the
+  Kobo.
+- **Only books from your library sync.** A book that came from elsewhere is
+  simply ignored.
+
+**Good to know:**
+
+- With CrossPoint's **Smart** sync, the reader follows a position that is
+  *further along* than its own, but not one that is behind it. If you went
+  back in a book on another device and want the Xteink to follow, switch it to
+  **Ask every time**.
+- The reader must reach Colophon on the network it is on, for example at
+  home. It cannot use Tailscale.
 
 ## 16. Syncing to an upstream library
 

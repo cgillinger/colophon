@@ -2,7 +2,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.63.0.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.64.0.
 
 ## Författarmappar (v1.38.0 — byggt)
 
@@ -48,7 +48,7 @@ Use `--no-cache` every time. Docker layer cache has caused silent regressions be
 wsgi.py                         # Gunicorn entry: from app import create_app
 app/
   __init__.py                   # create_app(), blueprint registration, Babel, DB init
-  models.py                     # LibraryItem + Author/AuthorAlias + KoboDevice + KoboBookState
+  models.py                     # LibraryItem + Author/AuthorAlias + KoboDevice + KoboBookState + ReaderDevice + KosyncDocument
   version.py                    # __version__ = "1.26.1"
   paths.py                      # Central path constants
   config.py                     # Flask Config class (reads env vars)
@@ -60,6 +60,8 @@ app/
     settings.py                 # settings_bp — API keys, AI config, upstream sync settings
     kobo.py                     # kobo_bp — /kobo/<token>/* sync endpoints for Kobo devices
     reader.py                   # reader_bp — /reader/<id> in-browser EPUB reader + progress
+    opds.py                     # opds_bp — /opds/<token>/* OPDS 1.2 catalogue for CrossPoint/KOReader
+    kosync.py                   # kosync_bp — /kosync/<token>/* KOSync position server (same devices)
     helpers.py                  # Shared route helpers
   services/
     __init__.py
@@ -99,6 +101,9 @@ app/
     device_transfers.py         # USB channel ledger — what WiFi must NOT re-offer
     reading_state.py            # Shared monotonic reading-state writer (Kobo + reader)
     page_map.py                 # Virtual page map per EPUB (1500 dense chars/page) + print page-list labels
+    koreader_xpath.py           # KOReader XPointer <-> (source, dense offset); port of CrossPoint's resolver
+    kosync_documents.py         # KOSync document id (partial MD5 / filename MD5) -> LibraryItem
+    reader_devices.py           # Path tokens for OPDS/KOSync e-readers (hashed, like kobo_auth)
     dictionaries.py             # Reader word lookup: on-demand StarDict download + server-side lookup
   templates/
     _layout.html                # Base template — sidebar, topbar, theme bootstrap
@@ -110,6 +115,7 @@ app/
     settings_api.html           # API keys + cover source toggles
     settings_ai.html            # AI config + usage stats + upstream library
     settings_kobo.html          # Kobo device list + per-device URL + .conf snippet
+    settings_ereaders.html      # OPDS/KOSync e-readers: devices, one-time URLs, CrossPoint setup
     authors.html                # Manage authors: registry table, duplicates, cascade actions
     reader.html                 # Standalone in-browser reader page (no _layout chrome)
   translations/
@@ -181,7 +187,7 @@ When editing the main view, look in the relevant JS module first — most logic 
 
 ### Blueprints
 
-Six: `metadata_bp`, `authors_bp`, `scan_bp`, `settings_bp`, `kobo_bp`, `reader_bp`. `authors_bp` (added v1.21.0) serves the `/authors` manage view plus the registry JSON APIs the combobox uses. No `library` or `bookstores` blueprints — those were removed during the fork from Bookstation. `kobo_bp` is mounted at `/kobo` and only serves authenticated Kobo devices via per-device path tokens. `reader_bp` is mounted at `/reader` (added v1.5.0 — the fork's original `reader` blueprint was a different, removed thing; this is a fresh in-browser EPUB reader, see below).
+Eight: `metadata_bp`, `authors_bp`, `scan_bp`, `settings_bp`, `kobo_bp`, `reader_bp`, `opds_bp`, `kosync_bp`. `opds_bp` (`/opds`) and `kosync_bp` (`/kosync`, v1.64.0) serve OPDS/KOSync e-readers (CrossPoint on an Xteink, KOReader) by the same path-token scheme as the Kobo; their rules are in `docs/kobo-reading-state-sync.md` → *KOSync*. `authors_bp` (added v1.21.0) serves the `/authors` manage view plus the registry JSON APIs the combobox uses. No `library` or `bookstores` blueprints — those were removed during the fork from Bookstation. `kobo_bp` is mounted at `/kobo` and only serves authenticated Kobo devices via per-device path tokens. `reader_bp` is mounted at `/reader` (added v1.5.0 — the fork's original `reader` blueprint was a different, removed thing; this is a fresh in-browser EPUB reader, see below).
 
 ### Metadata extraction
 
@@ -560,11 +566,13 @@ and how to add languages in [`docs/reader-dictionary-lookup.md`](docs/reader-dic
 
 **Position vs progress and page numbers (v1.63.0)**: two different questions with two different rules. *Progress* (`read_progress`, the percentage) stays furthest-read-wins. *Position* (`read_position_json`) is last-write-wins and is recorded on every reader post, including backward moves, so **resume returns to where you last were**: the reader picks the newest of the server's stored position and the browser's local copy by timestamp (`resumeAt` vs the local `savedAt`; ties go to the server), and the local copy now mirrors the exact `href`/`offset` so an offline flush posts the exact position instead of a percent-only one. A *virtual page* is 1500 dense (non-whitespace) characters, built once per EPUB by `services/page_map.py` (cached under `DATA_DIR/page-maps/`, served at `/reader/<id>/pagemap`) and mirrored in `reader.js` (`pageOf` / `anchorForPage` / `printPageAt` — keep the two in lockstep). The top bar shows `p. 212 / 540`, with the EPUB's own print page-list label in parentheses when it has one; the sheet's **Go to page** row (and a tap on the readout) jumps there, setting the snapback chip first. The page map is cached with the book for offline reading (it is in the `cacheBook` asset list), and the book modal shows the last virtual page beside the percent.
 
+**OPDS + KOSync (v1.64.0)**: a third writer of the same state. The load-bearing rule: KOSync GET answers with the *position*, never `read_progress` — CrossPoint jumps to anything further along than its own page, so the high-water mark would fling it forward. PUTs never set Finished, and a pointer whose chapter disagrees with the device's percentage is reduced to chapter level. `koreader_xpath.py` must keep mirroring CrossPoint's `ChapterXPathResolver` (see the doc below for how it was verified).
+
 **Reading-state sync gotchas live in [`docs/kobo-reading-state-sync.md`](docs/kobo-reading-state-sync.md)** — read it before touching `reading_state.py` or the Kobo PUT/DTO paths. It records the conflict-resolution rules (monotonic status + furthest-read-wins, v1.28.1), the full-Location round-trip (`read_location_json`, v1.28.2 — `Source` is the chapter file, never the book UUID), the content-vs-progress re-download distinction, why sideloaded books (foreign v4 UUIDs) can't sync, and a symptom→cause triage table.
 
 ## Models
 
-Seven tables in `app/models.py`:
+Nine tables in `app/models.py`:
 
 **`library_items` (LibraryItem)** — the catalogue. Important fields:
 - `book_uid` — device-facing identity (v1.43.0), deliberately **not** the PK.
@@ -605,6 +613,10 @@ never types separator syntax. The looks-multi badge is deliberately broad
 **`kobo_devices` (KoboDevice)** — registered Kobo e-readers. Each row has a path token used in the device's sync URL (`/kobo/<token>/...`). Revokable from the settings UI.
 
 **`kobo_book_states` (KoboBookState)** — the ledger: a per-device record of which `library_items` the device has been told about, and **in what shape** (`sent_updated_at` / `sent_content_at`, v1.48.0). The ledger — not the sync token's `since` — decides what is said about a book, so a device that lost its token gets only what it lacks instead of the whole library as `ChangedEntitlement`. See "Kobo delta sync" below.
+
+**`reader_devices` (ReaderDevice)** — OPDS/KOSync e-readers (v1.64.0). Hashed path token like `kobo_devices`, plus `language`: the device sends no cookie or Accept-Language, so its catalogue is rendered in the UI language active when it was added.
+
+**`kosync_documents` (KosyncDocument)** — KOSync document id → `library_items.id` (+ `book_uid` guard), one row per hash per file version, kept after the file changes. Not a ledger: it is an index, rebuilt lazily on a lookup miss (`kosync_documents.resolve`).
 
 ## Tech stack
 
@@ -732,7 +744,7 @@ separate cleanup.
 
 1. **Never spawn subprocesses per-file for reading metadata** — use ebooklib. Subprocesses + Gunicorn sync workers = timeouts.
 2. **Docker cache** — always `--no-cache` on rebuild. Cached layers have hidden stale code.
-3. **Blueprint references** — only `metadata.*`, `authors.*`, `scan.*`, `settings.*`, `kobo.*`, `reader.*` exist. Any `url_for('library.*')` etc. will crash.
+3. **Blueprint references** — only `metadata.*`, `authors.*`, `scan.*`, `settings.*`, `kobo.*`, `reader.*`, `opds.*`, `kosync.*` exist. Any `url_for('library.*')` etc. will crash.
 4. **Main view is split** — `bulk_metadata.html` is the Jinja shell (~1000 lines); behaviour lives in `app/static/js/*.js` and styling in `app/static/css/bulk_metadata.css`. The i18n string map for JS is **rendered by Jinja** into `window.__colophonConfig.i18n` in `bulk_metadata.html` (search for `i18n: {`); `core.js` only reads it. Add a new JS string there, not in a `.js` file. Edit the right file — don't add new logic back into the template.
 5. **Settings priority**: DB value > `COLOPHON_*` env > legacy `COLOPHON_MISTRAL_*` env > default.
 6. **Gunicorn timeout**: 300s. Long operations (bulk enrichment) use SSE streaming, not blocking requests.

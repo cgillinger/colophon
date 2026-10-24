@@ -1,8 +1,8 @@
 # Colophon — self-hosted e-book library manager with Kobo wireless sync
 
-[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![GHCR](https://img.shields.io/badge/ghcr.io-prebuilt%20image-2496ED?logo=github&logoColor=white)](https://github.com/cgillinger/colophon/pkgs/container/colophon) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.63.0-brightgreen)](https://github.com/cgillinger/colophon/releases) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#setting-up-kobo-sync)
+[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![GHCR](https://img.shields.io/badge/ghcr.io-prebuilt%20image-2496ED?logo=github&logoColor=white)](https://github.com/cgillinger/colophon/pkgs/container/colophon) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.64.0-brightgreen)](https://github.com/cgillinger/colophon/releases) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#setting-up-kobo-sync) [![OPDS + KOSync](https://img.shields.io/badge/OPDS%20%2B%20KOSync-Xteink%20%C2%B7%20KOReader-555?logo=bookstack&logoColor=white)](#setting-up-an-opds-e-reader-xteink-crosspoint-koreader)
 
-**Colophon** is a self-hosted web app that turns a folder of e-book files into a clean, browsable library and syncs it to a Kobo e-reader over WiFi.
+**Colophon** is a self-hosted web app that turns a folder of e-book files into a clean, browsable library and syncs it to a Kobo e-reader over WiFi — or to any e-reader that speaks OPDS and KOSync, such as an Xteink running CrossPoint, or KOReader.
 
 It scans your books (EPUB, MOBI, AZW3, KEPUB, PDF, CBZ, CBR), fills in metadata from seven sources, finds covers, reads books in the browser, and syncs the lot to a Kobo. What sets it apart is an AI that works as a cataloguing assistant, ordering series and tidying authors, and that only ever proposes. You approve every change.
 
@@ -48,6 +48,7 @@ One Docker container, MIT licence, no telemetry. It is a personal project built 
 - Works on many books at once through **scenarios**: what is missing, a language check, the order of a series, covers for a whole filter. Each one is a proposal you tick through before anything is saved
 - Uses AI, if you want it, to order a series or an author's books in one pass, checked against Wikidata; to suggest metadata; to tell whether two author spellings are the same person; and to explain a word while you read. Mistral, OpenAI, DeepSeek or a local Ollama
 - Syncs to a Kobo over WiFi: covers, downloads, reading progress both ways
+- Serves an OPDS catalogue and a KOSync server for other e-readers (Xteink with CrossPoint, KOReader): browse and download on the device, and an exact reading position shared with the Kobo and the browser reader
 - Reads EPUB, MOBI, AZW3 and PDF in the browser, with themes, fonts (including a dyslexia-friendly one) and save-for-offline
 - Looks up words while you read: English definition, Swedish translation, and an optional AI explanation of the word in its sentence
 - Hands a DRM-free book to a friend in person, from the reader via your phone's share sheet
@@ -64,8 +65,7 @@ It needs the app opened over a **secure (HTTPS)** address; on a home network tha
 
 - Render comics page by page (Komga and Kavita do that well)
 - Multi-user accounts
-- OPDS
-- Internet-facing auth (it's a LAN tool; Kobo sync uses path tokens)
+- Internet-facing auth (it's a LAN tool; Kobo, OPDS and KOSync use path tokens)
 - Backups — it writes to your files, so keep your own
 
 ---
@@ -76,6 +76,7 @@ If you've searched for any of these, Colophon is aimed at you:
 
 - **A Calibre / Calibre-Web alternative** when you mainly want clean metadata, covers and a nice library view, without running the full Calibre desktop stack.
 - **Wireless Kobo sync for a self-hosted library** — point a Kobo at your own catalogue instead of the Kobo store, and get covers, downloads and reading-progress sync over WiFi. No cable after setup.
+- **An OPDS server with real position sync** for e-readers that are not a Kobo. An Xteink on CrossPoint (or KOReader) browses your library, downloads books, and syncs where you are to the sentence, in the same position your Kobo and the browser reader use.
 - **A metadata front-end for Komga or Kavita** — Colophon writes metadata *back into the files*, so the server you already run picks up the same titles, authors, series and covers.
 - **An in-browser reader** (EPUB, MOBI, AZW3, PDF) with reading progress that syncs to and from your Kobo, and word lookup backed by open-source dictionaries.
 - **AI-assisted cataloguing.** This is the part I have not found in any other self-hosted book server. Order a whole series, or everything one author wrote, in one reviewed pass checked against Wikidata. Get metadata suggestions that use the spellings already in your library. Ask whether two author spellings are the same person. The AI only proposes; nothing is written until you tick the rows. See [AI as a librarian's assistant](#ai-as-a-librarians-assistant).
@@ -155,7 +156,7 @@ Set these in `.env` (loaded via `env_file` in `docker-compose.yml`) or under `en
 | Variable | What it is |
 |---|---|
 | `COLOPHON_SECRET_KEY` | A random string that protects your browser session. Generate one with `python3 -c "import secrets; print(secrets.token_hex(32))"` |
-| `COLOPHON_PUBLIC_URL` | Only if you use Kobo sync. The address the Kobo uses to reach Colophon, with the port, e.g. `http://192.168.x.x:5000` |
+| `COLOPHON_PUBLIC_URL` | Only if you use Kobo sync or an OPDS e-reader. The address the reader uses to reach Colophon, with the port, e.g. `http://192.168.x.x:5000` |
 
 ### Can set
 
@@ -466,6 +467,42 @@ This needs Colophon to be able to see the mounted reader, so it depends on how y
 - **Colophon on a server, reader plugged into a different machine** — not supported. Nothing on the server can see a device attached to another computer; use wireless sync, which is what it is for.
 
 If you never plug a reader in, this costs nothing and shows nothing: the panel only appears when a Kobo is actually found. Set `COLOPHON_USB_MOUNT_ROOTS=` to switch the search off entirely.
+
+---
+
+## Setting up an OPDS e-reader (Xteink CrossPoint, KOReader)
+
+For e-readers that are not a Kobo. Colophon serves two things to them: an **OPDS catalogue** the reader browses and downloads EPUBs from, and a **KOSync server** the reader reports its reading position to. Built and tested for [CrossPoint](https://github.com/crosspoint-reader/crosspoint-reader) on an Xteink X4 Pro; KOReader speaks the same protocols.
+
+The reader has to reach Colophon directly on the network it is on. It cannot use Tailscale, so set `COLOPHON_PUBLIC_URL` to Colophon's LAN address (see [Kobo step 1](#1-set-the-public-url)) — the settings page shows the addresses built from it.
+
+### 1. Add the device
+
+**Settings → E-readers (OPDS) → Add device.** You get two addresses, shown once:
+
+```
+OPDS catalogue:     http://192.168.x.x:5000/opds/<key>/
+Reading position:   http://192.168.x.x:5000/kosync/<key>
+```
+
+The catalogue is in the language Colophon is set to when you add the device.
+
+### 2. Set up CrossPoint
+
+1. **Settings → Connectivity → OPDS** → add a server with the catalogue address. No username or password.
+2. **Settings → Connectivity → CrossPoint Sync** → KOSync server, with the reading-position address. Username and password can be anything; the key in the address is the credential.
+3. **Document matching: Binary.** Filename matching works too for books downloaded from the catalogue or copied over USB with their library filename, but Binary is the robust choice.
+4. **Sync behaviour:** *Smart* jumps to whichever position is further along. Choose *Ask every time* if you sometimes go back in a book on another device and want the reader to follow.
+
+Sync from the reader's menu while a book is open — CrossPoint never syncs in the background.
+
+### How the position stays right
+
+- **Exact, both ways.** CrossPoint reports a KOReader XPointer (`/body/DocFragment[3]/body/p[42]/text()[1].17`). Colophon translates it into the same character position the Kobo and the browser reader share, and back. Checked against CrossPoint's own resolver on 27 real books (≈56,000 positions): every pointer it produced resolves to the same place.
+- **Where you are, never how far you have been.** The reader is always given your last position. The furthest point you ever reached is kept for statistics but never served as a place to open the book — CrossPoint jumps to anything further along than its own page, so serving the high-water mark would throw you forward after a single peek at the last chapter.
+- **A pointer is only believed if the reader's percentage agrees.** One that lands in a chapter the percentage does not fall in is reduced to chapter level instead.
+- **The reader never marks a book read.** Paging to the end once must not be permanent; mark books read in Colophon or on the Kobo.
+- **Books the library does not have are ignored**, with a warning in the log. Books are recognised by a hash of the file or its name; a book whose file Colophon has since rewritten is still recognised by its old hash.
 
 ---
 

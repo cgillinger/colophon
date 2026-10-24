@@ -135,6 +135,10 @@
            href="{{ url_for('settings.kobo_settings') }}">
             <i class="ti ti-device-tablet"></i> <span>{{ _('Kobo sync') }}</span>
         </a>
+        <a class="sidebar-nav-item {{ 'active' if _section == 'ereaders' else '' }}"
+           href="{{ url_for('settings.ereader_settings') }}">
+            <i class="ti ti-book-2"></i> <span>{{ _('E-readers (OPDS)') }}</span>
+        </a>
         <a class="sidebar-nav-item {{ 'active' if _section == 'api' else '' }}"
            href="{{ url_for('settings.api_settings') }}">
             <i class="ti ti-key"></i> <span>{{ _('API settings') }}</span>

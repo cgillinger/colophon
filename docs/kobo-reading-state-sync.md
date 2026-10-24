@@ -400,6 +400,64 @@ without one it falls back to translating `read_location_json` as before.
 characters per page, cached under `DATA_DIR/page-maps/`) and is only filled
 from a *cached* map — a map is never built inside a write path.
 
+## KOSync: CrossPoint and KOReader (v1.64.0)
+
+`routes/kosync.py` + `routes/opds.py`, devices in `reader_devices`
+(`services/reader_devices.py`, same hashed path-token scheme as the Kobo).
+A third writer of the canonical state, through the same two helpers.
+
+**How the device resolves conflicts decides everything.** CrossPoint's smart
+sync (`KOReaderSyncActivity::performSync`) compares the two positions by
+chapter and character offset — not timestamps — and **jumps to whichever is
+further along**; if ours is behind, it uploads its own. Whatever GET answers
+is obeyed whenever it is ahead. Hence the rules:
+
+- **GET serves `read_position_json`, never `read_progress`.** Progress is the
+  high-water mark; serving it would throw the device forward after a single
+  peek (the 85 %-vs-10 % bug of v1.63.0, now on a device that cannot be argued
+  with). No position → **404**, and the device keeps its own. Pinned by
+  `test_progress_alone_is_never_served_as_a_position`. Positions written before
+  v1.63.0 exist only as a Kobo span and are deliberately not translated: a 404
+  costs one upload, a wrong answer moves the reader.
+- **PUT: status is always `Reading`.** Status is monotonic; a device paging to
+  the end once must not make a book Finished for good.
+- **PUT: the pointer must agree with the device's percentage.** If the
+  XPointer resolves to a chapter whose range (`range_for_source`, ±5 pp
+  `CHAPTER_SLACK`) does not contain the reported percentage, the position is
+  reduced to chapter level (`location_for_percent`, offset `None`). A
+  mistranslated pointer can therefore never move the reader to another
+  chapter.
+- Progress goes through `apply_reading_state` (furthest-read-wins),
+  position through `record_position` (origin `kosync`, server time — the
+  device sends no timestamp). The Kobo location is derived from the exact
+  offset (`location_for_offset`, needs the KEPUB) or cleared, as the browser
+  reader does.
+
+**The coordinate.** `services/koreader_xpath.py` translates a KOReader
+XPointer (`/body/DocFragment[N]/body/…/p[42]/text()[k].c`) to `(source,
+dense offset)` and back. It is a port of CrossPoint's
+`ChapterXPathResolver` walk: expat, prefix-stripped names, sibling index per
+name, a text node = character data between markup boundaries counted per
+element outside head/style/script/title/rp, offset in codepoints. Entities
+expat skips (`&nbsp;` with no DTD) count toward the dense offset but not
+toward the codepoint offset, because CrossPoint never sees them. Verified
+against CrossPoint's own resolver compiled on the host (27 library books,
+1,479 documents, ~56k positions): every pointer it produced resolves, dense
+totals equal `page_map._scan_document` in every document, and our own
+pointers round-trip exactly. A pointer CrossPoint places on whitespace comes
+back on the next visible character — the same dense offset.
+
+**Book identity.** The device sends a document id it computed from *its*
+copy: KOReader's partial MD5 (binary), or the MD5 of the filename — the
+default. `services/kosync_documents.py` records, per file version, the binary
+hash, the library filename and the three filenames CrossPoint may give an
+OPDS download (`OpdsFilename.cpp` + `sanitizeFilename`), keyed with
+`book_uid` so a reused item id can't match. Rows outlive the file version: a
+device keeps reporting the old hash after Colophon rewrites the file. A miss
+re-indexes every changed EPUB (one `stat` each) and retries; a hash claimed by
+two books resolves to nothing. Unknown documents are acknowledged and dropped
+with a `WARNING`, like a foreign Kobo UUID.
+
 ## Footgun
 
 **Never run `pytest` inside the live `colophon` / `colophon2` container** — the
@@ -434,3 +492,6 @@ path overrides instead.
 - **v1.63.0** — position split from progress (`read_position_json`,
   last-write-wins, recorded from both the reader and the Kobo PUT) and the
   virtual page map (`page_map.py`, `GET /reader/<id>/pagemap`).
+- **v1.64.0** — KOSync + OPDS for CrossPoint/KOReader (`routes/kosync.py`,
+  `routes/opds.py`, `koreader_xpath.py`, `kosync_documents.py`): position,
+  never progress, is served; status never escalates past Reading.

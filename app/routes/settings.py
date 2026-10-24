@@ -485,6 +485,49 @@ def kobo_revoke_device(device_id):
     return redirect(url_for("settings.kobo_settings"))
 
 
+# ---------------------------------------------------------------------------
+# OPDS + KOSync e-readers (CrossPoint, KOReader)
+# ---------------------------------------------------------------------------
+
+@settings_bp.route("/settings/ereaders")
+def ereader_settings():
+    from app.services.reader_devices import list_devices
+
+    # The reader cannot use Tailscale, so prefer the address Colophon is
+    # configured to be reached at over whatever this browser happens to use.
+    base_url = os.environ.get("COLOPHON_PUBLIC_URL", "").rstrip("/") or request.host_url.rstrip("/")
+    return render_template(
+        "settings_ereaders.html",
+        devices=list_devices(),
+        new_token=request.args.get("new_token") or None,
+        new_name=request.args.get("new_name") or None,
+        base_url=base_url,
+    )
+
+
+@settings_bp.route("/settings/ereaders/create", methods=["POST"])
+def ereader_create_device():
+    from app import get_locale
+    from app.services.reader_devices import create_device
+
+    name = (request.form.get("name") or "").strip() or "E-reader"
+    device, token = create_device(name, language=get_locale())
+    return redirect(url_for(
+        "settings.ereader_settings", new_token=token, new_name=device.name,
+    ))
+
+
+@settings_bp.route("/settings/ereaders/revoke/<int:device_id>", methods=["POST"])
+def ereader_revoke_device(device_id):
+    from app.services.reader_devices import revoke_device
+
+    if revoke_device(device_id):
+        flash(_("Device revoked."), "success")
+    else:
+        flash(_("Device not found."), "warning")
+    return redirect(url_for("settings.ereader_settings"))
+
+
 @settings_bp.route("/settings/kobo/force-resync/<int:device_id>", methods=["POST"])
 def kobo_force_resync(device_id):
     """Clear the ledger — the next sync delivers the whole library again.
