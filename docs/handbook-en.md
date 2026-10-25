@@ -540,14 +540,29 @@ running CrossPoint; KOReader works the same way.
 
 **Setting up.** Go to **E-readers (OPDS)** in the sidebar, give the device a
 name and press **Create**. You get two addresses, shown once: one for the
-catalogue and one for the reading position. Enter them on the reader — the
-page lists exactly where in CrossPoint's settings, and the README has the full
-walkthrough. Choose **Binary** for document matching.
+catalogue and one for the reading position. Save them — if you lose them,
+revoke the device and add it again.
+
+The addresses are long, so paste them from a computer rather than typing on
+the reader. Start **File Transfer** on the reader and open the address it
+shows, followed by `/settings`, in a browser. On that page:
+
+- **OPDS Servers → Add Server:** the catalogue address as URL. Leave username
+  and password empty.
+- **KOReader Sync → Sync Server URL:** the reading-position address. Username
+  and password can be anything, but fill them in. Choose **Binary** for
+  *Document Matching*. Then press **Authenticate** on the reader to test.
+
+**Give sync a button.** CrossPoint never syncs in the background, and the
+reader menu does not always offer a sync entry. On an **X4 Pro** (touch screen
+and Home key): **Controls → Home button → Double Tap** (or Long Press) =
+**KOSync**. On a reader with front buttons: **Controls → Long-press Menu =
+KOSync**, then hold Confirm while reading.
 
 **Using it.** On the reader, open the catalogue to browse *Reading now*,
 *Recently added*, *All books*, *Authors* and *Series*, or search. Pick a book
-to download it. While reading, choose **Sync** in the reader's menu; nothing
-syncs in the background.
+to download it. Sync with the button you chose above when you stop reading,
+and when you open a book you have been reading on another device.
 
 **What you can rely on:**
 

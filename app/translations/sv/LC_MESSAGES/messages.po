@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Colophon 1.0\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-25 00:11+0200\n"
+"POT-Creation-Date: 2026-10-25 15:44+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: sv\n"
@@ -4125,6 +4125,10 @@ msgstr "Enhet skapad: %(name)s"
 msgid "Enter these two addresses on the reader. They will not be shown again."
 msgstr "Ange de här två adresserna på läsplattan. De visas inte igen."
 
+#: app/templates/settings_ereaders.html:160
+msgid "See Setting up CrossPoint below for where they go."
+msgstr "Under Ställa in CrossPoint nedan står var de ska in."
+
 #: app/templates/settings_ereaders.html:161
 msgid "OPDS catalogue"
 msgstr "OPDS-katalog"
@@ -4206,25 +4210,28 @@ msgstr ""
 msgid "Setting up CrossPoint"
 msgstr "Ställa in CrossPoint"
 
-#: app/templates/settings_ereaders.html:243
+#: app/templates/settings_ereaders.html:242
 msgid ""
-"Books: Settings → Connectivity → OPDS → add a server with the catalogue "
-"address. Leave username and password empty."
-msgstr ""
-"Böcker: Settings → Connectivity → OPDS → lägg till en server med "
-"katalogadressen. Lämna användarnamn och lösenord tomma."
+"Easiest from a computer: start File Transfer on the reader, open the "
+"address it shows, followed by /settings, in a browser and paste both "
+"addresses there — no typing on the reader."
+msgstr "Enklast från en dator: starta File Transfer på plattan, öppna adressen den visar följd av /settings i en webbläsare och klistra in båda adresserna där – inget skrivande på plattan."
 
 #: app/templates/settings_ereaders.html:244
 msgid ""
-"Position: Settings → Connectivity → CrossPoint Sync → choose a KOSync "
-"server and enter the reading-position address. Username and password can "
-"be anything — the address is the key."
-msgstr ""
-"Position: Settings → Connectivity → CrossPoint Sync → välj en KOSync-"
-"server och ange läspositionsadressen. Användarnamn och lösenord kan vara "
-"vad som helst – adressen är nyckeln."
+"Books: under OPDS Servers, add a server with the catalogue address as "
+"URL. Leave username and password empty."
+msgstr "Böcker: under OPDS Servers, lägg till en server med katalogadressen som URL. Lämna användarnamn och lösenord tomma."
 
 #: app/templates/settings_ereaders.html:245
+msgid ""
+"Position: under KOReader Sync, put the reading-position address in Sync "
+"Server URL. Username and password can be anything, but not empty — the "
+"address is the key. Press Authenticate on the reader to test the "
+"connection."
+msgstr "Position: under KOReader Sync, lägg läspositionsadressen i Sync Server URL. Användarnamn och lösenord kan vara vad som helst, men inte tomma – adressen är nyckeln. Tryck Authenticate på plattan för att testa anslutningen."
+
+#: app/templates/settings_ereaders.html:246
 msgid ""
 "Document matching: choose Binary. Filename matching also works for books "
 "downloaded from this catalogue or copied over USB with their library "
@@ -4234,7 +4241,7 @@ msgstr ""
 "böcker som hämtats från katalogen eller kopierats via USB med "
 "bibliotekets filnamn, men Binary är det säkra valet."
 
-#: app/templates/settings_ereaders.html:246
+#: app/templates/settings_ereaders.html:247
 msgid ""
 "Sync behaviour: Smart jumps to whichever position is further along. "
 "Choose Ask every time if you sometimes go back in a book on another "
@@ -4244,13 +4251,15 @@ msgstr ""
 " Ask every time om du ibland går tillbaka i en bok på en annan enhet och "
 "vill att läsplattan ska följa med."
 
-#: app/templates/settings_ereaders.html:247
+#: app/templates/settings_ereaders.html:248
 msgid ""
-"Sync from the reader menu while a book is open. Nothing syncs in the "
-"background."
-msgstr "Synka från läsmenyn medan en bok är öppen. Inget synkas i bakgrunden."
+"Give sync a button. On an X4 Pro: Controls → Home button → Double Tap (or"
+" Long Press) = KOSync. On a reader with front buttons: Controls → Long-"
+"press Menu = KOSync, then hold Confirm. Nothing syncs in the background —"
+" you start every sync yourself while a book is open."
+msgstr "Ge synken en knapp. På en X4 Pro: Controls → hemknappen → Double Tap (eller Long Press) = KOSync. På en platta med knappar på framsidan: Controls → Long-press Menu = KOSync, håll sedan in Confirm. Inget synkas i bakgrunden – du startar varje synk själv medan en bok är öppen."
 
-#: app/templates/settings_ereaders.html:249
+#: app/templates/settings_ereaders.html:250
 msgid ""
 "What syncs: where you are (exact, shared with Kobo and the browser "
 "reader) and how far you have read. What does not: a book is never marked "
@@ -4262,7 +4271,7 @@ msgstr ""
 "som läst från läsplattan – markera den här eller på Kobon. Böcker som "
 "inte kommer från det här biblioteket ignoreras."
 
-#: app/templates/settings_ereaders.html:250
+#: app/templates/settings_ereaders.html:251
 msgid ""
 "The reader must reach Colophon on the network it is on. It cannot use "
 "Tailscale, so the address has to be one it can reach directly, such as "
@@ -4272,9 +4281,19 @@ msgstr ""
 " inte använda Tailscale, så adressen måste gå att nå direkt, till exempel"
 " Colophon på hemnätet."
 
-#: app/templates/settings_ereaders.html:260
+#: app/templates/settings_ereaders.html:252
+msgid ""
+"Lost the addresses? They cannot be shown again. Revoke the device below "
+"and add it again."
+msgstr "Tappat bort adresserna? De kan inte visas igen. Återkalla enheten nedan och lägg till den på nytt."
+
+#: app/templates/settings_ereaders.html:262
 msgid "Copied to clipboard."
 msgstr "Kopierat till urklipp."
+
+#: app/templates/settings_ereaders.html:296
+msgid "Could not copy automatically. The address is selected — press Ctrl+C."
+msgstr "Kunde inte kopiera automatiskt. Adressen är markerad – tryck Ctrl+C."
 
 #: app/templates/settings_kobo.html:143
 msgid ""
@@ -4864,9 +4883,13 @@ msgstr ""
 "sedan tillbaka och redigera om. Enheter-tabellen här kan användas för att"
 " återkalla en gammal URL-nyckel om du genererat en ny."
 
-#: app/templates/settings_kobo.html:501 app/templates/settings_kobo.html:510
+#: app/templates/settings_kobo.html:500
 msgid "URL copied to clipboard."
 msgstr "URL kopierad till urklipp."
+
+#: app/templates/settings_kobo.html:520
+msgid "Could not copy automatically. Select the address and press Ctrl+C."
+msgstr "Kunde inte kopiera automatiskt. Markera adressen och tryck Ctrl+C."
 
 #~ msgid "Settings saved."
 #~ msgstr "Inställningar sparade."
@@ -5583,4 +5606,24 @@ msgstr "URL kopierad till urklipp."
 
 #~ msgid "New version available"
 #~ msgstr "Ny version tillgänglig"
+
+#~ msgid ""
+#~ "Position: Settings → Connectivity → "
+#~ "CrossPoint Sync → choose a KOSync "
+#~ "server and enter the reading-position"
+#~ " address. Username and password can "
+#~ "be anything — the address is the"
+#~ " key."
+#~ msgstr ""
+#~ "Position: Settings → Connectivity → "
+#~ "CrossPoint Sync → välj en KOSync-"
+#~ "server och ange läspositionsadressen. "
+#~ "Användarnamn och lösenord kan vara vad"
+#~ " som helst – adressen är nyckeln."
+
+#~ msgid ""
+#~ "Sync from the reader menu while a"
+#~ " book is open. Nothing syncs in "
+#~ "the background."
+#~ msgstr "Synka från läsmenyn medan en bok är öppen. Inget synkas i bakgrunden."
 

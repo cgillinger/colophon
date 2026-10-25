@@ -1,6 +1,6 @@
 # Colophon — self-hosted e-book library manager with Kobo wireless sync
 
-[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![GHCR](https://img.shields.io/badge/ghcr.io-prebuilt%20image-2496ED?logo=github&logoColor=white)](https://github.com/cgillinger/colophon/pkgs/container/colophon) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.64.0-brightgreen)](https://github.com/cgillinger/colophon/releases) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#setting-up-kobo-sync) [![OPDS + KOSync](https://img.shields.io/badge/OPDS%20%2B%20KOSync-Xteink%20%C2%B7%20KOReader-555?logo=bookstack&logoColor=white)](#setting-up-an-opds-e-reader-xteink-crosspoint-koreader)
+[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/) [![Flask](https://img.shields.io/badge/flask-3.x-green?logo=flask)](https://flask.palletsprojects.com/) [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![GHCR](https://img.shields.io/badge/ghcr.io-prebuilt%20image-2496ED?logo=github&logoColor=white)](https://github.com/cgillinger/colophon/pkgs/container/colophon) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Version](https://img.shields.io/badge/version-1.64.1-brightgreen)](https://github.com/cgillinger/colophon/releases) [![Kobo compatible](https://img.shields.io/badge/Kobo-wireless%20sync-FF6E1F?logo=rakuten&logoColor=white)](#setting-up-kobo-sync) [![OPDS + KOSync](https://img.shields.io/badge/OPDS%20%2B%20KOSync-Xteink%20%C2%B7%20KOReader-555?logo=bookstack&logoColor=white)](#setting-up-an-opds-e-reader-xteink-crosspoint-koreader)
 
 **Colophon** is a self-hosted web app that turns a folder of e-book files into a clean, browsable library and syncs it to a Kobo e-reader over WiFi — or to any e-reader that speaks OPDS and KOSync, such as an Xteink running CrossPoint, or KOReader.
 
@@ -489,12 +489,15 @@ The catalogue is in the language Colophon is set to when you add the device.
 
 ### 2. Set up CrossPoint
 
-1. **Settings → Connectivity → OPDS** → add a server with the catalogue address. No username or password.
-2. **Settings → Connectivity → CrossPoint Sync** → KOSync server, with the reading-position address. Username and password can be anything; the key in the address is the credential.
-3. **Document matching: Binary.** Filename matching works too for books downloaded from the catalogue or copied over USB with their library filename, but Binary is the robust choice.
-4. **Sync behaviour:** *Smart* jumps to whichever position is further along. Choose *Ask every time* if you sometimes go back in a book on another device and want the reader to follow.
+The addresses are long and the reader's on-screen keyboard is slow, so paste them from a computer: start **File Transfer** on the reader, then open the address it shows followed by `/settings` (e.g. `http://192.168.x.x/settings`) in a browser. Both settings below are on that page. The same settings also exist on the reader under **Settings**.
 
-Sync from the reader's menu while a book is open — CrossPoint never syncs in the background.
+1. **OPDS Servers** → **Add Server**: a name (e.g. *Colophon*) and the catalogue address as URL. Leave username and password empty.
+2. **KOReader Sync** → **Sync Server URL**: the reading-position address. Username and password can be anything, but fill them in; the key in the address is the credential. On the reader, **Authenticate** confirms the connection.
+3. **Document Matching: Binary.** Filename matching works too for books downloaded from the catalogue or copied over USB with their library filename, but Binary is the robust choice.
+4. **Sync Behavior:** *Smart Sync* jumps to whichever position is further along. Choose *Ask Every Time* if you sometimes go back in a book on another device and want the reader to follow.
+5. **Give sync a button.** CrossPoint never syncs in the background, and the reader menu does not always show a sync entry. On an **X4 Pro** (touch screen, Home key): **Controls → Home button → Double Tap** (or Long Press) = **KOSync**. On a reader with front buttons: **Controls → Long-press Menu = KOSync**, then hold Confirm while reading.
+
+Lost the addresses? They are never shown again — revoke the device and add it again.
 
 ### How the position stays right
 

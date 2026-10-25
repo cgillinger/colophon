@@ -547,14 +547,29 @@ byggdes för en Xteink X4 Pro med CrossPoint; KOReader fungerar likadant.
 
 **Inställning.** Gå till **Läsplattor (OPDS)** i sidomenyn, ge enheten ett namn
 och tryck **Skapa**. Du får två adresser som visas en gång: en för katalogen
-och en för läspositionen. Skriv in dem på plattan – sidan visar exakt var i
-CrossPoints inställningar, och README:n har hela genomgången. Välj **Binary**
-som dokumentmatchning.
+och en för läspositionen. Spara dem – tappar du bort dem får du återkalla
+enheten och lägga till den igen.
+
+Adresserna är långa, så klistra in dem från datorn i stället för att skriva på
+plattan. Starta **File Transfer** på plattan och öppna adressen den visar, följd
+av `/settings`, i en webbläsare. På den sidan:
+
+- **OPDS Servers → Add Server:** katalogadressen som URL. Lämna användarnamn
+  och lösenord tomma.
+- **KOReader Sync → Sync Server URL:** läspositionsadressen. Användarnamn och
+  lösenord kan vara vad som helst, men fyll i dem. Välj **Binary** som
+  *Document Matching*. Tryck sedan **Authenticate** på plattan för att testa.
+
+**Ge synken en knapp.** CrossPoint synkar aldrig i bakgrunden, och läsmenyn har
+inte alltid något synkval. På en **X4 Pro** (pekskärm och hemknapp): **Controls
+→ hemknappen → Double Tap** (eller Long Press) = **KOSync**. På en platta med
+knappar på framsidan: **Controls → Long-press Menu = KOSync**, och håll sedan
+in Confirm medan du läser.
 
 **Användning.** Öppna katalogen på plattan och bläddra i *Läser nu*, *Senast
 tillagda*, *Alla böcker*, *Författare* och *Serier*, eller sök. Välj en bok för
-att ladda ner den. Välj **Sync** i plattans meny medan du läser; inget synkas i
-bakgrunden.
+att ladda ner den. Synka med knappen du valde ovan när du slutar läsa och när du
+öppnar en bok som du läst på en annan enhet.
 
 **Det här kan du lita på:**
 

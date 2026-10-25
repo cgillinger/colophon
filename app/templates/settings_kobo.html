@@ -497,18 +497,27 @@ function setLanguage(lang) {
 
 function copyNewUrl() {
     var url = document.getElementById('newKeyUrl').textContent.trim();
-    navigator.clipboard.writeText(url).then(function() {
-        alert({{ _('URL copied to clipboard.')|tojson }});
-    }, function() {
-        // Fallback for non-secure contexts
-        var ta = document.createElement('textarea');
-        ta.value = url;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        alert({{ _('URL copied to clipboard.')|tojson }});
-    });
+    function done() { alert({{ _('URL copied to clipboard.')|tojson }}); }
+    // navigator.clipboard only exists in a secure context; on a plain
+    // http:// LAN address go straight to the execCommand fallback.
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(url).then(done, function() { legacyCopy(url, done); });
+    } else {
+        legacyCopy(url, done);
+    }
+}
+
+function legacyCopy(text, done) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:-1000px;opacity:0;';
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+    if (ok) { done(); } else { alert({{ _('Could not copy automatically. Select the address and press Ctrl+C.')|tojson }}); }
 }
 </script>
 {% endblock %}

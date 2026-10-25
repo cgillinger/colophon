@@ -60,6 +60,21 @@ Two things to check:
 
 ---
 
+## [1.64.1] — 2026-10-25
+
+### Fixed
+- **The Copy buttons did nothing** next to the e-reader addresses and the Kobo
+  sync URL when Colophon was opened on a plain `http://` LAN address. They now
+  copy there too; if the browser refuses, the address is selected so you can
+  press Ctrl+C.
+
+### Changed
+- **Clearer e-reader setup.** The instructions open by themselves when a device
+  is created, say to paste the addresses through CrossPoint's own web page
+  (`/settings` in File Transfer mode) instead of typing them on the reader, and
+  explain how to give sync a button — on an X4 Pro, a Home-key double tap set to
+  KOSync. README and handbook §15b updated to match.
+
 ## [1.64.0] — 2026-10-25
 
 ### Added

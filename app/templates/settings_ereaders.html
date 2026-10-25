@@ -157,7 +157,7 @@
     {% if new_token %}
     <div class="new-key-banner">
         <h3>&#10003; {{ _('Device created: %(name)s', name=new_name) }}</h3>
-        <p>{{ _('Enter these two addresses on the reader. They will not be shown again.') }}</p>
+        <p>{{ _('Enter these two addresses on the reader. They will not be shown again.') }} {{ _('See Setting up CrossPoint below for where they go.') }}</p>
         <div class="url-label">{{ _('OPDS catalogue') }}</div>
         <div class="url-row">
             <div class="url-box" id="opdsUrl">{{ base_url }}/opds/{{ new_token }}/</div>
@@ -236,18 +236,20 @@
     </div>
 
     <div class="panel">
-        <details class="howto">
+        <details class="howto"{% if new_token %} open{% endif %}>
             <summary>{{ _('Setting up CrossPoint') }}</summary>
             <div class="howto-body">
+                <p>{{ _('Easiest from a computer: start File Transfer on the reader, open the address it shows, followed by /settings, in a browser and paste both addresses there — no typing on the reader.') }}</p>
                 <ol>
-                    <li>{{ _('Books: Settings → Connectivity → OPDS → add a server with the catalogue address. Leave username and password empty.') }}</li>
-                    <li>{{ _('Position: Settings → Connectivity → CrossPoint Sync → choose a KOSync server and enter the reading-position address. Username and password can be anything — the address is the key.') }}</li>
+                    <li>{{ _('Books: under OPDS Servers, add a server with the catalogue address as URL. Leave username and password empty.') }}</li>
+                    <li>{{ _('Position: under KOReader Sync, put the reading-position address in Sync Server URL. Username and password can be anything, but not empty — the address is the key. Press Authenticate on the reader to test the connection.') }}</li>
                     <li>{{ _('Document matching: choose Binary. Filename matching also works for books downloaded from this catalogue or copied over USB with their library filename, but Binary is the robust choice.') }}</li>
                     <li>{{ _('Sync behaviour: Smart jumps to whichever position is further along. Choose Ask every time if you sometimes go back in a book on another device and want the reader to follow.') }}</li>
-                    <li>{{ _('Sync from the reader menu while a book is open. Nothing syncs in the background.') }}</li>
+                    <li>{{ _('Give sync a button. On an X4 Pro: Controls → Home button → Double Tap (or Long Press) = KOSync. On a reader with front buttons: Controls → Long-press Menu = KOSync, then hold Confirm. Nothing syncs in the background — you start every sync yourself while a book is open.') }}</li>
                 </ol>
                 <p>{{ _('What syncs: where you are (exact, shared with Kobo and the browser reader) and how far you have read. What does not: a book is never marked as read from the reader — mark it here or on the Kobo. Books that did not come from this library are ignored.') }}</p>
                 <p>{{ _('The reader must reach Colophon on the network it is on. It cannot use Tailscale, so the address has to be one it can reach directly, such as Colophon on your home network.') }}</p>
+                <p>{{ _('Lost the addresses? They cannot be shown again. Revoke the device below and add it again.') }}</p>
             </div>
         </details>
     </div>
@@ -258,15 +260,40 @@
 function copyText(id) {
     var text = document.getElementById(id).textContent.trim();
     function done() { alert({{ _('Copied to clipboard.')|tojson }}); }
-    navigator.clipboard.writeText(text).then(done, function() {
-        var ta = document.createElement('textarea');
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        done();
-    });
+    // navigator.clipboard only exists in a secure context, and Colophon is
+    // usually opened on a plain http:// LAN address. Use the old execCommand
+    // path there, and as a fallback if the clipboard API refuses.
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(done, function() { legacyCopy(text, done); });
+    } else {
+        legacyCopy(text, done);
+    }
+}
+
+function legacyCopy(text, done) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:-1000px;opacity:0;';
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+    if (ok) { done(); } else { selectText(text); }
+}
+
+function selectText(text) {
+    // Last resort: select the address on the page so Ctrl+C works.
+    var box = Array.prototype.find.call(document.querySelectorAll('.url-box'),
+        function(el) { return el.textContent.trim() === text; });
+    if (!box) return;
+    var range = document.createRange();
+    range.selectNodeContents(box);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    alert({{ _('Could not copy automatically. The address is selected — press Ctrl+C.')|tojson }});
 }
 </script>
 {% endblock %}
