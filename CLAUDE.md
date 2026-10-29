@@ -3,7 +3,7 @@
 
 ## What is this?
 
-Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.64.1.
+Colophon is a self-hosted e-book metadata manager. Flask + Gunicorn + SQLite, running in Docker. Single-user, hobby project. Version 1.64.2.
 
 The reasoning behind the rules in this file lives in `docs/design-decisions.md` (per feature, per version). Read the relevant section there before changing one of the areas listed under "Load-bearing invariants".
 

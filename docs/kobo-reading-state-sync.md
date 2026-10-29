@@ -390,12 +390,22 @@ Write paths (`services/reading_state.py:record_position`):
 - Reader `POST /reader/<id>/progress` — always, even when
   `apply_reading_state` dropped the progress. `at` is the client's `savedAt`
   (distrusted if more than 5 min in the future), else server time.
-- Kobo state PUT — only when the PUT was applied and the span resolves to an
-  offset (needs the KEPUB). A dropped PUT records nothing.
+- Kobo state PUT — whenever the span resolves to an offset (needs the KEPUB),
+  **including when the progress was dropped** (v1.64.2). Until then a dropped
+  PUT recorded nothing, and because the Kobo and a KOSync device put different
+  percentages on the same sentence, reading on past another reader's spot on
+  the Kobo arrived as "lower" and the position was lost with it. `at` is the
+  device's `LastModified`, so an old state replayed later still loses.
 - `reset-read` clears it.
 
 Read path: the reader prefers the position for `resumeHref`/`resumeOffset`;
-without one it falls back to translating `read_location_json` as before.
+without one it falls back to translating `read_location_json` as before. The
+Kobo DTO does the same since v1.64.2 (`_faithful_location`): the position,
+translated to a span with `location_for_offset`, wins over the stored
+Location, which is only the furthest-read mark's span. There is no
+containment check against `ProgressPercent` on that path — progress may be
+ahead of where the reader now is, and the device reporting a lower percent back
+is harmless now that the position survives a dropped PUT.
 `page` comes from the virtual page map (`services/page_map.py`, 1500 dense
 characters per page, cached under `DATA_DIR/page-maps/`) and is only filled
 from a *cached* map — a map is never built inside a write path.
@@ -495,3 +505,5 @@ path overrides instead.
 - **v1.64.0** — KOSync + OPDS for CrossPoint/KOReader (`routes/kosync.py`,
   `routes/opds.py`, `koreader_xpath.py`, `kosync_documents.py`): position,
   never progress, is served; status never escalates past Reading.
+- **v1.64.2** — the Kobo PUT records the position even when the progress is
+  dropped, and the Kobo DTO sends the position rather than the high-water span.

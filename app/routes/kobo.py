@@ -32,8 +32,8 @@ from sqlalchemy import or_, text
 from app.models import LibraryItem, db
 from app.services.kobo_auth import find_device_by_token, touch_device
 from app.services.kobo_kepub import convert_epub_to_kepub
-from app.services.kobo_location import location_for_percent, range_for_source
-from app.services.reading_state import _as_progress as _as_float, apply_reading_state
+from app.services.kobo_location import location_for_offset, location_for_percent, range_for_source
+from app.services.reading_state import _as_progress as _as_float, apply_reading_state, read_position
 from app.services.kobo_sync import (
     SyncToken,
     compute_delta,
@@ -94,7 +94,9 @@ LOCATION_CONSISTENCY_SLACK = 2.0  # percentage points
 def _faithful_location(item: LibraryItem) -> dict | None:
     """The ``CurrentBookmark.Location`` to send for ``item``, or ``None``.
 
-    Prefers the exact object the device last sent (Value + Type + Source), so
+    First choice is the latest position (``read_position_json``, any reader),
+    translated to a span — since v1.64.2. Without one it prefers the exact
+    object the device last sent (Value + Type + Source), so
     a book read only on the Kobo resumes on the precise span. But that stored
     location is only meaningful next to the percentage it was captured at: the
     in-browser reader moves ``read_progress`` without being able to supply a
@@ -109,6 +111,21 @@ def _faithful_location(item: LibraryItem) -> dict | None:
     ``Source`` out of nothing: the v1.28.2 bug was ``Source=book_uuid``, which
     resolves to no document on the device, whereas a derived Source is a real
     entry from this book's own spine."""
+    # The latest position from any reader wins over the stored Location: that
+    # is the furthest-read spot's span, so echoing it would pull a Kobo back
+    # to wherever the high-water mark was set — on another device, or before
+    # the user turned back. No containment check against the percentage here:
+    # progress is the high-water mark and is allowed to be ahead of where the
+    # reader now is (the same rule KOSync GET and the browser's resume follow).
+    position = read_position(item)
+    if position and position.get("source") and position.get("offset") is not None:
+        try:
+            exact = location_for_offset(item, position["source"], int(position["offset"]))
+        except (TypeError, ValueError):
+            exact = None
+        if exact is not None:
+            return exact
+
     raw = getattr(item, "read_location_json", None)
     stored = None
     if raw:
@@ -1167,37 +1184,14 @@ def update_reading_state(device, book_id):
         location=incoming_location,
         modified_at=incoming_mod,
     )
-    if not applied:
-        logger.info(
-            "Kobo state PUT: dropped (monotonic/older) book_id=%s device=%s "
-            "current=%s/%s incoming=%s/%s",
-            book_id, device.name, item.read_status, item.read_progress,
-            incoming_status, progress,
-        )
-        # Dropping is only half the job. The Kobo resolves conflicts by
-        # timestamp while we resolve by furthest-read, so whenever we override
-        # the device it will keep ignoring our state until ours looks newer
-        # than its own — and its own keeps getting newer every time it reports.
-        # Re-assert as of now so the next sync out-ranks the device's local
-        # copy. Without this the two never converge: we refuse its lower
-        # progress, it refuses our older timestamp, and every re-sync repeats
-        # the standoff. Progress, status and location are untouched — only the
-        # "as of when do we claim this" marker moves.
-        if incoming_mod is None or not item.read_last_modified or (
-            incoming_mod >= item.read_last_modified
-        ):
-            item.read_last_modified = datetime.utcnow()
-            db.session.commit()
-            logger.info(
-                "Kobo state PUT: re-asserting our state for book_id=%s "
-                "(device timestamp was newer than ours, so it would have "
-                "ignored the correction)",
-                book_id,
-            )
-        return jsonify({}), 200
-
-    # Remember where the device is, apart from how far it has been. Only with
-    # a resolvable span (needs the KEPUB); otherwise the reader falls back to
+    # Remember where the device is, apart from how far it has been — before
+    # the dropped branch below, not after it. Progress is furthest-read-wins,
+    # position last-write-wins, and the two readers measure percent on
+    # different scales: the Kobo calls a sentence 18 % that a KOSync device
+    # called 19.4 %, so reading on past it still arrives as "lower" and is
+    # dropped. Recording the position only on an applied PUT threw away every
+    # page read on the Kobo after another reader had been there. Only with a
+    # resolvable span (needs the KEPUB); otherwise the reader falls back to
     # _resume_anchor as before.
     if incoming_location and incoming_location.get("Source") and incoming_location.get("Value"):
         from app.services.kobo_location import offset_for_span
@@ -1217,6 +1211,37 @@ def update_reading_state(device, book_id):
                 origin="kobo",
                 page=page_for_position(load_page_map(item, build=False), pos_source, pos_offset),
             )
+
+    if not applied:
+        logger.info(
+            "Kobo state PUT: dropped (monotonic/older) book_id=%s device=%s "
+            "current=%s/%s incoming=%s/%s",
+            book_id, device.name, item.read_status, item.read_progress,
+            incoming_status, progress,
+        )
+        # Dropping is only half the job. The Kobo resolves conflicts by
+        # timestamp while we resolve by furthest-read, so whenever we override
+        # the device it will keep ignoring our state until ours looks newer
+        # than its own — and its own keeps getting newer every time it reports.
+        # Re-assert as of now so the next sync out-ranks the device's local
+        # copy. Without this the two never converge: we refuse its lower
+        # progress, it refuses our older timestamp, and every re-sync repeats
+        # the standoff. Progress, status and the stored Location are untouched
+        # — only the "as of when do we claim this" marker moves (the position
+        # recorded above is the device's own, so what goes back is where it
+        # already is).
+        if incoming_mod is None or not item.read_last_modified or (
+            incoming_mod >= item.read_last_modified
+        ):
+            item.read_last_modified = datetime.utcnow()
+            logger.info(
+                "Kobo state PUT: re-asserting our state for book_id=%s "
+                "(device timestamp was newer than ours, so it would have "
+                "ignored the correction)",
+                book_id,
+            )
+        db.session.commit()
+        return jsonify({}), 200
 
     db.session.commit()
     logger.info(

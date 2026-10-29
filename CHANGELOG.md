@@ -60,6 +60,18 @@ Two things to check:
 
 ---
 
+## [1.64.2] — 2026-10-29
+
+### Fixed
+- **Reading on the Kobo after another reader was lost.** When a KOSync reader
+  (X4 Pro, KOReader) or the browser had left a book at, say, 19.4 %, and you
+  read on past that point on the Kobo, the Kobo's own percentage could still be
+  lower (it measures differently, here 19 %). Colophon then threw away the
+  Kobo's position along with the percentage, and the next sync pulled the Kobo
+  back to the other reader's place. The position is now kept whatever the
+  percentage says, and the Kobo is sent where you last were, not where the
+  furthest-read mark was set.
+
 ## [1.64.1] — 2026-10-25
 
 ### Fixed

@@ -338,3 +338,93 @@ def test_applied_kobo_put_records_a_kobo_position(app, client):
     pos = _position(app, item_id)
     assert pos["origin"] == "kobo" and pos["offset"] == 35
     assert pos["source"] == CHAPTER and pos["percent"] == 33.0
+
+
+def test_dropped_kobo_put_still_records_the_position(app, client):
+    """The 2026-10-29 field case: X4 Pro (KOSync) left the book at 19.4 %, the
+    Kobo read on past that sentence but calls it 19 % on its own scale. The
+    progress is rightly dropped — the position must not be dropped with it."""
+    from app.models import LibraryItem
+    from app.routes.kobo import _book_uuid
+    from app.services.kobo_auth import create_device
+
+    with app.app_context():
+        _, token = create_device("Position device")
+        item_id = _make_item(
+            read_status="Reading", read_progress=19.4,
+            read_position_json=json.dumps({
+                "source": CHAPTER, "offset": 5, "percent": 19.4, "page": None,
+                "at": 1793024550268, "origin": "kosync"}),  # 2026-10-26
+        )
+        book_uuid = _book_uuid(LibraryItem.query.get(item_id))
+    put = client.put(
+        f"/kobo/{token}/v1/library/{book_uuid}/state",
+        json={"ReadingStates": [{
+            "StatusInfo": {"Status": "Reading", "LastModified": "2026-10-29T11:54:36.000Z"},
+            "CurrentBookmark": {
+                "ProgressPercent": 19,
+                "Location": {"Source": CHAPTER, "Value": "kobo.2.1", "Type": "KoboSpan"},
+            },
+            "LastModified": "2026-10-29T11:54:36.000Z",
+        }]},
+    )
+    assert put.status_code == 200
+    with app.app_context():
+        assert LibraryItem.query.get(item_id).read_progress == 19.4  # still dropped
+    pos = _position(app, item_id)
+    assert pos["origin"] == "kobo" and pos["offset"] == 35
+
+
+def test_dropped_kobo_put_with_an_older_timestamp_moves_nothing(app, client):
+    """Last-write-wins still means *last*: a Kobo replaying an old state must
+    not drag the position back."""
+    from app.models import LibraryItem
+    from app.routes.kobo import _book_uuid
+    from app.services.kobo_auth import create_device
+
+    with app.app_context():
+        _, token = create_device("Position device")
+        item_id = _make_item(
+            read_status="Reading", read_progress=50.0,
+            read_position_json=json.dumps({
+                "source": CHAPTER, "offset": 35, "percent": 50.0, "page": None,
+                "at": 1793024550268, "origin": "kosync"}),
+        )
+        book_uuid = _book_uuid(LibraryItem.query.get(item_id))
+    client.put(
+        f"/kobo/{token}/v1/library/{book_uuid}/state",
+        json={"ReadingStates": [{
+            "StatusInfo": {"Status": "Reading", "LastModified": "2026-06-01T10:00:00.000Z"},
+            "CurrentBookmark": {
+                "ProgressPercent": 10,
+                "Location": {"Source": CHAPTER, "Value": "kobo.1.1", "Type": "KoboSpan"},
+            },
+            "LastModified": "2026-06-01T10:00:00.000Z",
+        }]},
+    )
+    pos = _position(app, item_id)
+    assert pos["origin"] == "kosync" and pos["offset"] == 35
+
+
+def test_kobo_state_sends_the_latest_position_not_the_high_water_span(app, client):
+    """The stored Location is where the furthest-read mark was set. A Kobo
+    must be sent where the reader last *was*, or every sync drags it back."""
+    from app.models import LibraryItem
+    from app.routes.kobo import _book_uuid
+    from app.services.kobo_auth import create_device
+
+    high_water = {"Source": CHAPTER, "Type": "KoboSpan", "Value": "kobo.1.1"}
+    with app.app_context():
+        _, token = create_device("Position device")
+        item_id = _make_item(
+            read_status="Reading", read_progress=19.4,
+            read_location="kobo.1.1", read_location_json=json.dumps(high_water),
+            read_position_json=json.dumps({
+                "source": CHAPTER, "offset": 35, "percent": 19.0, "page": None,
+                "at": 1793280000000, "origin": "kobo"}),
+        )
+        book_uuid = _book_uuid(LibraryItem.query.get(item_id))
+    state = client.get(f"/kobo/{token}/v1/library/{book_uuid}/state").get_json()
+    bookmark = state["ReadingStates"][0]["CurrentBookmark"]
+    assert bookmark["Location"] == {"Source": CHAPTER, "Type": "KoboSpan", "Value": "kobo.2.1"}
+    assert bookmark["ProgressPercent"] == 19.4  # progress stays the high-water mark
